@@ -11,6 +11,7 @@ from engine import LitRPGEngine
 from collectd_reader import get_all_summaries
 import notion_sync
 import ap_scanner
+import codex_sync
 
 engine = LitRPGEngine()
 PORT = 8777
@@ -128,6 +129,17 @@ class RealmHandler(SimpleHTTPRequestHandler):
 
         elif self.path == "/scan/status":
             self._json_response(ap_scanner.get_last_scan())
+
+        elif self.path.startswith("/codex-sync"):
+            try:
+                force = "force=1" in self.path
+                data = codex_sync.get_grouped() if not force else None
+                if force:
+                    codex_sync.fetch_codex(force=True)
+                    data = codex_sync.get_grouped()
+                self._json_response(data)
+            except Exception as e:
+                self._json_response({"error": str(e)}, 500)
 
         elif self.path == "/" or self.path == "":
             self.path = "/realm-map.html"

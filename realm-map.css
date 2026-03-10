@@ -860,8 +860,8 @@
     position: fixed;
     top: 20px;
     left: 290px;
-    width: 280px;
-    max-height: 500px;
+    width: 310px;
+    max-height: 600px;
     z-index: 50;
     background: rgba(10,10,25,0.92);
     border: 1px solid #3a3020;
@@ -941,6 +941,88 @@
   }
   .codex-persona .cp-name { color: #d0b870; font-size: 11px; }
   .codex-persona .cp-voice { font-size: 9px; color: #706050; }
+
+  /* ── Codex: collapsible sections & tool docs ── */
+  .codex-toggle {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .codex-toggle::after {
+    content: '▸';
+    font-size: 9px;
+    color: #706040;
+    margin-left: auto;
+    transition: transform 0.2s;
+  }
+  .codex-toggle.open::after { transform: rotate(90deg); }
+  .codex-tool-count {
+    font-family: monospace;
+    font-size: 9px;
+    color: #706050;
+    background: rgba(100,80,40,0.15);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-weight: normal;
+  }
+  .codex-tools {
+    display: none;
+    margin-top: 6px;
+  }
+  .codex-tools.open { display: block; }
+  .codex-tool-group {
+    font-size: 9px;
+    color: #807050;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin: 8px 0 3px;
+    padding-top: 4px;
+    border-top: 1px solid rgba(212,197,160,0.06);
+  }
+  .codex-tool-group:first-child { margin-top: 0; border-top: none; }
+  .codex-tool {
+    display: flex;
+    flex-direction: column;
+    padding: 2px 0 2px 8px;
+  }
+  .codex-tool code {
+    font-size: 10px;
+    color: #a0d0a0;
+    background: rgba(80,160,80,0.08);
+    padding: 1px 4px;
+    border-radius: 2px;
+    display: inline-block;
+    width: fit-content;
+  }
+  .codex-tool > span {
+    font-size: 9px;
+    color: #807060;
+    padding-left: 2px;
+    line-height: 1.3;
+  }
+  .codex-persona-list .codex-persona { padding: 3px 0; }
+
+  /* ── Codex: Notion-backed entries ── */
+  .codex-notion-entry {
+    padding: 4px 0 4px 4px;
+    border-bottom: 1px solid rgba(212,197,160,0.04);
+  }
+  .codex-notion-entry:last-child { border-bottom: none; }
+  .cne-header {
+    font-size: 11px;
+    color: #d0c090;
+    line-height: 1.4;
+  }
+  .cne-name { font-family: 'Cinzel', serif; font-size: 10px; }
+  .cne-body {
+    font-size: 9px;
+    color: #807060;
+    line-height: 1.4;
+    padding-left: 2px;
+    margin-top: 1px;
+  }
 
   /* Persona Editor Modal */
   #persona-editor {

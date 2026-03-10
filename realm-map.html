@@ -139,46 +139,95 @@
     <span class="codex-subtitle">Archives &amp; Lore</span>
   </div>
   <div id="codex-body">
-    <div class="codex-section">
-      <h4>Architecture</h4>
-      <span class="codex-file">server.py</span> MCP server &mdash; tools, prompts, personas
-      <span class="codex-file">engine.py</span> Sensor engine &mdash; fantasy mapping, scales
-      <span class="codex-file">map_server.py</span> HTTP server &mdash; status, events, this map
-      <span class="codex-file">collectd_reader.py</span> RRD reader &mdash; collectd metrics
-      <span class="codex-file">realm_herald.py</span> Auto-reporter &mdash; node speech daemon
-      <span class="codex-file">realm-map.html</span> This map &mdash; live visualization
-    </div>
-    <div class="codex-section">
-      <h4>Node Personas</h4>
-      <div class="codex-persona"><span class="cp-icon">&#9876;</span><div><div class="cp-name">Katana &mdash; The Citadel</div><div class="cp-voice">GuyNeural &bull; Quiet authority</div></div></div>
-      <div class="codex-persona"><span class="cp-icon">&#9961;</span><div><div class="cp-name">Gatekeeper &mdash; WAN Guardian</div><div class="cp-voice">DavisNeural &bull; Vigilant, terse</div></div></div>
-      <div class="codex-persona"><span class="cp-icon">&#128302;</span><div><div class="cp-name">Oracle Stone &mdash; The Seer</div><div class="cp-voice">BrianNeural &bull; Riddles</div></div></div>
-      <div class="codex-persona"><span class="cp-icon">&#128293;</span><div><div class="cp-name">Great Forge &mdash; CPU Spirit</div><div class="cp-voice">AndrewNeural &bull; Fiery pride</div></div></div>
-      <div class="codex-persona"><span class="cp-icon">&#128167;</span><div><div class="cp-name">Mana Well &mdash; Memory</div><div class="cp-voice">JennyNeural &bull; Depth</div></div></div>
-      <div class="codex-persona"><span class="cp-icon">&#128142;</span><div><div class="cp-name">Crystal Engine &mdash; GPU</div><div class="cp-voice">AvaNeural &bull; Precision</div></div></div>
-    </div>
-    <div class="codex-section">
-      <h4>Voice Pipeline</h4>
-      <div class="codex-entry"><span class="ce-label">1.</span> <code>map_node_chat</code> &rarr; Get persona + context</div>
-      <div class="codex-entry"><span class="ce-label">2.</span> <code>azure-chat</code> &rarr; GPT generates response</div>
-      <div class="codex-entry"><span class="ce-label">3.</span> <code>map_event</code> &rarr; Speech bubble on map</div>
-      <div class="codex-entry"><span class="ce-label">4.</span> <code>multi_speak</code> &rarr; TTS with node voice</div>
-    </div>
-    <div class="codex-section">
-      <h4>Depletion/Repletion Scale</h4>
-      <div class="codex-entry"><span class="ce-val">+10</span> Empowerment / Plenitude</div>
-      <div class="codex-entry"><span class="ce-val" style="color:#c0a040">+5</span> Comfort / Sufficiency</div>
-      <div class="codex-entry"><span class="ce-val" style="color:#a08040">0</span> Neutral / Baseline</div>
-      <div class="codex-entry"><span class="ce-val" style="color:#a06040">-5</span> Depletion / Scarcity</div>
-      <div class="codex-entry"><span class="ce-val" style="color:#c04040">-10</span> Despair / Powerlessness</div>
-    </div>
+
+    <!-- ── The Realm (overview) ── -->
     <div class="codex-section">
       <h4>The Realm</h4>
-      <div class="codex-entry"><span class="ce-label">Nodes:</span> <span class="ce-val" id="codex-node-count">22+</span> monitored</div>
-      <div class="codex-entry"><span class="ce-label">Collectd:</span> <span class="ce-val" id="codex-collectd-count">13</span> hosts</div>
-      <div class="codex-entry"><span class="ce-label">VLANs:</span> 10.0.6.x, 10.0.10.x, 10.0.11.x</div>
+      <div class="codex-entry"><span class="ce-label">Nodes:</span> <span class="ce-val" id="codex-node-count">86</span> monitored</div>
+      <div class="codex-entry"><span class="ce-label">Collectd:</span> <span class="ce-val" id="codex-collectd-count">14</span> hosts</div>
+      <div class="codex-entry"><span class="ce-label">VLANs:</span> 12 (3&ndash;12, 20, 38)</div>
+      <div class="codex-entry"><span class="ce-label">APs:</span> 11 WiFi access points</div>
       <div class="codex-entry"><span class="ce-label">Source:</span> <em>Access to Power</em> &mdash; Julia Kelliher</div>
     </div>
+
+    <!-- ── MCP Server 1: Realm Voice (lit-rpg-fantasy-voice) ── -->
+    <div class="codex-section">
+      <h4 class="codex-toggle" data-target="codex-srv-realm">&#9965; Realm Voice <span class="codex-tool-count">16 tools</span></h4>
+      <div id="codex-srv-realm" class="codex-tools">
+        <div class="codex-tool-group">Observation &amp; Voice</div>
+        <div class="codex-tool"><code>get_system_status</code><span>Raw sensor JSON &mdash; CPU, RAM, GPU, battery as fantasy data</span></div>
+        <div class="codex-tool"><code>trigger_system_observation</code><span>Narrate realm state as fantasy observation</span></div>
+        <div class="codex-tool"><code>vocalize_message</code><span>Speak custom text in the System's voice</span></div>
+        <div class="codex-tool"><code>commune_with_system</code><span>Voice conversation about realm state</span></div>
+        <div class="codex-tool-group">Map Events</div>
+        <div class="codex-tool"><code>map_event</code><span>Push speech/highlight/alert/quest to live map</span></div>
+        <div class="codex-tool"><code>map_node_chat</code><span>Node speaks via persona + GPT + speech bubble</span></div>
+        <div class="codex-tool"><code>get_map_events</code><span>Fetch recent map events since timestamp</span></div>
+        <div class="codex-tool-group">Personas</div>
+        <div class="codex-tool"><code>get_node_personas</code><span>List all personas with voices and prompts</span></div>
+        <div class="codex-tool"><code>configure_persona</code><span>Create/update node persona</span></div>
+        <div class="codex-tool"><code>delete_persona</code><span>Remove a node persona</span></div>
+        <div class="codex-tool"><code>herald_round</code><span>Orchestrate 2&ndash;5 nodes reporting with voices</span></div>
+        <div class="codex-tool-group">Topology &amp; Data</div>
+        <div class="codex-tool"><code>get_topology</code><span>Full topology: nodes, connections, regions</span></div>
+        <div class="codex-tool"><code>configure_topology_node</code><span>Add/update a node in topology.json</span></div>
+        <div class="codex-tool"><code>get_collectd_data</code><span>Collectd RRD summaries per host</span></div>
+        <div class="codex-tool"><code>scan_wifi</code><span>Scan 11 APs &mdash; detect roaming, verify links</span></div>
+        <div class="codex-tool-group">Services</div>
+        <div class="codex-tool"><code>manage_map_server</code><span>Start/stop/restart map HTTP server (:8777)</span></div>
+        <div class="codex-tool"><code>manage_herald</code><span>Start/stop/once the Herald daemon</span></div>
+        <div class="codex-tool"><code>sync_notion_quests</code><span>Sync Notion todos as map quests</span></div>
+      </div>
+    </div>
+
+    <!-- ── MCP Server 2: Azure Chat Assistant ── -->
+    <div class="codex-section">
+      <h4 class="codex-toggle" data-target="codex-srv-chat">&#129302; Azure Chat <span class="codex-tool-count">11 tools</span></h4>
+      <div id="codex-srv-chat" class="codex-tools">
+        <div class="codex-tool-group">Conversation</div>
+        <div class="codex-tool"><code>chat</code><span>Send message to Azure AI, get response</span></div>
+        <div class="codex-tool"><code>multi_chat</code><span>Query multiple models in parallel</span></div>
+        <div class="codex-tool"><code>reset</code><span>Clear conversation history</span></div>
+        <div class="codex-tool-group">Sessions</div>
+        <div class="codex-tool"><code>list_sessions</code><span>List all chat sessions</span></div>
+        <div class="codex-tool"><code>create_session</code><span>Create named session</span></div>
+        <div class="codex-tool"><code>switch_session</code><span>Switch active session</span></div>
+        <div class="codex-tool"><code>delete_session</code><span>Delete session and history</span></div>
+        <div class="codex-tool-group">Config &amp; Status</div>
+        <div class="codex-tool"><code>configure</code><span>View/change model, temperature, prompts</span></div>
+        <div class="codex-tool"><code>status</code><span>Model availability and rate limits</span></div>
+        <div class="codex-tool"><code>models</code><span>List and test available models</span></div>
+        <div class="codex-tool"><code>clear_cache</code><span>Clear in-memory response cache</span></div>
+      </div>
+    </div>
+
+    <!-- ── MCP Server 3: Speech-to-CLI ── -->
+    <div class="codex-section">
+      <h4 class="codex-toggle" data-target="codex-srv-speech">&#127908; Speech Engine <span class="codex-tool-count">9 tools</span></h4>
+      <div id="codex-srv-speech" class="codex-tools">
+        <div class="codex-tool-group">Voice I/O</div>
+        <div class="codex-tool"><code>talk</code><span>Speak + listen &mdash; primary voice conversation</span></div>
+        <div class="codex-tool"><code>speak</code><span>One-way TTS announcement (no reply)</span></div>
+        <div class="codex-tool"><code>multi_speak</code><span>Multi-voice segments in parallel</span></div>
+        <div class="codex-tool"><code>listen</code><span>Listen-only &mdash; STT from microphone</span></div>
+        <div class="codex-tool"><code>converse</code><span>Listen for reply in speak&rarr;converse loop</span></div>
+        <div class="codex-tool-group">Control</div>
+        <div class="codex-tool"><code>pause</code><span>Freeze playback or recording</span></div>
+        <div class="codex-tool"><code>resume</code><span>Unfreeze from pause point</span></div>
+        <div class="codex-tool"><code>get_voices</code><span>List available Azure TTS voices</span></div>
+        <div class="codex-tool"><code>configure</code><span>Audio settings &mdash; mic, speaker, chimes, VAD</span></div>
+      </div>
+    </div>
+
+    <!-- ── Notion-backed sections (Lore, Architecture, Guide, Reference) ── -->
+    <div id="codex-notion-sections"></div>
+
+    <!-- ── Node Personas ── -->
+    <div class="codex-section">
+      <h4 class="codex-toggle" data-target="codex-personas">Node Personas</h4>
+      <div id="codex-personas" class="codex-tools codex-persona-list"></div>
+    </div>
+
   </div>
 </div>
 

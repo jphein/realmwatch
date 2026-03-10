@@ -384,6 +384,27 @@ async def handle_list_tools() -> list[types.Tool]:
                 },
             },
         ),
+        # ── AP scanner ──
+        types.Tool(
+            name="scan_wifi",
+            description=(
+                "Scan all WiFi access points to detect client roaming and verify "
+                "topology connections. SSH's into all APs in parallel, cross-references "
+                "DHCP leases, and auto-updates topology.json if any device has roamed. "
+                "Action 'scan' runs a full scan (default). Action 'status' returns "
+                "the last scan results without re-scanning."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["scan", "status"],
+                        "description": "scan = full AP scan + update (default), status = last scan results.",
+                    },
+                },
+            },
+        ),
         # ── Service management tools ──
         types.Tool(
             name="manage_map_server",
@@ -883,6 +904,32 @@ async def handle_call_tool(
         except Exception as e:
             return [types.TextContent(type="text",
                 text=f"Failed to sync — is map_server.py running? Error: {e}")]
+
+    elif name == "scan_wifi":
+        import ap_scanner
+        action = (arguments or {}).get("action", "scan")
+        if action == "status":
+            data = ap_scanner.get_last_scan()
+            if data["ts"] == 0:
+                return [types.TextContent(type="text", text="No scan has been run yet.")]
+            return [types.TextContent(type="text", text=json.dumps(data, indent=2))]
+        # Full scan
+        result = ap_scanner.scan_and_update()
+        lines = [f"Scanned {result['scanned']} APs, {result['leases']} DHCP leases."]
+        if result["changes"]:
+            lines.append(f"\nRoaming changes detected ({len(result['changes'])}):")
+            for ch in result["changes"]:
+                lines.append(f"  {ch['node']}: {ch['from_ap']} → {ch['to_ap']}")
+            lines.append("\ntopology.json updated.")
+        else:
+            lines.append("All nodes correctly linked — no roaming changes.")
+        # Include per-AP client counts
+        last = ap_scanner.get_last_scan()
+        if last.get("ap_clients"):
+            lines.append("\nPer-AP client counts:")
+            for ap, count in sorted(last["ap_clients"].items(), key=lambda x: -x[1]):
+                lines.append(f"  {ap}: {count}")
+        return [types.TextContent(type="text", text="\n".join(lines))]
 
     elif name == "manage_map_server":
         action = (arguments or {}).get("action", "status")

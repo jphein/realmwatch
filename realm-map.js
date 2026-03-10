@@ -616,7 +616,7 @@ function updateUI(d) {
 
   // Codex stats
   if (d.collectd && DOM.codexCd) DOM.codexCd.textContent = Object.keys(d.collectd).length;
-  if (DOM.codexNodes) DOM.codexNodes.textContent = Object.keys(d.astral.nodes || {}).length + '+';
+  if (DOM.codexNodes) DOM.codexNodes.textContent = _topology.nodes ? _topology.nodes.length : '?';
 
   updateConnectionTraffic(d.collectd);
   updateNodeListStatus(d);
@@ -934,6 +934,68 @@ document.getElementById('codex-header').addEventListener('click', () => {
   const body = document.getElementById('codex-body');
   body.style.display = body.style.display === 'none' ? '' : 'none';
 });
+
+// Codex section toggles (click h4 to expand/collapse tool lists)
+document.querySelectorAll('.codex-toggle').forEach(h4 => {
+  h4.addEventListener('click', () => {
+    const target = document.getElementById(h4.dataset.target);
+    if (!target) return;
+    h4.classList.toggle('open');
+    target.classList.toggle('open');
+  });
+});
+
+// Populate codex personas from /personas endpoint
+fetch('/personas').then(r => r.json()).then(personas => {
+  const el = document.querySelector('.codex-persona-list');
+  if (!el) return;
+  const icons = { katana:'\u2694', gatekeeper:'\u26E9', oracle:'\uD83D\uDD2E',
+    forge:'\uD83D\uDD25', mana:'\uD83D\uDCA7', crystal:'\uD83D\uDC8E',
+    'hp-switch':'\u2699', ha:'\uD83C\uDFE0', 'notion-portal':'\u2728', 'tab-s5e':'\uD83D\uDCF1' };
+  el.innerHTML = Object.entries(personas).map(([k,p]) =>
+    `<div class="codex-persona"><span class="cp-icon">${icons[k]||'\u2B50'}</span><div>`+
+    `<div class="cp-name">${p.name||k} &mdash; ${p.title||''}</div>`+
+    `<div class="cp-voice">${(p.voice||'').replace('en-US-','').replace('Neural','')} &bull; ${(p.hints||[]).slice(0,2).join(', ')}</div>`+
+    `</div></div>`
+  ).join('');
+}).catch(() => {});
+
+// Populate codex Notion-backed sections (Lore, Architecture, Guide, Reference)
+const _sectionIcons = { Lore:'\uD83D\uDCDC', Architecture:'\u2699\uFE0F', Guide:'\uD83D\uDCD6', Reference:'\uD83D\uDCCB' };
+const _sectionColors = { Lore:'#b090d0', Architecture:'#70a0d0', Guide:'#70c080', Reference:'#a0a0a0' };
+const _sectionOrder = ['Lore','Architecture','Guide','Reference'];
+function renderCodexNotion(data) {
+  const container = document.getElementById('codex-notion-sections');
+  if (!container) return;
+  let html = '';
+  for (const sec of _sectionOrder) {
+    const entries = data[sec];
+    if (!entries || !entries.length) continue;
+    const id = 'codex-notion-' + sec.toLowerCase();
+    const color = _sectionColors[sec] || '#b0a080';
+    html += `<div class="codex-section">`;
+    html += `<h4 class="codex-toggle" data-target="${id}" style="color:${color}">${_sectionIcons[sec]||''} ${sec} <span class="codex-tool-count">${entries.length}</span></h4>`;
+    html += `<div id="${id}" class="codex-tools">`;
+    for (const e of entries) {
+      html += `<div class="codex-notion-entry">`;
+      html += `<div class="cne-header">${e.icon||''} <span class="cne-name">${e.name}</span></div>`;
+      html += `<div class="cne-body">${e.body||''}</div>`;
+      html += `</div>`;
+    }
+    html += `</div></div>`;
+  }
+  container.innerHTML = html;
+  // Re-bind toggles for new sections
+  container.querySelectorAll('.codex-toggle').forEach(h4 => {
+    h4.addEventListener('click', () => {
+      const target = document.getElementById(h4.dataset.target);
+      if (!target) return;
+      h4.classList.toggle('open');
+      target.classList.toggle('open');
+    });
+  });
+}
+fetch('/codex-sync').then(r => r.json()).then(renderCodexNotion).catch(() => {});
 
 // Quest log toggle (click header to collapse)
 document.getElementById('quest-log-header').addEventListener('click', () => {
