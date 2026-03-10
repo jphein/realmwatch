@@ -203,6 +203,12 @@
     <span id="pe-title">Edit Persona</span>
     <button class="pe-close" id="pe-close">&times;</button>
   </div>
+  <div class="pe-tabs">
+    <div class="pe-tab active" data-pe-tab="persona">Persona</div>
+    <div class="pe-tab" data-pe-tab="stats">Stats</div>
+    <div class="pe-tab" data-pe-tab="shell">Shell</div>
+  </div>
+  <div class="pe-pane" id="pe-pane-persona">
   <div class="pe-body">
     <div class="pe-field">
       <label>Node Key</label>
@@ -247,6 +253,17 @@
   <div class="pe-actions">
     <button class="pe-btn pe-btn-cancel" id="pe-cancel">Cancel</button>
     <button class="pe-btn pe-btn-save" id="pe-save">Save Persona</button>
+  </div>
+  </div><!-- /pe-pane-persona -->
+  <div class="pe-pane" id="pe-pane-stats" style="display:none">
+    <div class="pe-stats-header">
+      <span id="pe-stats-title">Node Scrying</span>
+      <span id="pe-stats-refresh" class="pe-stats-refresh">Auto-refresh</span>
+    </div>
+    <div id="pe-stats-body" class="pe-stats-body"></div>
+  </div>
+  <div class="pe-pane" id="pe-pane-shell" style="display:none">
+    <div style="color:#706040;text-align:center;padding:40px;font-family:'MedievalSharp',cursive">Coming soon...</div>
   </div>
 </div>
 

@@ -901,8 +901,8 @@
     position: fixed;
     top: 50%; left: 50%;
     transform: translate(-50%, -50%);
-    width: 420px;
-    max-height: 80vh;
+    width: 520px;
+    max-height: 85vh;
     z-index: 200;
     background: rgba(10,10,25,0.97);
     border: 1px solid #6b5a3e;
@@ -1049,6 +1049,136 @@
     transition: opacity 0.3s;
   }
   .pe-saved.show { opacity: 1; }
+
+  /* Persona Editor Tabs */
+  .pe-tabs {
+    display: flex;
+    border-bottom: 1px solid rgba(212,197,160,0.2);
+    padding: 0;
+  }
+  .pe-tab {
+    flex: 1;
+    text-align: center;
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    padding: 9px 0;
+    color: #706040;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+    user-select: none;
+  }
+  .pe-tab:hover { color: #a89870; }
+  .pe-tab.active { color: #f0d890; border-bottom-color: #f0d890; }
+
+  /* Stats Pane */
+  .pe-stats-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 18px 6px;
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    color: #a89870;
+  }
+  .pe-stats-refresh {
+    font-size: 9px;
+    color: #506040;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .pe-stats-refresh::before {
+    content: '';
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #60a040;
+    animation: statsPulse 2s ease-in-out infinite;
+  }
+  @keyframes statsPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+  .pe-stats-body {
+    padding: 0 18px 14px;
+    overflow-y: auto;
+    max-height: 55vh;
+    scrollbar-width: thin;
+    scrollbar-color: #3a3020 transparent;
+  }
+  .pe-stats-section {
+    margin-bottom: 10px;
+  }
+  .pe-stats-section-title {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    color: #80704a;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    padding-bottom: 3px;
+    border-bottom: 1px solid rgba(212,197,160,0.1);
+  }
+  .pe-stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 0;
+    font-size: 12px;
+  }
+  .pe-stat-label {
+    color: #a89870;
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    flex-shrink: 0;
+    min-width: 90px;
+  }
+  .pe-stat-val {
+    color: #f0e6c8;
+    font-family: 'MedievalSharp', cursive;
+    text-align: right;
+  }
+  .pe-stat-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(40,35,25,0.6);
+    margin-top: 2px;
+    overflow: hidden;
+  }
+  .pe-stat-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s ease;
+  }
+  .pe-stat-bar-fill.bar-ok { background: linear-gradient(90deg, #406030, #60a040); }
+  .pe-stat-bar-fill.bar-warn { background: linear-gradient(90deg, #806020, #c0a030); }
+  .pe-stat-bar-fill.bar-crit { background: linear-gradient(90deg, #802020, #c04040); }
+  .pe-iface-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2px 0;
+    font-size: 11px;
+  }
+  .pe-iface-name {
+    color: #8090a0;
+    font-family: monospace;
+    font-size: 10px;
+    min-width: 80px;
+  }
+  .pe-iface-traffic {
+    color: #a0c0d0;
+    font-family: 'MedievalSharp', cursive;
+    font-size: 11px;
+  }
+  .pe-stats-empty {
+    color: #706040;
+    text-align: center;
+    padding: 40px 20px;
+    font-family: 'MedievalSharp', cursive;
+    font-size: 13px;
+  }
 
   /* Quest Log */
   #quest-log {

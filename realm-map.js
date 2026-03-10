@@ -308,7 +308,7 @@ function renderTopology(topo) {
     world.appendChild(div);
 
     if (n.tip) tips[n.id] = { title: n.tip.title, stats: [...(n.tip.stats || [])] };
-    if (n.ip) infraNodes[n.id] = { name: n.label, ip: n.ip };
+    if (n.ip) infraNodes[n.id] = { name: n.label, ip: n.ip, collectdHost: n.collectd || null };
   });
 
   // Connection paths (routed curves — computed after nodes exist in DOM)
@@ -445,6 +445,8 @@ function findStatusKey(nodeStatus, tipKey) {
 }
 
 function findCollectd(collectd, tipKey, statusKey) {
+  const info = infraNodes[tipKey];
+  if (info && info.collectdHost && collectd[info.collectdHost]) return collectd[info.collectdHost];
   return collectd[statusKey || tipKey] || collectd[tipKey]
     || Object.values(collectd).find(c => c.hostname && c.hostname.toLowerCase().replace(/[-_]/g, '') === tipKey.toLowerCase().replace(/[-_]/g, ''));
 }
@@ -464,6 +466,8 @@ function buildCollectdExtra(cd) {
   if (cd.dhcp_leases) extra.push(["DHCP Leases", cd.dhcp_leases]);
   if (cd.ping) Object.entries(cd.ping).forEach(([t, ms]) => extra.push(["Ping " + t, ms + " ms"]));
   if (cd.disk_pct != null) extra.push(["Disk", `${cd.disk_pct}% of ${cd.disk_total_gb} GB`]);
+  if (cd.swap_used != null && cd.swap_used > 0) extra.push(["Swap", `${(cd.swap_used / 1048576).toFixed(0)} MB`]);
+  if (cd.procs_running) extra.push(["Processes", cd.procs_running + " running"]);
   if (cd.interfaces) {
     Object.entries(cd.interfaces)
       .map(([name, v]) => [name, (v.rx_bps || 0) + (v.tx_bps || 0)])
@@ -1330,6 +1334,7 @@ let peHintsList = [];
 function openPersonaEditor(nodeKey) {
   currentEditNode = nodeKey;
   peNodeKey.value = nodeKey;
+  _switchToTab('persona');
   // Load current persona from server
   fetch('/personas').then(r => r.json()).then(personas => {
     const p = personas[nodeKey] || {};
@@ -1355,6 +1360,7 @@ function closePersonaEditor() {
   peEditor.classList.remove('open');
   peOverlay.classList.remove('open');
   currentEditNode = null;
+  stopStatsRefresh();
 }
 
 function renderHints() {
@@ -1410,6 +1416,149 @@ document.getElementById('pe-save').addEventListener('click', () => {
 document.getElementById('pe-cancel').addEventListener('click', closePersonaEditor);
 document.getElementById('pe-close').addEventListener('click', closePersonaEditor);
 peOverlay.addEventListener('click', closePersonaEditor);
+
+// ── Persona Editor Tabs ──
+let _statsInterval = null;
+
+document.querySelectorAll('.pe-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.pe-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const target = tab.dataset.peTab;
+    document.querySelectorAll('.pe-pane').forEach(p => p.style.display = 'none');
+    document.getElementById('pe-pane-' + target).style.display = '';
+    if (target === 'stats') startStatsRefresh();
+    else stopStatsRefresh();
+  });
+});
+
+function _switchToTab(name) {
+  document.querySelectorAll('.pe-tab').forEach(t => t.classList.toggle('active', t.dataset.peTab === name));
+  document.querySelectorAll('.pe-pane').forEach(p => p.style.display = 'none');
+  document.getElementById('pe-pane-' + name).style.display = '';
+  if (name === 'stats') startStatsRefresh();
+  else stopStatsRefresh();
+}
+
+function startStatsRefresh() {
+  stopStatsRefresh();
+  renderStatsPane(currentEditNode);
+  _statsInterval = setInterval(() => renderStatsPane(currentEditNode), 5000);
+}
+function stopStatsRefresh() {
+  if (_statsInterval) { clearInterval(_statsInterval); _statsInterval = null; }
+}
+
+function _barClass(pct) {
+  return pct > 85 ? 'bar-crit' : pct > 60 ? 'bar-warn' : 'bar-ok';
+}
+
+function renderStatsPane(nodeKey) {
+  const body = document.getElementById('pe-stats-body');
+  const titleEl = document.getElementById('pe-stats-title');
+  if (!body) return;
+
+  const info = infraNodes[nodeKey];
+  const nodeName = info ? info.name : nodeKey;
+  titleEl.textContent = nodeName + ' — Scrying';
+
+  if (!lastStatus || !lastStatus.collectd) {
+    body.innerHTML = '<div class="pe-stats-empty">No scrying data available.</div>';
+    return;
+  }
+  const cd = findCollectd(lastStatus.collectd, nodeKey, null);
+  if (!cd) {
+    body.innerHTML = '<div class="pe-stats-empty">No collectd sigils bound to this node.</div>';
+    return;
+  }
+
+  let html = '';
+
+  // System section
+  const sysRows = [];
+  if (cd.hostname) sysRows.push(['Hostname', cd.hostname]);
+  if (cd.cpu_cores) sysRows.push(['CPU Cores', cd.cpu_cores]);
+  if (cd.uptime != null) {
+    const d = Math.floor(cd.uptime / 86400), h = Math.floor((cd.uptime % 86400) / 3600);
+    sysRows.push(['Uptime', d > 0 ? `${d}d ${h}h` : `${h}h`]);
+  }
+  if (cd.procs_running) sysRows.push(['Processes', cd.procs_running + ' running']);
+  if (cd.fork_rate) sysRows.push(['Fork Rate', cd.fork_rate.toLocaleString()]);
+  if (sysRows.length) {
+    html += '<div class="pe-stats-section"><div class="pe-stats-section-title">System</div>';
+    sysRows.forEach(([l, v]) => html += `<div class="pe-stat-row"><span class="pe-stat-label">${l}</span><span class="pe-stat-val">${v}</span></div>`);
+    html += '</div>';
+  }
+
+  // Load section
+  if (cd.load_1 != null) {
+    const cores = cd.cpu_cores || 1;
+    const loadPct = Math.min(100, (cd.load_1 / cores) * 100);
+    html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Load</div>';
+    html += `<div class="pe-stat-row"><span class="pe-stat-label">1 / 5 / 15 min</span><span class="pe-stat-val">${cd.load_1.toFixed(2)} / ${(cd.load_5||0).toFixed(2)} / ${(cd.load_15||0).toFixed(2)}</span></div>`;
+    html += `<div class="pe-stat-bar"><div class="pe-stat-bar-fill ${_barClass(loadPct)}" style="width:${loadPct}%"></div></div>`;
+    html += '</div>';
+  }
+
+  // Memory section
+  if (cd.mem_pct != null) {
+    html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Memory</div>';
+    html += `<div class="pe-stat-row"><span class="pe-stat-label">Usage</span><span class="pe-stat-val">${cd.mem_pct}% of ${cd.mem_total_mb || '?'} MB</span></div>`;
+    html += `<div class="pe-stat-bar"><div class="pe-stat-bar-fill ${_barClass(cd.mem_pct)}" style="width:${cd.mem_pct}%"></div></div>`;
+    if (cd.swap_used != null && cd.swap_used > 0) {
+      html += `<div class="pe-stat-row"><span class="pe-stat-label">Swap</span><span class="pe-stat-val">${(cd.swap_used / 1048576).toFixed(0)} MB</span></div>`;
+    }
+    html += '</div>';
+  }
+
+  // Disk section
+  if (cd.disk_pct != null) {
+    html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Disk</div>';
+    html += `<div class="pe-stat-row"><span class="pe-stat-label">Usage</span><span class="pe-stat-val">${cd.disk_pct}% of ${cd.disk_total_gb} GB</span></div>`;
+    html += `<div class="pe-stat-bar"><div class="pe-stat-bar-fill ${_barClass(cd.disk_pct)}" style="width:${cd.disk_pct}%"></div></div>`;
+    html += '</div>';
+  }
+
+  // Thermal section
+  if (cd.temp != null) {
+    const tempPct = Math.min(100, (cd.temp / 100) * 100);
+    html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Thermal</div>';
+    html += `<div class="pe-stat-row"><span class="pe-stat-label">Temperature</span><span class="pe-stat-val">${cd.temp}\u00B0C</span></div>`;
+    html += `<div class="pe-stat-bar"><div class="pe-stat-bar-fill ${_barClass(tempPct)}" style="width:${tempPct}%"></div></div>`;
+    html += '</div>';
+  }
+
+  // Network section
+  if (cd.interfaces && Object.keys(cd.interfaces).length) {
+    html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Network</div>';
+    Object.entries(cd.interfaces)
+      .sort(([,a],[,b]) => ((b.rx_bps||0)+(b.tx_bps||0)) - ((a.rx_bps||0)+(a.tx_bps||0)))
+      .forEach(([name, v]) => {
+        html += `<div class="pe-iface-row"><span class="pe-iface-name">${name}</span><span class="pe-iface-traffic">\u2193${fmtRate(v.rx_bps||0)} \u2191${fmtRate(v.tx_bps||0)}</span></div>`;
+      });
+    html += '</div>';
+  }
+
+  // Conntrack / DHCP
+  if (cd.conntrack || cd.dhcp_leases) {
+    html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Connections</div>';
+    if (cd.conntrack) html += `<div class="pe-stat-row"><span class="pe-stat-label">Conntrack</span><span class="pe-stat-val">${cd.conntrack.toLocaleString()}</span></div>`;
+    if (cd.dhcp_leases) html += `<div class="pe-stat-row"><span class="pe-stat-label">DHCP Leases</span><span class="pe-stat-val">${cd.dhcp_leases}</span></div>`;
+    html += '</div>';
+  }
+
+  // Ping section
+  if (cd.ping && Object.keys(cd.ping).length) {
+    html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Ping</div>';
+    Object.entries(cd.ping).forEach(([target, ms]) => {
+      const pingColor = ms < 10 ? '#60a040' : ms < 50 ? '#c0a030' : '#c04040';
+      html += `<div class="pe-stat-row"><span class="pe-stat-label">${target}</span><span class="pe-stat-val" style="color:${pingColor}">${ms} ms</span></div>`;
+    });
+    html += '</div>';
+  }
+
+  body.innerHTML = html;
+}
 
 // Double-click a node to open persona editor
 document.querySelectorAll('.realm-node').forEach(node => {
