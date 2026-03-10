@@ -115,27 +115,31 @@ function _computeFanAngles() {
 }
 
 // Build obstacle list once per frame (shared across all connections)
+// Covers the full node: icon + label + sublabel
 let _obstacles = [];
 function _buildObstacles() {
   _obstacles = [];
   if (!_topology) return;
   for (const n of _topology.nodes) {
-    const pos = _getNodePos(n.id);
-    if (!pos) continue;
-    const is = n.iconStyle || {};
-    const baseR = (parseInt(is.width) || 64) / 2;
-    // Account for dynamic traffic scaling on the icon
     const el = getNodeDOM(n.id);
-    let scale = 1;
-    if (el.el) {
-      const icon = el.el.querySelector('.node-icon');
-      if (icon && icon.style.transform) {
-        const m = icon.style.transform.match(/scale\(([^)]+)\)/);
-        if (m) scale = parseFloat(m[1]) || 1;
-      }
+    if (!el.el) continue;
+    const left = parseInt(el.el.style.left) || 0;
+    const top = parseInt(el.el.style.top) || 0;
+    const w = el.el.offsetWidth;
+    const h = el.el.offsetHeight;
+    // Account for dynamic traffic scaling on the icon
+    const icon = el.el.querySelector('.node-icon');
+    let iconScale = 1;
+    if (icon && icon.style.transform) {
+      const m = icon.style.transform.match(/scale\(([^)]+)\)/);
+      if (m) iconScale = parseFloat(m[1]) || 1;
     }
-    const r = baseR * scale + 35; // scaled icon radius + clearance margin
-    _obstacles.push({ id: n.id, x: pos.x, y: pos.y, r });
+    // Elliptical obstacle covering the full node (icon + labels)
+    const cx = left + w / 2;
+    const cy = top + h / 2;
+    const rx = (w / 2) * Math.max(1, iconScale) + 20;
+    const ry = (h / 2) * Math.max(1, iconScale) + 15;
+    _obstacles.push({ id: n.id, x: cx, y: cy, rx, ry });
   }
 }
 
@@ -171,17 +175,21 @@ function _computePathD(fp, tp, fromAngle, toAngle, fromId, toId) {
   }
   waypoints.push({ x: tp.x, y: tp.y });
 
-  // Push intermediate waypoints away from obstacles
+  // Push intermediate waypoints away from obstacles (elliptical: covers icon + labels)
   const obs = _obstacles.filter(o => o.id !== fromId && o.id !== toId);
   for (let iter = 0; iter < 4; iter++) {
     for (let i = 1; i < waypoints.length - 1; i++) {
       const wp = waypoints[i];
       for (const o of obs) {
-        const d = Math.hypot(wp.x - o.x, wp.y - o.y);
-        if (d < o.r && d > 0) {
-          const push = (o.r - d) * 0.7;
-          wp.x += ((wp.x - o.x) / d) * push;
-          wp.y += ((wp.y - o.y) / d) * push;
+        // Elliptical distance: normalized so 1.0 = on the boundary
+        const ndx = (wp.x - o.x) / o.rx, ndy = (wp.y - o.y) / o.ry;
+        const ed = Math.hypot(ndx, ndy);
+        if (ed < 1 && ed > 0) {
+          const push = (1 - ed) * 0.7;
+          // Push in the actual (non-normalized) direction
+          const d = Math.hypot(wp.x - o.x, wp.y - o.y);
+          wp.x += ((wp.x - o.x) / d) * push * o.rx;
+          wp.y += ((wp.y - o.y) / d) * push * o.ry;
         }
       }
     }
