@@ -323,9 +323,25 @@
     --dash: 6 3;
   }
   .conn-bridge {
-    stroke: rgba(160,100,220,0.45);
-    --sw: 2;
-    --dash: 3 6 3 6;
+    stroke: url(#bridge-beam-grad);
+    --sw: 2.5;
+    --dash: 12 4 2 4;
+    --speed: 8s;
+    filter: url(#bridge-beam-glow);
+    animation: dashFlow 8s linear infinite, bridgePulse 3s ease-in-out infinite;
+  }
+  .conn-bridge-inner {
+    stroke: rgba(200,180,255,0.6);
+    stroke-width: 1;
+    stroke-dasharray: 2 6;
+    fill: none;
+    filter: url(#bridge-beam-glow);
+    animation: dashFlow 5s linear infinite reverse, bridgePulse 3s ease-in-out infinite 1.5s;
+    pointer-events: none;
+  }
+  @keyframes bridgePulse {
+    0%, 100% { stroke-opacity: 0.7; }
+    50% { stroke-opacity: 1; }
   }
   .conn-infra {
     stroke: rgba(96,160,192,0.3);

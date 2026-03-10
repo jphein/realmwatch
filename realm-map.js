@@ -329,6 +329,14 @@ function renderTopology(topo) {
     path.dataset.fromNode = c.from;
     path.dataset.toNode = c.to;
     connSvg.appendChild(path);
+    // Bridge connections get a second inner energy beam
+    if (c.type === 'bridge') {
+      const inner = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      inner.setAttribute('d', path.getAttribute('d'));
+      inner.setAttribute('class', 'conn-bridge-inner');
+      connSvg.appendChild(inner);
+      path._bridgeInner = inner;
+    }
     _connPaths.push(path);
 
     // VLAN label at curve midpoint
@@ -728,7 +736,9 @@ function updateLinePositions() {
     const fp = _getNodePos(c.from), tp = _getNodePos(c.to);
     if (!fp || !tp) return;
     const fa = fanAngles[i] || { fromAngle: 0, toAngle: 0 };
-    path.setAttribute('d', _computePathD(fp, tp, fa.fromAngle, fa.toAngle, c.from, c.to));
+    const d = _computePathD(fp, tp, fa.fromAngle, fa.toAngle, c.from, c.to);
+    path.setAttribute('d', d);
+    if (path._bridgeInner) path._bridgeInner.setAttribute('d', d);
   });
   // VLAN labels at curve midpoints (use SVG getPointAtLength for any path shape)
   _vlanLabels.forEach(({ label, connIdx }) => {

@@ -347,6 +347,29 @@
           <feGaussianBlur stdDeviation="6" result="blur"/>
           <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
+        <!-- WiFi bridge beam filter: layered glow -->
+        <filter id="bridge-beam-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="soft"/>
+          <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="wide"/>
+          <feColorMatrix in="wide" type="matrix" result="tinted"
+            values="0.6 0 0.4 0 0
+                    0.2 0 0.8 0 0
+                    0.1 0 1   0 0.1
+                    0   0 0   0.5 0"/>
+          <feMerge>
+            <feMergeNode in="tinted"/>
+            <feMergeNode in="soft"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <!-- Animated gradient for bridge beams -->
+        <linearGradient id="bridge-beam-grad" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="rgba(140,80,220,0.9)"/>
+          <stop offset="25%" stop-color="rgba(80,180,255,0.8)"/>
+          <stop offset="50%" stop-color="rgba(200,120,255,0.9)"/>
+          <stop offset="75%" stop-color="rgba(80,220,240,0.8)"/>
+          <stop offset="100%" stop-color="rgba(140,80,220,0.9)"/>
+        </linearGradient>
       </defs>
 
       <!-- Connection lines rendered dynamically from topology.json -->

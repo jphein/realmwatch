@@ -247,6 +247,7 @@
     {
       "id": "gs308t",
       "type": "infra",
+      "collectd": "gs308t",
       "x": 850,
       "y": 500,
       "icon": "&#11043;",
@@ -1407,12 +1408,6 @@
       "vlan": 6
     },
     {
-      "from": "hp-switch",
-      "to": "gs308t",
-      "type": "active",
-      "vlan": 6
-    },
-    {
       "from": "katana",
       "to": "gatekeeper",
       "type": "active",
@@ -1432,12 +1427,6 @@
       "vlan": 6
     },
     {
-      "from": "katana",
-      "to": "gs308t",
-      "type": "active",
-      "vlan": 6
-    },
-    {
       "from": "gatekeeper",
       "to": "wan",
       "type": "wan"
@@ -1448,67 +1437,67 @@
       "type": "wan"
     },
     {
-      "from": "katana",
+      "from": "gs308t",
       "to": "mr8300-host",
       "type": "ap",
       "vlan": 6
     },
     {
-      "from": "katana",
+      "from": "hp-switch",
       "to": "onhub-office",
       "type": "ap",
       "vlan": 6
     },
     {
-      "from": "katana",
+      "from": "hp-switch",
       "to": "onhub-closet",
       "type": "ap",
       "vlan": 6
     },
     {
-      "from": "katana",
+      "from": "hp-switch",
       "to": "wndr4300sw-shed",
       "type": "ap",
       "vlan": 6
     },
     {
-      "from": "katana",
+      "from": "hp-switch",
       "to": "onhub-pumphouse",
       "type": "ap",
       "vlan": 6
     },
     {
-      "from": "katana",
+      "from": "hp-switch",
       "to": "wrt1900ac-family",
       "type": "ap",
       "vlan": 6
     },
     {
-      "from": "katana",
+      "from": "gs308t",
       "to": "ea6350-cl",
       "type": "ap",
       "vlan": 6
     },
     {
-      "from": "katana",
+      "from": "hp-switch",
       "to": "eap225-outdoor",
       "type": "ap",
       "vlan": 6
     },
     {
-      "from": "katana",
+      "from": "cpe710-client",
       "to": "ea6350v3-family",
       "type": "ap",
       "vlan": 6
     },
     {
-      "from": "katana",
+      "from": "gs308t",
       "to": "onhub-family",
       "type": "ap",
       "vlan": 6
     },
     {
-      "from": "katana",
+      "from": "hp-switch",
       "to": "onhub-bed",
       "type": "ap",
       "vlan": 6
@@ -1581,13 +1570,28 @@
       "vlan": 10
     },
     {
+      "from": "hp-switch",
+      "to": "cpe710-ap",
+      "type": "bridge"
+    },
+    {
       "from": "cpe710-ap",
       "to": "cpe710-client",
       "type": "bridge"
     },
     {
+      "from": "hp-switch",
+      "to": "gigabeam0",
+      "type": "bridge"
+    },
+    {
       "from": "gigabeam0",
       "to": "gigabeam1",
+      "type": "bridge"
+    },
+    {
+      "from": "gigabeam1",
+      "to": "gs308t",
       "type": "bridge"
     },
     {
