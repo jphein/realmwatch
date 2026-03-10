@@ -236,6 +236,7 @@
   }
 
   .conn-line {
+    fill: none;
     stroke-dasharray: var(--dash, 8 4);
     animation: dashFlow var(--speed, 20s) linear infinite var(--dir, normal);
     stroke-width: var(--sw, 1.5);

@@ -50,6 +50,134 @@ const TYPE_TO_CLASS = { tower: 'tower-node', cluster: 'cluster-node', bridge: 'b
 const CONN_TYPE_TO_CLASS = { active:'conn-active', wan:'conn-wan', ap:'conn-ap', infra:'conn-infra', vlan:'conn-vlan', bridge:'conn-bridge', mesh:'conn-mesh', offline:'conn-offline' };
 
 const _vlanLabels = [];
+const _connPaths = []; // path element per connection (same order as topo.connections)
+
+// Cache per-node DOM elements (must be before routing functions that use getNodeDOM)
+const _nodeDOM = {};
+function getNodeDOM(tipKey) {
+  if (_nodeDOM[tipKey]) return _nodeDOM[tipKey];
+  const el = document.querySelector(`[data-tip="${tipKey}"]`);
+  if (!el) return (_nodeDOM[tipKey] = { el: null, sub: null, bar: null, pulse: null });
+  _nodeDOM[tipKey] = {
+    el,
+    sub: el.querySelector('.node-sublabel'),
+    bar: el.querySelector('.scale-fill'),
+    pulse: el.querySelector('.pulse-ring'),
+    isTower: el.classList.contains('tower-node'),
+  };
+  return _nodeDOM[tipKey];
+}
+
+// ── Ley Line routing (rivers/streams flowing between nodes) ──
+function _getNodePos(nodeId) {
+  const n = getNodeDOM(nodeId);
+  if (n.el) return getNodeCenter(n.el);
+  // Fallback to topology data
+  const tn = _topology?.nodes.find(nd => nd.id === nodeId);
+  if (tn) {
+    const is = tn.iconStyle || {};
+    return { x: tn.x + (parseInt(is.width) || 64) / 2, y: tn.y + (parseInt(is.height) || 64) / 2 };
+  }
+  return null;
+}
+
+function _computeFanAngles() {
+  if (!_topology) return [];
+  const nodeConns = {}; // nodeId → [{angle, connIdx, isFrom}]
+  _topology.connections.forEach((c, i) => {
+    const fp = _getNodePos(c.from), tp = _getNodePos(c.to);
+    if (!fp || !tp) return;
+    (nodeConns[c.from] ||= []).push({ angle: Math.atan2(tp.y - fp.y, tp.x - fp.x), connIdx: i, isFrom: true });
+    (nodeConns[c.to] ||= []).push({ angle: Math.atan2(fp.y - tp.y, fp.x - tp.x), connIdx: i, isFrom: false });
+  });
+  const result = _topology.connections.map(() => ({ fromAngle: 0, toAngle: 0 }));
+  const MIN_GAP = 0.10; // ~6 degrees minimum between adjacent connections
+  for (const conns of Object.values(nodeConns)) {
+    conns.sort((a, b) => a.angle - b.angle);
+    for (let pass = 0; pass < 5; pass++) {
+      for (let i = 0; i < conns.length; i++) {
+        const j = (i + 1) % conns.length;
+        let gap = conns[j].angle - conns[i].angle;
+        if (j <= i) gap += Math.PI * 2;
+        if (gap < MIN_GAP) {
+          const push = (MIN_GAP - gap) / 2;
+          conns[i].angle -= push;
+          conns[j].angle += push;
+        }
+      }
+    }
+    for (const { angle, connIdx, isFrom } of conns) {
+      if (isFrom) result[connIdx].fromAngle = angle;
+      else result[connIdx].toAngle = angle;
+    }
+  }
+  return result;
+}
+
+// Build obstacle list once per frame (shared across all connections)
+let _obstacles = [];
+function _buildObstacles() {
+  _obstacles = [];
+  if (!_topology) return;
+  for (const n of _topology.nodes) {
+    const pos = _getNodePos(n.id);
+    if (!pos) continue;
+    const is = n.iconStyle || {};
+    const baseR = (parseInt(is.width) || 64) / 2;
+    // Account for dynamic traffic scaling on the icon
+    const el = getNodeDOM(n.id);
+    let scale = 1;
+    if (el.el) {
+      const icon = el.el.querySelector('.node-icon');
+      if (icon && icon.style.transform) {
+        const m = icon.style.transform.match(/scale\(([^)]+)\)/);
+        if (m) scale = parseFloat(m[1]) || 1;
+      }
+    }
+    const r = baseR * scale + 35; // scaled icon radius + clearance margin
+    _obstacles.push({ id: n.id, x: pos.x, y: pos.y, r });
+  }
+}
+
+function _computePathD(fp, tp, fromAngle, toAngle, fromId, toId) {
+  const dist = Math.hypot(tp.x - fp.x, tp.y - fp.y);
+  if (dist < 1) return `M${fp.x},${fp.y}L${tp.x},${tp.y}`;
+  const arm = dist * 0.3;
+  let cp1x = fp.x + Math.cos(fromAngle) * arm;
+  let cp1y = fp.y + Math.sin(fromAngle) * arm;
+  let cp2x = tp.x + Math.cos(toAngle) * arm;
+  let cp2y = tp.y + Math.sin(toAngle) * arm;
+  // Iteratively sample the actual curve and push away from intermediate nodes
+  const obs = _obstacles.filter(o => o.id !== fromId && o.id !== toId);
+  for (let iter = 0; iter < 3; iter++) {
+    for (let ti = 1; ti <= 8; ti++) {
+      const t = ti / 9, u = 1 - t;
+      const sx = u*u*u*fp.x + 3*u*u*t*cp1x + 3*u*t*t*cp2x + t*t*t*tp.x;
+      const sy = u*u*u*fp.y + 3*u*u*t*cp1y + 3*u*t*t*cp2y + t*t*t*tp.y;
+      for (const o of obs) {
+        const d = Math.hypot(sx - o.x, sy - o.y);
+        if (d < o.r && d > 0) {
+          const push = (o.r - d) * 0.6;
+          const nx = (sx - o.x) / d, ny = (sy - o.y) / d;
+          cp1x += nx * push * u;
+          cp1y += ny * push * u;
+          cp2x += nx * push * t;
+          cp2y += ny * push * t;
+        }
+      }
+    }
+  }
+  return `M${fp.x.toFixed(1)},${fp.y.toFixed(1)} C${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${tp.x.toFixed(1)},${tp.y.toFixed(1)}`;
+}
+
+function _bezierMid(p0, cp1, cp2, p3) {
+  // Cubic bezier at t=0.5
+  return {
+    x: 0.125*p0.x + 0.375*cp1.x + 0.375*cp2.x + 0.125*p3.x,
+    y: 0.125*p0.y + 0.375*cp1.y + 0.375*cp2.y + 0.125*p3.y
+  };
+}
+
 function renderTopology(topo) {
   _topology = topo;
   const world = document.getElementById('map-world');
@@ -72,38 +200,7 @@ function renderTopology(topo) {
     rc.appendChild(el);
   });
 
-  // Connection lines
-  topo.connections.forEach(c => {
-    const fn = nodeMap[c.from], tn = nodeMap[c.to];
-    if (!fn || !tn) return;
-    const fis = fn.iconStyle || {}, tis = tn.iconStyle || {};
-    const fW = parseInt(fis.width) || 64, fH = parseInt(fis.height) || 64;
-    const tW = parseInt(tis.width) || 64, tH = parseInt(tis.height) || 64;
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', fn.x + fW/2); line.setAttribute('y1', fn.y + fH/2);
-    line.setAttribute('x2', tn.x + tW/2); line.setAttribute('y2', tn.y + tH/2);
-    line.setAttribute('class', 'conn-line ' + (CONN_TYPE_TO_CLASS[c.type] || 'conn-active'));
-    if (c.collectd) line.dataset.to = c.collectd;
-    else line.dataset.to = c.to;
-    line.dataset.from = c.from;
-    line.dataset.fromNode = c.from;
-    line.dataset.toNode = c.to;
-    connSvg.appendChild(line);
-
-    // VLAN label at midpoint (HTML div — SVG text breaks line setAttribute)
-    if (c.vlan) {
-      const mx = (fn.x + fW/2 + tn.x + tW/2) / 2, my = (fn.y + fH/2 + tn.y + tH/2) / 2;
-      const label = document.createElement('div');
-      label.className = 'vlan-label';
-      label.textContent = 'VLAN ' + c.vlan;
-      label.style.left = mx + 'px';
-      label.style.top = (my - 4) + 'px';
-      world.appendChild(label);
-      _vlanLabels.push({ label, fromId: c.from, toId: c.to });
-    }
-  });
-
-  // Nodes
+  // Nodes first (so getNodeCenter works for path routing)
   topo.nodes.forEach(n => {
     const div = document.createElement('div');
     const tc = TYPE_TO_CLASS[n.type] || '';
@@ -173,6 +270,44 @@ function renderTopology(topo) {
     if (n.tip) tips[n.id] = { title: n.tip.title, stats: [...(n.tip.stats || [])] };
     if (n.ip) infraNodes[n.id] = { name: n.label, ip: n.ip };
   });
+
+  // Connection paths (routed curves — computed after nodes exist in DOM)
+  _buildObstacles();
+  const fanAngles = _computeFanAngles();
+  topo.connections.forEach((c, i) => {
+    const fn = nodeMap[c.from], tn = nodeMap[c.to];
+    if (!fn || !tn) return;
+    const fp = _getNodePos(c.from), tp = _getNodePos(c.to);
+    if (!fp || !tp) { _connPaths.push(null); return; }
+    const fa = fanAngles[i] || { fromAngle: 0, toAngle: 0 };
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', _computePathD(fp, tp, fa.fromAngle, fa.toAngle, c.from, c.to));
+    path.setAttribute('class', 'conn-line ' + (CONN_TYPE_TO_CLASS[c.type] || 'conn-active'));
+    if (c.collectd) path.dataset.to = c.collectd;
+    else path.dataset.to = c.to;
+    path.dataset.from = c.from;
+    path.dataset.fromNode = c.from;
+    path.dataset.toNode = c.to;
+    connSvg.appendChild(path);
+    _connPaths.push(path);
+
+    // VLAN label at curve midpoint
+    if (c.vlan) {
+      const dist = Math.hypot(tp.x - fp.x, tp.y - fp.y);
+      const arm = dist * 0.3;
+      const cp1 = { x: fp.x + Math.cos(fa.fromAngle) * arm, y: fp.y + Math.sin(fa.fromAngle) * arm };
+      const cp2 = { x: tp.x + Math.cos(fa.toAngle) * arm, y: tp.y + Math.sin(fa.toAngle) * arm };
+      const mid = _bezierMid(fp, cp1, cp2, tp);
+      const label = document.createElement('div');
+      label.className = 'vlan-label';
+      label.textContent = 'VLAN ' + c.vlan;
+      label.style.left = mid.x + 'px';
+      label.style.top = (mid.y - 4) + 'px';
+      world.appendChild(label);
+      _vlanLabels.push({ label, fromId: c.from, toId: c.to, connIdx: i });
+    }
+  });
 }
 
 // ── Render topology (must happen before updateUI / tooltips / dragging) ──
@@ -192,21 +327,7 @@ const DOM = {
   codexNodes: document.getElementById('codex-node-count'),
 };
 
-// Cache per-node DOM elements (sublabel, scale-fill, pulse-ring, root element)
-const _nodeDOM = {};
-function getNodeDOM(tipKey) {
-  if (_nodeDOM[tipKey]) return _nodeDOM[tipKey];
-  const el = document.querySelector(`[data-tip="${tipKey}"]`);
-  if (!el) return (_nodeDOM[tipKey] = { el: null, sub: null, bar: null, pulse: null });
-  _nodeDOM[tipKey] = {
-    el,
-    sub: el.querySelector('.node-sublabel'),
-    bar: el.querySelector('.scale-fill'),
-    pulse: el.querySelector('.pulse-ring'),
-    isTower: el.classList.contains('tower-node'),
-  };
-  return _nodeDOM[tipKey];
-}
+
 
 // ── Update the UI from live data ──
 let lastStatus = null;
@@ -470,13 +591,13 @@ function getNodeTraffic(collectd, nodeKey) {
   return bestTotal > 0 ? { rx: bestRx, tx: bestTx, total: bestTotal } : null;
 }
 
-// Snapshot connection lines once (cached for traffic + ley line updates)
-const _connLines = Array.from(document.querySelectorAll('#connections .conn-line'));
-const _connLinesWithData = _connLines.filter(l => l.dataset.to);
+// Snapshot connection paths for traffic updates (uses _connPaths from renderTopology)
+const _connLinesWithData = _connPaths.filter(p => p && p.dataset.to);
 const _connBaseWidths = new Map();
-_connLines.forEach(line => {
-  const cs = getComputedStyle(line);
-  _connBaseWidths.set(line, parseFloat(cs.getPropertyValue('--sw')) || 1.5);
+_connPaths.forEach(path => {
+  if (!path) return;
+  const cs = getComputedStyle(path);
+  _connBaseWidths.set(path, parseFloat(cs.getPropertyValue('--sw')) || 1.5);
 });
 
 function updateConnectionTraffic(collectd) {
@@ -548,9 +669,7 @@ function updateConnectionTraffic(collectd) {
   });
 }
 
-// ── Dynamic Ley Lines — connection lines follow dragged nodes ──
-// Build a map of node positions (data-tip → center coords in map space)
-const nodePositions = {};
+// ── Dynamic Ley Lines — curved paths follow dragged nodes ──
 function getNodeCenter(nodeEl) {
   const left = parseInt(nodeEl.style.left) || 0;
   const top = parseInt(nodeEl.style.top) || 0;
@@ -564,63 +683,31 @@ function getNodeCenter(nodeEl) {
   return { x: left + 32, y: top + 32 };
 }
 
-// Build initial position map and line→node mapping
-const lineNodeMap = []; // [{line, fromTip, toTip}]
-(function buildLineNodeMap() {
-  // Map node data-tip → initial SVG coordinates (from the original line endpoints)
-  const tipToCoord = {};
-  document.querySelectorAll('.realm-node').forEach(n => {
-    const tip = n.dataset.tip;
-    if (tip) tipToCoord[tip] = getNodeCenter(n);
-  });
-
-  document.querySelectorAll('#connections .conn-line').forEach(line => {
-    const x1 = parseFloat(line.getAttribute('x1'));
-    const y1 = parseFloat(line.getAttribute('y1'));
-    const x2 = parseFloat(line.getAttribute('x2'));
-    const y2 = parseFloat(line.getAttribute('y2'));
-    // Find nearest nodes to each endpoint
-    let fromTip = null, toTip = null;
-    let bestD1 = 80, bestD2 = 80; // max match distance
-    for (const [tip, pos] of Object.entries(tipToCoord)) {
-      const d1 = Math.hypot(pos.x - x1, pos.y - y1);
-      const d2 = Math.hypot(pos.x - x2, pos.y - y2);
-      if (d1 < bestD1) { bestD1 = d1; fromTip = tip; }
-      if (d2 < bestD2) { bestD2 = d2; toTip = tip; }
-    }
-    if (fromTip || toTip) {
-      lineNodeMap.push({ line, fromTip, toTip });
-    }
-  });
-})();
-
 function updateLinePositions() {
-  lineNodeMap.forEach(({ line, fromTip, toTip }) => {
-    if (fromTip) {
-      const n = getNodeDOM(fromTip);
-      if (n.el) {
-        const pos = getNodeCenter(n.el);
-        line.setAttribute('x1', pos.x);
-        line.setAttribute('y1', pos.y);
-      }
-    }
-    if (toTip) {
-      const n = getNodeDOM(toTip);
-      if (n.el) {
-        const pos = getNodeCenter(n.el);
-        line.setAttribute('x2', pos.x);
-        line.setAttribute('y2', pos.y);
-      }
-    }
+  if (!_topology) return;
+  _buildObstacles();
+  const fanAngles = _computeFanAngles();
+  _topology.connections.forEach((c, i) => {
+    const path = _connPaths[i];
+    if (!path) return;
+    const fp = _getNodePos(c.from), tp = _getNodePos(c.to);
+    if (!fp || !tp) return;
+    const fa = fanAngles[i] || { fromAngle: 0, toAngle: 0 };
+    path.setAttribute('d', _computePathD(fp, tp, fa.fromAngle, fa.toAngle, c.from, c.to));
   });
-  // Update VLAN labels to midpoint of their connection's endpoints
-  _vlanLabels.forEach(({ label, fromId, toId }) => {
-    const fn = getNodeDOM(fromId), tn = getNodeDOM(toId);
-    if (fn.el && tn.el) {
-      const fp = getNodeCenter(fn.el), tp = getNodeCenter(tn.el);
-      label.style.left = ((fp.x + tp.x) / 2) + 'px';
-      label.style.top = ((fp.y + tp.y) / 2 - 4) + 'px';
-    }
+  // VLAN labels at curve midpoints
+  _vlanLabels.forEach(({ label, fromId, toId, connIdx }) => {
+    const fp = _getNodePos(fromId), tp = _getNodePos(toId);
+    if (!fp || !tp) return;
+    const fa = fanAngles[connIdx];
+    if (!fa) return;
+    const dist = Math.hypot(tp.x - fp.x, tp.y - fp.y);
+    const arm = dist * 0.3;
+    const cp1 = { x: fp.x + Math.cos(fa.fromAngle) * arm, y: fp.y + Math.sin(fa.fromAngle) * arm };
+    const cp2 = { x: tp.x + Math.cos(fa.toAngle) * arm, y: tp.y + Math.sin(fa.toAngle) * arm };
+    const mid = _bezierMid(fp, cp1, cp2, tp);
+    label.style.left = mid.x + 'px';
+    label.style.top = (mid.y - 4) + 'px';
   });
 }
 
