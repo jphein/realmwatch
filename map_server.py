@@ -10,6 +10,7 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 from engine import LitRPGEngine
 from collectd_reader import get_all_summaries
 import notion_sync
+import ap_scanner
 
 engine = LitRPGEngine()
 PORT = 8777
@@ -118,6 +119,15 @@ class RealmHandler(SimpleHTTPRequestHandler):
 
         elif self.path == "/topology":
             self._json_response(_load_topology())
+
+        elif self.path == "/scan":
+            result = ap_scanner.scan_and_update()
+            # Bust topo cache so next /status or /topology picks up changes
+            _topo_cache["mtime"] = 0
+            self._json_response(result)
+
+        elif self.path == "/scan/status":
+            self._json_response(ap_scanner.get_last_scan())
 
         elif self.path == "/" or self.path == "":
             self.path = "/realm-map.html"
@@ -239,4 +249,5 @@ class RealmHandler(SimpleHTTPRequestHandler):
 if __name__ == "__main__":
     print(f"Realm Map: http://localhost:{PORT}")
     print(f"collectd RRD: /var/lib/collectd/rrd/")
+    ap_scanner.start_background_scanner()
     HTTPServer(("", PORT), RealmHandler).serve_forever()

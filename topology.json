@@ -315,7 +315,7 @@
           ],
           [
             "VLANs",
-            "6 (Admin), 10 (LAN), 8 (IoT), 11 (Family)"
+            "3 DSL, 4 Treelink, 5 Althea, 6 Admin, 7 Test, 8 IoT, 9 VPN, 10 LAN, 11 Family, 12 Oasis, 20 ATT Fiber, 38 Treelink"
           ]
         ]
       }
@@ -2681,7 +2681,7 @@
     },
     {
       "from": "latitude-7390",
-      "to": "ea6350v3-family",
+      "to": "wndr4300sw-shed",
       "type": "active",
       "vlan": 6
     },
@@ -2705,7 +2705,7 @@
     },
     {
       "from": "esp32-a90c10",
-      "to": "eap225-outdoor",
+      "to": "wndr4300sw-shed",
       "type": "active",
       "vlan": 6
     }
