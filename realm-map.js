@@ -633,6 +633,16 @@ textScaleSlider.addEventListener('input', () => {
   });
 });
 
+// ── Bubble scale slider ──
+let bubbleScale = 1.0;
+const bubbleScaleSlider = document.getElementById('bubble-scale-slider');
+const bubbleScaleVal = document.getElementById('bubble-scale-val');
+bubbleScaleSlider.addEventListener('input', () => {
+  bubbleScale = parseFloat(bubbleScaleSlider.value);
+  bubbleScaleVal.textContent = bubbleScale.toFixed(1) + 'x';
+  document.documentElement.style.setProperty('--bubble-scale', bubbleScale);
+});
+
 // ── Update speed slider ──
 let updateSpeedMs = 5000;
 const updateSpeedSlider = document.getElementById('update-speed-slider');
@@ -886,6 +896,9 @@ function addLogEntry(evt, nodeEl) {
   if (!_logBody) return;
   const body = _logBody, counter = _logCounter;
 
+  // Skip dismissed entries
+  if (evt.text && _dismissedQuests.includes(evt.text)) return;
+
   // Prevent duplicate quest entries
   if (evt.type === 'quest' && evt.text) {
     for (const existing of body.children) {
@@ -914,16 +927,21 @@ function addLogEntry(evt, nodeEl) {
 
   entry.innerHTML = `<button class="log-dismiss" title="Dismiss">\u2715</button><div class="log-time">${timeStr}</div><div class="log-speaker">${name}</div>${textContent}`;
 
-  // Dismiss button — also removes matching speech bubble
+  // Dismiss button — also removes matching speech bubble and persists
   entry.querySelector('.log-dismiss').addEventListener('click', () => {
     entry.classList.add('log-entry-dismiss');
-    // Find and dismiss matching quest bubble by text
-    if (logType === 'quest' && evt.text) {
+    if (evt.text) {
+      // Dismiss matching bubble
       for (const b of _activeBubbles) {
         if (b.querySelector('.bubble-text')?.textContent?.includes(evt.text)) {
           _dismissBubble(b);
           break;
         }
+      }
+      // Persist dismissal
+      if (!_dismissedQuests.includes(evt.text)) {
+        _dismissedQuests.push(evt.text);
+        _saveDismissed();
       }
     }
     entry.addEventListener('animationend', () => {
@@ -933,13 +951,24 @@ function addLogEntry(evt, nodeEl) {
     });
   });
 
-  // Quest checkbox toggle
+  // Quest checkbox toggle — persists completed state
   const check = entry.querySelector('.quest-check');
   if (check) {
+    // Restore completed state
+    if (evt.text && _completedQuests.includes(evt.text)) {
+      check.textContent = '\u2611';
+      entry.classList.add('quest-done');
+    }
     check.addEventListener('click', () => {
       const done = check.textContent === '\u2611';
       check.textContent = done ? '\u2610' : '\u2611';
       entry.classList.toggle('quest-done', !done);
+      if (evt.text) {
+        const idx = _completedQuests.indexOf(evt.text);
+        if (!done && idx === -1) _completedQuests.push(evt.text);
+        else if (done && idx !== -1) _completedQuests.splice(idx, 1);
+        _saveCompleted();
+      }
     });
   }
 
@@ -958,6 +987,12 @@ function addLogEntry(evt, nodeEl) {
   counter.textContent = `${Math.min(logCount, MAX_LOG)} entries`;
 }
 
+// Persist dismissed/completed quests across refreshes
+const _dismissedQuests = JSON.parse(localStorage.getItem('realm-dismissed-quests') || '[]');
+const _completedQuests = JSON.parse(localStorage.getItem('realm-completed-quests') || '[]');
+function _saveDismissed() { localStorage.setItem('realm-dismissed-quests', JSON.stringify(_dismissedQuests)); }
+function _saveCompleted() { localStorage.setItem('realm-completed-quests', JSON.stringify(_completedQuests)); }
+
 // Initial quest entries — rendered as full events (log + speech bubble + highlight)
 const _initialQuests = [
   { type: 'quest', node: 'katana', text: 'Chart every node in the Digital Dominion \u2014 ensure all devices report their presence to the Citadel', duration: 12 },
@@ -972,11 +1007,12 @@ const _initialQuests = [
 ];
 setTimeout(() => {
   addLogEntry({ type: 'system', node: 'katana', text: 'The Realm Map has been inscribed.', ts: Date.now()/1000 });
-  // Stagger quest bubbles — each one appears as the previous fades
-  _initialQuests.forEach((q, i) => {
-    setTimeout(() => renderEvent({ ...q, ts: Date.now()/1000, _local: true }), i * 2500);
+  const activeQuests = _initialQuests.filter(q => !_dismissedQuests.includes(q.text));
+  // All quests appear together with staggered animations
+  activeQuests.forEach((q, i) => {
+    setTimeout(() => renderEvent({ ...q, ts: Date.now()/1000, _local: true }), i * 150);
   });
-}, 1000);
+}, 800);
 
 // Track active speech bubbles for repositioning during drag
 const _activeBubbles = new Set();
@@ -1436,6 +1472,7 @@ function setupPanelMinimize(panelId, handleSelector) {
       spawnMote(cx + (Math.random() - 0.5) * 60, cy + (Math.random() - 0.5) * 60,
         cfg.rgb);
     }
+    scheduleSave();
   });
 
   // Make minimized icon draggable (drags the whole panel)
@@ -1649,7 +1686,7 @@ function saveLayout() {
 function restoreLayout() {
   try {
     const raw = localStorage.getItem(LAYOUT_KEY);
-    if (!raw) return;
+    if (!raw) return false;
     const layout = JSON.parse(raw);
     // Restore panels
     if (layout.panels) {
@@ -1683,7 +1720,9 @@ function restoreLayout() {
       // Update ley lines after restoring node positions
       updateLinePositions();
     }
+    return true;
   } catch (e) { /* ignore corrupt layout */ }
+  return false;
 }
 
 // Debounced save — write at most every 500ms during drag
@@ -1849,6 +1888,11 @@ makeDraggable(document.getElementById('node-list'), '#node-list-header', [192,14
   window.addEventListener('touchcancel', endNodeDrag, { passive: true });
 })();
 
-// Restore saved layout on load
-restoreLayout();
+// Restore saved layout on load, or apply defaults (only legend + vitals maximized)
+if (!restoreLayout()) {
+  ['quest-log', 'realm-codex', 'minimap', 'node-list'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('panel-minimized');
+  });
+}
 

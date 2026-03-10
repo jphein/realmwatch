@@ -767,12 +767,28 @@
     color: #c090ff;
   }
   @keyframes bubbleIn {
-    0%   { opacity: 0; transform: translateY(10px) scale(0.9); }
-    100% { opacity: 1; transform: translateY(0) scale(1); }
+    0%   { opacity: 0; transform: translateY(16px) scale(calc(var(--bubble-scale, 1) * 0.7)); filter: blur(4px) brightness(2); }
+    40%  { opacity: 0.8; transform: translateY(-4px) scale(calc(var(--bubble-scale, 1) * 1.03)); filter: blur(0) brightness(1.3); }
+    70%  { transform: translateY(2px) scale(calc(var(--bubble-scale, 1) * 0.98)); }
+    100% { opacity: 1; transform: translateY(0) scale(var(--bubble-scale, 1)); filter: blur(0) brightness(1); }
   }
   @keyframes bubbleOut {
-    0%   { opacity: 1; transform: scale(1); }
-    100% { opacity: 0; transform: scale(0.9); }
+    0%   { opacity: 1; transform: scale(var(--bubble-scale, 1)); filter: blur(0); }
+    100% { opacity: 0; transform: scale(calc(var(--bubble-scale, 1) * 0.8)) translateY(8px); filter: blur(3px); }
+  }
+  .speech-bubble {
+    transform: scale(var(--bubble-scale, 1));
+    transform-origin: bottom center;
+    animation: bubbleIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  .speech-bubble.quest-bubble {
+    animation: bubbleIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards, questShimmer 2s ease-in-out 0.6s;
+  }
+  @keyframes questShimmer {
+    0%   { box-shadow: 0 0 20px rgba(0,0,0,0.5), 0 0 16px rgba(192,144,255,0.15); }
+    30%  { box-shadow: 0 0 20px rgba(0,0,0,0.5), 0 0 30px rgba(192,144,255,0.4), 0 0 60px rgba(140,80,220,0.15); }
+    60%  { box-shadow: 0 0 20px rgba(0,0,0,0.5), 0 0 20px rgba(100,200,255,0.3), 0 0 40px rgba(100,180,255,0.1); }
+    100% { box-shadow: 0 0 20px rgba(0,0,0,0.5), 0 0 16px rgba(192,144,255,0.15); }
   }
 
   /* Node highlight flash */
