@@ -1015,9 +1015,6 @@ const _initialQuests = [
   { type: 'quest', node: 'katana', text: 'Chart every node in the Digital Dominion \u2014 ensure all devices report their presence to the Citadel', duration: 12 },
   { type: 'quest', node: 'hp-switch', text: 'Awaken all Guardian Towers \u2014 bring collectd scrying to every AP in the realm', duration: 12 },
   { type: 'quest', node: 'gatekeeper', text: 'Unite the Enchanted Quarters \u2014 connect all IoT clusters through proper VLAN gateways', duration: 12 },
-  { type: 'quest', node: 'ts-iperf', text: 'Open Tailscale ACL \u2014 allow UDP 25826 from Speedstone to the Citadel for collectd metrics', duration: 12 },
-  { type: 'quest', node: 'ts-terra', text: 'Open Tailscale ACL \u2014 allow UDP 25826 from Terra to the Citadel for collectd metrics', duration: 12 },
-  { type: 'quest', node: 'ts-instance', text: 'Install collectd on Cloud Spire and open UDP 25826 in Tailscale ACL to reach the Citadel', duration: 12 },
   { type: 'quest', node: 'gs308t', text: 'Map the Hub Stone \u2014 monitor all 8 switch ports and track inter-bridge traffic', duration: 12 },
   { type: 'quest', node: 'hp-switch', text: 'Bridge the realms \u2014 verify GigaBeam and CPE710 links carry full VLAN trunks', duration: 12 },
 ];
