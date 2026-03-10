@@ -357,6 +357,8 @@ async def handle_list_tools() -> list[types.Tool]:
                     "label": {"type": "string", "description": "Display label."},
                     "sublabel": {"type": "string", "description": "Subtitle text."},
                     "ip": {"type": "string", "description": "IP address."},
+                    "tsHost": {"type": "string", "description": "Tailscale hostname (DNSName prefix) for TS peer matching."},
+                    "tailscale": {"type": "boolean", "description": "Mark as hybrid tailscale node (gets TS online/offline behavior)."},
                     "pulse": {"type": "boolean", "description": "Show pulse animation."},
                 },
                 "required": ["id"],
@@ -847,7 +849,8 @@ async def handle_call_tool(
             topo.setdefault("nodes", []).append(existing)
         # Update fields
         for field in ("type", "x", "y", "icon", "label", "sublabel", "ip", "pulse",
-                       "iconStyle", "labelStyle", "scaleBar", "badge", "tip", "collectd", "online"):
+                       "iconStyle", "labelStyle", "scaleBar", "badge", "tip", "collectd", "online",
+                       "tsHost", "tailscale", "ssh"):
             if field in args:
                 existing[field] = args[field]
         with open(topo_path, "w") as f:

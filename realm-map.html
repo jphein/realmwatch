@@ -208,6 +208,7 @@
   <div class="pe-tabs">
     <div class="pe-tab active" data-pe-tab="persona">Persona</div>
     <div class="pe-tab" data-pe-tab="stats">Stats</div>
+    <div class="pe-tab" data-pe-tab="links">Links</div>
     <div class="pe-tab" data-pe-tab="shell">Shell</div>
   </div>
   <div class="pe-pane" id="pe-pane-persona">
@@ -263,6 +264,33 @@
       <span id="pe-stats-refresh" class="pe-stats-refresh">Auto-refresh</span>
     </div>
     <div id="pe-stats-body" class="pe-stats-body"></div>
+  </div>
+  <div class="pe-pane" id="pe-pane-links" style="display:none">
+    <div class="pe-stats-header">
+      <span>Connections</span>
+    </div>
+    <div id="pe-links-body" class="pe-stats-body"></div>
+    <div class="pe-links-add">
+      <select id="pe-links-target"><option value="">— target node —</option></select>
+      <select id="pe-links-type">
+        <option value="active">active</option>
+        <option value="ap">ap</option>
+        <option value="infra">infra</option>
+        <option value="mesh">mesh</option>
+        <option value="bridge">bridge</option>
+        <option value="wan">wan</option>
+        <option value="portal">portal</option>
+        <option value="offline">offline</option>
+      </select>
+      <select id="pe-links-vlan">
+        <option value="">no vlan</option>
+        <option value="6">6 Admin</option>
+        <option value="8">8 Family</option>
+        <option value="10">10 IoT</option>
+        <option value="11">11 Guest</option>
+      </select>
+      <button class="pe-btn pe-btn-save" id="pe-links-add-btn" style="padding:4px 10px;font-size:11px">Add</button>
+    </div>
   </div>
   <div class="pe-pane" id="pe-pane-shell" style="display:none">
     <div id="pe-shell-output" class="pe-shell-output"></div>

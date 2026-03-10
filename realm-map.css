@@ -1227,6 +1227,38 @@
     font-size: 13px;
   }
 
+  /* Links Pane */
+  .pe-links-add {
+    display: flex; gap: 6px; padding: 8px 12px; align-items: center;
+    border-top: 1px solid rgba(60,50,40,0.3);
+  }
+  .pe-links-add select {
+    background: rgba(10,8,5,0.9); color: #d0c090; border: 1px solid rgba(80,60,40,0.4);
+    border-radius: 4px; padding: 4px 6px; font-size: 11px; font-family: 'MedievalSharp', cursive;
+  }
+  .pe-link-row {
+    display: flex; align-items: center; padding: 6px 12px; gap: 8px;
+    border-bottom: 1px solid rgba(60,50,40,0.15);
+  }
+  .pe-link-row:hover { background: rgba(240,216,144,0.04); }
+  .pe-link-dir { color: #706040; font-size: 11px; width: 18px; text-align: center; flex-shrink: 0; }
+  .pe-link-node { color: #f0d890; font-size: 12px; flex: 1; cursor: pointer; }
+  .pe-link-node:hover { text-decoration: underline; }
+  .pe-link-type {
+    font-size: 10px; padding: 1px 6px; border-radius: 3px; flex-shrink: 0;
+    background: rgba(80,60,40,0.3); color: #a09060;
+  }
+  .pe-link-vlan {
+    font-size: 10px; padding: 1px 5px; border-radius: 3px; flex-shrink: 0;
+    background: rgba(60,80,40,0.3); color: #80a060;
+  }
+  .pe-link-del {
+    background: none; border: none; color: #804040; cursor: pointer; font-size: 14px;
+    padding: 0 4px; flex-shrink: 0; opacity: 0.5;
+  }
+  .pe-link-del:hover { opacity: 1; color: #c04040; }
+  .pe-link-empty { color: #706040; text-align: center; padding: 30px; font-family: 'MedievalSharp', cursive; font-size: 13px; }
+
   /* Shell Pane */
   .pe-shell-output {
     background: rgba(5,5,15,0.95);

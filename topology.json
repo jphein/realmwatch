@@ -831,9 +831,56 @@
       "tip": {
         "title": "The Arena \u2014 Gaming Desktop",
         "stats": [
-          ["Role", "Ubuntu Desktop"],
-          ["WiFi", "USB Adapter"],
-          ["Disk", "238 GB"]
+          [
+            "Role",
+            "Ubuntu Desktop"
+          ],
+          [
+            "WiFi",
+            "USB Adapter"
+          ],
+          [
+            "Disk",
+            "238 GB"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "tab-s5e",
+      "type": "infra",
+      "x": 820,
+      "y": 350,
+      "icon": "\ud83e\ude9e",
+      "label": "Scrying Slate",
+      "sublabel": "Tab S5e",
+      "ip": "10.0.6.128",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a1520,#0f0a15)",
+        "borderColor": "rgba(120,140,200,0.5)",
+        "width": "44px",
+        "height": "44px",
+        "fontSize": "20px"
+      },
+      "pulse": true,
+      "pulseStyle": {
+        "borderColor": "rgba(120,140,200,0.3)"
+      },
+      "tip": {
+        "title": "The Scrying Slate",
+        "stats": [
+          [
+            "Type",
+            "Samsung Galaxy Tab S5e"
+          ],
+          [
+            "IP",
+            "10.0.6.128"
+          ],
+          [
+            "WiFi",
+            "Closet AP"
+          ]
         ]
       }
     },
@@ -859,20 +906,31 @@
       "tip": {
         "title": "The Mystical Portal",
         "stats": [
-          ["Type", "Notion Quest Gateway"],
-          ["Source", "Today's Focus"],
-          ["Sync", "Manual + Auto-poll"]
+          [
+            "Type",
+            "Notion Quest Gateway"
+          ],
+          [
+            "Source",
+            "Today's Focus"
+          ],
+          [
+            "Sync",
+            "Manual + Auto-poll"
+          ]
         ]
       }
     },
     {
       "id": "ha",
       "type": "infra",
+      "tailscale": true,
+      "tsHost": "ha-jphe-in",
       "x": 1450,
       "y": 700,
       "icon": "&#127968;",
       "label": "The Homestead",
-      "sublabel": "Home Assistant \u2022 10.0.6.108",
+      "sublabel": "ha.jphe.in \u2022 10.0.6.108",
       "ip": "10.0.6.108",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a2010,#101508)"
@@ -1170,6 +1228,7 @@
     {
       "id": "ts-android",
       "type": "tailscale",
+      "tsHost": "samsung-sm-f711u",
       "x": 1868,
       "y": 265,
       "online": true,
@@ -1198,38 +1257,9 @@
       }
     },
     {
-      "id": "ts-ha",
-      "type": "tailscale",
-      "x": 2068,
-      "y": 465,
-      "online": true,
-      "icon": "&#127968;",
-      "label": "The Homestead",
-      "sublabel": "ha.jphe.in",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#101a2a,#080f1a)",
-        "width": "50px",
-        "height": "50px",
-        "fontSize": "22px"
-      },
-      "pulse": true,
-      "tip": {
-        "title": "The Homestead (TS)",
-        "stats": [
-          [
-            "Type",
-            "Home Assistant"
-          ],
-          [
-            "Host",
-            "ha.jphe.in"
-          ]
-        ]
-      }
-    },
-    {
       "id": "ts-terra",
       "type": "tailscale",
+      "tsHost": "terra",
       "collectd": "terra",
       "ssh": "terra",
       "ip": "100.71.19.39",
@@ -1263,6 +1293,7 @@
     {
       "id": "ts-iperf",
       "type": "tailscale",
+      "tsHost": "iperf",
       "collectd": "iperf",
       "ssh": "iperf",
       "ip": "100.122.165.30",
@@ -1296,6 +1327,7 @@
     {
       "id": "ts-openclaw",
       "type": "tailscale",
+      "tsHost": "openclaw",
       "ip": "100.69.161.127",
       "x": 2268,
       "y": 665,
@@ -1329,6 +1361,7 @@
     {
       "id": "ts-instance",
       "type": "tailscale",
+      "tsHost": "instance-1",
       "ssh": "instance-1",
       "ip": "100.75.240.4",
       "x": 1918,
@@ -1345,7 +1378,6 @@
       },
       "pulse": true,
       "collectd": "instance-1",
-      "ssh": "instance-1",
       "tip": {
         "title": "The Cloud Spire",
         "stats": [
@@ -1363,6 +1395,7 @@
     {
       "id": "ts-pikvm",
       "type": "tailscale",
+      "tsHost": "pikvm",
       "x": 2118,
       "y": 1015,
       "online": false,
@@ -1382,6 +1415,7 @@
     {
       "id": "ts-nitro",
       "type": "tailscale",
+      "tsHost": "nitro",
       "x": 2318,
       "y": 915,
       "online": false,
@@ -1401,6 +1435,7 @@
     {
       "id": "ts-7050",
       "type": "tailscale",
+      "tsHost": "7050",
       "x": 2468,
       "y": 815,
       "online": false,
@@ -1420,6 +1455,7 @@
     {
       "id": "ts-gig",
       "type": "tailscale",
+      "tsHost": "gig",
       "x": 2518,
       "y": 515,
       "online": false,
@@ -1439,6 +1475,7 @@
     {
       "id": "ts-android2",
       "type": "tailscale",
+      "tsHost": "samsung-sm-t227u",
       "x": 2368,
       "y": 1065,
       "online": false,
@@ -1470,13 +1507,7 @@
       "vlan": 6
     },
     {
-      "from": "katana",
-      "to": "gatekeeper",
-      "type": "active",
-      "vlan": 6
-    },
-    {
-      "from": "katana",
+      "from": "hp-switch",
       "to": "oracle",
       "type": "active",
       "collectd": "ubox0",
@@ -1565,19 +1596,19 @@
       "vlan": 6
     },
     {
-      "from": "nodered",
+      "from": "hp-switch",
       "to": "ha",
       "type": "infra",
       "vlan": 6
     },
     {
-      "from": "katana",
+      "from": "hp-switch",
       "to": "nodered",
       "type": "infra",
       "vlan": 6
     },
     {
-      "from": "katana",
+      "from": "hp-switch",
       "to": "goodwe",
       "type": "infra",
       "vlan": 6
@@ -1587,6 +1618,12 @@
       "to": "onhub-closet",
       "type": "active",
       "collectd": "game",
+      "vlan": 6
+    },
+    {
+      "from": "tab-s5e",
+      "to": "onhub-closet",
+      "type": "active",
       "vlan": 6
     },
     {
@@ -1668,7 +1705,7 @@
     },
     {
       "from": "katana",
-      "to": "ts-ha",
+      "to": "ha",
       "type": "mesh"
     },
     {

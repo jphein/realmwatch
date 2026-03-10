@@ -177,6 +177,23 @@ class RealmHandler(SimpleHTTPRequestHandler):
             except Exception as e:
                 self._json_response({"error": str(e)}, 500)
 
+        elif self.path == "/connections":
+            try:
+                req = json.loads(body)
+                conns = req.get("connections")
+                if conns is None:
+                    self._json_response({"error": "missing 'connections'"}, 400)
+                    return
+                topo = _load_topology()
+                topo["connections"] = conns
+                with open(TOPOLOGY_FILE, "w") as f:
+                    json.dump(topo, f, indent=2)
+                _topo_cache["data"] = topo
+                _topo_cache["mtime"] = os.path.getmtime(TOPOLOGY_FILE)
+                self._json_response({"ok": True, "count": len(conns)})
+            except (json.JSONDecodeError, KeyError) as e:
+                self._json_response({"error": str(e)}, 400)
+
         elif self.path == "/ssh":
             try:
                 req = json.loads(body)

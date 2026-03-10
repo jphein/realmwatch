@@ -80,7 +80,30 @@ class LitRPGEngine:
                 peers = data.get("Peer", {})
                 online = [v["HostName"] for v in peers.values() if v.get("Online")]
                 total = len(peers)
-                return {"online": online, "online_count": len(online), "total": total}
+                details = {}
+                for v in peers.values():
+                    dns = v.get("DNSName", "")
+                    host = dns.split(".")[0] if dns else v.get("HostName", "")
+                    ips = v.get("TailscaleIPs", [])
+                    d = {
+                        "online": v.get("Online", False),
+                        "os": v.get("OS", ""),
+                        "ip": ips[0] if ips else "",
+                        "relay": v.get("Relay", ""),
+                        "active": v.get("Active", False),
+                        "curAddr": v.get("CurAddr", ""),
+                        "rx": v.get("RxBytes", 0),
+                        "tx": v.get("TxBytes", 0),
+                        "exitNode": v.get("ExitNode", False),
+                    }
+                    ls = v.get("LastSeen", "")
+                    if ls and not ls.startswith("0001"):
+                        d["lastSeen"] = ls
+                    ke = v.get("KeyExpiry", "")
+                    if ke and not ke.startswith("0001"):
+                        d["keyExpiry"] = ke
+                    details[host] = d
+                return {"online": online, "online_count": len(online), "total": total, "peers": details}
             except (subprocess.TimeoutExpired, subprocess.CalledProcessError,
                     FileNotFoundError, json.JSONDecodeError):
                 return None

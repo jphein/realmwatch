@@ -47,8 +47,10 @@ const infraNodes = {};
 
 // ── Topology renderer ──
 const TYPE_TO_CLASS = { tower: 'tower-node', cluster: 'cluster-node', bridge: 'bridge-node', infra: 'infra-node', portal: 'portal-node' };
+const isTS = n => n.type === 'tailscale' || n.tailscale;
 const CONN_TYPE_TO_CLASS = { active:'conn-active', wan:'conn-wan', ap:'conn-ap', infra:'conn-infra', vlan:'conn-vlan', bridge:'conn-bridge', mesh:'conn-mesh', offline:'conn-offline', portal:'conn-portal' };
 
+const _tsHostMap = {}; // tailscale hostname → node ID
 const _vlanLabels = [];
 const _connPaths = []; // path element per connection (same order as topo.connections)
 
@@ -246,25 +248,25 @@ function renderTopology(topo) {
     const tc = TYPE_TO_CLASS[n.type] || '';
     div.className = 'realm-node' + (tc ? ' ' + tc : '') + (n.collectd ? ' collectd-monitored' : '');
     let ns = `left:${n.x}px;top:${n.y}px;`;
-    if (n.type === 'tailscale' && !n.online) ns += 'opacity:0.4;';
+    if (isTS(n) && !n.online) ns += 'opacity:0.4;';
     div.setAttribute('style', ns);
     div.dataset.tip = n.id;
 
     const icon = document.createElement('div');
     icon.className = 'node-icon';
     const is = n.iconStyle || {};
-    if (n.type === 'tailscale' && !n.online) {
+    if (isTS(n) && !n.online) {
       icon.setAttribute('style', 'background:#111;width:44px;height:44px;font-size:18px;border-color:rgba(100,100,100,0.3);box-shadow:none');
     } else {
       let ic = '';
       for (const [k,v] of Object.entries(is)) ic += `${k.replace(/[A-Z]/g, m => '-'+m.toLowerCase())}:${v};`;
       icon.setAttribute('style', ic);
     }
-    if (n.pulse && !(n.type === 'tailscale' && !n.online)) {
+    if (n.pulse && !(isTS(n) && !n.online)) {
       const p = document.createElement('div');
       p.className = 'pulse-ring';
       if (n.pulseStyle?.borderColor) p.style.borderColor = n.pulseStyle.borderColor;
-      if (n.type === 'tailscale' && is.width) {
+      if (isTS(n) && is.width) {
         const sz = parseInt(is.width);
         p.style.cssText = `width:${sz}px;height:${sz}px;margin:-${sz/2}px 0 0 -${sz/2}px`;
       }
@@ -281,7 +283,7 @@ function renderTopology(topo) {
 
     const lbl = document.createElement('div');
     lbl.className = 'node-label';
-    if (n.type === 'tailscale' && !n.online) lbl.setAttribute('style', 'color:#606060;font-size:11px');
+    if (isTS(n) && !n.online) lbl.setAttribute('style', 'color:#606060;font-size:11px');
     else if (n.labelStyle) {
       let ls = '';
       for (const [k,v] of Object.entries(n.labelStyle)) ls += `${k.replace(/[A-Z]/g, m => '-'+m.toLowerCase())}:${v};`;
@@ -292,7 +294,7 @@ function renderTopology(topo) {
 
     const sub = document.createElement('div');
     sub.className = 'node-sublabel';
-    if (n.type === 'tailscale' && !n.online) sub.setAttribute('style', 'color:#404040');
+    if (isTS(n) && !n.online) sub.setAttribute('style', 'color:#404040');
     sub.innerHTML = n.sublabel;
     div.appendChild(sub);
 
@@ -308,7 +310,8 @@ function renderTopology(topo) {
     world.appendChild(div);
 
     if (n.tip) tips[n.id] = { title: n.tip.title, stats: [...(n.tip.stats || [])] };
-    if (n.ip || n.ssh) infraNodes[n.id] = { name: n.label, ip: n.ip || '', collectdHost: n.collectd || null, sshHost: n.ssh || null };
+    if (n.ip || n.ssh) infraNodes[n.id] = { name: n.label, ip: n.ip || '', collectdHost: n.collectd || null, sshHost: n.ssh || null, tsHost: n.tsHost || null };
+    if (n.tsHost) _tsHostMap[n.tsHost] = n.id;
   });
 
   // Connection paths (routed curves — computed after nodes exist in DOM)
@@ -562,6 +565,35 @@ function updateTooltips(d) {
   tips.gpu.stats = gpu ? [["Temperature", gpu.temp.toFixed(0) + "\u00B0C"], ["Load", gpu.load.toFixed(0) + "%"]] : [["Status", "No GPU detected"]];
   tips.essence.stats = [["Charge", essence.usage.toFixed(0) + "%"], ["Source", essence.plugged ? "Eternal Source (plugged)" : "Untethered"], ["Scale", `${essence.scale >= 0 ? '+' : ''}${essence.scale.toFixed(1)} (${scaleLabel(essence.scale)})`]];
   tips.wan.stats = [["Total Traversed", astral.nft ? fmtBytes(astral.nft.wan) : "N/A"], ["Direction", "Outward \u2014 to the Outer Darkness"], ["Guarded By", "The Gatekeeper (nftables)"]];
+
+  // Tailscale per-peer tooltips (merge with existing collectd stats)
+  const _tsKeys = new Set(["TS IP", "OS", "Link", "TS Traffic", "Exit Node", "Last Seen", "Key Expiry"]);
+  const tsPeers = ts && ts.peers ? ts.peers : {};
+  Object.entries(_tsHostMap).forEach(([host, nodeId]) => {
+    const p = tsPeers[host];
+    if (!tips[nodeId]) return;
+    // Keep existing stats (including collectd), strip stale TS fields
+    const existing = tips[nodeId].stats.filter(s => !_tsKeys.has(s[0]));
+    if (!p) return;
+    const tsStats = [];
+    if (p.ip) tsStats.push(["TS IP", p.ip]);
+    if (p.os) tsStats.push(["OS", p.os]);
+    if (p.curAddr) tsStats.push(["Link", "Direct \u2014 " + p.curAddr]);
+    else if (p.online && p.relay) tsStats.push(["Link", "Relayed via " + p.relay.toUpperCase()]);
+    if (p.tx || p.rx) tsStats.push(["TS Traffic", "\u2191 " + fmtBytes(p.tx) + " \u2193 " + fmtBytes(p.rx)]);
+    if (p.exitNode) tsStats.push(["Exit Node", "Yes"]);
+    if (p.lastSeen && !p.online) {
+      const ago = Date.now() - new Date(p.lastSeen).getTime();
+      const days = Math.floor(ago / 86400000);
+      tsStats.push(["Last Seen", days > 0 ? days + "d ago" : "recently"]);
+    }
+    if (p.keyExpiry) {
+      const exp = new Date(p.keyExpiry);
+      const daysLeft = Math.floor((exp - Date.now()) / 86400000);
+      tsStats.push(["Key Expiry", daysLeft > 0 ? daysLeft + "d" : "EXPIRED"]);
+    }
+    tips[nodeId].stats = [...existing, ...tsStats];
+  });
 }
 
 function updateUI(d) {
@@ -1241,6 +1273,14 @@ function centerMap() {
   applyTransform();
 }
 
+function panToNode(x, y) {
+  const cw = canvas.clientWidth, ch = canvas.clientHeight;
+  scale = 1.2;
+  panX = cw / 2 - x * scale;
+  panY = ch / 2 - y * scale;
+  applyTransform();
+}
+
 canvas.addEventListener('mousedown', e => {
   dragging = true;
   lastX = e.clientX; lastY = e.clientY;
@@ -1349,8 +1389,9 @@ if (_topology) {
     dot.dataset.mmTip = n.id;
     dot.style.left = (n.x / worldW * mmW) + 'px';
     dot.style.top = (n.y / worldH * mmH) + 'px';
-    const isOffline = n.type === 'tailscale' && !n.online;
-    dot.style.background = isOffline ? '#404040' : (MINIMAP_COLORS[n.type] || '#f0d890');
+    const isOffline = isTS(n) && !n.online;
+    const mmType = n.tailscale ? 'tailscale' : n.type;
+    dot.style.background = isOffline ? '#404040' : (MINIMAP_COLORS[mmType] || '#f0d890');
     minimap.appendChild(dot);
   });
 }
@@ -1484,6 +1525,7 @@ document.querySelectorAll('.pe-tab').forEach(tab => {
     if (target === 'stats') startStatsRefresh();
     else stopStatsRefresh();
     if (target === 'shell') { renderShellPane(currentEditNode); _shellInput.focus(); }
+    if (target === 'links') renderConnectionsPane(currentEditNode);
   });
 });
 
@@ -1494,6 +1536,7 @@ function _switchToTab(name) {
   if (name === 'stats') startStatsRefresh();
   else stopStatsRefresh();
   if (name === 'shell') renderShellPane(currentEditNode);
+  if (name === 'links') renderConnectionsPane(currentEditNode);
 }
 
 function startStatsRefresh() {
@@ -1518,17 +1561,44 @@ function renderStatsPane(nodeKey) {
   const nodeName = info ? info.name : nodeKey;
   titleEl.textContent = nodeName + ' — Scrying';
 
-  if (!lastStatus || !lastStatus.collectd) {
+  if (!lastStatus) {
     body.innerHTML = '<div class="pe-stats-empty">No scrying data available.</div>';
     return;
   }
-  const cd = findCollectd(lastStatus.collectd, nodeKey, null);
-  if (!cd) {
-    body.innerHTML = '<div class="pe-stats-empty">No collectd sigils bound to this node.</div>';
+  const cd = lastStatus.collectd ? findCollectd(lastStatus.collectd, nodeKey, null) : null;
+  const tsHost = info && info.tsHost;
+  const tsPeer = tsHost && lastStatus.tailscale && lastStatus.tailscale.peers ? lastStatus.tailscale.peers[tsHost] : null;
+  if (!cd && !tsPeer) {
+    body.innerHTML = '<div class="pe-stats-empty">No sigils bound to this node.</div>';
     return;
   }
 
   let html = '';
+
+  // Tailscale section
+  if (tsPeer) {
+    html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Tailscale</div>';
+    html += `<div class="pe-stat-row"><span class="pe-stat-label">Status</span><span class="pe-stat-val" style="color:${tsPeer.online ? '#60c060' : '#c04040'}">${tsPeer.online ? (tsPeer.active ? 'Active' : 'Online') : 'Offline'}</span></div>`;
+    if (tsPeer.ip) html += `<div class="pe-stat-row"><span class="pe-stat-label">TS IP</span><span class="pe-stat-val">${tsPeer.ip}</span></div>`;
+    if (tsPeer.os) html += `<div class="pe-stat-row"><span class="pe-stat-label">OS</span><span class="pe-stat-val">${tsPeer.os}</span></div>`;
+    if (tsPeer.curAddr) html += `<div class="pe-stat-row"><span class="pe-stat-label">Link</span><span class="pe-stat-val" style="color:#60c060">Direct \u2014 ${tsPeer.curAddr}</span></div>`;
+    else if (tsPeer.online && tsPeer.relay) html += `<div class="pe-stat-row"><span class="pe-stat-label">Link</span><span class="pe-stat-val" style="color:#c0a030">Relayed via ${tsPeer.relay.toUpperCase()}</span></div>`;
+    if (tsPeer.tx || tsPeer.rx) html += `<div class="pe-stat-row"><span class="pe-stat-label">Traffic</span><span class="pe-stat-val">\u2191 ${fmtBytes(tsPeer.tx)} \u2193 ${fmtBytes(tsPeer.rx)}</span></div>`;
+    if (tsPeer.exitNode) html += `<div class="pe-stat-row"><span class="pe-stat-label">Exit Node</span><span class="pe-stat-val" style="color:#c09030">Yes</span></div>`;
+    if (tsPeer.lastSeen && !tsPeer.online) {
+      const ago = Date.now() - new Date(tsPeer.lastSeen).getTime();
+      const days = Math.floor(ago / 86400000);
+      html += `<div class="pe-stat-row"><span class="pe-stat-label">Last Seen</span><span class="pe-stat-val">${days > 0 ? days + 'd ago' : 'recently'}</span></div>`;
+    }
+    if (tsPeer.keyExpiry) {
+      const daysLeft = Math.floor((new Date(tsPeer.keyExpiry) - Date.now()) / 86400000);
+      const kColor = daysLeft < 7 ? '#c04040' : daysLeft < 30 ? '#c0a030' : '#60a040';
+      html += `<div class="pe-stat-row"><span class="pe-stat-label">Key Expiry</span><span class="pe-stat-val" style="color:${kColor}">${daysLeft > 0 ? daysLeft + 'd' : 'EXPIRED'}</span></div>`;
+    }
+    html += '</div>';
+  }
+
+  if (!cd) { body.innerHTML = html; return; }
 
   // System section
   const sysRows = [];
@@ -1617,6 +1687,125 @@ function renderStatsPane(nodeKey) {
 }
 
 // ── Shell Tab ──
+// ── Connections (Links) Pane ──
+const _linksBody = document.getElementById('pe-links-body');
+const _linksTarget = document.getElementById('pe-links-target');
+const _linksType = document.getElementById('pe-links-type');
+const _linksVlan = document.getElementById('pe-links-vlan');
+
+// Populate target dropdown once from topology
+if (_topology) {
+  _topology.nodes.forEach(n => {
+    const opt = document.createElement('option');
+    opt.value = n.id;
+    opt.textContent = `${n.label} (${n.id})`;
+    _linksTarget.appendChild(opt);
+  });
+}
+
+function _getNodeConns(nodeId) {
+  if (!_topology) return [];
+  return _topology.connections
+    .map((c, i) => ({ ...c, _idx: i }))
+    .filter(c => c.from === nodeId || c.to === nodeId);
+}
+
+function _nodeLabel(id) {
+  const n = _topology?.nodes.find(nd => nd.id === id);
+  return n ? n.label : id;
+}
+
+function renderConnectionsPane(nodeKey) {
+  if (!_linksBody) return;
+  const conns = _getNodeConns(nodeKey);
+  if (!conns.length) {
+    _linksBody.innerHTML = '<div class="pe-link-empty">No connections bound to this node.</div>';
+    return;
+  }
+  _linksBody.innerHTML = '';
+  conns.forEach(c => {
+    const row = document.createElement('div');
+    row.className = 'pe-link-row';
+    const isFrom = c.from === nodeKey;
+    const other = isFrom ? c.to : c.from;
+    row.innerHTML =
+      `<span class="pe-link-dir">${isFrom ? '\u2192' : '\u2190'}</span>` +
+      `<span class="pe-link-node" data-nav="${other}">${_nodeLabel(other)}</span>` +
+      `<span class="pe-link-type">${c.type}</span>` +
+      (c.vlan ? `<span class="pe-link-vlan">V${c.vlan}</span>` : '') +
+      (c.collectd ? `<span class="pe-link-vlan">${c.collectd}</span>` : '') +
+      `<button class="pe-link-del" data-idx="${c._idx}" title="Remove connection">\u00d7</button>`;
+    _linksBody.appendChild(row);
+  });
+
+  // Click node name to navigate
+  _linksBody.querySelectorAll('.pe-link-node').forEach(el => {
+    el.addEventListener('click', () => {
+      const target = el.dataset.nav;
+      const tn = _topology?.nodes.find(nd => nd.id === target);
+      if (tn) { panToNode(tn.x, tn.y); openPersonaEditor(target); }
+    });
+  });
+
+  // Delete button
+  _linksBody.querySelectorAll('.pe-link-del').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.idx);
+      const conn = _topology.connections[idx];
+      if (!conn) return;
+      _topology.connections.splice(idx, 1);
+      // Remove SVG path
+      if (_connPaths[idx]) { _connPaths[idx].remove(); _connPaths.splice(idx, 1); }
+      _saveConnections();
+      renderConnectionsPane(nodeKey);
+    });
+  });
+
+  // Filter out self from target dropdown
+  _linksTarget.querySelectorAll('option').forEach(o => o.hidden = o.value === nodeKey);
+}
+
+function _saveConnections() {
+  if (!_topology) return;
+  fetch('/connections', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ connections: _topology.connections })
+  });
+}
+
+document.getElementById('pe-links-add-btn').addEventListener('click', () => {
+  const target = _linksTarget.value;
+  if (!target || !currentEditNode) return;
+  const type = _linksType.value;
+  const vlan = _linksVlan.value ? parseInt(_linksVlan.value) : undefined;
+  const conn = { from: currentEditNode, to: target, type };
+  if (vlan) conn.vlan = vlan;
+  _topology.connections.push(conn);
+  // Add SVG path for new connection
+  _addConnectionPath(conn, _topology.connections.length - 1);
+  _saveConnections();
+  renderConnectionsPane(currentEditNode);
+  _linksTarget.value = '';
+});
+
+function _addConnectionPath(c, idx) {
+  const connSvg = document.getElementById('connection-svg');
+  if (!connSvg) return;
+  const fp = _getNodePos(c.from), tp = _getNodePos(c.to);
+  if (!fp || !tp) return;
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', _computePathD(fp, tp, 0, 0, c.from, c.to));
+  path.setAttribute('class', 'conn-line ' + (CONN_TYPE_TO_CLASS[c.type] || 'conn-active'));
+  path.dataset.to = c.collectd || c.to;
+  path.dataset.from = c.from;
+  path.dataset.fromNode = c.from;
+  path.dataset.toNode = c.to;
+  connSvg.appendChild(path);
+  _connPaths[idx] = path;
+}
+
+// ── Shell Pane ──
 const _shellHistory = {};
 const _shellOutput = document.getElementById('pe-shell-output');
 const _shellInput = document.getElementById('pe-shell-input');
