@@ -13,6 +13,22 @@ engine = LitRPGEngine()
 PORT = 8777
 MAP_DIR = os.path.dirname(os.path.abspath(__file__))
 PERSONAS_FILE = os.path.join(MAP_DIR, "personas.json")
+TOPOLOGY_FILE = os.path.join(MAP_DIR, "topology.json")
+_topo_cache = {"data": None, "mtime": 0}
+
+
+def _load_topology():
+    """Load topology.json with mtime-based cache."""
+    try:
+        mt = os.path.getmtime(TOPOLOGY_FILE)
+        if _topo_cache["data"] and mt == _topo_cache["mtime"]:
+            return _topo_cache["data"]
+        with open(TOPOLOGY_FILE) as f:
+            _topo_cache["data"] = json.load(f)
+            _topo_cache["mtime"] = mt
+            return _topo_cache["data"]
+    except (OSError, json.JSONDecodeError):
+        return {}
 
 
 def _load_personas():
@@ -83,6 +99,9 @@ class RealmHandler(SimpleHTTPRequestHandler):
 
         elif self.path == "/personas":
             self._json_response(_load_personas())
+
+        elif self.path == "/topology":
+            self._json_response(_load_topology())
 
         elif self.path == "/" or self.path == "":
             self.path = "/realm-map.html"

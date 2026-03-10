@@ -1361,532 +1361,13 @@
         </filter>
       </defs>
 
-      <!-- LAN links: Citadel to local core nodes -->
-      <line class="conn-line conn-active" data-to="gatekeeper" x1="750" y1="580" x2="620" y2="800"/>
-      <line class="conn-line conn-active" data-to="ubox0" x1="750" y1="580" x2="950" y2="420"/>
-      <line class="conn-line conn-active" x1="750" y1="580" x2="1050" y2="750"/>
-      <line class="conn-line conn-active" data-to="gs308t" x1="750" y1="580" x2="880" y2="535"/>
-
-      <!-- WAN Gate from Gatekeeper outward -->
-      <line class="conn-line conn-wan" data-to="wan" data-from="gatekeeper" x1="620" y1="800" x2="350" y2="950"/>
-      <line class="conn-line conn-wan" x1="350" y1="950" x2="200" y2="700"/>
-
-      <!-- Katana to AP towers -->
-      <line class="conn-line conn-ap" data-to="mr8300-host" x1="750" y1="580" x2="1175" y2="310"/>
-      <line class="conn-line conn-ap" data-to="onhub-office" x1="750" y1="580" x2="1375" y2="480"/>
-      <line class="conn-line conn-ap" data-to="onhub-closet" x1="750" y1="580" x2="775" y2="330"/>
-      <line class="conn-line conn-ap" data-to="wndr4300sw-shed" x1="750" y1="580" x2="375" y2="530"/>
-      <line class="conn-line conn-ap" data-to="onhub-pumphouse" x1="750" y1="580" x2="405" y2="710"/>
-      <line class="conn-line conn-ap" data-to="wrt1900ac-family" x1="750" y1="580" x2="675" y2="1030"/>
-      <line class="conn-line conn-ap" data-to="ea6350-cl" x1="750" y1="580" x2="1025" y2="310"/>
-      <line class="conn-line conn-ap" data-to="eap225-outdoor" x1="750" y1="580" x2="525" y2="380"/>
-      <line class="conn-line conn-ap" data-to="ea6350v3-family" x1="750" y1="580" x2="525" y2="930"/>
-      <line class="conn-line conn-ap" data-to="onhub-family" x1="750" y1="580" x2="805" y2="980"/>
-      <line class="conn-line conn-ap" data-to="onhub-bed" x1="750" y1="580" x2="1225" y2="880"/>
-
-      <!-- Katana to infrastructure -->
-      <line class="conn-line conn-infra" data-to="ha" x1="750" y1="580" x2="1475" y2="730"/>
-      <line class="conn-line conn-infra" data-to="nodered" x1="750" y1="580" x2="1125" y2="580"/>
-      <line class="conn-line conn-infra" data-to="goodwe" x1="750" y1="580" x2="325" y2="230"/>
-
-      <!-- Gatekeeper to IoT cluster nodes (VLAN boundary) -->
-      <line class="conn-line conn-vlan" x1="620" y1="800" x2="1575" y2="930"/>
-      <line class="conn-line conn-vlan" x1="620" y1="800" x2="1675" y2="1080"/>
-      <line class="conn-line conn-vlan" x1="620" y1="800" x2="1425" y2="1030"/>
-      <line class="conn-line conn-vlan" x1="620" y1="800" x2="1525" y2="1130"/>
-      <line class="conn-line conn-vlan" x1="620" y1="800" x2="1325" y2="1180"/>
-      <line class="conn-line conn-vlan" x1="620" y1="800" x2="925" y2="1080"/>
-      <line class="conn-line conn-vlan" x1="620" y1="800" x2="1075" y2="1080"/>
-
-      <!-- Signal bridge pairs -->
-      <line class="conn-line conn-bridge" data-to="cpe710-client" data-from="cpe710-ap" x1="225" y1="385" x2="275" y2="485"/>
-      <line class="conn-line conn-bridge" data-to="gigabeam1" data-from="gigabeam0" x1="175" y1="285" x2="305" y2="335"/>
-
-      <!-- Tailscale mesh lines (online peers) -->
-      <line class="conn-line conn-mesh" x1="750" y1="580" x2="1900" y2="300"/>
-      <line class="conn-line conn-mesh" x1="750" y1="580" x2="2100" y2="500"/>
-      <line class="conn-line conn-mesh" x1="750" y1="580" x2="2000" y2="750"/>
-      <line class="conn-line conn-mesh" x1="750" y1="580" x2="2250" y2="400"/>
-      <line class="conn-line conn-mesh" x1="750" y1="580" x2="2300" y2="700"/>
-      <line class="conn-line conn-mesh" x1="750" y1="580" x2="1950" y2="900"/>
-
-      <!-- Tailscale offline peers -->
-      <line class="conn-line conn-offline" x1="750" y1="580" x2="2150" y2="1050"/>
-      <line class="conn-line conn-offline" x1="750" y1="580" x2="2350" y2="950"/>
-      <line class="conn-line conn-offline" x1="750" y1="580" x2="2500" y2="850"/>
-      <line class="conn-line conn-offline" x1="750" y1="580" x2="2550" y2="550"/>
-      <line class="conn-line conn-offline" x1="750" y1="580" x2="2400" y2="1100"/>
+      <!-- Connection lines rendered dynamically from topology.json -->
     </svg>
 
-    <!-- Region labels -->
-    <div class="region-label" style="left:650px;top:250px;transform:rotate(-5deg)">The Citadel</div>
-    <div class="region-label" style="left:2050px;top:150px;transform:rotate(3deg)">The Astral Sea</div>
-    <div class="region-label" style="left:250px;top:1050px;font-size:14px">The Outer Darkness</div>
-    <div class="region-label" style="left:850px;top:170px;font-size:15px;color:rgba(192,144,96,0.2);letter-spacing:4px;transform:rotate(-2deg)">The Guardian Towers</div>
-    <div class="region-label" style="left:100px;top:180px;font-size:13px;color:rgba(144,96,192,0.2);letter-spacing:3px">The Signal Bridges</div>
-    <div class="region-label" style="left:1280px;top:840px;font-size:15px;color:rgba(96,192,96,0.2);letter-spacing:4px;transform:rotate(2deg)">The Enchanted Quarters</div>
+    <!-- Region labels (rendered from topology.json) -->
+    <div id="region-labels"></div>
 
-    <!-- ===== CORE REALM NODES ===== -->
-
-    <!-- KATANA — The Citadel (self node, center of the realm) -->
-    <div class="realm-node" style="left:718px;top:545px" data-tip="katana">
-      <div class="node-icon" style="background:radial-gradient(circle,#2a1f0f,#1a1008);width:80px;height:80px;font-size:36px;border-color:#f0d890">
-        <div class="pulse-ring"></div>
-        &#9876;
-      </div>
-      <div class="node-label" style="font-size:16px">Katana</div>
-      <div class="node-sublabel">The Citadel &bull; 10.0.6.129</div>
-      <div class="scale-bar"><div class="scale-fill" style="width:89%;background:linear-gradient(90deg,#f09040,#f0d040)"></div></div>
-    </div>
-
-    <!-- GATEKEEPER — The Southern Gate -->
-    <div class="realm-node" style="left:588px;top:765px" data-tip="gatekeeper">
-      <div class="node-icon" style="background:radial-gradient(circle,#1a1a30,#0f0f20)">
-        <div class="pulse-ring"></div>
-        &#9961;
-      </div>
-      <div class="node-label">The Gatekeeper</div>
-      <div class="node-sublabel">OpenWrt Router &bull; 10.0.6.1</div>
-      <div class="scale-bar"><div class="scale-fill" style="width:100%;background:#60c060"></div></div>
-    </div>
-
-    <!-- ORACLE STONE — ubox0 -->
-    <div class="realm-node" style="left:918px;top:385px" data-tip="oracle">
-      <div class="node-icon" style="background:radial-gradient(circle,#1a102a,#0f0a1a)">
-        <div class="pulse-ring"></div>
-        &#128302;
-      </div>
-      <div class="node-label">The Oracle Stone</div>
-      <div class="node-sublabel">ubox0 &bull; 10.0.6.11</div>
-    </div>
-
-    <!-- THE GREAT FORGE — CPU -->
-    <div class="realm-node" style="left:580px;top:440px" data-tip="forge">
-      <div class="node-icon" style="background:radial-gradient(circle,#301a0a,#1a0f05)">
-        &#128293;
-      </div>
-      <div class="node-label">The Great Forge</div>
-      <div class="node-sublabel">CPU 40&deg;C &bull; Scale +8.2</div>
-      <div class="scale-bar"><div class="scale-fill" style="width:91%;background:linear-gradient(90deg,#f06040,#f0c040)"></div></div>
-    </div>
-
-    <!-- THE MANA WELL — RAM -->
-    <div class="realm-node" style="left:1018px;top:715px" data-tip="mana">
-      <div class="node-icon" style="background:radial-gradient(circle,#0a1a2a,#050f1a)">
-        &#128167;
-      </div>
-      <div class="node-label">The Mana Well</div>
-      <div class="node-sublabel">23.2% used &bull; Scale +5.4</div>
-      <div class="scale-bar"><div class="scale-fill" style="width:77%;background:linear-gradient(90deg,#4090d0,#40d0a0)"></div></div>
-    </div>
-
-    <!-- CRYSTAL ENGINE — GPU -->
-    <div class="realm-node" style="left:850px;top:600px" data-tip="gpu">
-      <div class="node-icon" style="background:radial-gradient(circle,#1a0a2a,#0f051a)">
-        &#128142;
-      </div>
-      <div class="node-label">Crystal Engine</div>
-      <div class="node-sublabel">54&deg;C &bull; 3% load</div>
-    </div>
-
-    <!-- LIFE ESSENCE — Battery (Eternal Source) -->
-    <div class="realm-node" style="left:700px;top:700px" data-tip="essence">
-      <div class="node-icon" style="background:radial-gradient(circle,#0a2a0a,#051a05)">
-        &#9889;
-      </div>
-      <div class="node-label">Life Essence</div>
-      <div class="node-sublabel">Eternal Source &bull; 100%</div>
-      <div class="scale-bar"><div class="scale-fill" style="width:100%;background:#60ff60"></div></div>
-    </div>
-
-    <!-- WAN GATE — Internet boundary -->
-    <div class="realm-node" style="left:318px;top:915px" data-tip="wan">
-      <div class="node-icon" style="background:radial-gradient(circle,#2a2000,#1a1500);border-color:rgba(255,180,50,0.5)">
-        &#127760;
-      </div>
-      <div class="node-label">The WAN Gate</div>
-      <div class="node-sublabel">0.33 GB traversed</div>
-    </div>
-
-    <!-- The Outer Darkness (Internet) -->
-    <div class="realm-node" style="left:168px;top:665px" data-tip="void">
-      <div class="node-icon" style="background:radial-gradient(circle,#15151f,#0a0a12);border-color:rgba(100,100,120,0.3);box-shadow:none">
-        &#9728;
-      </div>
-      <div class="node-label" style="color:#707080">The Outer Darkness</div>
-      <div class="node-sublabel">The Untamed Internet</div>
-    </div>
-
-    <!-- THE HUB STONE — GS308T Switch (near Citadel) -->
-    <div class="realm-node infra-node" style="left:850px;top:500px" data-tip="gs308t">
-      <div class="node-icon" style="background:radial-gradient(circle,#152030,#0c1520)">
-        <div class="pulse-ring"></div>
-        &#11043;
-      </div>
-      <div class="node-label">The Hub Stone</div>
-      <div class="node-sublabel">GS308T &bull; 10.0.6.110</div>
-    </div>
-
-    <!-- ===== THE GUARDIAN TOWERS (WiFi APs) ===== -->
-
-    <!-- <REDACTED> — MR8300 -->
-    <div class="realm-node tower-node" style="left:1150px;top:280px" data-tip="mr8300-host">
-      <div class="node-icon" style="background:radial-gradient(circle,#2a1f10,#1a1408)">
-        <div class="pulse-ring"></div>
-        &#127984;
-      </div>
-      <div class="node-label"><REDACTED></div>
-      <div class="node-sublabel">MR8300 &bull; 10.0.6.100</div>
-    </div>
-
-    <!-- The Scribe's Alcove — Office AP -->
-    <div class="realm-node tower-node" style="left:1350px;top:450px" data-tip="onhub-office">
-      <div class="node-icon" style="background:radial-gradient(circle,#2a1f10,#1a1408)">
-        <div class="pulse-ring"></div>
-        &#127984;
-      </div>
-      <div class="node-label">The Scribe's Alcove</div>
-      <div class="node-sublabel">Office AP &bull; 10.0.6.101</div>
-    </div>
-
-    <!-- The Hidden Chamber — Closet AP -->
-    <div class="realm-node tower-node" style="left:750px;top:300px" data-tip="onhub-closet">
-      <div class="node-icon" style="background:radial-gradient(circle,#2a1f10,#1a1408)">
-        <div class="pulse-ring"></div>
-        &#127984;
-      </div>
-      <div class="node-label">The Hidden Chamber</div>
-      <div class="node-sublabel">Closet AP &bull; 10.0.6.102</div>
-    </div>
-
-    <!-- The Woodshed Watch — Shed AP -->
-    <div class="realm-node tower-node" style="left:350px;top:500px" data-tip="wndr4300sw-shed">
-      <div class="node-icon" style="background:radial-gradient(circle,#2a1f10,#1a1408)">
-        <div class="pulse-ring"></div>
-        &#127984;
-      </div>
-      <div class="node-label">The Woodshed Watch</div>
-      <div class="node-sublabel">Shed AP &bull; 10.0.6.109</div>
-    </div>
-
-    <!-- The Pumphouse Keep — Pumphouse AP -->
-    <div class="realm-node tower-node" style="left:380px;top:680px" data-tip="onhub-pumphouse">
-      <div class="node-icon" style="background:radial-gradient(circle,#2a1f10,#1a1408)">
-        <div class="pulse-ring"></div>
-        &#127984;
-      </div>
-      <div class="node-label">The Pumphouse Keep</div>
-      <div class="node-sublabel">Pumphouse AP &bull; 10.0.6.111</div>
-    </div>
-
-    <!-- The Great Hall — Family WRT1900AC -->
-    <div class="realm-node tower-node" style="left:650px;top:1000px" data-tip="wrt1900ac-family">
-      <div class="node-icon" style="background:radial-gradient(circle,#2a1f10,#1a1408)">
-        <div class="pulse-ring"></div>
-        &#127984;
-      </div>
-      <div class="node-label">The Great Hall</div>
-      <div class="node-sublabel">WRT1900AC &bull; 10.0.6.114</div>
-    </div>
-
-    <!-- The Citadel Beacon — EA6350 -->
-    <div class="realm-node tower-node" style="left:1000px;top:280px" data-tip="ea6350-cl">
-      <div class="node-icon" style="background:radial-gradient(circle,#2a1f10,#1a1408)">
-        <div class="pulse-ring"></div>
-        &#127984;
-      </div>
-      <div class="node-label">The Citadel Beacon</div>
-      <div class="node-sublabel">EA6350 &bull; 10.0.6.116</div>
-    </div>
-
-    <!-- The Sentinel — Outdoor AP -->
-    <div class="realm-node tower-node" style="left:500px;top:350px" data-tip="eap225-outdoor">
-      <div class="node-icon" style="background:radial-gradient(circle,#2a1f10,#1a1408)">
-        <div class="pulse-ring"></div>
-        &#127984;
-      </div>
-      <div class="node-label">The Sentinel</div>
-      <div class="node-sublabel">Outdoor AP &bull; 10.0.6.119</div>
-    </div>
-
-    <!-- The Inner Ward — EA6350v3 Family -->
-    <div class="realm-node tower-node" style="left:500px;top:900px" data-tip="ea6350v3-family">
-      <div class="node-icon" style="background:radial-gradient(circle,#2a1f10,#1a1408)">
-        <div class="pulse-ring"></div>
-        &#127984;
-      </div>
-      <div class="node-label">The Inner Ward</div>
-      <div class="node-sublabel">EA6350v3 &bull; 10.0.6.135</div>
-    </div>
-
-    <!-- The Family Hearth — Family room OnHub -->
-    <div class="realm-node tower-node" style="left:780px;top:950px" data-tip="onhub-family">
-      <div class="node-icon" style="background:radial-gradient(circle,#2a1f10,#1a1408)">
-        <div class="pulse-ring"></div>
-        &#127984;
-      </div>
-      <div class="node-label">The Family Hearth</div>
-      <div class="node-sublabel">Family OnHub &bull; 10.0.6.141</div>
-    </div>
-
-    <!-- The Dreamer's Rest — Bedroom OnHub -->
-    <div class="realm-node tower-node" style="left:1200px;top:850px" data-tip="onhub-bed">
-      <div class="node-icon" style="background:radial-gradient(circle,#2a1f10,#1a1408)">
-        <div class="pulse-ring"></div>
-        &#127984;
-      </div>
-      <div class="node-label">The Dreamer's Rest</div>
-      <div class="node-sublabel">Bedroom OnHub &bull; 10.0.6.246</div>
-    </div>
-
-    <!-- ===== THE SIGNAL BRIDGES (North-West) ===== -->
-
-    <!-- Sky Bridge Alpha — CPE710 AP -->
-    <div class="realm-node bridge-node" style="left:200px;top:350px" data-tip="cpe710-ap">
-      <div class="node-icon" style="background:radial-gradient(circle,#1a1030,#100820)">
-        <div class="pulse-ring"></div>
-        &#128225;
-      </div>
-      <div class="node-label">Sky Bridge Alpha</div>
-      <div class="node-sublabel">CPE710 &bull; 10.0.6.248</div>
-    </div>
-
-    <!-- Sky Bridge Omega — CPE710 Client -->
-    <div class="realm-node bridge-node" style="left:250px;top:450px" data-tip="cpe710-client">
-      <div class="node-icon" style="background:radial-gradient(circle,#1a1030,#100820)">
-        <div class="pulse-ring"></div>
-        &#128225;
-      </div>
-      <div class="node-label">Sky Bridge Omega</div>
-      <div class="node-sublabel">CPE710 &bull; 10.0.6.191</div>
-    </div>
-
-    <!-- GigaBeam North -->
-    <div class="realm-node bridge-node" style="left:150px;top:250px" data-tip="gigabeam0">
-      <div class="node-icon" style="background:radial-gradient(circle,#1a1030,#100820)">
-        <div class="pulse-ring"></div>
-        &#128225;
-      </div>
-      <div class="node-label">GigaBeam North</div>
-      <div class="node-sublabel">10.0.6.242</div>
-    </div>
-
-    <!-- GigaBeam South -->
-    <div class="realm-node bridge-node" style="left:280px;top:300px" data-tip="gigabeam1">
-      <div class="node-icon" style="background:radial-gradient(circle,#1a1030,#100820)">
-        <div class="pulse-ring"></div>
-        &#128225;
-      </div>
-      <div class="node-label">GigaBeam South</div>
-      <div class="node-sublabel">10.0.6.243</div>
-    </div>
-
-    <!-- ===== INFRASTRUCTURE NODES ===== -->
-
-    <!-- The Homestead — Home Assistant -->
-    <div class="realm-node infra-node" style="left:1450px;top:700px" data-tip="ha">
-      <div class="node-icon" style="background:radial-gradient(circle,#1a2010,#101508)">
-        <div class="pulse-ring"></div>
-        &#127968;
-      </div>
-      <div class="node-label">The Homestead</div>
-      <div class="node-sublabel">Home Assistant &bull; 10.0.6.108</div>
-    </div>
-
-    <!-- The Sunstone — GoodWe Solar -->
-    <div class="realm-node infra-node" style="left:300px;top:200px" data-tip="goodwe">
-      <div class="node-icon" style="background:radial-gradient(circle,#2a2a08,#1a1a04);border-color:rgba(240,200,60,0.4)">
-        <div class="pulse-ring" style="border-color:rgba(240,200,60,0.3)"></div>
-        &#9788;
-      </div>
-      <div class="node-label">The Sunstone</div>
-      <div class="node-sublabel">Solar Inverter &bull; 10.0.6.244</div>
-    </div>
-
-    <!-- The Automaton — Node-RED -->
-    <div class="realm-node infra-node" style="left:1100px;top:550px" data-tip="nodered">
-      <div class="node-icon" style="background:radial-gradient(circle,#201510,#150e08)">
-        <div class="pulse-ring"></div>
-        &#9881;
-      </div>
-      <div class="node-label">The Automaton</div>
-      <div class="node-sublabel">Node-RED &bull; 10.0.6.118</div>
-    </div>
-
-    <!-- ===== THE ENCHANTED QUARTERS (IoT Clusters) ===== -->
-
-    <!-- The Nest Circle — Nest Thermostats -->
-    <div class="realm-node cluster-node" style="left:1550px;top:900px" data-tip="nest-circle">
-      <div class="node-icon" style="background:radial-gradient(circle,#2a1510,#1a0e08)">
-        <div class="pulse-ring"></div>
-        <span class="cluster-badge">5</span>
-        &#128293;
-      </div>
-      <div class="node-label">The Nest Circle</div>
-      <div class="node-sublabel">Nest Thermostats &bull; 10.0.10.x</div>
-    </div>
-
-    <!-- The Kasa Spirits — Smart Plugs/Switches -->
-    <div class="realm-node cluster-node" style="left:1650px;top:1050px" data-tip="kasa-spirits">
-      <div class="node-icon" style="background:radial-gradient(circle,#1a2010,#101508)">
-        <div class="pulse-ring"></div>
-        &#128161;
-      </div>
-      <div class="node-label">The Kasa Spirits</div>
-      <div class="node-sublabel">Smart Plugs &bull; 10.0.10.x</div>
-    </div>
-
-    <!-- The Watchers — Hikvision Cameras -->
-    <div class="realm-node cluster-node" style="left:1400px;top:1000px" data-tip="watchers">
-      <div class="node-icon" style="background:radial-gradient(circle,#201020,#150a15)">
-        <div class="pulse-ring"></div>
-        <span class="cluster-badge">2</span>
-        &#128065;
-      </div>
-      <div class="node-label">The Watchers</div>
-      <div class="node-sublabel">Hikvision Cameras &bull; 10.0.10.x</div>
-    </div>
-
-    <!-- The Voice Stones — Google Home -->
-    <div class="realm-node cluster-node" style="left:1500px;top:1100px" data-tip="voice-stones">
-      <div class="node-icon" style="background:radial-gradient(circle,#151530,#0a0a20)">
-        <div class="pulse-ring"></div>
-        &#128302;
-      </div>
-      <div class="node-label">The Voice Stones</div>
-      <div class="node-sublabel">Google Home &bull; 10.0.10.x</div>
-    </div>
-
-    <!-- The Sprite Swarm — ~20 ESP Devices -->
-    <div class="realm-node cluster-node" style="left:1300px;top:1150px" data-tip="esp-swarm">
-      <div class="node-icon" style="background:radial-gradient(circle,#102020,#081515)">
-        <div class="pulse-ring"></div>
-        <span class="cluster-badge">20</span>
-        &#10022;
-      </div>
-      <div class="node-label">The Sprite Swarm</div>
-      <div class="node-sublabel">ESP Devices &bull; 10.0.10.x</div>
-    </div>
-
-    <!-- The Steam Works — LG Washer + Dryer -->
-    <div class="realm-node cluster-node" style="left:900px;top:1050px" data-tip="steam-works">
-      <div class="node-icon" style="background:radial-gradient(circle,#201a15,#151008)">
-        <div class="pulse-ring"></div>
-        <span class="cluster-badge">2</span>
-        &#9832;
-      </div>
-      <div class="node-label">The Steam Works</div>
-      <div class="node-sublabel">LG Washer+Dryer &bull; 10.0.10.x</div>
-    </div>
-
-    <!-- The Wandering Golems — Roombas -->
-    <div class="realm-node cluster-node" style="left:1050px;top:1050px" data-tip="wandering-golems">
-      <div class="node-icon" style="background:radial-gradient(circle,#151a20,#0a0f15)">
-        <div class="pulse-ring"></div>
-        <span class="cluster-badge">2</span>
-        &#129302;
-      </div>
-      <div class="node-label">The Wandering Golems</div>
-      <div class="node-sublabel">Roombas &bull; 10.0.10.x</div>
-    </div>
-
-    <!-- ===== TAILSCALE MESH PEERS (Astral Sea, shifted +400px right) ===== -->
-
-    <!-- Online peers -->
-    <div class="realm-node" style="left:1868px;top:265px" data-tip="ts-android">
-      <div class="node-icon" style="background:radial-gradient(circle,#102010,#081008);width:50px;height:50px;font-size:22px">
-        <div class="pulse-ring" style="width:50px;height:50px;margin:-25px 0 0 -25px"></div>
-        &#128241;
-      </div>
-      <div class="node-label">The Herald</div>
-      <div class="node-sublabel">Android &bull; 100.71.20.3</div>
-    </div>
-
-    <div class="realm-node" style="left:2068px;top:465px" data-tip="ts-ha">
-      <div class="node-icon" style="background:radial-gradient(circle,#101a2a,#080f1a);width:50px;height:50px;font-size:22px">
-        <div class="pulse-ring" style="width:50px;height:50px;margin:-25px 0 0 -25px"></div>
-        &#127968;
-      </div>
-      <div class="node-label">The Homestead</div>
-      <div class="node-sublabel">ha.jphe.in &bull; Home Assistant</div>
-    </div>
-
-    <div class="realm-node" style="left:1968px;top:715px" data-tip="ts-terra">
-      <div class="node-icon" style="background:radial-gradient(circle,#1a1a10,#0f0f08);width:50px;height:50px;font-size:22px">
-        <div class="pulse-ring" style="width:50px;height:50px;margin:-25px 0 0 -25px"></div>
-        &#127757;
-      </div>
-      <div class="node-label">Terra</div>
-      <div class="node-sublabel">Linux &bull; 100.71.19.39</div>
-    </div>
-
-    <div class="realm-node" style="left:2218px;top:365px" data-tip="ts-iperf">
-      <div class="node-icon" style="background:radial-gradient(circle,#1a100a,#0f0805);width:50px;height:50px;font-size:22px">
-        <div class="pulse-ring" style="width:50px;height:50px;margin:-25px 0 0 -25px"></div>
-        &#9889;
-      </div>
-      <div class="node-label">The Speedstone</div>
-      <div class="node-sublabel">iperf &bull; 100.122.165.30</div>
-    </div>
-
-    <div class="realm-node" style="left:2268px;top:665px" data-tip="ts-openclaw">
-      <div class="node-icon" style="background:radial-gradient(circle,#2a1010,#1a0808);width:50px;height:50px;font-size:22px">
-        <div class="pulse-ring" style="width:50px;height:50px;margin:-25px 0 0 -25px"></div>
-        &#128062;
-      </div>
-      <div class="node-label">OpenClaw</div>
-      <div class="node-sublabel">Linux &bull; 100.69.161.127</div>
-    </div>
-
-    <div class="realm-node" style="left:1918px;top:865px" data-tip="ts-instance">
-      <div class="node-icon" style="background:radial-gradient(circle,#10101a,#08080f);width:50px;height:50px;font-size:22px">
-        <div class="pulse-ring" style="width:50px;height:50px;margin:-25px 0 0 -25px"></div>
-        &#9729;
-      </div>
-      <div class="node-label">The Cloud Spire</div>
-      <div class="node-sublabel">instance-1 &bull; 100.75.240.4</div>
-    </div>
-
-    <!-- Offline peers (dimmed, shifted right) -->
-    <div class="realm-node" style="left:2118px;top:1015px;opacity:0.4" data-tip="ts-pikvm">
-      <div class="node-icon" style="background:#111;width:44px;height:44px;font-size:18px;border-color:rgba(100,100,100,0.3);box-shadow:none">
-        &#128065;
-      </div>
-      <div class="node-label" style="color:#606060;font-size:11px">PiKVM</div>
-      <div class="node-sublabel" style="color:#404040">Dormant</div>
-    </div>
-
-    <div class="realm-node" style="left:2318px;top:915px;opacity:0.4" data-tip="ts-nitro">
-      <div class="node-icon" style="background:#111;width:44px;height:44px;font-size:18px;border-color:rgba(100,100,100,0.3);box-shadow:none">
-        &#128167;
-      </div>
-      <div class="node-label" style="color:#606060;font-size:11px">Nitro</div>
-      <div class="node-sublabel" style="color:#404040">Dormant</div>
-    </div>
-
-    <div class="realm-node" style="left:2468px;top:815px;opacity:0.4" data-tip="ts-7050">
-      <div class="node-icon" style="background:#111;width:44px;height:44px;font-size:18px;border-color:rgba(100,100,100,0.3);box-shadow:none">
-        &#9881;
-      </div>
-      <div class="node-label" style="color:#606060;font-size:11px">7050</div>
-      <div class="node-sublabel" style="color:#404040">Dormant</div>
-    </div>
-
-    <div class="realm-node" style="left:2518px;top:515px;opacity:0.4" data-tip="ts-gig">
-      <div class="node-icon" style="background:#111;width:44px;height:44px;font-size:18px;border-color:rgba(100,100,100,0.3);box-shadow:none">
-        &#128190;
-      </div>
-      <div class="node-label" style="color:#606060;font-size:11px">Gig</div>
-      <div class="node-sublabel" style="color:#404040">Dormant</div>
-    </div>
-
-    <div class="realm-node" style="left:2368px;top:1065px;opacity:0.4" data-tip="ts-android2">
-      <div class="node-icon" style="background:#111;width:44px;height:44px;font-size:18px;border-color:rgba(100,100,100,0.3);box-shadow:none">
-        &#128241;
-      </div>
-      <div class="node-label" style="color:#606060;font-size:11px">Herald II</div>
-      <div class="node-sublabel" style="color:#404040">Dormant</div>
-    </div>
+    <!-- All nodes rendered dynamically from topology.json by renderTopology() -->
 
   </div><!-- end map-world -->
 </div><!-- end map-canvas -->
@@ -1895,48 +1376,19 @@
 <div class="tooltip" id="tooltip"></div>
 
 <script>
-// ── Live tooltip data (updated by polling) ──
-const tips = {
-  katana: { title: "Katana \u2014 The Citadel", stats: [] },
-  gatekeeper: { title: "The Gatekeeper", stats: [] },
-  oracle: { title: "The Oracle Stone", stats: [] },
-  forge: { title: "The Great Forge (CPU)", stats: [] },
-  mana: { title: "The Mana Well (RAM)", stats: [] },
-  gpu: { title: "The Crystal Engine (GPU)", stats: [] },
-  essence: { title: "Life Essence (Battery)", stats: [] },
-  wan: { title: "The WAN Gate", stats: [] },
-  void: { title: "The Outer Darkness", stats: [["Nature","The untamed Internet"],["Access","Through the WAN Gate"]] },
-  // Infrastructure
-  gs308t: { title: "The Hub Stone", stats: [["Type","GS308T Managed Switch"],["IP","10.0.6.110"]] },
-  ha: { title: "The Homestead", stats: [["Type","Home Assistant VM"],["IP","10.0.6.108"]] },
-  nodered: { title: "The Automaton", stats: [["Type","Node-RED Automation"],["IP","10.0.6.118"]] },
-  goodwe: { title: "The Sunstone", stats: [["Type","GoodWe Solar Inverter"],["IP","10.0.6.244"]] },
-  // Guardian Towers
-  'mr8300-host': { title: "<REDACTED>", stats: [["Type","Linksys MR8300"],["IP","10.0.6.100"],["Role","WiFi AP"]] },
-  'onhub-office': { title: "The Scribe's Alcove", stats: [["Type","Google OnHub"],["IP","10.0.6.101"],["Role","Office AP"]] },
-  'onhub-closet': { title: "The Hidden Chamber", stats: [["Type","Google OnHub"],["IP","10.0.6.102"],["Role","Network Closet AP"]] },
-  'wndr4300sw-shed': { title: "The Woodshed Watch", stats: [["Type","WNDR4300"],["IP","10.0.6.109"],["Role","Shed AP"]] },
-  'onhub-pumphouse': { title: "The Pumphouse Keep", stats: [["Type","Google OnHub"],["IP","10.0.6.111"],["Role","Pumphouse AP"]] },
-  'wrt1900ac-family': { title: "The Great Hall", stats: [["Type","Linksys WRT1900AC"],["IP","10.0.6.114"],["Role","Family AP"]] },
-  'ea6350-cl': { title: "The Citadel Beacon", stats: [["Type","Linksys EA6350"],["IP","10.0.6.116"],["Role","Citadel AP"]] },
-  'eap225-outdoor': { title: "The Sentinel", stats: [["Type","TP-Link EAP225"],["IP","10.0.6.119"],["Role","Outdoor AP"]] },
-  'ea6350v3-family': { title: "The Inner Ward", stats: [["Type","Linksys EA6350v3"],["IP","10.0.6.135"],["Role","Family AP"]] },
-  'onhub-family': { title: "The Family Hearth", stats: [["Type","Google OnHub"],["IP","10.0.6.141"],["Role","Family Room AP"]] },
-  'onhub-bed': { title: "The Dreamer's Rest", stats: [["Type","Google OnHub"],["IP","10.0.6.246"],["Role","Bedroom AP"]] },
-  // Signal Bridges
-  'cpe710-ap': { title: "Sky Bridge Alpha", stats: [["Type","TP-Link CPE710 (AP)"],["IP","10.0.6.248"],["Role","Point-to-Point Bridge"]] },
-  'cpe710-client': { title: "Sky Bridge Omega", stats: [["Type","TP-Link CPE710 (Client)"],["IP","10.0.6.191"],["Role","Point-to-Point Bridge"]] },
-  gigabeam0: { title: "GigaBeam North", stats: [["Type","Mikrotik GigaBeam"],["IP","10.0.6.242"],["Role","60GHz Bridge"]] },
-  gigabeam1: { title: "GigaBeam South", stats: [["Type","Mikrotik GigaBeam"],["IP","10.0.6.243"],["Role","60GHz Bridge"]] },
-  // IoT Clusters
-  'nest-circle': { title: "The Nest Circle", stats: [["Devices","5 Nest Thermostats"],["VLAN","10.0.10.x"],["Protocol","WiFi / Nest API"]] },
-  'kasa-spirits': { title: "The Kasa Spirits", stats: [["Devices","TP-Link Kasa Smart Plugs, Switches, Bulbs"],["VLAN","10.0.10.x"],["Protocol","WiFi / Kasa API"]] },
-  watchers: { title: "The Watchers", stats: [["Devices","2 Hikvision Cameras"],["VLAN","10.0.10.x"],["Protocol","RTSP / ONVIF"]] },
-  'voice-stones': { title: "The Voice Stones", stats: [["Devices","Google Home / Nest Speakers"],["VLAN","10.0.10.x"],["Protocol","Cast / Assistant"]] },
-  'esp-swarm': { title: "The Sprite Swarm", stats: [["Devices","~20 ESP8266/ESP32"],["VLAN","10.0.10.x"],["Protocol","MQTT / ESPHome"]] },
-  'steam-works': { title: "The Steam Works", stats: [["Devices","LG Washer + Dryer"],["VLAN","10.0.10.x"],["Protocol","LG ThinQ / WiFi"]] },
-  'wandering-golems': { title: "The Wandering Golems", stats: [["Devices","2 iRobot Roombas"],["VLAN","10.0.10.x"],["Protocol","iRobot Cloud / WiFi"]] },
-};
+// ── Load topology synchronously so nodes exist before other JS runs ──
+const tips = {};
+let _topology = null;
+{
+  const xhr = new XMLHttpRequest();
+  xhr.open('GET', '/topology', false); // synchronous
+  xhr.send();
+  if (xhr.status === 200) {
+    const topo = JSON.parse(xhr.responseText);
+    // renderTopology is defined below but we call it after definition
+    window._pendingTopo = topo;
+  }
+}
 
 // ── Helper functions ──
 function scaleLabel(s) {
@@ -1968,28 +1420,126 @@ function fmtRate(bps) {
 }
 function scalePct(s) { return Math.max(0, Math.min(100, (s + 10) / 20 * 100)); }
 
-// ── Infrastructure node definitions ──
-const infraNodes = {
-  'mr8300-host': {name: "<REDACTED>", ip: '10.0.6.100'},
-  'onhub-office': {name: "The Scribe's Alcove", ip: '10.0.6.101'},
-  'onhub-closet': {name: "The Hidden Chamber", ip: '10.0.6.102'},
-  'wndr4300sw-shed': {name: "The Woodshed Watch", ip: '10.0.6.109'},
-  'onhub-pumphouse': {name: "The Pumphouse Keep", ip: '10.0.6.111'},
-  'wrt1900ac-family': {name: "The Great Hall", ip: '10.0.6.114'},
-  'ea6350-cl': {name: "The Citadel Beacon", ip: '10.0.6.116'},
-  'eap225-outdoor': {name: "The Sentinel", ip: '10.0.6.119'},
-  'ea6350v3-family': {name: "The Inner Ward", ip: '10.0.6.135'},
-  'onhub-family': {name: "The Family Hearth", ip: '10.0.6.141'},
-  'onhub-bed': {name: "The Dreamer's Rest", ip: '10.0.6.246'},
-  'ha': {name: 'The Homestead', ip: '10.0.6.108'},
-  'nodered': {name: 'The Automaton', ip: '10.0.6.118'},
-  'goodwe': {name: 'The Sunstone', ip: '10.0.6.244'},
-  'gs308t': {name: 'The Hub Stone', ip: '10.0.6.110'},
-  'cpe710-ap': {name: 'Sky Bridge Alpha', ip: '10.0.6.248'},
-  'cpe710-client': {name: 'Sky Bridge Omega', ip: '10.0.6.191'},
-  'gigabeam0': {name: 'GigaBeam North', ip: '10.0.6.242'},
-  'gigabeam1': {name: 'GigaBeam South', ip: '10.0.6.243'},
-};
+// ── Infrastructure node definitions (populated from topology.json) ──
+const infraNodes = {};
+
+// ── Topology renderer ──
+const TYPE_TO_CLASS = { tower: 'tower-node', cluster: 'cluster-node', bridge: 'bridge-node', infra: 'infra-node' };
+const CONN_TYPE_TO_CLASS = { active:'conn-active', wan:'conn-wan', ap:'conn-ap', infra:'conn-infra', vlan:'conn-vlan', bridge:'conn-bridge', mesh:'conn-mesh', offline:'conn-offline' };
+
+function renderTopology(topo) {
+  _topology = topo;
+  const world = document.getElementById('map-world');
+  const connSvg = document.querySelector('#connections');
+  const nodeMap = {};
+  topo.nodes.forEach(n => { nodeMap[n.id] = n; });
+
+  // Region labels
+  const rc = document.getElementById('region-labels');
+  (topo.regions || []).forEach(r => {
+    const el = document.createElement('div');
+    el.className = 'region-label';
+    let s = `left:${r.x}px;top:${r.y}px;`;
+    if (r.rotate) s += `transform:rotate(${r.rotate}deg);`;
+    if (r.fontSize) s += `font-size:${r.fontSize}px;`;
+    if (r.color) s += `color:${r.color};`;
+    if (r.spacing) s += `letter-spacing:${r.spacing}px;`;
+    el.setAttribute('style', s);
+    el.textContent = r.label;
+    rc.appendChild(el);
+  });
+
+  // Connection lines
+  topo.connections.forEach(c => {
+    const fn = nodeMap[c.from], tn = nodeMap[c.to];
+    if (!fn || !tn) return;
+    const fis = fn.iconStyle || {}, tis = tn.iconStyle || {};
+    const fW = parseInt(fis.width) || 64, fH = parseInt(fis.height) || 64;
+    const tW = parseInt(tis.width) || 64, tH = parseInt(tis.height) || 64;
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', fn.x + fW/2); line.setAttribute('y1', fn.y + fH/2);
+    line.setAttribute('x2', tn.x + tW/2); line.setAttribute('y2', tn.y + tH/2);
+    line.setAttribute('class', 'conn-line ' + (CONN_TYPE_TO_CLASS[c.type] || 'conn-active'));
+    if (c.collectd) line.dataset.to = c.collectd;
+    else line.dataset.to = c.to;
+    line.dataset.from = c.from;
+    connSvg.appendChild(line);
+  });
+
+  // Nodes
+  topo.nodes.forEach(n => {
+    const div = document.createElement('div');
+    const tc = TYPE_TO_CLASS[n.type] || '';
+    div.className = 'realm-node' + (tc ? ' ' + tc : '');
+    let ns = `left:${n.x}px;top:${n.y}px;`;
+    if (n.type === 'tailscale' && !n.online) ns += 'opacity:0.4;';
+    div.setAttribute('style', ns);
+    div.dataset.tip = n.id;
+
+    const icon = document.createElement('div');
+    icon.className = 'node-icon';
+    const is = n.iconStyle || {};
+    if (n.type === 'tailscale' && !n.online) {
+      icon.setAttribute('style', 'background:#111;width:44px;height:44px;font-size:18px;border-color:rgba(100,100,100,0.3);box-shadow:none');
+    } else {
+      let ic = '';
+      for (const [k,v] of Object.entries(is)) ic += `${k.replace(/[A-Z]/g, m => '-'+m.toLowerCase())}:${v};`;
+      icon.setAttribute('style', ic);
+    }
+    if (n.pulse && !(n.type === 'tailscale' && !n.online)) {
+      const p = document.createElement('div');
+      p.className = 'pulse-ring';
+      if (n.pulseStyle?.borderColor) p.style.borderColor = n.pulseStyle.borderColor;
+      if (n.type === 'tailscale' && is.width) {
+        const sz = parseInt(is.width);
+        p.style.cssText = `width:${sz}px;height:${sz}px;margin:-${sz/2}px 0 0 -${sz/2}px`;
+      }
+      icon.appendChild(p);
+    }
+    if (n.badge) {
+      const b = document.createElement('span');
+      b.className = 'cluster-badge';
+      b.textContent = n.badge;
+      icon.appendChild(b);
+    }
+    icon.insertAdjacentHTML('beforeend', n.icon);
+    div.appendChild(icon);
+
+    const lbl = document.createElement('div');
+    lbl.className = 'node-label';
+    if (n.type === 'tailscale' && !n.online) lbl.setAttribute('style', 'color:#606060;font-size:11px');
+    else if (n.labelStyle) {
+      let ls = '';
+      for (const [k,v] of Object.entries(n.labelStyle)) ls += `${k.replace(/[A-Z]/g, m => '-'+m.toLowerCase())}:${v};`;
+      lbl.setAttribute('style', ls);
+    }
+    lbl.textContent = n.label;
+    div.appendChild(lbl);
+
+    const sub = document.createElement('div');
+    sub.className = 'node-sublabel';
+    if (n.type === 'tailscale' && !n.online) sub.setAttribute('style', 'color:#404040');
+    sub.innerHTML = n.sublabel;
+    div.appendChild(sub);
+
+    if (n.scaleBar) {
+      const bar = document.createElement('div'); bar.className = 'scale-bar';
+      const fill = document.createElement('div'); fill.className = 'scale-fill';
+      let fs = `width:${n.scaleBar.width};`;
+      if (n.scaleBar.gradient) fs += `background:${n.scaleBar.gradient};`;
+      else if (n.scaleBar.color) fs += `background:${n.scaleBar.color};`;
+      fill.setAttribute('style', fs);
+      bar.appendChild(fill); div.appendChild(bar);
+    }
+    world.appendChild(div);
+
+    if (n.tip) tips[n.id] = { title: n.tip.title, stats: [...(n.tip.stats || [])] };
+    if (n.ip) infraNodes[n.id] = { name: n.label, ip: n.ip };
+  });
+}
+
+// ── Render topology (must happen before updateUI / tooltips / dragging) ──
+if (window._pendingTopo) { renderTopology(window._pendingTopo); delete window._pendingTopo; }
 
 // ── Update the UI from live data ──
 let lastStatus = null;
