@@ -52,18 +52,69 @@
 
 <div id="legend">
   <h3>Map Legend</h3>
-  <div class="legend-item"><div class="legend-swatch" style="background:rgba(100,180,255,0.6)"></div>LAN Link</div>
-  <div class="legend-item"><div class="legend-swatch" style="background:rgba(255,180,50,0.6)"></div>WAN Gate</div>
-  <div class="legend-item"><div class="legend-swatch" style="background:rgba(120,220,120,0.4)"></div>Tailscale Mesh</div>
-  <div class="legend-item"><div class="legend-swatch" style="background:rgba(100,180,255,0.35)"></div>AP Tower Link</div>
-  <div class="legend-item"><div class="legend-swatch" style="background:rgba(255,160,60,0.5);border-top:1px dashed rgba(255,160,60,0.5)"></div>VLAN Boundary</div>
-  <div class="legend-item"><div class="legend-swatch" style="background:rgba(160,100,220,0.5);border-top:2px dashed rgba(160,100,220,0.5)"></div>Signal Bridge</div>
-  <div class="legend-item"><div class="legend-swatch" style="background:rgba(100,100,100,0.3)"></div>Offline Link</div>
-  <div class="traffic-control">
-    <label>Traffic Scale <span class="tc-val" id="traffic-scale-val">1.0x</span></label>
-    <input type="range" class="traffic-slider" id="traffic-scale-slider" min="0.1" max="3" step="0.1" value="1">
-    <div style="display:flex;justify-content:space-between;font-size:9px;color:#706050;margin-top:2px">
-      <span>Subtle</span><span>Normal</span><span>Dramatic</span>
+  <div class="legend-section" data-section="lines">
+    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Ley Lines</div>
+    <div class="legend-section-body">
+      <div class="legend-item"><div class="legend-swatch" style="background:rgba(100,180,255,0.6)"></div>Arcane Link (LAN)</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:rgba(255,180,50,0.6)"></div>WAN Gate</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:rgba(100,180,255,0.35)"></div>Tower Tether (AP)</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:rgba(96,160,192,0.5)"></div>Infrastructure</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:rgba(255,160,60,0.5);border-top:1px dashed rgba(255,160,60,0.5)"></div>VLAN Boundary</div>
+      <div class="legend-item"><div class="legend-swatch legend-bridge-swatch"></div>Aether Bridge (WiFi)</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:rgba(120,220,120,0.4)"></div>Astral Mesh (Tailscale)</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:rgba(100,100,100,0.3)"></div>Dormant Link</div>
+    </div>
+  </div>
+  <div class="legend-section" data-section="nodes">
+    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Nodes</div>
+    <div class="legend-section-body">
+      <div class="legend-item"><span style="font-size:14px;width:24px;text-align:center;margin-right:4px">&#9876;</span>Core Citadel</div>
+      <div class="legend-item"><span style="font-size:14px;width:24px;text-align:center;margin-right:4px">&#127984;</span>Guardian Tower (AP)</div>
+      <div class="legend-item"><span style="font-size:14px;width:24px;text-align:center;margin-right:4px">&#128225;</span>Signal Bridge</div>
+      <div class="legend-item"><span style="font-size:14px;width:24px;text-align:center;margin-right:4px">&#9881;</span>Infrastructure</div>
+      <div class="legend-item"><span style="font-size:14px;width:24px;text-align:center;margin-right:4px">&#128161;</span>Enchanted (IoT)</div>
+      <div class="legend-item"><span style="font-size:14px;width:24px;text-align:center;margin-right:4px">&#127757;</span>Astral Peer (TS)</div>
+    </div>
+  </div>
+  <div class="legend-section" data-section="effects">
+    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Effects</div>
+    <div class="legend-section-body">
+      <div class="legend-item"><span class="legend-collectd-frame">&#9670;</span>Collectd Scrying</div>
+      <div class="legend-item"><span style="font-size:10px;width:24px;text-align:center;margin-right:4px;color:#60c060">&#9679;</span>Pulse = Online</div>
+      <div class="legend-item"><span style="font-size:10px;width:24px;text-align:center;margin-right:4px;color:#f09040">&#10022;</span>Traffic Glow</div>
+    </div>
+  </div>
+  <div class="legend-section" data-section="controls">
+    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Controls</div>
+    <div class="legend-section-body">
+      <div class="traffic-control">
+        <label>Traffic Scale <span class="tc-val" id="traffic-scale-val">1.0x</span></label>
+        <input type="range" class="traffic-slider" id="traffic-scale-slider" min="0.1" max="3" step="0.1" value="1">
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:#706050;margin-top:2px">
+          <span>Subtle</span><span>Normal</span><span>Dramatic</span>
+        </div>
+      </div>
+      <div class="traffic-control">
+        <label>Node Scale <span class="tc-val" id="node-scale-val">1.0x</span></label>
+        <input type="range" class="traffic-slider" id="node-scale-slider" min="0.5" max="2" step="0.1" value="1">
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:#706050;margin-top:2px">
+          <span>Tiny</span><span>Normal</span><span>Grand</span>
+        </div>
+      </div>
+      <div class="traffic-control">
+        <label>Text Scale <span class="tc-val" id="text-scale-val">1.0x</span></label>
+        <input type="range" class="traffic-slider" id="text-scale-slider" min="0.5" max="2" step="0.1" value="1">
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:#706050;margin-top:2px">
+          <span>Whisper</span><span>Normal</span><span>Booming</span>
+        </div>
+      </div>
+      <div class="traffic-control">
+        <label>Update Speed <span class="tc-val" id="update-speed-val">5s</span></label>
+        <input type="range" class="traffic-slider" id="update-speed-slider" min="1" max="30" step="1" value="5">
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:#706050;margin-top:2px">
+          <span>Frenzy</span><span>Calm</span><span>Slumber</span>
+        </div>
+      </div>
     </div>
   </div>
 </div>

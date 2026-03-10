@@ -235,6 +235,7 @@ function renderTopology(topo) {
     if (r.color) s += `color:${r.color};`;
     if (r.spacing) s += `letter-spacing:${r.spacing}px;`;
     el.setAttribute('style', s);
+    el.dataset.rotate = r.rotate || 0;
     el.textContent = r.label;
     rc.appendChild(el);
   });
@@ -597,6 +598,50 @@ trafficSlider.addEventListener('input', () => {
   if (lastStatus && lastStatus.collectd) updateConnectionTraffic(lastStatus.collectd);
 });
 
+// ── Node scale slider ──
+let nodeScale = 1.0;
+const nodeScaleSlider = document.getElementById('node-scale-slider');
+const nodeScaleVal = document.getElementById('node-scale-val');
+nodeScaleSlider.addEventListener('input', () => {
+  nodeScale = parseFloat(nodeScaleSlider.value);
+  nodeScaleVal.textContent = nodeScale.toFixed(1) + 'x';
+  document.querySelectorAll('.realm-node').forEach(node => {
+    node.style.transform = `scale(${nodeScale})`;
+  });
+  updateLinePositions();
+});
+
+// ── Text scale slider ──
+let textScale = 1.0;
+const textScaleSlider = document.getElementById('text-scale-slider');
+const textScaleVal = document.getElementById('text-scale-val');
+textScaleSlider.addEventListener('input', () => {
+  textScale = parseFloat(textScaleSlider.value);
+  textScaleVal.textContent = textScale.toFixed(1) + 'x';
+  document.documentElement.style.setProperty('--text-scale', textScale);
+  document.querySelectorAll('.node-label').forEach(el => {
+    el.style.transform = `scale(${textScale})`;
+  });
+  document.querySelectorAll('.node-sublabel').forEach(el => {
+    el.style.transform = `scale(${textScale})`;
+  });
+  document.querySelectorAll('.vlan-label').forEach(el => {
+    el.style.transform = `translate(-50%, -100%) scale(${textScale})`;
+  });
+  document.querySelectorAll('.region-label').forEach(el => {
+    el.style.transform = `rotate(${el.dataset.rotate || 0}deg) scale(${textScale})`;
+  });
+});
+
+// ── Update speed slider ──
+let updateSpeedMs = 5000;
+const updateSpeedSlider = document.getElementById('update-speed-slider');
+const updateSpeedVal = document.getElementById('update-speed-val');
+updateSpeedSlider.addEventListener('input', () => {
+  updateSpeedMs = parseInt(updateSpeedSlider.value) * 1000;
+  updateSpeedVal.textContent = updateSpeedSlider.value + 's';
+});
+
 // ── Connection traffic animation ──
 // Color bases for each connection type (r,g,b)
 const connColors = {
@@ -770,12 +815,18 @@ async function pollEvents() {
 }
 pollEvents();
 
+const _pageLoadTs = Date.now() / 1000;
+
 function renderEvent(evt) {
   lastEventTs = Math.max(lastEventTs, evt.ts || 0);
   const nodeEl = document.querySelector(`[data-tip="${evt.node}"]`);
 
   // Always log to quest log
   addLogEntry(evt, nodeEl);
+
+  // Skip visual effects for stale server events (older than 30s before page load)
+  const evtAge = _pageLoadTs - (evt.ts || 0);
+  if (evtAge > 30 && !evt._local) { return; }
 
   if (!nodeEl) return;
 
@@ -786,6 +837,9 @@ function renderEvent(evt) {
   } else if (evt.type === 'alert') {
     showSpeechBubble(nodeEl, evt, true);
     showHighlight(nodeEl, { color: 'rgba(255,80,60,0.6)' });
+  } else if (evt.type === 'quest') {
+    showSpeechBubble(nodeEl, evt);
+    showHighlight(nodeEl, { color: 'rgba(192,144,255,0.5)' });
   }
 }
 
@@ -832,6 +886,13 @@ function addLogEntry(evt, nodeEl) {
   if (!_logBody) return;
   const body = _logBody, counter = _logCounter;
 
+  // Prevent duplicate quest entries
+  if (evt.type === 'quest' && evt.text) {
+    for (const existing of body.children) {
+      if (existing.classList.contains('log-quest') && existing.querySelector('.log-text')?.textContent?.includes(evt.text)) return;
+    }
+  }
+
   const name = nodeEl ? (nodeEl.querySelector('.node-label')?.textContent || evt.node) : (evt.node || 'System');
   const time = new Date((evt.ts || Date.now() / 1000) * 1000);
   const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -841,7 +902,9 @@ function addLogEntry(evt, nodeEl) {
   entry.className = `log-entry log-${logType} log-entry-new`;
 
   let textContent = '';
-  if (evt.text) {
+  if (logType === 'quest' && evt.text) {
+    textContent = `<div class="log-text quest-text"><span class="quest-check" title="Click to complete">&#9744;</span> ${evt.text}</div>`;
+  } else if (evt.text) {
     const prefix = logType === 'speech' ? '\u201C' : '';
     const suffix = logType === 'speech' ? '\u201D' : '';
     textContent = `<div class="log-text">${prefix}${evt.text}${suffix}</div>`;
@@ -849,7 +912,27 @@ function addLogEntry(evt, nodeEl) {
     textContent = `<div class="log-text" style="font-style:italic;color:#708060">A pulse of energy ripples outward.</div>`;
   }
 
-  entry.innerHTML = `<div class="log-time">${timeStr}</div><div class="log-speaker">${name}</div>${textContent}`;
+  entry.innerHTML = `<button class="log-dismiss" title="Dismiss">\u2715</button><div class="log-time">${timeStr}</div><div class="log-speaker">${name}</div>${textContent}`;
+
+  // Dismiss button
+  entry.querySelector('.log-dismiss').addEventListener('click', () => {
+    entry.classList.add('log-entry-dismiss');
+    entry.addEventListener('animationend', () => {
+      entry.remove();
+      logCount = Math.max(0, logCount - 1);
+      _logCounter.textContent = `${logCount} entries`;
+    });
+  });
+
+  // Quest checkbox toggle
+  const check = entry.querySelector('.quest-check');
+  if (check) {
+    check.addEventListener('click', () => {
+      const done = check.textContent === '\u2611';
+      check.textContent = done ? '\u2610' : '\u2611';
+      entry.classList.toggle('quest-done', !done);
+    });
+  }
 
   // Tab filter
   if (activeTab !== 'all' && !entry.classList.contains('log-' + activeTab)) {
@@ -866,12 +949,21 @@ function addLogEntry(evt, nodeEl) {
   counter.textContent = `${Math.min(logCount, MAX_LOG)} entries`;
 }
 
-// Initial quest entries
+// Initial quest entries — rendered as full events (log + speech bubble + highlight)
+const _initialQuests = [
+  { type: 'quest', node: 'katana', text: 'Chart every node in the Digital Dominion \u2014 ensure all devices report their presence to the Citadel' },
+  { type: 'quest', node: 'hp-switch', text: 'Awaken all Guardian Towers \u2014 bring collectd scrying to every AP in the realm' },
+  { type: 'quest', node: 'gatekeeper', text: 'Unite the Enchanted Quarters \u2014 connect all IoT clusters through proper VLAN gateways' },
+  { type: 'quest', node: 'ts-iperf', text: 'Open Tailscale ACL \u2014 allow UDP 25826 from iperf and terra to katana for collectd scrying data' },
+  { type: 'quest', node: 'ts-openclaw', text: 'Install collectd on OpenClaw and open UDP 25826 in Tailscale ACL' },
+  { type: 'quest', node: 'gs308t', text: 'Map the Hub Stone \u2014 monitor all 8 switch ports and track inter-bridge traffic' },
+  { type: 'quest', node: 'hp-switch', text: 'Bridge the realms \u2014 verify GigaBeam and CPE710 links carry full VLAN trunks' },
+];
 setTimeout(() => {
-  addLogEntry({ type: 'quest', node: 'katana', text: 'Map the entire Digital Dominion', ts: Date.now()/1000 });
-  addLogEntry({ type: 'quest', node: 'katana', text: 'Awaken all Guardian Towers', ts: Date.now()/1000 });
-  addLogEntry({ type: 'quest', node: 'katana', text: 'Unite the Enchanted Quarters', ts: Date.now()/1000 });
   addLogEntry({ type: 'system', node: 'katana', text: 'The Realm Map has been inscribed.', ts: Date.now()/1000 });
+  _initialQuests.forEach((q, i) => {
+    setTimeout(() => renderEvent({ ...q, ts: Date.now()/1000, duration: 30, _local: true }), i * 800);
+  });
 }, 500);
 
 // Track active speech bubbles for repositioning during drag
@@ -979,7 +1071,7 @@ function showOffline() {
 
 // ── Polling ──
 const STATUS_URL = '/status';
-const POLL_MS = 3000;
+let POLL_MS = 5000;
 
 async function poll() {
   try {
@@ -991,7 +1083,7 @@ async function poll() {
   } catch (e) {
     showOffline();
   }
-  setTimeout(poll, POLL_MS);
+  setTimeout(poll, updateSpeedMs);
 }
 poll();
 
@@ -1354,6 +1446,16 @@ function setupPanelMinimize(panelId, handleSelector) {
 // Wire up all panels
 setupPanelMinimize('realm-panel', 'h3');
 setupPanelMinimize('legend', 'h3');
+
+// Legend collapsible sections
+document.querySelectorAll('.legend-section-header').forEach(header => {
+  header.addEventListener('click', () => {
+    header.parentElement.classList.toggle('collapsed');
+  });
+});
+// Start with Nodes and Effects collapsed, Lines and Controls open
+document.querySelector('.legend-section[data-section="nodes"]')?.classList.add('collapsed');
+document.querySelector('.legend-section[data-section="effects"]')?.classList.add('collapsed');
 setupPanelMinimize('quest-log', '#quest-log-header');
 setupPanelMinimize('realm-codex', '#codex-header');
 setupPanelMinimize('minimap', null);

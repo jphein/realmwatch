@@ -170,9 +170,9 @@ async def handle_list_tools() -> list[types.Tool]:
             name="map_event",
             description=(
                 "Push a visual event to the live realm map at localhost:8777. "
-                "Events appear as speech bubbles, highlights, or alerts on map nodes. "
+                "Events appear as speech bubbles, highlights, alerts, or quests on map nodes. "
                 "Types: 'speech' (node says something), 'highlight' (pulse a node), "
-                "'alert' (warning flash on a node). "
+                "'alert' (warning flash on a node), 'quest' (task/objective in the Quests tab). "
                 "Use this to make the map come alive — have nodes react, chat, and report."
             ),
             inputSchema={
@@ -180,16 +180,16 @@ async def handle_list_tools() -> list[types.Tool]:
                 "properties": {
                     "type": {
                         "type": "string",
-                        "enum": ["speech", "highlight", "alert"],
-                        "description": "Event type: speech (chat bubble), highlight (glow pulse), alert (warning).",
+                        "enum": ["speech", "highlight", "alert", "quest"],
+                        "description": "Event type: speech (chat bubble), highlight (glow pulse), alert (warning), quest (task in Quests tab).",
                     },
                     "node": {
                         "type": "string",
-                        "description": "Target node key: katana, gatekeeper, oracle, forge, mana, gpu, essence, wan, or any ts-* peer.",
+                        "description": "Target node key from topology.json (e.g. katana, gatekeeper, oracle, gs308t, hp-switch, game, ha, ts-terra, ts-iperf, or any node id).",
                     },
                     "text": {
                         "type": "string",
-                        "description": "For speech events: the text the node says. For alerts: the warning message.",
+                        "description": "For speech events: the text the node says. For alerts: the warning message. For quests: the objective text.",
                     },
                     "color": {
                         "type": "string",
@@ -197,7 +197,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     },
                     "duration": {
                         "type": "number",
-                        "description": "How long the event shows in seconds (default: 5 for speech, 2 for highlight/alert).",
+                        "description": "How long the event shows in seconds (default: 15 for speech/quest, 3 for highlight/alert).",
                     },
                 },
                 "required": ["type", "node"],
@@ -669,7 +669,7 @@ async def handle_call_tool(
             "node": args.get("node", "katana"),
             "text": args.get("text", ""),
             "color": args.get("color", ""),
-            "duration": args.get("duration", 15 if args.get("type") == "speech" else 3),
+            "duration": args.get("duration", 15 if args.get("type") in ("speech", "quest") else 3),
         }
         ok = _post_map_event(event)
         if ok:

@@ -1181,6 +1181,7 @@
     {
       "id": "ts-terra",
       "type": "tailscale",
+      "collectd": "terra",
       "x": 1968,
       "y": 715,
       "online": true,
@@ -1211,6 +1212,7 @@
     {
       "id": "ts-iperf",
       "type": "tailscale",
+      "collectd": "iperf",
       "x": 2218,
       "y": 365,
       "online": true,
