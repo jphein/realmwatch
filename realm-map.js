@@ -1130,6 +1130,7 @@ function setupPanelMinimize(panelId, handleSelector) {
   minIcon.addEventListener('click', e => {
     e.stopPropagation();
     if (!panel.classList.contains('panel-minimized')) return;
+    if (minIcon._wasDragged) { minIcon._wasDragged = false; return; }
     panel.classList.remove('panel-minimized');
     panel.style.animation = '';
     // Spawn motes on restore
@@ -1140,6 +1141,38 @@ function setupPanelMinimize(panelId, handleSelector) {
         cfg.rgb);
     }
   });
+
+  // Make minimized icon draggable (drags the whole panel)
+  let _minDx = 0, _minDy = 0, _minDragging = false, _minMoved = false;
+  function minStartDrag(cx, cy) {
+    _minDragging = true; _minMoved = false;
+    const rect = panel.getBoundingClientRect();
+    _minDx = cx - rect.left; _minDy = cy - rect.top;
+    minIcon.style.cursor = 'grabbing';
+  }
+  function minMoveDrag(cx, cy) {
+    if (!_minDragging) return;
+    _minMoved = true;
+    panel.style.left = (cx - _minDx) + 'px';
+    panel.style.top = (cy - _minDy) + 'px';
+    panel.style.right = 'auto';
+    panel.style.bottom = 'auto';
+    panel.style.transform = 'none';
+    if (Math.random() < 0.4) spawnMote(cx + (Math.random()-0.5)*20, cy + (Math.random()-0.5)*20, cfg.rgb);
+  }
+  function minEndDrag() {
+    if (_minDragging) {
+      _minDragging = false;
+      minIcon.style.cursor = 'pointer';
+      if (_minMoved) { minIcon._wasDragged = true; scheduleSave(); }
+    }
+  }
+  minIcon.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); minStartDrag(e.clientX, e.clientY); });
+  window.addEventListener('mousemove', e => minMoveDrag(e.clientX, e.clientY));
+  window.addEventListener('mouseup', minEndDrag);
+  minIcon.addEventListener('touchstart', e => { if (e.touches.length !== 1) return; e.preventDefault(); e.stopPropagation(); minStartDrag(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+  window.addEventListener('touchmove', e => { if (_minDragging && e.touches.length) minMoveDrag(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+  window.addEventListener('touchend', minEndDrag, { passive: true });
 }
 
 // Wire up all panels

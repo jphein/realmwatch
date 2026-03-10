@@ -295,6 +295,73 @@ async def handle_list_tools() -> list[types.Tool]:
                 },
             },
         ),
+        # ── Map data tools ──
+        types.Tool(
+            name="get_topology",
+            description=(
+                "Return the full realm topology: nodes, connections, regions, "
+                "and connection styles from topology.json. Use this to inspect "
+                "or understand the map layout."
+            ),
+            inputSchema={"type": "object", "properties": {}},
+        ),
+        types.Tool(
+            name="get_map_events",
+            description=(
+                "Fetch recent events from the live map server. "
+                "Returns speech bubbles, highlights, and alerts. "
+                "Optionally pass 'since' as a Unix timestamp to get only new events."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "since": {
+                        "type": "number",
+                        "description": "Unix timestamp — only return events after this time (default: 0 = all).",
+                    },
+                },
+            },
+        ),
+        types.Tool(
+            name="get_collectd_data",
+            description=(
+                "Get collectd RRD summaries for all monitored hosts. "
+                "Returns load, memory, uptime, interfaces, thermal, conntrack, "
+                "ping, disk, and other metrics per host."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "hostname": {
+                        "type": "string",
+                        "description": "Optional — get data for a single host instead of all.",
+                    },
+                },
+            },
+        ),
+        types.Tool(
+            name="configure_topology_node",
+            description=(
+                "Add or update a node in topology.json. Pass any fields to set: "
+                "id, type, x, y, icon, label, sublabel, ip, iconStyle, pulse, tip, etc. "
+                "Changes are saved to disk and take effect on map reload."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string", "description": "Node ID (required for add/update)."},
+                    "type": {"type": "string", "description": "Node type: core, tower, bridge, infra, cluster, tailscale."},
+                    "x": {"type": "number", "description": "X position on the map."},
+                    "y": {"type": "number", "description": "Y position on the map."},
+                    "icon": {"type": "string", "description": "HTML entity for the node icon."},
+                    "label": {"type": "string", "description": "Display label."},
+                    "sublabel": {"type": "string", "description": "Subtitle text."},
+                    "ip": {"type": "string", "description": "IP address."},
+                    "pulse": {"type": "boolean", "description": "Show pulse animation."},
+                },
+                "required": ["id"],
+            },
+        ),
         # ── Service management tools ──
         types.Tool(
             name="manage_map_server",
@@ -708,6 +775,64 @@ async def handle_call_tool(
             f"You can batch the multi_speak calls into a single multi_speak with segments."
         )
         return [types.TextContent(type="text", text=result)]
+
+    elif name == "get_topology":
+        topo_path = os.path.join(PROJECT_DIR, "topology.json")
+        try:
+            with open(topo_path) as f:
+                topo = json.load(f)
+            return [types.TextContent(type="text", text=json.dumps(topo, indent=2))]
+        except (OSError, json.JSONDecodeError) as e:
+            return [types.TextContent(type="text", text=f"Error reading topology: {e}")]
+
+    elif name == "get_map_events":
+        since = (arguments or {}).get("since", 0)
+        try:
+            resp = urllib.request.urlopen(f"{MAP_URL}/events?since={since}", timeout=3)
+            events = json.loads(resp.read().decode())
+            return [types.TextContent(type="text", text=json.dumps(events, indent=2))]
+        except Exception as e:
+            return [types.TextContent(type="text", text=f"Error fetching events (is map_server running?): {e}")]
+
+    elif name == "get_collectd_data":
+        from collectd_reader import get_host_summary, get_all_summaries
+        hostname = (arguments or {}).get("hostname")
+        if hostname:
+            summary = get_host_summary(hostname)
+            if summary:
+                return [types.TextContent(type="text", text=json.dumps(summary, indent=2))]
+            return [types.TextContent(type="text", text=f"No collectd data for host: {hostname}")]
+        data = get_all_summaries()
+        return [types.TextContent(type="text", text=json.dumps(data, indent=2))]
+
+    elif name == "configure_topology_node":
+        args = arguments or {}
+        node_id = args.get("id", "").strip()
+        if not node_id:
+            return [types.TextContent(type="text", text="Error: 'id' is required.")]
+        topo_path = os.path.join(PROJECT_DIR, "topology.json")
+        try:
+            with open(topo_path) as f:
+                topo = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            topo = {"nodes": [], "connections": [], "regions": []}
+        # Find existing node or create new
+        existing = None
+        for node in topo.get("nodes", []):
+            if node.get("id") == node_id:
+                existing = node
+                break
+        if existing is None:
+            existing = {"id": node_id}
+            topo.setdefault("nodes", []).append(existing)
+        # Update fields
+        for field in ("type", "x", "y", "icon", "label", "sublabel", "ip", "pulse",
+                       "iconStyle", "labelStyle", "scaleBar", "badge", "tip", "collectd", "online"):
+            if field in args:
+                existing[field] = args[field]
+        with open(topo_path, "w") as f:
+            json.dump(topo, f, indent=2)
+        return [types.TextContent(type="text", text=f"Node '{node_id}' saved to topology.json: {json.dumps(existing, indent=2)}")]
 
     elif name == "manage_map_server":
         action = (arguments or {}).get("action", "status")
