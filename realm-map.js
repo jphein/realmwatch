@@ -308,7 +308,7 @@ function renderTopology(topo) {
     world.appendChild(div);
 
     if (n.tip) tips[n.id] = { title: n.tip.title, stats: [...(n.tip.stats || [])] };
-    if (n.ip) infraNodes[n.id] = { name: n.label, ip: n.ip, collectdHost: n.collectd || null };
+    if (n.ip || n.ssh) infraNodes[n.id] = { name: n.label, ip: n.ip || '', collectdHost: n.collectd || null, sshHost: n.ssh || null };
   });
 
   // Connection paths (routed curves — computed after nodes exist in DOM)
@@ -1429,6 +1429,7 @@ document.querySelectorAll('.pe-tab').forEach(tab => {
     document.getElementById('pe-pane-' + target).style.display = '';
     if (target === 'stats') startStatsRefresh();
     else stopStatsRefresh();
+    if (target === 'shell') { renderShellPane(currentEditNode); _shellInput.focus(); }
   });
 });
 
@@ -1438,6 +1439,7 @@ function _switchToTab(name) {
   document.getElementById('pe-pane-' + name).style.display = '';
   if (name === 'stats') startStatsRefresh();
   else stopStatsRefresh();
+  if (name === 'shell') renderShellPane(currentEditNode);
 }
 
 function startStatsRefresh() {
@@ -1559,6 +1561,102 @@ function renderStatsPane(nodeKey) {
 
   body.innerHTML = html;
 }
+
+// ── Shell Tab ──
+const _shellHistory = {};
+const _shellOutput = document.getElementById('pe-shell-output');
+const _shellInput = document.getElementById('pe-shell-input');
+
+function renderShellPane(nodeKey) {
+  const info = infraNodes[nodeKey];
+  _shellOutput.innerHTML = '';
+  if (!info || !info.sshHost) {
+    _shellOutput.innerHTML = '<div class="pe-shell-info">No SSH sigil bound to this node.</div>';
+    _shellInput.disabled = true;
+    _shellInput.placeholder = 'unavailable';
+    return;
+  }
+  _shellInput.disabled = false;
+  _shellInput.placeholder = `runs on ${info.sshHost}...`;
+  // Restore history
+  (_shellHistory[nodeKey] || []).forEach(e => _appendShellEntry(e));
+  _shellOutput.scrollTop = _shellOutput.scrollHeight;
+}
+
+function _appendShellEntry(entry) {
+  const cmd = document.createElement('div');
+  cmd.className = 'pe-shell-cmd';
+  cmd.textContent = '$ ' + entry.cmd;
+  _shellOutput.appendChild(cmd);
+  if (entry.output) {
+    const out = document.createElement('div');
+    out.textContent = entry.output;
+    _shellOutput.appendChild(out);
+  }
+  if (entry.error) {
+    const err = document.createElement('div');
+    err.className = 'pe-shell-err';
+    err.textContent = entry.error;
+    _shellOutput.appendChild(err);
+  }
+}
+
+async function _runShellCmd(nodeKey, command) {
+  const info = infraNodes[nodeKey];
+  if (!info?.sshHost) return;
+  // Show command
+  const cmd = document.createElement('div');
+  cmd.className = 'pe-shell-cmd';
+  cmd.textContent = '$ ' + command;
+  _shellOutput.appendChild(cmd);
+  const spin = document.createElement('div');
+  spin.className = 'pe-shell-running';
+  spin.textContent = 'Invoking distant arcana...';
+  _shellOutput.appendChild(spin);
+  _shellOutput.scrollTop = _shellOutput.scrollHeight;
+  _shellInput.disabled = true;
+
+  try {
+    const r = await fetch('/ssh', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ host: info.sshHost, command })
+    });
+    const d = await r.json();
+    spin.remove();
+    const entry = { cmd: command, output: d.output || '', error: d.error || null };
+    if (entry.output) {
+      const out = document.createElement('div');
+      out.textContent = entry.output;
+      _shellOutput.appendChild(out);
+    }
+    if (entry.error) {
+      const err = document.createElement('div');
+      err.className = 'pe-shell-err';
+      err.textContent = entry.error;
+      _shellOutput.appendChild(err);
+    }
+    (_shellHistory[nodeKey] ||= []).push(entry);
+  } catch (e) {
+    spin.remove();
+    const err = document.createElement('div');
+    err.className = 'pe-shell-err';
+    err.textContent = 'Connection lost to the realm.';
+    _shellOutput.appendChild(err);
+  }
+  _shellInput.disabled = false;
+  _shellInput.focus();
+  _shellOutput.scrollTop = _shellOutput.scrollHeight;
+}
+
+_shellInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.value.trim() && currentEditNode) {
+    e.preventDefault();
+    const cmd = e.target.value.trim();
+    e.target.value = '';
+    _runShellCmd(currentEditNode, cmd);
+  }
+});
 
 // Double-click a node to open persona editor
 document.querySelectorAll('.realm-node').forEach(node => {

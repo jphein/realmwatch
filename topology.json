@@ -84,6 +84,7 @@
     {
       "id": "gatekeeper",
       "type": "core",
+      "ssh": "dhcp",
       "ip": "10.0.6.1",
       "x": 588,
       "y": 765,
@@ -248,6 +249,7 @@
       "id": "gs308t",
       "type": "infra",
       "collectd": "gs308t",
+      "ssh": "gw",
       "x": 850,
       "y": 500,
       "icon": "&#11043;",
@@ -318,6 +320,7 @@
       "sublabel": "MR8300 \u2022 10.0.6.100",
       "ip": "10.0.6.100",
       "collectd": "mr8300-host",
+      "ssh": "glenn",
       "iconStyle": {
         "background": "radial-gradient(circle,#2a1f10,#1a1408)"
       },
@@ -382,6 +385,7 @@
       "sublabel": "Closet AP \u2022 10.0.6.102",
       "ip": "10.0.6.102",
       "collectd": "onhub-closet",
+      "ssh": "cl",
       "iconStyle": {
         "background": "radial-gradient(circle,#2a1f10,#1a1408)"
       },
@@ -414,6 +418,7 @@
       "sublabel": "Shed AP \u2022 10.0.6.109",
       "ip": "10.0.6.109",
       "collectd": "wndr4300sw-shed",
+      "ssh": "willow",
       "iconStyle": {
         "background": "radial-gradient(circle,#2a1f10,#1a1408)"
       },
@@ -478,6 +483,7 @@
       "sublabel": "WRT1900AC \u2022 10.0.6.114",
       "ip": "10.0.6.114",
       "collectd": "wrt1900ac-family",
+      "ssh": "julia",
       "iconStyle": {
         "background": "radial-gradient(circle,#2a1f10,#1a1408)"
       },
@@ -510,6 +516,7 @@
       "sublabel": "EA6350 \u2022 10.0.6.116",
       "ip": "10.0.6.116",
       "collectd": "EA6350-CL",
+      "ssh": "cl",
       "iconStyle": {
         "background": "radial-gradient(circle,#2a1f10,#1a1408)"
       },
@@ -542,6 +549,7 @@
       "sublabel": "Outdoor AP \u2022 10.0.6.119",
       "ip": "10.0.6.119",
       "collectd": "eap225-outdoor",
+      "ssh": "kristen",
       "iconStyle": {
         "background": "radial-gradient(circle,#2a1f10,#1a1408)"
       },
@@ -794,6 +802,7 @@
       "sublabel": "Ubuntu \u2022 10.0.6.160",
       "ip": "10.0.6.160",
       "collectd": "game",
+      "ssh": "game",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a0f2a,#100820)",
         "borderColor": "#a060d0",
@@ -880,6 +889,7 @@
       "id": "nodered",
       "type": "infra",
       "collectd": "nodered",
+      "ssh": "treelink",
       "x": 1100,
       "y": 550,
       "icon": "&#9881;",
@@ -1183,6 +1193,7 @@
       "id": "ts-terra",
       "type": "tailscale",
       "collectd": "terra",
+      "ssh": "terra",
       "ip": "100.71.19.39",
       "x": 1968,
       "y": 715,
@@ -1215,6 +1226,7 @@
       "id": "ts-iperf",
       "type": "tailscale",
       "collectd": "iperf",
+      "ssh": "iperf",
       "ip": "100.122.165.30",
       "x": 2218,
       "y": 365,
@@ -1261,6 +1273,7 @@
       },
       "pulse": true,
       "collectd": "openclaw",
+      "ssh": "openclaw",
       "tip": {
         "title": "OpenClaw",
         "stats": [
@@ -1278,6 +1291,7 @@
     {
       "id": "ts-instance",
       "type": "tailscale",
+      "ssh": "instance-1",
       "ip": "100.75.240.4",
       "x": 1918,
       "y": 865,
@@ -1293,6 +1307,7 @@
       },
       "pulse": true,
       "collectd": "instance-1",
+      "ssh": "instance-1",
       "tip": {
         "title": "The Cloud Spire",
         "stats": [

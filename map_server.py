@@ -3,6 +3,7 @@
 
 import json
 import os
+import subprocess
 import threading
 import time
 from http.server import HTTPServer, SimpleHTTPRequestHandler
@@ -139,6 +140,34 @@ class RealmHandler(SimpleHTTPRequestHandler):
                     personas[node_key] = existing
                 _save_personas(personas)
                 self._json_response({"ok": True, "personas": personas})
+            except (json.JSONDecodeError, KeyError) as e:
+                self._json_response({"error": str(e)}, 400)
+        elif self.path == "/ssh":
+            try:
+                req = json.loads(body)
+                host = req.get("host", "")
+                command = req.get("command", "")
+                # Validate host against topology ssh fields
+                topo = _load_topology()
+                allowed = {n["ssh"] for n in topo.get("nodes", []) if n.get("ssh")}
+                if host not in allowed:
+                    self._json_response({"error": f"Host '{host}' not permitted"}, 403)
+                    return
+                if not command.strip():
+                    self._json_response({"error": "Empty command"}, 400)
+                    return
+                result = subprocess.run(
+                    ["ssh", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=no",
+                     host, command],
+                    capture_output=True, text=True, timeout=30
+                )
+                self._json_response({
+                    "output": result.stdout[-50000:] if result.stdout else "",
+                    "error": result.stderr[-5000:] if result.returncode != 0 else None,
+                    "exit_code": result.returncode,
+                })
+            except subprocess.TimeoutExpired:
+                self._json_response({"error": "Command timed out (30s)"}, 504)
             except (json.JSONDecodeError, KeyError) as e:
                 self._json_response({"error": str(e)}, 400)
         else:
