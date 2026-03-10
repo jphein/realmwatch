@@ -163,186 +163,185 @@ function renderTopology(topo) {
 // ── Render topology (must happen before updateUI / tooltips / dragging) ──
 if (window._pendingTopo) { renderTopology(window._pendingTopo); delete window._pendingTopo; }
 
+// ── Cached DOM references (queried once, reused every poll cycle) ──
+const DOM = {
+  gForge: document.getElementById('g-forge'),
+  gGpu: document.getElementById('g-gpu'),
+  gMana: document.getElementById('g-mana'),
+  gEssence: document.getElementById('g-essence'),
+  rsVal: document.getElementById('realm-scale-val'),
+  rsLabel: document.getElementById('realm-scale-label'),
+  towersOnline: document.getElementById('towers-online'),
+  towersTotal: document.getElementById('towers-total'),
+  codexCd: document.getElementById('codex-collectd-count'),
+  codexNodes: document.getElementById('codex-node-count'),
+};
+
+// Cache per-node DOM elements (sublabel, scale-fill, pulse-ring, root element)
+const _nodeDOM = {};
+function getNodeDOM(tipKey) {
+  if (_nodeDOM[tipKey]) return _nodeDOM[tipKey];
+  const el = document.querySelector(`[data-tip="${tipKey}"]`);
+  if (!el) return (_nodeDOM[tipKey] = { el: null, sub: null, bar: null, pulse: null });
+  _nodeDOM[tipKey] = {
+    el,
+    sub: el.querySelector('.node-sublabel'),
+    bar: el.querySelector('.scale-fill'),
+    pulse: el.querySelector('.pulse-ring'),
+    isTower: el.classList.contains('tower-node'),
+  };
+  return _nodeDOM[tipKey];
+}
+
 // ── Update the UI from live data ──
 let lastStatus = null;
 let liveOk = false;
+let _lastReportTs = 0;
 
-function updateUI(d) {
-  lastStatus = d;
-  const forge = d.forge, mana = d.mana, essence = d.essence, astral = d.astral;
+function updateGauges(d) {
+  const { forge, mana, essence } = d;
+  const gpu = forge.gpu;
+  const gpuLoad = gpu ? gpu.load : 0;
+
+  DOM.gForge.style.width = forge.usage + '%';
+  DOM.gForge.parentElement.nextElementSibling.textContent = forge.usage.toFixed(1) + '%';
+  DOM.gGpu.style.width = gpuLoad + '%';
+  DOM.gGpu.parentElement.nextElementSibling.textContent = gpuLoad.toFixed(0) + '%';
+  DOM.gMana.style.width = mana.usage + '%';
+  DOM.gMana.parentElement.nextElementSibling.textContent = mana.usage.toFixed(1) + '%';
+  DOM.gEssence.style.width = essence.usage + '%';
+  DOM.gEssence.parentElement.nextElementSibling.textContent = essence.usage.toFixed(0) + '%';
+
+  DOM.rsVal.textContent = (d.realm_scale >= 0 ? '+' : '') + d.realm_scale.toFixed(1);
+  DOM.rsVal.style.color = scaleColor(d.realm_scale);
+  DOM.rsLabel.textContent = scaleLabel(d.realm_scale);
+}
+
+function updateCoreSublabels(d) {
+  const { forge, mana, essence, astral } = d;
   const gpu = forge.gpu;
   const gpuLoad = gpu ? gpu.load : 0;
   const gpuTemp = gpu ? gpu.temp : null;
 
-  // ── Realm panel gauges ──
-  const gForge = document.getElementById('g-forge');
-  const gGpu = document.getElementById('g-gpu');
-  const gMana = document.getElementById('g-mana');
-  const gEssence = document.getElementById('g-essence');
-
-  gForge.style.width = forge.usage + '%';
-  gForge.parentElement.nextElementSibling.textContent = forge.usage.toFixed(1) + '%';
-
-  gGpu.style.width = gpuLoad + '%';
-  gGpu.parentElement.nextElementSibling.textContent = gpuLoad.toFixed(0) + '%';
-
-  gMana.style.width = mana.usage + '%';
-  gMana.parentElement.nextElementSibling.textContent = mana.usage.toFixed(1) + '%';
-
-  gEssence.style.width = essence.usage + '%';
-  gEssence.parentElement.nextElementSibling.textContent = essence.usage.toFixed(0) + '%';
-
-  // Realm scale
-  const rsEl = document.getElementById('realm-scale-val');
-  const rsLabel = document.getElementById('realm-scale-label');
-  rsEl.textContent = (d.realm_scale >= 0 ? '+' : '') + d.realm_scale.toFixed(1);
-  rsEl.style.color = scaleColor(d.realm_scale);
-  rsLabel.textContent = scaleLabel(d.realm_scale);
-
-  // ── Node sublabels ──
-  const q = s => document.querySelector(`[data-tip="${s}"] .node-sublabel`);
-  const qBar = s => { const el = document.querySelector(`[data-tip="${s}"] .scale-fill`); return el; };
-
-  // Forge
-  const forgeSub = q('forge');
-  if (forgeSub) {
+  const forgeN = getNodeDOM('forge');
+  if (forgeN.sub) {
     const tempStr = forge.temp != null ? forge.temp.toFixed(0) + '\u00B0C' : '?';
-    forgeSub.textContent = `CPU ${tempStr} \u2022 Scale ${forge.scale >= 0 ? '+' : ''}${forge.scale.toFixed(1)}`;
+    forgeN.sub.textContent = `CPU ${tempStr} \u2022 Scale ${forge.scale >= 0 ? '+' : ''}${forge.scale.toFixed(1)}`;
   }
-  const forgeBar = qBar('forge');
-  if (forgeBar) forgeBar.style.width = scalePct(forge.scale) + '%';
+  if (forgeN.bar) forgeN.bar.style.width = scalePct(forge.scale) + '%';
 
-  // GPU
-  const gpuSub = q('gpu');
-  if (gpuSub) {
+  const gpuN = getNodeDOM('gpu');
+  if (gpuN.sub) {
     const tStr = gpuTemp != null ? gpuTemp.toFixed(0) + '\u00B0C' : '?';
-    gpuSub.textContent = `${tStr} \u2022 ${gpuLoad.toFixed(0)}% load`;
+    gpuN.sub.textContent = `${tStr} \u2022 ${gpuLoad.toFixed(0)}% load`;
   }
 
-  // Mana
-  const manaSub = q('mana');
-  if (manaSub) manaSub.textContent = `${mana.usage.toFixed(1)}% used \u2022 Scale ${mana.scale >= 0 ? '+' : ''}${mana.scale.toFixed(1)}`;
-  const manaBar = qBar('mana');
-  if (manaBar) manaBar.style.width = scalePct(mana.scale) + '%';
+  const manaN = getNodeDOM('mana');
+  if (manaN.sub) manaN.sub.textContent = `${mana.usage.toFixed(1)}% used \u2022 Scale ${mana.scale >= 0 ? '+' : ''}${mana.scale.toFixed(1)}`;
+  if (manaN.bar) manaN.bar.style.width = scalePct(mana.scale) + '%';
 
-  // Essence
-  const essSub = q('essence');
-  if (essSub) {
-    const src = essence.plugged ? 'Eternal Source' : 'Untethered';
-    essSub.textContent = `${src} \u2022 ${essence.usage.toFixed(0)}%`;
+  const essN = getNodeDOM('essence');
+  if (essN.sub) essN.sub.textContent = `${essence.plugged ? 'Eternal Source' : 'Untethered'} \u2022 ${essence.usage.toFixed(0)}%`;
+  if (essN.bar) essN.bar.style.width = scalePct(essence.scale) + '%';
+
+  const katN = getNodeDOM('katana');
+  if (katN.bar) katN.bar.style.width = scalePct(d.realm_scale) + '%';
+
+  const wanN = getNodeDOM('wan');
+  if (wanN.sub && astral.nft) wanN.sub.textContent = fmtBytes(astral.nft.wan) + ' traversed';
+
+  const gkN = getNodeDOM('gatekeeper');
+  if (gkN.sub) gkN.sub.textContent = astral.nodes.Gatekeeper ? 'OpenWrt Router \u2022 10.0.6.1' : 'SILENT \u2022 10.0.6.1';
+  if (gkN.pulse) gkN.pulse.style.display = astral.nodes.Gatekeeper ? '' : 'none';
+
+  const oN = getNodeDOM('oracle');
+  if (oN.sub) oN.sub.textContent = astral.nodes.ubox0 ? 'ubox0 \u2022 10.0.6.11' : 'SILENT \u2022 10.0.6.11';
+  if (oN.pulse) oN.pulse.style.display = astral.nodes.ubox0 ? '' : 'none';
+}
+
+function findStatusKey(nodeStatus, tipKey) {
+  return Object.keys(nodeStatus).find(k => k.toLowerCase() === tipKey.toLowerCase())
+    || Object.keys(nodeStatus).find(k => k.replace(/-/g, '').toLowerCase() === tipKey.replace(/-/g, '').toLowerCase());
+}
+
+function findCollectd(collectd, tipKey, statusKey) {
+  return collectd[statusKey || tipKey] || collectd[tipKey]
+    || Object.values(collectd).find(c => c.hostname && c.hostname.toLowerCase().replace(/[-_]/g, '') === tipKey.toLowerCase().replace(/[-_]/g, ''));
+}
+
+function buildCollectdExtra(cd) {
+  const extra = [];
+  if (cd.load_1 != null) extra.push(["Load", `${cd.load_1.toFixed(2)} / ${(cd.load_5 || 0).toFixed(2)} / ${(cd.load_15 || 0).toFixed(2)}`]);
+  if (cd.mem_pct != null) extra.push(["Memory", `${cd.mem_pct}% of ${cd.mem_total_mb || '?'} MB`]);
+  if (cd.cpu_cores) extra.push(["CPU Cores", cd.cpu_cores]);
+  if (cd.temp != null) extra.push(["Temp", cd.temp + "\u00B0C"]);
+  if (cd.uptime != null) {
+    const days = Math.floor(cd.uptime / 86400);
+    const hrs = Math.floor((cd.uptime % 86400) / 3600);
+    extra.push(["Uptime", days > 0 ? `${days}d ${hrs}h` : `${hrs}h`]);
   }
-  const essBar = qBar('essence');
-  if (essBar) essBar.style.width = scalePct(essence.scale) + '%';
-
-  // Katana scale bar
-  const katBar = qBar('katana');
-  if (katBar) katBar.style.width = scalePct(d.realm_scale) + '%';
-
-  // WAN
-  const wanSub = q('wan');
-  if (wanSub && astral.nft) wanSub.textContent = fmtBytes(astral.nft.wan) + ' traversed';
-
-  // Gatekeeper
-  const gkSub = q('gatekeeper');
-  if (gkSub) {
-    const online = astral.nodes.Gatekeeper;
-    gkSub.textContent = online ? 'OpenWrt Router \u2022 10.0.6.1' : 'SILENT \u2022 10.0.6.1';
+  if (cd.conntrack) extra.push(["Conntrack", cd.conntrack.toLocaleString()]);
+  if (cd.dhcp_leases) extra.push(["DHCP Leases", cd.dhcp_leases]);
+  if (cd.ping) Object.entries(cd.ping).forEach(([t, ms]) => extra.push(["Ping " + t, ms + " ms"]));
+  if (cd.disk_pct != null) extra.push(["Disk", `${cd.disk_pct}% of ${cd.disk_total_gb} GB`]);
+  if (cd.interfaces) {
+    Object.entries(cd.interfaces)
+      .map(([name, v]) => [name, (v.rx_bps || 0) + (v.tx_bps || 0)])
+      .sort((a, b) => b[1] - a[1]).slice(0, 2)
+      .forEach(([name, total]) => {
+        if (total > 0) {
+          const iface = cd.interfaces[name];
+          extra.push([name, `\u2193${fmtRate(iface.rx_bps)} \u2191${fmtRate(iface.tx_bps)}`]);
+        }
+      });
   }
-  const gkPulse = document.querySelector('[data-tip="gatekeeper"] .pulse-ring');
-  if (gkPulse) gkPulse.style.display = astral.nodes.Gatekeeper ? '' : 'none';
+  return extra;
+}
 
-  // Oracle
-  const oSub = q('oracle');
-  if (oSub) oSub.textContent = astral.nodes.ubox0 ? 'ubox0 \u2022 10.0.6.11' : 'SILENT \u2022 10.0.6.11';
-  const oPulse = document.querySelector('[data-tip="oracle"] .pulse-ring');
-  if (oPulse) oPulse.style.display = astral.nodes.ubox0 ? '' : 'none';
-
-  // ── Update all infrastructure nodes ──
-  const nodeStatus = astral.nodes || {};
+function updateInfraNodes(d) {
+  const nodeStatus = d.astral.nodes || {};
   let towersOnline = 0, towersTotal = 0;
 
   Object.entries(infraNodes).forEach(([tipKey, info]) => {
-    const sub = q(tipKey);
-    const pulse = document.querySelector(`[data-tip="${tipKey}"] .pulse-ring`);
-    const nodeEl = document.querySelector(`[data-tip="${tipKey}"]`);
-    // Find matching key in nodeStatus (case-insensitive, ignore hyphens)
-    const statusKey = Object.keys(nodeStatus).find(k => k.toLowerCase() === tipKey.toLowerCase())
-      || Object.keys(nodeStatus).find(k => k.replace(/-/g,'').toLowerCase() === tipKey.replace(/-/g,'').toLowerCase());
+    const n = getNodeDOM(tipKey);
+    const statusKey = findStatusKey(nodeStatus, tipKey);
     const online = statusKey ? nodeStatus[statusKey] : false;
-    if (sub) sub.textContent = online ? `Online \u2022 ${info.ip}` : `Offline \u2022 ${info.ip}`;
-    if (pulse) pulse.style.display = online ? '' : 'none';
-    if (nodeEl) nodeEl.style.opacity = online ? '1' : '0.35';
 
-    // Count towers
-    if (nodeEl && nodeEl.classList.contains('tower-node')) {
-      towersTotal++;
-      if (online) towersOnline++;
-    }
+    if (n.sub) n.sub.textContent = online ? `Online \u2022 ${info.ip}` : `Offline \u2022 ${info.ip}`;
+    if (n.pulse) n.pulse.style.display = online ? '' : 'none';
+    if (n.el) n.el.style.opacity = online ? '1' : '0.35';
 
-    // Update tooltip + sublabel with collectd data if available
+    if (n.isTower) { towersTotal++; if (online) towersOnline++; }
+
     if (d.collectd && tips[tipKey]) {
-      // Match collectd hostname to tip key (hostnames may differ slightly)
-      const cdKey = statusKey || tipKey;
-      const cd = d.collectd[cdKey] || d.collectd[tipKey]
-        || Object.values(d.collectd).find(c => c.hostname && c.hostname.toLowerCase().replace(/[-_]/g,'') === tipKey.toLowerCase().replace(/[-_]/g,''));
+      const cd = findCollectd(d.collectd, tipKey, statusKey);
       if (cd) {
-        const extra = [];
-        if (cd.load_1 != null) extra.push(["Load", `${cd.load_1.toFixed(2)} / ${(cd.load_5||0).toFixed(2)} / ${(cd.load_15||0).toFixed(2)}`]);
-        if (cd.mem_pct != null) extra.push(["Memory", `${cd.mem_pct}% of ${cd.mem_total_mb||'?'} MB`]);
-        if (cd.cpu_cores) extra.push(["CPU Cores", cd.cpu_cores]);
-        if (cd.temp != null) extra.push(["Temp", cd.temp + "\u00B0C"]);
-        if (cd.uptime != null) {
-          const days = Math.floor(cd.uptime / 86400);
-          const hrs = Math.floor((cd.uptime % 86400) / 3600);
-          extra.push(["Uptime", days > 0 ? `${days}d ${hrs}h` : `${hrs}h`]);
-        }
-        if (cd.conntrack) extra.push(["Conntrack", cd.conntrack.toLocaleString()]);
-        if (cd.dhcp_leases) extra.push(["DHCP Leases", cd.dhcp_leases]);
-        if (cd.ping) {
-          Object.entries(cd.ping).forEach(([t, ms]) => {
-            extra.push(["Ping " + t, ms + " ms"]);
-          });
-        }
-        if (cd.disk_pct != null) extra.push(["Disk", `${cd.disk_pct}% of ${cd.disk_total_gb} GB`]);
-        if (cd.interfaces) {
-          // Show top 2 busiest interfaces
-          const sorted = Object.entries(cd.interfaces)
-            .map(([name, v]) => [name, (v.rx_bps||0) + (v.tx_bps||0)])
-            .sort((a,b) => b[1] - a[1]).slice(0, 2);
-          sorted.forEach(([name, total]) => {
-            const iface = cd.interfaces[name];
-            if (total > 0) {
-              extra.push([name, `\u2193${fmtRate(iface.rx_bps)} \u2191${fmtRate(iface.tx_bps)}`]);
-            }
-          });
-        }
-        const base = tips[tipKey].stats.filter(s =>
-          ["Model","IP","OS","Role","Service","Hostname"].includes(s[0]));
+        const extra = buildCollectdExtra(cd);
+        const base = tips[tipKey].stats.filter(s => ["Model", "IP", "OS", "Role", "Service", "Hostname"].includes(s[0]));
         tips[tipKey].stats = [...base, ...extra, ['Status', online ? 'Online' : 'Offline']];
-
-        // Update sublabel with live metrics
-        if (sub && cd.load_1 != null) {
+        if (n.sub && cd.load_1 != null) {
           const memStr = cd.mem_pct != null ? ` \u2022 ${cd.mem_pct}%` : '';
-          sub.textContent = `Load ${cd.load_1.toFixed(2)}${memStr} \u2022 ${info.ip}`;
+          n.sub.textContent = `Load ${cd.load_1.toFixed(2)}${memStr} \u2022 ${info.ip}`;
         }
       }
     }
     if (tips[tipKey]) {
-      const existingStats = tips[tipKey].stats;
-      const hasStatus = existingStats.some(s => s[0] === 'Status');
-      if (!hasStatus) existingStats.push(['Status', online ? 'Online' : 'Offline']);
+      const stats = tips[tipKey].stats;
+      if (!stats.some(s => s[0] === 'Status')) stats.push(['Status', online ? 'Online' : 'Offline']);
     }
   });
 
-  document.getElementById('towers-online').textContent = towersOnline;
-  document.getElementById('towers-total').textContent = towersTotal;
+  DOM.towersOnline.textContent = towersOnline;
+  DOM.towersTotal.textContent = towersTotal;
+}
 
-  // ── Tooltip data ──
+function updateTooltips(d) {
+  const { forge, mana, essence, astral } = d;
+  const gpu = forge.gpu;
   const ts = d.tailscale;
   const tsOnline = ts ? ts.online_count : '?';
   const tsTotal = ts ? ts.total : '?';
 
-  // Katana tooltip — enrich with collectd
   const katCd = d.collectd && Object.values(d.collectd).find(c => c.hostname && c.hostname.includes('katana'));
   tips.katana.stats = [
     ["Role", "Primary Server (Self)"], ["IP", "10.0.6.129"],
@@ -350,13 +349,12 @@ function updateUI(d) {
     ["Tailscale", `${tsOnline} online / ${tsTotal} total`],
   ];
   if (katCd) {
-    if (katCd.load_1 != null) tips.katana.stats.push(["Load", `${katCd.load_1.toFixed(2)} / ${(katCd.load_5||0).toFixed(2)} / ${(katCd.load_15||0).toFixed(2)}`]);
+    if (katCd.load_1 != null) tips.katana.stats.push(["Load", `${katCd.load_1.toFixed(2)} / ${(katCd.load_5 || 0).toFixed(2)} / ${(katCd.load_15 || 0).toFixed(2)}`]);
     if (katCd.disk_pct != null) tips.katana.stats.push(["Disk", `${katCd.disk_pct}% of ${katCd.disk_total_gb} GB`]);
     if (katCd.procs_running) tips.katana.stats.push(["Processes", katCd.procs_running + " running"]);
-    if (katCd.uptime) { const ud = Math.floor(katCd.uptime/86400); tips.katana.stats.push(["Uptime", ud + "d"]); }
+    if (katCd.uptime) { const ud = Math.floor(katCd.uptime / 86400); tips.katana.stats.push(["Uptime", ud + "d"]); }
   }
 
-  // Gatekeeper tooltip — enrich with collectd
   const gkCd = d.collectd && d.collectd['gatekeeper'];
   tips.gatekeeper.stats = [
     ["Role", "OpenWrt Router / Firewall"], ["IP", "10.0.6.1"],
@@ -365,72 +363,47 @@ function updateUI(d) {
     ["Status", astral.nodes.Gatekeeper ? "Standing Watch" : "Silent"],
   ];
   if (gkCd) {
-    if (gkCd.load_1 != null) tips.gatekeeper.stats.push(["Load", `${gkCd.load_1.toFixed(2)} / ${(gkCd.load_5||0).toFixed(2)}`]);
+    if (gkCd.load_1 != null) tips.gatekeeper.stats.push(["Load", `${gkCd.load_1.toFixed(2)} / ${(gkCd.load_5 || 0).toFixed(2)}`]);
     if (gkCd.mem_pct != null) tips.gatekeeper.stats.push(["Memory", `${gkCd.mem_pct}%`]);
     if (gkCd.temp != null) tips.gatekeeper.stats.push(["Temp", gkCd.temp + "\u00B0C"]);
     if (gkCd.conntrack) tips.gatekeeper.stats.push(["Conntrack", gkCd.conntrack.toLocaleString()]);
     if (gkCd.dhcp_leases) tips.gatekeeper.stats.push(["DHCP Leases", gkCd.dhcp_leases]);
-    if (gkCd.ping) Object.entries(gkCd.ping).forEach(([t,ms]) => tips.gatekeeper.stats.push(["Ping " + t, ms + " ms"]));
-    if (gkCd.uptime) { const ud = Math.floor(gkCd.uptime/86400); tips.gatekeeper.stats.push(["Uptime", ud + "d"]); }
+    if (gkCd.ping) Object.entries(gkCd.ping).forEach(([t, ms]) => tips.gatekeeper.stats.push(["Ping " + t, ms + " ms"]));
+    if (gkCd.uptime) { const ud = Math.floor(gkCd.uptime / 86400); tips.gatekeeper.stats.push(["Uptime", ud + "d"]); }
   }
-  tips.oracle.stats = [
-    ["Role", "Network Monitor"], ["Hostname", "ubox0"], ["IP", "10.0.6.11"],
-    ["Status", astral.nodes.ubox0 ? "Pulsing" : "Silent"],
-  ];
-  tips.forge.stats = [
-    ["Usage", forge.usage.toFixed(1) + "%"],
-    ["Temperature", forge.temp != null ? forge.temp.toFixed(0) + "\u00B0C" : "N/A"],
-    ["Scale", `${forge.scale >= 0 ? '+' : ''}${forge.scale.toFixed(1)} (${scaleLabel(forge.scale)})`],
-    ["Reading", forge.msg],
-  ];
-  tips.mana.stats = [
-    ["Usage", mana.usage.toFixed(1) + "%"],
-    ["Scale", `${mana.scale >= 0 ? '+' : ''}${mana.scale.toFixed(1)} (${scaleLabel(mana.scale)})`],
-    ["Reading", mana.msg],
-  ];
-  tips.gpu.stats = gpu ? [
-    ["Temperature", gpu.temp.toFixed(0) + "\u00B0C"],
-    ["Load", gpu.load.toFixed(0) + "%"],
-  ] : [["Status", "No GPU detected"]];
-  tips.essence.stats = [
-    ["Charge", essence.usage.toFixed(0) + "%"],
-    ["Source", essence.plugged ? "Eternal Source (plugged)" : "Untethered"],
-    ["Scale", `${essence.scale >= 0 ? '+' : ''}${essence.scale.toFixed(1)} (${scaleLabel(essence.scale)})`],
-  ];
-  tips.wan.stats = [
-    ["Total Traversed", astral.nft ? fmtBytes(astral.nft.wan) : "N/A"],
-    ["Direction", "Outward \u2014 to the Outer Darkness"],
-    ["Guarded By", "The Gatekeeper (nftables)"],
-  ];
+
+  tips.oracle.stats = [["Role", "Network Monitor"], ["Hostname", "ubox0"], ["IP", "10.0.6.11"], ["Status", astral.nodes.ubox0 ? "Pulsing" : "Silent"]];
+  tips.forge.stats = [["Usage", forge.usage.toFixed(1) + "%"], ["Temperature", forge.temp != null ? forge.temp.toFixed(0) + "\u00B0C" : "N/A"], ["Scale", `${forge.scale >= 0 ? '+' : ''}${forge.scale.toFixed(1)} (${scaleLabel(forge.scale)})`], ["Reading", forge.msg]];
+  tips.mana.stats = [["Usage", mana.usage.toFixed(1) + "%"], ["Scale", `${mana.scale >= 0 ? '+' : ''}${mana.scale.toFixed(1)} (${scaleLabel(mana.scale)})`], ["Reading", mana.msg]];
+  tips.gpu.stats = gpu ? [["Temperature", gpu.temp.toFixed(0) + "\u00B0C"], ["Load", gpu.load.toFixed(0) + "%"]] : [["Status", "No GPU detected"]];
+  tips.essence.stats = [["Charge", essence.usage.toFixed(0) + "%"], ["Source", essence.plugged ? "Eternal Source (plugged)" : "Untethered"], ["Scale", `${essence.scale >= 0 ? '+' : ''}${essence.scale.toFixed(1)} (${scaleLabel(essence.scale)})`]];
+  tips.wan.stats = [["Total Traversed", astral.nft ? fmtBytes(astral.nft.wan) : "N/A"], ["Direction", "Outward \u2014 to the Outer Darkness"], ["Guarded By", "The Gatekeeper (nftables)"]];
+}
+
+function updateUI(d) {
+  lastStatus = d;
+  updateGauges(d);
+  updateCoreSublabels(d);
+  updateInfraNodes(d);
+  updateTooltips(d);
 
   // Periodic status report to quest log (every 60s)
-  if (!updateUI._lastReport || Date.now() - updateUI._lastReport > 60000) {
-    updateUI._lastReport = Date.now();
-    const towersOn = document.getElementById('towers-online')?.textContent || '?';
-    const towersAll = document.getElementById('towers-total')?.textContent || '?';
+  if (Date.now() - _lastReportTs > 60000) {
+    _lastReportTs = Date.now();
+    const { forge, mana } = d;
     addLogEntry({
       type: 'report', node: 'katana',
-      text: `Forge ${forge.usage.toFixed(0)}% \u2022 Mana ${mana.usage.toFixed(0)}% \u2022 Towers ${towersOn}/${towersAll} \u2022 Scale ${d.realm_scale >= 0 ? '+' : ''}${d.realm_scale.toFixed(1)}`,
+      text: `Forge ${forge.usage.toFixed(0)}% \u2022 Mana ${mana.usage.toFixed(0)}% \u2022 Towers ${DOM.towersOnline.textContent}/${DOM.towersTotal.textContent} \u2022 Scale ${d.realm_scale >= 0 ? '+' : ''}${d.realm_scale.toFixed(1)}`,
       ts: Date.now() / 1000
     });
   }
 
-  // ── Update Codex stats ──
-  if (d.collectd) {
-    const cdCount = Object.keys(d.collectd).length;
-    const cdEl = document.getElementById('codex-collectd-count');
-    if (cdEl) cdEl.textContent = cdCount;
-  }
-  const nodeCount = Object.keys(astral.nodes || {}).length;
-  const ncEl = document.getElementById('codex-node-count');
-  if (ncEl) ncEl.textContent = nodeCount + '+';
+  // Codex stats
+  if (d.collectd && DOM.codexCd) DOM.codexCd.textContent = Object.keys(d.collectd).length;
+  if (DOM.codexNodes) DOM.codexNodes.textContent = Object.keys(d.astral.nodes || {}).length + '+';
 
-  // ── EtherApe-style traffic visualization on connection lines ──
   updateConnectionTraffic(d.collectd);
-
-  // ── Update node list status indicators ──
   updateNodeListStatus(d);
-
   firePulse();
 }
 
