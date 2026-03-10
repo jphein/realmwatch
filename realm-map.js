@@ -139,43 +139,74 @@ function _buildObstacles() {
   }
 }
 
+// Deterministic hash for consistent meander per connection
+function _hashStr(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return h;
+}
+
 function _computePathD(fp, tp, fromAngle, toAngle, fromId, toId) {
   const dist = Math.hypot(tp.x - fp.x, tp.y - fp.y);
   if (dist < 1) return `M${fp.x},${fp.y}L${tp.x},${tp.y}`;
-  const arm = dist * 0.3;
-  let cp1x = fp.x + Math.cos(fromAngle) * arm;
-  let cp1y = fp.y + Math.sin(fromAngle) * arm;
-  let cp2x = tp.x + Math.cos(toAngle) * arm;
-  let cp2y = tp.y + Math.sin(toAngle) * arm;
-  // Iteratively sample the actual curve and push away from intermediate nodes
+
+  const dx = tp.x - fp.x, dy = tp.y - fp.y;
+  const px = -dy / dist, py = dx / dist; // perpendicular unit vector
+
+  // More segments for longer paths = more meandering
+  const numSegs = Math.max(3, Math.min(6, Math.round(dist / 120)));
+  const seed = _hashStr(fromId + '-' + toId);
+  const phase = ((seed & 0xFFFF) / 0xFFFF) * Math.PI * 2;
+
+  // Build waypoints with sinusoidal meander offsets (river-like)
+  const waypoints = [{ x: fp.x, y: fp.y }];
+  for (let i = 1; i < numSegs; i++) {
+    const t = i / numSegs;
+    const bx = fp.x + dx * t, by = fp.y + dy * t;
+    const meander = (
+      Math.sin(phase + t * Math.PI * 2) * 0.07 +
+      Math.sin(phase * 1.7 + t * Math.PI * 3.5) * 0.03
+    ) * dist;
+    waypoints.push({ x: bx + px * meander, y: by + py * meander });
+  }
+  waypoints.push({ x: tp.x, y: tp.y });
+
+  // Push intermediate waypoints away from obstacles
   const obs = _obstacles.filter(o => o.id !== fromId && o.id !== toId);
-  for (let iter = 0; iter < 3; iter++) {
-    for (let ti = 1; ti <= 8; ti++) {
-      const t = ti / 9, u = 1 - t;
-      const sx = u*u*u*fp.x + 3*u*u*t*cp1x + 3*u*t*t*cp2x + t*t*t*tp.x;
-      const sy = u*u*u*fp.y + 3*u*u*t*cp1y + 3*u*t*t*cp2y + t*t*t*tp.y;
+  for (let iter = 0; iter < 4; iter++) {
+    for (let i = 1; i < waypoints.length - 1; i++) {
+      const wp = waypoints[i];
       for (const o of obs) {
-        const d = Math.hypot(sx - o.x, sy - o.y);
+        const d = Math.hypot(wp.x - o.x, wp.y - o.y);
         if (d < o.r && d > 0) {
-          const push = (o.r - d) * 0.6;
-          const nx = (sx - o.x) / d, ny = (sy - o.y) / d;
-          cp1x += nx * push * u;
-          cp1y += ny * push * u;
-          cp2x += nx * push * t;
-          cp2y += ny * push * t;
+          const push = (o.r - d) * 0.7;
+          wp.x += ((wp.x - o.x) / d) * push;
+          wp.y += ((wp.y - o.y) / d) * push;
         }
       }
     }
   }
-  return `M${fp.x.toFixed(1)},${fp.y.toFixed(1)} C${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${tp.x.toFixed(1)},${tp.y.toFixed(1)}`;
-}
 
-function _bezierMid(p0, cp1, cp2, p3) {
-  // Cubic bezier at t=0.5
-  return {
-    x: 0.125*p0.x + 0.375*cp1.x + 0.375*cp2.x + 0.125*p3.x,
-    y: 0.125*p0.y + 0.375*cp1.y + 0.375*cp2.y + 0.125*p3.y
-  };
+  // Catmull-Rom → cubic bezier path through waypoints (smooth interpolation)
+  const n = waypoints.length;
+  const armLen = dist / numSegs * 0.5;
+  const pBefore = { x: fp.x - Math.cos(fromAngle) * armLen, y: fp.y - Math.sin(fromAngle) * armLen };
+  const pAfter = { x: tp.x - Math.cos(toAngle) * armLen, y: tp.y - Math.sin(toAngle) * armLen };
+
+  let d = `M${fp.x.toFixed(1)},${fp.y.toFixed(1)}`;
+  for (let i = 0; i < n - 1; i++) {
+    const p0 = i > 0 ? waypoints[i - 1] : pBefore;
+    const p1 = waypoints[i];
+    const p2 = waypoints[i + 1];
+    const p3 = i + 2 < n ? waypoints[i + 2] : pAfter;
+    // Catmull-Rom to cubic bezier control points
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
+  }
+  return d;
 }
 
 function renderTopology(topo) {
@@ -294,18 +325,14 @@ function renderTopology(topo) {
 
     // VLAN label at curve midpoint
     if (c.vlan) {
-      const dist = Math.hypot(tp.x - fp.x, tp.y - fp.y);
-      const arm = dist * 0.3;
-      const cp1 = { x: fp.x + Math.cos(fa.fromAngle) * arm, y: fp.y + Math.sin(fa.fromAngle) * arm };
-      const cp2 = { x: tp.x + Math.cos(fa.toAngle) * arm, y: tp.y + Math.sin(fa.toAngle) * arm };
-      const mid = _bezierMid(fp, cp1, cp2, tp);
+      const mid = path.getPointAtLength(path.getTotalLength() / 2);
       const label = document.createElement('div');
       label.className = 'vlan-label';
       label.textContent = 'VLAN ' + c.vlan;
       label.style.left = mid.x + 'px';
       label.style.top = (mid.y - 4) + 'px';
       world.appendChild(label);
-      _vlanLabels.push({ label, fromId: c.from, toId: c.to, connIdx: i });
+      _vlanLabels.push({ label, connIdx: i });
     }
   });
 }
@@ -695,19 +722,15 @@ function updateLinePositions() {
     const fa = fanAngles[i] || { fromAngle: 0, toAngle: 0 };
     path.setAttribute('d', _computePathD(fp, tp, fa.fromAngle, fa.toAngle, c.from, c.to));
   });
-  // VLAN labels at curve midpoints
-  _vlanLabels.forEach(({ label, fromId, toId, connIdx }) => {
-    const fp = _getNodePos(fromId), tp = _getNodePos(toId);
-    if (!fp || !tp) return;
-    const fa = fanAngles[connIdx];
-    if (!fa) return;
-    const dist = Math.hypot(tp.x - fp.x, tp.y - fp.y);
-    const arm = dist * 0.3;
-    const cp1 = { x: fp.x + Math.cos(fa.fromAngle) * arm, y: fp.y + Math.sin(fa.fromAngle) * arm };
-    const cp2 = { x: tp.x + Math.cos(fa.toAngle) * arm, y: tp.y + Math.sin(fa.toAngle) * arm };
-    const mid = _bezierMid(fp, cp1, cp2, tp);
-    label.style.left = mid.x + 'px';
-    label.style.top = (mid.y - 4) + 'px';
+  // VLAN labels at curve midpoints (use SVG getPointAtLength for any path shape)
+  _vlanLabels.forEach(({ label, connIdx }) => {
+    const path = _connPaths[connIdx];
+    if (!path) return;
+    try {
+      const mid = path.getPointAtLength(path.getTotalLength() / 2);
+      label.style.left = mid.x + 'px';
+      label.style.top = (mid.y - 4) + 'px';
+    } catch (e) { /* path not yet rendered */ }
   });
 }
 
