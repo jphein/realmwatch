@@ -49,6 +49,7 @@ const infraNodes = {};
 const TYPE_TO_CLASS = { tower: 'tower-node', cluster: 'cluster-node', bridge: 'bridge-node', infra: 'infra-node' };
 const CONN_TYPE_TO_CLASS = { active:'conn-active', wan:'conn-wan', ap:'conn-ap', infra:'conn-infra', vlan:'conn-vlan', bridge:'conn-bridge', mesh:'conn-mesh', offline:'conn-offline' };
 
+const _vlanLabels = [];
 function renderTopology(topo) {
   _topology = topo;
   const world = document.getElementById('map-world');
@@ -78,26 +79,27 @@ function renderTopology(topo) {
     const fis = fn.iconStyle || {}, tis = tn.iconStyle || {};
     const fW = parseInt(fis.width) || 64, fH = parseInt(fis.height) || 64;
     const tW = parseInt(tis.width) || 64, tH = parseInt(tis.height) || 64;
-    const x1 = fn.x + fW/2, y1 = fn.y + fH/2;
-    const x2 = tn.x + tW/2, y2 = tn.y + tH/2;
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', x1); line.setAttribute('y1', y1);
-    line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+    line.setAttribute('x1', fn.x + fW/2); line.setAttribute('y1', fn.y + fH/2);
+    line.setAttribute('x2', tn.x + tW/2); line.setAttribute('y2', tn.y + tH/2);
     line.setAttribute('class', 'conn-line ' + (CONN_TYPE_TO_CLASS[c.type] || 'conn-active'));
     if (c.collectd) line.dataset.to = c.collectd;
     else line.dataset.to = c.to;
     line.dataset.from = c.from;
+    line.dataset.fromNode = c.from;
+    line.dataset.toNode = c.to;
     connSvg.appendChild(line);
 
-    // VLAN label at midpoint of VLAN connections
+    // VLAN label at midpoint (HTML div — SVG text breaks line setAttribute)
     if (c.vlan) {
-      const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
-      const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      label.setAttribute('x', mx);
-      label.setAttribute('y', my - 4);
-      label.setAttribute('class', 'vlan-label');
+      const mx = (fn.x + fW/2 + tn.x + tW/2) / 2, my = (fn.y + fH/2 + tn.y + tH/2) / 2;
+      const label = document.createElement('div');
+      label.className = 'vlan-label';
       label.textContent = 'VLAN ' + c.vlan;
-      connSvg.appendChild(label);
+      label.style.left = mx + 'px';
+      label.style.top = (my - 4) + 'px';
+      world.appendChild(label);
+      _vlanLabels.push({ label, fromId: c.from, toId: c.to });
     }
   });
 
@@ -520,9 +522,13 @@ function getNodeCenter(nodeEl) {
   const left = parseInt(nodeEl.style.left) || 0;
   const top = parseInt(nodeEl.style.top) || 0;
   const icon = nodeEl.querySelector('.node-icon');
-  const w = icon ? icon.offsetWidth : 64;
-  const h = icon ? icon.offsetHeight : 64;
-  return { x: left + w / 2, y: top + h / 2 };
+  if (icon) {
+    return {
+      x: left + icon.offsetLeft + icon.offsetWidth / 2,
+      y: top + icon.offsetTop + icon.offsetHeight / 2
+    };
+  }
+  return { x: left + 32, y: top + 32 };
 }
 
 // Build initial position map and line→node mapping
@@ -572,6 +578,15 @@ function updateLinePositions() {
         line.setAttribute('x2', pos.x);
         line.setAttribute('y2', pos.y);
       }
+    }
+  });
+  // Update VLAN labels to midpoint of their connection's endpoints
+  _vlanLabels.forEach(({ label, fromId, toId }) => {
+    const fn = getNodeDOM(fromId), tn = getNodeDOM(toId);
+    if (fn.el && tn.el) {
+      const fp = getNodeCenter(fn.el), tp = getNodeCenter(tn.el);
+      label.style.left = ((fp.x + tp.x) / 2) + 'px';
+      label.style.top = ((fp.y + tp.y) / 2 - 4) + 'px';
     }
   });
 }
@@ -943,7 +958,7 @@ if (_topology) {
   _topology.nodes.forEach(n => {
     const dot = document.createElement('div');
     dot.className = 'minimap-dot';
-    dot.dataset.tip = n.id;
+    dot.dataset.mmTip = n.id;
     dot.style.left = (n.x / worldW * mmW) + 'px';
     dot.style.top = (n.y / worldH * mmH) + 'px';
     const isOffline = n.type === 'tailscale' && !n.online;

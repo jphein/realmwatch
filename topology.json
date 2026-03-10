@@ -299,7 +299,7 @@
           ],
           [
             "VLANs",
-            "6 (Admin), 8 (Family), 10 (IoT), 11 (Guest)"
+            "6 (Admin), 10 (LAN), 8 (IoT), 11 (Family)"
           ]
         ]
       }
@@ -1360,38 +1360,45 @@
     {
       "from": "katana",
       "to": "hp-switch",
-      "type": "active"
+      "type": "active",
+      "vlan": 6
     },
     {
       "from": "hp-switch",
       "to": "gatekeeper",
-      "type": "active"
+      "type": "active",
+      "vlan": 6
     },
     {
       "from": "hp-switch",
       "to": "gs308t",
-      "type": "active"
+      "type": "active",
+      "vlan": 6
     },
     {
       "from": "katana",
       "to": "gatekeeper",
-      "type": "active"
+      "type": "active",
+      "vlan": 6
     },
     {
       "from": "katana",
       "to": "oracle",
       "type": "active",
-      "collectd": "ubox0"
+      "collectd": "ubox0",
+      "vlan": 6
     },
     {
       "from": "katana",
       "to": "mana",
-      "type": "active"
+      "type": "active",
+      "vlan": 6
     },
     {
       "from": "katana",
       "to": "gs308t",
-      "type": "active"
+      "type": "active",
+      "vlan": 6
     },
     {
       "from": "gatekeeper",
@@ -1406,72 +1413,86 @@
     {
       "from": "katana",
       "to": "mr8300-host",
-      "type": "ap"
+      "type": "ap",
+      "vlan": 6
     },
     {
       "from": "katana",
       "to": "onhub-office",
-      "type": "ap"
+      "type": "ap",
+      "vlan": 6
     },
     {
       "from": "katana",
       "to": "onhub-closet",
-      "type": "ap"
+      "type": "ap",
+      "vlan": 6
     },
     {
       "from": "katana",
       "to": "wndr4300sw-shed",
-      "type": "ap"
+      "type": "ap",
+      "vlan": 6
     },
     {
       "from": "katana",
       "to": "onhub-pumphouse",
-      "type": "ap"
+      "type": "ap",
+      "vlan": 6
     },
     {
       "from": "katana",
       "to": "wrt1900ac-family",
-      "type": "ap"
+      "type": "ap",
+      "vlan": 6
     },
     {
       "from": "katana",
       "to": "ea6350-cl",
-      "type": "ap"
+      "type": "ap",
+      "vlan": 6
     },
     {
       "from": "katana",
       "to": "eap225-outdoor",
-      "type": "ap"
+      "type": "ap",
+      "vlan": 6
     },
     {
       "from": "katana",
       "to": "ea6350v3-family",
-      "type": "ap"
+      "type": "ap",
+      "vlan": 6
     },
     {
       "from": "katana",
       "to": "onhub-family",
-      "type": "ap"
+      "type": "ap",
+      "vlan": 6
     },
     {
       "from": "katana",
       "to": "onhub-bed",
-      "type": "ap"
+      "type": "ap",
+      "vlan": 6
     },
     {
       "from": "katana",
       "to": "ha",
-      "type": "infra"
+      "type": "infra",
+      "vlan": 6
     },
     {
       "from": "katana",
       "to": "nodered",
-      "type": "infra"
+      "type": "infra",
+      "vlan": 6
     },
     {
       "from": "katana",
       "to": "goodwe",
-      "type": "infra"
+      "type": "infra",
+      "vlan": 6
     },
     {
       "from": "gatekeeper",
