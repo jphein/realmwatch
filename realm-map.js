@@ -78,14 +78,27 @@ function renderTopology(topo) {
     const fis = fn.iconStyle || {}, tis = tn.iconStyle || {};
     const fW = parseInt(fis.width) || 64, fH = parseInt(fis.height) || 64;
     const tW = parseInt(tis.width) || 64, tH = parseInt(tis.height) || 64;
+    const x1 = fn.x + fW/2, y1 = fn.y + fH/2;
+    const x2 = tn.x + tW/2, y2 = tn.y + tH/2;
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', fn.x + fW/2); line.setAttribute('y1', fn.y + fH/2);
-    line.setAttribute('x2', tn.x + tW/2); line.setAttribute('y2', tn.y + tH/2);
+    line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+    line.setAttribute('x2', x2); line.setAttribute('y2', y2);
     line.setAttribute('class', 'conn-line ' + (CONN_TYPE_TO_CLASS[c.type] || 'conn-active'));
     if (c.collectd) line.dataset.to = c.collectd;
     else line.dataset.to = c.to;
     line.dataset.from = c.from;
     connSvg.appendChild(line);
+
+    // VLAN label at midpoint of VLAN connections
+    if (c.vlan) {
+      const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+      const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      label.setAttribute('x', mx);
+      label.setAttribute('y', my - 4);
+      label.setAttribute('class', 'vlan-label');
+      label.textContent = 'VLAN ' + c.vlan;
+      connSvg.appendChild(label);
+    }
   });
 
   // Nodes
@@ -444,17 +457,18 @@ function getNodeTraffic(collectd, nodeKey) {
   return bestTotal > 0 ? { rx: bestRx, tx: bestTx, total: bestTotal } : null;
 }
 
-// Snapshot original base widths once before any traffic updates
+// Snapshot connection lines once (cached for traffic + ley line updates)
+const _connLines = Array.from(document.querySelectorAll('#connections .conn-line'));
+const _connLinesWithData = _connLines.filter(l => l.dataset.to);
 const _connBaseWidths = new Map();
-document.querySelectorAll('#connections .conn-line').forEach(line => {
+_connLines.forEach(line => {
   const cs = getComputedStyle(line);
   _connBaseWidths.set(line, parseFloat(cs.getPropertyValue('--sw')) || 1.5);
 });
 
 function updateConnectionTraffic(collectd) {
   if (!collectd) return;
-  const lines = document.querySelectorAll('#connections .conn-line[data-to]');
-  lines.forEach(line => {
+  _connLinesWithData.forEach(line => {
     const toNode = line.dataset.to;
     const fromNode = line.dataset.from;
     const toTraffic = getNodeTraffic(collectd, toNode);
@@ -544,17 +558,17 @@ const lineNodeMap = []; // [{line, fromTip, toTip}]
 function updateLinePositions() {
   lineNodeMap.forEach(({ line, fromTip, toTip }) => {
     if (fromTip) {
-      const fromEl = document.querySelector(`[data-tip="${fromTip}"]`);
-      if (fromEl) {
-        const pos = getNodeCenter(fromEl);
+      const n = getNodeDOM(fromTip);
+      if (n.el) {
+        const pos = getNodeCenter(n.el);
         line.setAttribute('x1', pos.x);
         line.setAttribute('y1', pos.y);
       }
     }
     if (toTip) {
-      const toEl = document.querySelector(`[data-tip="${toTip}"]`);
-      if (toEl) {
-        const pos = getNodeCenter(toEl);
+      const n = getNodeDOM(toTip);
+      if (n.el) {
+        const pos = getNodeCenter(n.el);
         line.setAttribute('x2', pos.x);
         line.setAttribute('y2', pos.y);
       }
@@ -635,10 +649,12 @@ document.getElementById('quest-log-header').addEventListener('click', () => {
   if (tabs) tabs.style.display = hidden ? '' : 'none';
 });
 
+const _logBody = document.getElementById('quest-log-body');
+const _logCounter = document.getElementById('log-count');
+
 function addLogEntry(evt, nodeEl) {
-  const body = document.getElementById('quest-log-body');
-  const counter = document.getElementById('log-count');
-  if (!body) return;
+  if (!_logBody) return;
+  const body = _logBody, counter = _logCounter;
 
   const name = nodeEl ? (nodeEl.querySelector('.node-label')?.textContent || evt.node) : (evt.node || 'System');
   const time = new Date((evt.ts || Date.now() / 1000) * 1000);
@@ -744,13 +760,16 @@ function showHighlight(nodeEl, evt) {
   setTimeout(() => flash.remove(), 1500);
 }
 
-// ── Pulse visual ──
+// ── Pulse visual (cached refs) ──
+const _pulseCore = document.getElementById('pulse-core');
+const _pulseRing1 = document.getElementById('pulse-ring1');
+const _pulseRing2 = document.getElementById('pulse-ring2');
+const _pulseLabel = document.getElementById('pulse-label');
+const _scanLine = document.getElementById('scan-line');
+
 function firePulse() {
-  const core = document.getElementById('pulse-core');
-  const ring1 = document.getElementById('pulse-ring1');
-  const ring2 = document.getElementById('pulse-ring2');
-  const label = document.getElementById('pulse-label');
-  const scan = document.getElementById('scan-line');
+  const core = _pulseCore, ring1 = _pulseRing1, ring2 = _pulseRing2;
+  const label = _pulseLabel, scan = _scanLine;
 
   // Core glow
   core.style.background = '#a0ff60';
@@ -778,10 +797,8 @@ function firePulse() {
 }
 
 function showOffline() {
-  const core = document.getElementById('pulse-core');
-  const label = document.getElementById('pulse-label');
-  if (core) { core.style.background = '#804040'; core.style.boxShadow = 'none'; }
-  if (label) { label.textContent = 'OFFLINE'; label.style.color = '#604040'; }
+  if (_pulseCore) { _pulseCore.style.background = '#804040'; _pulseCore.style.boxShadow = 'none'; }
+  if (_pulseLabel) { _pulseLabel.textContent = 'OFFLINE'; _pulseLabel.style.color = '#604040'; }
 }
 
 // ── Polling ──
@@ -917,40 +934,23 @@ const minimap = document.getElementById('minimap');
 const viewport = document.getElementById('minimap-viewport');
 const mmW = 200, mmH = 138, worldW = 3200, worldH = 2200;
 
-const minimapNodes = [
-  // Core nodes
-  [750,580,'#f0d890'], [620,800,'#6080c0'], [950,420,'#a060d0'],
-  [580,480,'#f06040'], [1050,750,'#40a0d0'], [850,630,'#a040c0'],
-  [700,730,'#60d060'], [350,950,'#c09030'], [200,700,'#505060'],
-  // Hub Stone
-  [880,535,'#60a0c0'],
-  // Guardian Towers (amber)
-  [1175,310,'#c09060'], [1375,480,'#c09060'], [775,330,'#c09060'],
-  [375,530,'#c09060'], [405,710,'#c09060'], [675,1030,'#c09060'],
-  [1025,310,'#c09060'], [525,380,'#c09060'], [525,930,'#c09060'],
-  [805,980,'#c09060'], [1225,880,'#c09060'],
-  // Signal Bridges (purple)
-  [225,385,'#9060c0'], [275,485,'#9060c0'], [175,285,'#9060c0'], [305,335,'#9060c0'],
-  // Infrastructure (teal)
-  [1475,730,'#60a0c0'], [325,230,'#60a0c0'], [1125,580,'#60a0c0'],
-  // IoT clusters (green)
-  [1575,930,'#60c060'], [1675,1080,'#60c060'], [1425,1030,'#60c060'],
-  [1525,1130,'#60c060'], [1325,1180,'#60c060'], [925,1080,'#60c060'], [1075,1080,'#60c060'],
-  // Tailscale online (green)
-  [1900,300,'#40c040'], [2100,500,'#40c040'], [2000,750,'#40c040'],
-  [2250,400,'#40c040'], [2300,700,'#40c040'], [1950,900,'#40c040'],
-  // Tailscale offline (gray)
-  [2150,1050,'#404040'], [2350,950,'#404040'], [2500,850,'#404040'],
-  [2550,550,'#404040'], [2400,1100,'#404040'],
-];
-minimapNodes.forEach(([x, y, color]) => {
-  const dot = document.createElement('div');
-  dot.className = 'minimap-dot';
-  dot.style.left = (x / worldW * mmW) + 'px';
-  dot.style.top = (y / worldH * mmH) + 'px';
-  dot.style.background = color;
-  minimap.appendChild(dot);
-});
+// Generate minimap dots from topology data (no more hardcoded positions)
+const MINIMAP_COLORS = {
+  core: '#f0d890', infra: '#60a0c0', tower: '#c09060',
+  bridge: '#9060c0', cluster: '#60c060', tailscale: '#40c040',
+};
+if (_topology) {
+  _topology.nodes.forEach(n => {
+    const dot = document.createElement('div');
+    dot.className = 'minimap-dot';
+    dot.dataset.tip = n.id;
+    dot.style.left = (n.x / worldW * mmW) + 'px';
+    dot.style.top = (n.y / worldH * mmH) + 'px';
+    const isOffline = n.type === 'tailscale' && !n.online;
+    dot.style.background = isOffline ? '#404040' : (MINIMAP_COLORS[n.type] || '#f0d890');
+    minimap.appendChild(dot);
+  });
+}
 
 function updateMinimap() {
   const cw = canvas.clientWidth, ch = canvas.clientHeight;

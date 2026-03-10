@@ -59,7 +59,7 @@
       "y": 545,
       "icon": "&#9876;",
       "label": "Katana",
-      "sublabel": "The Citadel • 10.0.6.129",
+      "sublabel": "The Citadel \u2022 10.0.6.129",
       "iconStyle": {
         "background": "radial-gradient(circle,#2a1f0f,#1a1008)",
         "width": "80px",
@@ -76,7 +76,7 @@
       },
       "pulse": true,
       "tip": {
-        "title": "Katana — The Citadel",
+        "title": "Katana \u2014 The Citadel",
         "stats": []
       }
     },
@@ -87,7 +87,7 @@
       "y": 765,
       "icon": "&#9961;",
       "label": "The Gatekeeper",
-      "sublabel": "OpenWrt Router • 10.0.6.1",
+      "sublabel": "OpenWrt Router \u2022 10.0.6.1",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1a30,#0f0f20)"
       },
@@ -108,7 +108,7 @@
       "y": 385,
       "icon": "&#128302;",
       "label": "The Oracle Stone",
-      "sublabel": "ubox0 • 10.0.6.11",
+      "sublabel": "ubox0 \u2022 10.0.6.11",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a102a,#0f0a1a)"
       },
@@ -248,7 +248,7 @@
       "y": 500,
       "icon": "&#11043;",
       "label": "The Hub Stone",
-      "sublabel": "GS308T • 10.0.6.110",
+      "sublabel": "GS308T \u2022 10.0.6.110",
       "ip": "10.0.6.110",
       "iconStyle": {
         "background": "radial-gradient(circle,#152030,#0c1520)"
@@ -275,7 +275,7 @@
       "y": 650,
       "icon": "&#9879;",
       "label": "The Iron Spine",
-      "sublabel": "HP Switch • 10.0.6.103",
+      "sublabel": "HP Switch \u2022 10.0.6.103",
       "ip": "10.0.6.103",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a2030,#0c1520)",
@@ -311,7 +311,7 @@
       "y": 280,
       "icon": "&#127984;",
       "label": "<REDACTED>",
-      "sublabel": "MR8300 • 10.0.6.100",
+      "sublabel": "MR8300 \u2022 10.0.6.100",
       "ip": "10.0.6.100",
       "collectd": "mr8300-host",
       "iconStyle": {
@@ -343,7 +343,7 @@
       "y": 450,
       "icon": "&#127984;",
       "label": "The Scribe's Alcove",
-      "sublabel": "Office AP • 10.0.6.101",
+      "sublabel": "Office AP \u2022 10.0.6.101",
       "ip": "10.0.6.101",
       "collectd": "onhub-office",
       "iconStyle": {
@@ -375,7 +375,7 @@
       "y": 300,
       "icon": "&#127984;",
       "label": "The Hidden Chamber",
-      "sublabel": "Closet AP • 10.0.6.102",
+      "sublabel": "Closet AP \u2022 10.0.6.102",
       "ip": "10.0.6.102",
       "collectd": "onhub-closet",
       "iconStyle": {
@@ -407,7 +407,7 @@
       "y": 500,
       "icon": "&#127984;",
       "label": "The Woodshed Watch",
-      "sublabel": "Shed AP • 10.0.6.109",
+      "sublabel": "Shed AP \u2022 10.0.6.109",
       "ip": "10.0.6.109",
       "collectd": "wndr4300sw-shed",
       "iconStyle": {
@@ -439,7 +439,7 @@
       "y": 680,
       "icon": "&#127984;",
       "label": "The Pumphouse Keep",
-      "sublabel": "Pumphouse AP • 10.0.6.111",
+      "sublabel": "Pumphouse AP \u2022 10.0.6.111",
       "ip": "10.0.6.111",
       "collectd": "onhub-pumphouse",
       "iconStyle": {
@@ -471,7 +471,7 @@
       "y": 1000,
       "icon": "&#127984;",
       "label": "The Great Hall",
-      "sublabel": "WRT1900AC • 10.0.6.114",
+      "sublabel": "WRT1900AC \u2022 10.0.6.114",
       "ip": "10.0.6.114",
       "collectd": "wrt1900ac-family",
       "iconStyle": {
@@ -503,7 +503,7 @@
       "y": 280,
       "icon": "&#127984;",
       "label": "The Citadel Beacon",
-      "sublabel": "EA6350 • 10.0.6.116",
+      "sublabel": "EA6350 \u2022 10.0.6.116",
       "ip": "10.0.6.116",
       "collectd": "EA6350-CL",
       "iconStyle": {
@@ -535,7 +535,7 @@
       "y": 350,
       "icon": "&#127984;",
       "label": "The Sentinel",
-      "sublabel": "Outdoor AP • 10.0.6.119",
+      "sublabel": "Outdoor AP \u2022 10.0.6.119",
       "ip": "10.0.6.119",
       "collectd": "eap225-outdoor",
       "iconStyle": {
@@ -567,7 +567,7 @@
       "y": 900,
       "icon": "&#127984;",
       "label": "The Inner Ward",
-      "sublabel": "EA6350v3 • 10.0.6.135",
+      "sublabel": "EA6350v3 \u2022 10.0.6.135",
       "ip": "10.0.6.135",
       "collectd": "ea6350v3-family",
       "iconStyle": {
@@ -599,7 +599,7 @@
       "y": 950,
       "icon": "&#127984;",
       "label": "The Family Hearth",
-      "sublabel": "Family OnHub • 10.0.6.141",
+      "sublabel": "Family OnHub \u2022 10.0.6.141",
       "ip": "10.0.6.141",
       "collectd": "onhub-family",
       "iconStyle": {
@@ -631,7 +631,7 @@
       "y": 850,
       "icon": "&#127984;",
       "label": "The Dreamer's Rest",
-      "sublabel": "Bedroom OnHub • 10.0.6.246",
+      "sublabel": "Bedroom OnHub \u2022 10.0.6.246",
       "ip": "10.0.6.246",
       "collectd": "onhub-bed",
       "iconStyle": {
@@ -663,7 +663,7 @@
       "y": 350,
       "icon": "&#128225;",
       "label": "Sky Bridge Alpha",
-      "sublabel": "CPE710 • 10.0.6.248",
+      "sublabel": "CPE710 \u2022 10.0.6.248",
       "ip": "10.0.6.248",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1030,#100820)"
@@ -694,7 +694,7 @@
       "y": 450,
       "icon": "&#128225;",
       "label": "Sky Bridge Omega",
-      "sublabel": "CPE710 • 10.0.6.191",
+      "sublabel": "CPE710 \u2022 10.0.6.191",
       "ip": "10.0.6.191",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1030,#100820)"
@@ -787,7 +787,7 @@
       "y": 700,
       "icon": "&#127968;",
       "label": "The Homestead",
-      "sublabel": "Home Assistant • 10.0.6.108",
+      "sublabel": "Home Assistant \u2022 10.0.6.108",
       "ip": "10.0.6.108",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a2010,#101508)"
@@ -814,7 +814,7 @@
       "y": 200,
       "icon": "&#9788;",
       "label": "The Sunstone",
-      "sublabel": "Solar Inverter • 10.0.6.244",
+      "sublabel": "Solar Inverter \u2022 10.0.6.244",
       "ip": "10.0.6.244",
       "iconStyle": {
         "background": "radial-gradient(circle,#2a2a08,#1a1a04)",
@@ -845,7 +845,7 @@
       "y": 550,
       "icon": "&#9881;",
       "label": "The Automaton",
-      "sublabel": "Node-RED • 10.0.6.118",
+      "sublabel": "Node-RED \u2022 10.0.6.118",
       "ip": "10.0.6.118",
       "iconStyle": {
         "background": "radial-gradient(circle,#201510,#150e08)"
@@ -872,7 +872,7 @@
       "y": 900,
       "icon": "&#128293;",
       "label": "The Nest Circle",
-      "sublabel": "Nest Thermostats • 10.0.10.x",
+      "sublabel": "Nest Thermostats \u2022 10.0.10.x",
       "badge": 5,
       "iconStyle": {
         "background": "radial-gradient(circle,#2a1510,#1a0e08)"
@@ -903,7 +903,7 @@
       "y": 1050,
       "icon": "&#128161;",
       "label": "The Kasa Spirits",
-      "sublabel": "Smart Plugs • 10.0.10.x",
+      "sublabel": "Smart Plugs \u2022 10.0.10.x",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a2010,#101508)"
       },
@@ -933,7 +933,7 @@
       "y": 1000,
       "icon": "&#128065;",
       "label": "The Watchers",
-      "sublabel": "Hikvision Cameras • 10.0.10.x",
+      "sublabel": "Hikvision Cameras \u2022 10.0.10.x",
       "badge": 2,
       "iconStyle": {
         "background": "radial-gradient(circle,#201020,#150a15)"
@@ -964,7 +964,7 @@
       "y": 1100,
       "icon": "&#128302;",
       "label": "The Voice Stones",
-      "sublabel": "Google Home • 10.0.10.x",
+      "sublabel": "Google Home \u2022 10.0.10.x",
       "iconStyle": {
         "background": "radial-gradient(circle,#151530,#0a0a20)"
       },
@@ -994,7 +994,7 @@
       "y": 1150,
       "icon": "&#10022;",
       "label": "The Sprite Swarm",
-      "sublabel": "ESP Devices • 10.0.10.x",
+      "sublabel": "ESP Devices \u2022 10.0.10.x",
       "badge": 20,
       "iconStyle": {
         "background": "radial-gradient(circle,#102020,#081515)"
@@ -1025,7 +1025,7 @@
       "y": 1050,
       "icon": "&#9832;",
       "label": "The Steam Works",
-      "sublabel": "LG Washer+Dryer • 10.0.10.x",
+      "sublabel": "LG Washer+Dryer \u2022 10.0.10.x",
       "badge": 2,
       "iconStyle": {
         "background": "radial-gradient(circle,#201a15,#151008)"
@@ -1056,7 +1056,7 @@
       "y": 1050,
       "icon": "&#129302;",
       "label": "The Wandering Golems",
-      "sublabel": "Roombas • 10.0.10.x",
+      "sublabel": "Roombas \u2022 10.0.10.x",
       "badge": 2,
       "iconStyle": {
         "background": "radial-gradient(circle,#151a20,#0a0f15)"
@@ -1088,7 +1088,7 @@
       "online": true,
       "icon": "&#128241;",
       "label": "The Herald",
-      "sublabel": "Android • 100.71.20.3",
+      "sublabel": "Android \u2022 100.71.20.3",
       "iconStyle": {
         "background": "radial-gradient(circle,#102010,#081008)",
         "width": "50px",
@@ -1148,7 +1148,7 @@
       "online": true,
       "icon": "&#127757;",
       "label": "Terra",
-      "sublabel": "Linux • 100.71.19.39",
+      "sublabel": "Linux \u2022 100.71.19.39",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1a10,#0f0f08)",
         "width": "50px",
@@ -1178,7 +1178,7 @@
       "online": true,
       "icon": "&#9889;",
       "label": "The Speedstone",
-      "sublabel": "iperf • 100.122.165.30",
+      "sublabel": "iperf \u2022 100.122.165.30",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a100a,#0f0805)",
         "width": "50px",
@@ -1208,7 +1208,7 @@
       "online": true,
       "icon": "&#128062;",
       "label": "OpenClaw",
-      "sublabel": "Linux • 100.69.161.127",
+      "sublabel": "Linux \u2022 100.69.161.127",
       "iconStyle": {
         "background": "radial-gradient(circle,#2a1010,#1a0808)",
         "width": "50px",
@@ -1238,7 +1238,7 @@
       "online": true,
       "icon": "&#9729;",
       "label": "The Cloud Spire",
-      "sublabel": "instance-1 • 100.75.240.4",
+      "sublabel": "instance-1 \u2022 100.75.240.4",
       "iconStyle": {
         "background": "radial-gradient(circle,#10101a,#08080f)",
         "width": "50px",
@@ -1476,37 +1476,44 @@
     {
       "from": "gatekeeper",
       "to": "nest-circle",
-      "type": "vlan"
+      "type": "vlan",
+      "vlan": 10
     },
     {
       "from": "gatekeeper",
       "to": "kasa-spirits",
-      "type": "vlan"
+      "type": "vlan",
+      "vlan": 10
     },
     {
       "from": "gatekeeper",
       "to": "watchers",
-      "type": "vlan"
+      "type": "vlan",
+      "vlan": 10
     },
     {
       "from": "gatekeeper",
       "to": "voice-stones",
-      "type": "vlan"
+      "type": "vlan",
+      "vlan": 10
     },
     {
       "from": "gatekeeper",
       "to": "esp-swarm",
-      "type": "vlan"
+      "type": "vlan",
+      "vlan": 10
     },
     {
       "from": "gatekeeper",
       "to": "steam-works",
-      "type": "vlan"
+      "type": "vlan",
+      "vlan": 10
     },
     {
       "from": "gatekeeper",
       "to": "wandering-golems",
-      "type": "vlan"
+      "type": "vlan",
+      "vlan": 10
     },
     {
       "from": "cpe710-ap",

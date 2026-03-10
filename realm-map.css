@@ -277,6 +277,16 @@
     --sw: 1.5;
   }
 
+  /* VLAN labels on connection lines */
+  .vlan-label {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    fill: rgba(255,160,60,0.4);
+    text-anchor: middle;
+    pointer-events: none;
+    letter-spacing: 1px;
+  }
+
   /* Traffic-active glow classes */
   .conn-traffic-low    { filter: url(#conn-glow-low); }
   .conn-traffic-med    { filter: url(#conn-glow-med); }
