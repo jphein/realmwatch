@@ -443,9 +443,20 @@ const connColors = {
 
 function getNodeTraffic(collectd, nodeKey) {
   if (!collectd) return null;
-  // Try exact match, then fuzzy match
-  const cd = collectd[nodeKey]
-    || Object.values(collectd).find(c => c.hostname && c.hostname.toLowerCase().replace(/[-_]/g,'') === nodeKey.toLowerCase().replace(/[-_]/g,''));
+  const key = nodeKey.toLowerCase();
+  // Try exact match
+  let cd = collectd[nodeKey];
+  // Try prefix match (hostname.domain.tld → hostname)
+  if (!cd) {
+    for (const [k, v] of Object.entries(collectd)) {
+      if (k.toLowerCase().split('.')[0] === key) { cd = v; break; }
+    }
+  }
+  // Try fuzzy hostname match
+  if (!cd) {
+    cd = Object.values(collectd).find(c =>
+      c.hostname && c.hostname.toLowerCase().replace(/[-_]/g,'') === key.replace(/[-_]/g,''));
+  }
   if (!cd || !cd.interfaces) return null;
   // Pick the busiest single interface (typically eth0 or wan) — not sum of all
   let bestRx = 0, bestTx = 0, bestTotal = 0;
@@ -490,8 +501,8 @@ function updateConnectionTraffic(collectd) {
     // Realistic bandwidth scale: 0→1 mapped over 1 KB/s → 10 MB/s (log scale)
     const rawIntensity = Math.max(0, Math.min(1, (Math.log10(traffic.total + 1) - 3) / 4));
     const intensity = Math.min(1, rawIntensity * trafficScale);
-    // Stroke width: base (frozen original) + up to 3px extra scaled by slider
-    const sw = baseW + intensity * 3 * trafficScale;
+    // Stroke width: base (frozen original) + up to 8px extra scaled by slider
+    const sw = baseW + intensity * 8 * trafficScale;
     line.style.setProperty('--sw', sw.toFixed(1));
     // Animation speed: 20s → 2s (faster = more traffic)
     const speed = Math.max(2, 20 - intensity * 18);
@@ -512,6 +523,28 @@ function updateConnectionTraffic(collectd) {
     if (intensity > 0.65) line.classList.add('conn-traffic-high');
     else if (intensity > 0.35) line.classList.add('conn-traffic-med');
     else if (intensity > 0.15) line.classList.add('conn-traffic-low');
+  });
+
+  // Scale node icons based on traffic through them
+  document.querySelectorAll('.realm-node').forEach(node => {
+    const tip = node.dataset.tip;
+    if (!tip) return;
+    const traffic = getNodeTraffic(collectd, tip);
+    const icon = node.querySelector('.node-icon');
+    if (!icon) return;
+    if (!traffic || traffic.total === 0) {
+      icon.style.transform = '';
+      icon.style.filter = '';
+      return;
+    }
+    const rawI = Math.max(0, Math.min(1, (Math.log10(traffic.total + 1) - 3) / 4));
+    const intensity = Math.min(1, rawI * trafficScale);
+    // Scale icon 1.0 → 1.5x based on traffic
+    const scale = 1 + intensity * 0.5;
+    icon.style.transform = `scale(${scale.toFixed(2)})`;
+    // Add glow brightness boost
+    if (intensity > 0.3) icon.style.filter = `brightness(${(1 + intensity * 0.4).toFixed(2)})`;
+    else icon.style.filter = '';
   });
 }
 
