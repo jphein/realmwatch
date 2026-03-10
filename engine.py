@@ -187,32 +187,34 @@ class LitRPGEngine:
                 return None
         return _cached("nft", _read)
 
-    # All realm nodes: infrastructure, APs, notable devices
-    REALM_NODES = {
-        "Katana":           "10.0.6.129",
-        "Gatekeeper":       "10.0.6.1",
-        "ubox0":            "10.0.6.11",
-        "mr8300-host":     "10.0.6.100",
-        "onhub-office":     "10.0.6.101",
-        "onhub-closet":     "10.0.6.102",
-        "wndr4300sw-shed":  "10.0.6.109",
-        "onhub-pumphouse":  "10.0.6.111",
-        "wrt1900ac-family": "10.0.6.114",
-        "EA6350-CL":        "10.0.6.116",
-        "eap225-outdoor":   "10.0.6.119",
-        "ea6350v3-family":  "10.0.6.135",
-        "onhub-family":     "10.0.6.141",
-        "onhub-bed":        "10.0.6.246",
-        "cpe710-ap":        "10.0.6.248",
-        "cpe710-client":    "10.0.6.191",
-        "gigabeam0":        "10.0.6.242",
-        "gigabeam1":        "10.0.6.243",
-        "GS308T":           "10.0.6.110",
-        "ha":               "10.0.6.108",
-        "goodwe":           "10.0.6.244",
-        "nodered":          "10.0.6.118",
-        "game":             "10.0.6.160",
-    }
+    # Ping list derived from topology.json — any node with an "ip" field gets pinged
+    _TOPOLOGY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "topology.json")
+    _topo_mtime = 0
+    _realm_nodes = {}
+
+    @classmethod
+    def _load_realm_nodes(cls):
+        """Load ping targets from topology.json (cached by mtime)."""
+        try:
+            mt = os.path.getmtime(cls._TOPOLOGY_FILE)
+            if cls._realm_nodes and mt == cls._topo_mtime:
+                return cls._realm_nodes
+            with open(cls._TOPOLOGY_FILE) as f:
+                topo = json.load(f)
+            nodes = {}
+            for n in topo.get("nodes", []):
+                ip = n.get("ip")
+                if ip and not ip.endswith(".x"):  # skip placeholder IPs
+                    nodes[n["id"]] = ip
+            cls._realm_nodes = nodes
+            cls._topo_mtime = mt
+        except (OSError, json.JSONDecodeError):
+            pass  # keep previous cache on error
+        return cls._realm_nodes
+
+    @property
+    def REALM_NODES(self):
+        return self._load_realm_nodes()
 
     def _get_nodes_parallel(self):
         """Ping all realm nodes concurrently."""
@@ -239,7 +241,7 @@ class LitRPGEngine:
 
         gpu = self.get_gpu_stats()
         nodes = self._get_nodes_parallel()
-        nft = self.get_nft_counters() if nodes.get("Katana") else None
+        nft = self.get_nft_counters() if nodes.get("katana") else None
 
         net = psutil.net_io_counters()
         total_mb = (net.bytes_sent + net.bytes_recv) / (1024 * 1024)
@@ -321,18 +323,18 @@ class LitRPGEngine:
 
     def translate_network(self, nodes, traffic, nft):
         report = []
-        if nodes.get("Katana"):
+        if nodes.get("katana"):
             report.append("Katana is unsheathed.")
         else:
             report.append("Katana sleeps in its scabbard.")
-        if nodes.get("Gatekeeper"):
+        if nodes.get("gatekeeper"):
             report.append("The Gatekeeper stands watch.")
             if nft:
                 wan_gb = nft["wan"] / (1024 ** 3)
                 report.append(f"WAN Gate: {wan_gb:.2f} GB.")
         else:
             report.append("The Gatekeeper is silent.")
-        if nodes.get("ubox0"):
+        if nodes.get("oracle"):
             report.append("The Oracle Stone pulses.")
         return " ".join(report)
 
