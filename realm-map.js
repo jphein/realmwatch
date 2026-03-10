@@ -428,6 +428,9 @@ function updateUI(d) {
   // ── EtherApe-style traffic visualization on connection lines ──
   updateConnectionTraffic(d.collectd);
 
+  // ── Update node list status indicators ──
+  updateNodeListStatus(d);
+
   firePulse();
 }
 
@@ -1099,6 +1102,160 @@ document.querySelectorAll('.realm-node').forEach(node => {
   });
 });
 
+// ── Panel Minimize System (double-click header → fantasy icon) ──
+const PANEL_ICONS = {
+  'realm-panel':  { icon: '\u2694', tooltip: 'Realm Vitals',  color: '#f0d890', rgb: [240,216,144] },
+  'legend':       { icon: '\u2726', tooltip: 'Map Legend',     color: '#64b4ff', rgb: [100,180,255] },
+  'quest-log':    { icon: '\u2619', tooltip: 'Quest Log',     color: '#a0ff60', rgb: [160,255,96] },
+  'realm-codex':  { icon: '\u2630', tooltip: 'Realm Codex',   color: '#9060c0', rgb: [144,96,192] },
+  'minimap':      { icon: '\u25CE', tooltip: 'Minimap',       color: '#60a0c0', rgb: [96,160,192] },
+  'node-list':    { icon: '\u2691', tooltip: 'Realm Census',  color: '#c09060', rgb: [192,144,96] },
+};
+
+function setupPanelMinimize(panelId, handleSelector) {
+  const panel = document.getElementById(panelId);
+  if (!panel) return;
+  const cfg = PANEL_ICONS[panelId] || { icon: '\u2726', tooltip: panelId, color: '#f0d890' };
+
+  // Create the minimized icon element (always in DOM, hidden until minimized)
+  const minIcon = document.createElement('div');
+  minIcon.className = 'panel-min-icon';
+  minIcon.dataset.tooltip = cfg.tooltip;
+  minIcon.innerHTML = `<span style="color:${cfg.color};filter:drop-shadow(0 0 4px ${cfg.color})">${cfg.icon}</span><div class="min-glow" style="box-shadow:0 0 8px ${cfg.color}30"></div>`;
+  panel.appendChild(minIcon);
+
+  // Detect handle element
+  const handle = handleSelector ? panel.querySelector(handleSelector) : panel;
+  if (!handle) return;
+
+  let _dblClickTimer = null;
+
+  handle.addEventListener('dblclick', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (panel.classList.contains('panel-minimized')) return;
+    // Store original dimensions for restore
+    panel._origWidth = panel.style.width || '';
+    panel._origMinWidth = panel.style.minWidth || '';
+    panel._origMaxHeight = panel.style.maxHeight || '';
+    panel._origPadding = panel.style.padding || '';
+    panel._origBorderRadius = panel.style.borderRadius || '';
+    panel._origOverflow = panel.style.overflow || '';
+    panel.classList.add('panel-minimized');
+    panel.style.animation = 'panelMinimize 0.4s ease-out';
+    // Spawn motes on minimize
+    const rect = panel.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+    for (let i = 0; i < 8; i++) {
+      spawnMote(cx + (Math.random() - 0.5) * 40, cy + (Math.random() - 0.5) * 40,
+        cfg.rgb);
+    }
+    scheduleSave();
+  });
+
+  // Click the minimized icon to restore
+  minIcon.addEventListener('click', e => {
+    e.stopPropagation();
+    if (!panel.classList.contains('panel-minimized')) return;
+    panel.classList.remove('panel-minimized');
+    panel.style.animation = '';
+    // Spawn motes on restore
+    const rect = panel.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+    for (let i = 0; i < 6; i++) {
+      spawnMote(cx + (Math.random() - 0.5) * 60, cy + (Math.random() - 0.5) * 60,
+        cfg.rgb);
+    }
+  });
+}
+
+// Wire up all panels
+setupPanelMinimize('realm-panel', 'h3');
+setupPanelMinimize('legend', 'h3');
+setupPanelMinimize('quest-log', '#quest-log-header');
+setupPanelMinimize('realm-codex', '#codex-header');
+setupPanelMinimize('minimap', null);
+setupPanelMinimize('node-list', '#node-list-header');
+
+// ── Node List Panel (Realm Census) ──
+const NODE_TYPE_ORDER = ['core', 'infra', 'tower', 'bridge', 'cluster', 'tailscale'];
+const NODE_TYPE_LABELS = {
+  core: 'Inner Sanctum', infra: 'Infrastructure', tower: 'Guardian Towers',
+  bridge: 'Signal Bridges', cluster: 'Enchanted Quarters', tailscale: 'Astral Sea'
+};
+
+function buildNodeList() {
+  if (!_topology) return;
+  const body = document.getElementById('node-list-body');
+  const countEl = document.getElementById('nl-count');
+  if (!body) return;
+  body.innerHTML = '';
+
+  // Group nodes by type
+  const groups = {};
+  _topology.nodes.forEach(n => {
+    const type = n.type || 'core';
+    if (!groups[type]) groups[type] = [];
+    groups[type].push(n);
+  });
+
+  let total = 0;
+  NODE_TYPE_ORDER.forEach(type => {
+    const nodes = groups[type];
+    if (!nodes || !nodes.length) return;
+    total += nodes.length;
+
+    const group = document.createElement('div');
+    group.className = 'nl-group';
+    group.innerHTML = `<div class="nl-group-title">${NODE_TYPE_LABELS[type] || type}</div>`;
+
+    nodes.forEach(n => {
+      const item = document.createElement('div');
+      item.className = 'nl-item';
+      item.dataset.nodeId = n.id;
+      item.innerHTML = `<div class="nl-status unknown"></div><span class="nl-icon">${n.icon}</span><div class="nl-info"><div class="nl-name">${n.label}</div><div class="nl-sub">${n.ip || n.sublabel || ''}</div></div>`;
+
+      // Click to pan/zoom to node
+      item.addEventListener('click', () => {
+        const nodeEl = document.querySelector(`[data-tip="${n.id}"]`);
+        if (!nodeEl) return;
+        const nodeLeft = parseInt(nodeEl.style.left) || 0;
+        const nodeTop = parseInt(nodeEl.style.top) || 0;
+        const cw = canvas.clientWidth, ch = canvas.clientHeight;
+        scale = 1.2;
+        panX = cw / 2 - nodeLeft * scale;
+        panY = ch / 2 - nodeTop * scale;
+        applyTransform();
+        // Flash the node
+        showHighlight(nodeEl, { color: 'rgba(240,216,144,0.5)' });
+      });
+
+      group.appendChild(item);
+    });
+    body.appendChild(group);
+  });
+
+  if (countEl) countEl.textContent = total + ' nodes';
+}
+
+function updateNodeListStatus(d) {
+  if (!d || !d.astral) return;
+  const nodeStatus = d.astral.nodes || {};
+  document.querySelectorAll('.nl-item').forEach(item => {
+    const id = item.dataset.nodeId;
+    const dot = item.querySelector('.nl-status');
+    if (!dot) return;
+    // Match status key (same logic as updateUI)
+    const statusKey = Object.keys(nodeStatus).find(k => k.toLowerCase() === id.toLowerCase())
+      || Object.keys(nodeStatus).find(k => k.replace(/-/g, '').toLowerCase() === id.replace(/-/g, '').toLowerCase());
+    const online = statusKey ? nodeStatus[statusKey] : null;
+    dot.className = 'nl-status ' + (online === true ? 'online' : online === false ? 'offline' : 'unknown');
+  });
+}
+
+// Build the node list from topology
+buildNodeList();
+
 // ── Magic Motes Trail (for draggable elements) ──
 const moteCanvas = document.createElement('canvas');
 moteCanvas.id = 'mote-canvas';
@@ -1158,12 +1315,15 @@ animateMotes();
 // ── Layout persistence (localStorage) ──
 const LAYOUT_KEY = 'realm-map-layout';
 function saveLayout() {
-  const layout = { panels: {}, nodes: {} };
-  // Save panel positions
-  ['realm-panel','legend','quest-log','realm-codex','minimap'].forEach(id => {
+  const layout = { panels: {}, nodes: {}, minimized: [] };
+  // Save panel positions and minimized state
+  ['realm-panel','legend','quest-log','realm-codex','minimap','node-list'].forEach(id => {
     const el = document.getElementById(id);
     if (el && el.style.left) {
       layout.panels[id] = { left: el.style.left, top: el.style.top };
+    }
+    if (el && el.classList.contains('panel-minimized')) {
+      layout.minimized.push(id);
     }
   });
   // Save node positions
@@ -1190,6 +1350,13 @@ function restoreLayout() {
           el.style.bottom = 'auto';
           el.style.transform = 'none';
         }
+      });
+    }
+    // Restore minimized panels
+    if (layout.minimized) {
+      layout.minimized.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('panel-minimized');
       });
     }
     // Restore node positions
@@ -1278,6 +1445,7 @@ makeDraggable(document.getElementById('quest-log'), '#quest-log-header', [160,25
 makeDraggable(document.getElementById('realm-codex'), '#codex-header', [144,96,192]);
 makeDraggable(document.getElementById('minimap'), null, [96,160,192]);
 makeDraggable(document.getElementById('persona-editor'), '.pe-header', [240,200,100]);
+makeDraggable(document.getElementById('node-list'), '#node-list-header', [192,144,96]);
 
 // ── Draggable Map Nodes (mouse + touch) ──
 (function() {
