@@ -1491,6 +1491,723 @@
           ]
         ]
       }
+    },
+    {
+      "id": "flip3",
+      "type": "device",
+      "x": 700,
+      "y": 240,
+      "icon": "&#128241;",
+      "label": "The Messenger",
+      "sublabel": "Flip3 \u2022 10.0.6.106",
+      "ip": "10.0.6.106",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a1520,#0f0a15)",
+        "borderColor": "rgba(120,160,200,0.4)",
+        "width": "40px",
+        "height": "40px",
+        "fontSize": "18px"
+      }
+    },
+    {
+      "id": "flip3-5g",
+      "type": "device",
+      "x": 450,
+      "y": 280,
+      "icon": "&#128241;",
+      "label": "The Wanderer",
+      "sublabel": "Z Flip3 5G \u2022 10.0.6.138",
+      "ip": "10.0.6.138",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a1520,#0f0a15)",
+        "borderColor": "rgba(120,160,200,0.4)",
+        "width": "40px",
+        "height": "40px",
+        "fontSize": "18px"
+      }
+    },
+    {
+      "id": "s24-ultra",
+      "type": "device",
+      "x": 680,
+      "y": 1020,
+      "icon": "&#128241;",
+      "label": "<REDACTED>",
+      "sublabel": "S24 Ultra \u2022 10.0.6.139",
+      "ip": "10.0.6.139",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a1520,#0f0a15)",
+        "borderColor": "rgba(140,120,200,0.4)",
+        "width": "40px",
+        "height": "40px",
+        "fontSize": "18px"
+      }
+    },
+    {
+      "id": "iphone",
+      "type": "device",
+      "x": 680,
+      "y": 1080,
+      "icon": "&#128241;",
+      "label": "The Apple Shard",
+      "sublabel": "iPhone \u2022 10.0.6.154",
+      "ip": "10.0.6.154",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a1520,#0f0a15)",
+        "borderColor": "rgba(160,160,160,0.4)",
+        "width": "40px",
+        "height": "40px",
+        "fontSize": "18px"
+      }
+    },
+    {
+      "id": "pixel-7",
+      "type": "device",
+      "x": 850,
+      "y": 1020,
+      "icon": "&#128241;",
+      "label": "The Seer's Eye",
+      "sublabel": "Pixel 7 \u2022 10.0.6.146",
+      "ip": "10.0.6.146",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a1520,#0f0a15)",
+        "borderColor": "rgba(100,180,100,0.4)",
+        "width": "40px",
+        "height": "40px",
+        "fontSize": "18px"
+      }
+    },
+    {
+      "id": "users-air",
+      "type": "device",
+      "x": 850,
+      "y": 1080,
+      "icon": "&#128187;",
+      "label": "The Windborne Tome",
+      "sublabel": "MacBook Air \u2022 10.0.6.143",
+      "ip": "10.0.6.143",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#151520,#0a0a15)",
+        "borderColor": "rgba(160,160,180,0.4)",
+        "width": "44px",
+        "height": "44px",
+        "fontSize": "20px"
+      }
+    },
+    {
+      "id": "latitude-7390",
+      "type": "device",
+      "x": 1050,
+      "y": 550,
+      "icon": "&#128187;",
+      "label": "The Wandering Codex",
+      "sublabel": "Latitude 7390 \u2022 10.0.6.156",
+      "ip": "10.0.6.156",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#151520,#0a0a15)",
+        "borderColor": "rgba(100,140,200,0.4)",
+        "width": "44px",
+        "height": "44px",
+        "fontSize": "20px"
+      }
+    },
+    {
+      "id": "woodshed",
+      "type": "device",
+      "x": 280,
+      "y": 430,
+      "icon": "&#127795;",
+      "label": "The Woodshed",
+      "sublabel": "woodshed \u2022 10.0.6.105",
+      "ip": "10.0.6.105",
+      "collectd": "woodshed",
+      "ssh": "woodshed",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a1510,#0f0a08)",
+        "borderColor": "rgba(140,100,60,0.4)",
+        "width": "44px",
+        "height": "44px",
+        "fontSize": "20px"
+      },
+      "pulse": true
+    },
+    {
+      "id": "kindle",
+      "type": "device",
+      "x": 1280,
+      "y": 920,
+      "icon": "&#128214;",
+      "label": "The Reading Stone",
+      "sublabel": "Kindle \u2022 10.0.6.134",
+      "ip": "10.0.6.134",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a1510,#0f0a08)",
+        "borderColor": "rgba(160,140,100,0.4)",
+        "width": "38px",
+        "height": "38px",
+        "fontSize": "16px"
+      }
+    },
+    {
+      "id": "lg-washer",
+      "type": "device",
+      "x": 1420,
+      "y": 380,
+      "icon": "&#127754;",
+      "label": "The Tidecaller",
+      "sublabel": "LG Washer \u2022 10.0.6.107",
+      "ip": "10.0.6.107",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#101520,#080a10)",
+        "borderColor": "rgba(80,140,200,0.3)",
+        "width": "40px",
+        "height": "40px",
+        "fontSize": "18px"
+      }
+    },
+    {
+      "id": "lg-dryer",
+      "type": "device",
+      "x": 1420,
+      "y": 320,
+      "icon": "&#9728;",
+      "label": "The Hearthwind",
+      "sublabel": "LG Dryer \u2022 10.0.6.130",
+      "ip": "10.0.6.130",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#201510,#150a08)",
+        "borderColor": "rgba(200,140,80,0.3)",
+        "width": "40px",
+        "height": "40px",
+        "fontSize": "18px"
+      }
+    },
+    {
+      "id": "roomba",
+      "type": "device",
+      "x": 1280,
+      "y": 780,
+      "icon": "&#129302;",
+      "label": "The Floor Golem",
+      "sublabel": "Roomba \u2022 10.0.6.120",
+      "ip": "10.0.6.120",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#151515,#0a0a0a)",
+        "borderColor": "rgba(100,200,100,0.3)",
+        "width": "40px",
+        "height": "40px",
+        "fontSize": "18px"
+      }
+    },
+    {
+      "id": "irobot",
+      "type": "device",
+      "x": 680,
+      "y": 370,
+      "icon": "&#129302;",
+      "label": "The Second Golem",
+      "sublabel": "iRobot \u2022 10.0.6.142",
+      "ip": "10.0.6.142",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#151515,#0a0a0a)",
+        "borderColor": "rgba(100,200,100,0.3)",
+        "width": "40px",
+        "height": "40px",
+        "fontSize": "18px"
+      }
+    },
+    {
+      "id": "roku",
+      "type": "device",
+      "x": 1220,
+      "y": 210,
+      "icon": "&#128253;",
+      "label": "The Crystal Mirror",
+      "sublabel": "Roku 3 \u2022 10.0.6.249",
+      "ip": "10.0.6.249",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#15101a,#0a0810)",
+        "borderColor": "rgba(120,80,180,0.3)",
+        "width": "40px",
+        "height": "40px",
+        "fontSize": "18px"
+      }
+    },
+    {
+      "id": "echo",
+      "type": "device",
+      "x": 680,
+      "y": 180,
+      "icon": "&#128266;",
+      "label": "The Echo Chamber",
+      "sublabel": "Amazon Echo \u2022 10.0.6.151",
+      "ip": "10.0.6.151",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#101520,#080a10)",
+        "borderColor": "rgba(80,160,220,0.3)",
+        "width": "40px",
+        "height": "40px",
+        "fontSize": "18px"
+      }
+    },
+    {
+      "id": "wled-main",
+      "type": "device",
+      "x": 1420,
+      "y": 520,
+      "icon": "&#127752;",
+      "label": "The Prismatic",
+      "sublabel": "WLED \u2022 10.0.6.149",
+      "ip": "10.0.6.149",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a1a,#10050f)",
+        "borderColor": "rgba(200,100,255,0.4)",
+        "width": "38px",
+        "height": "38px",
+        "fontSize": "16px"
+      }
+    },
+    {
+      "id": "wled-aqi",
+      "type": "device",
+      "x": 430,
+      "y": 420,
+      "icon": "&#127752;",
+      "label": "The AQI Crystal",
+      "sublabel": "WLED AQI \u2022 10.0.6.152",
+      "ip": "10.0.6.152",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a1a,#10050f)",
+        "borderColor": "rgba(200,100,255,0.4)",
+        "width": "38px",
+        "height": "38px",
+        "fontSize": "16px"
+      }
+    },
+    {
+      "id": "esp32-bed1",
+      "type": "device",
+      "x": 1130,
+      "y": 910,
+      "icon": "&#128308;",
+      "label": "Bed Rune I",
+      "sublabel": "esp32c3 \u2022 10.0.6.112",
+      "ip": "10.0.6.112",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#151510,#0a0a08)",
+        "borderColor": "rgba(140,160,80,0.3)",
+        "width": "34px",
+        "height": "34px",
+        "fontSize": "14px"
+      }
+    },
+    {
+      "id": "esp32-bed2",
+      "type": "device",
+      "x": 1130,
+      "y": 970,
+      "icon": "&#128308;",
+      "label": "Bed Rune II",
+      "sublabel": "esp32c3 \u2022 10.0.6.147",
+      "ip": "10.0.6.147",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#151510,#0a0a08)",
+        "borderColor": "rgba(140,160,80,0.3)",
+        "width": "34px",
+        "height": "34px",
+        "fontSize": "14px"
+      }
+    },
+    {
+      "id": "esp32-bed3",
+      "type": "device",
+      "x": 1130,
+      "y": 1030,
+      "icon": "&#128308;",
+      "label": "Bed Rune III",
+      "sublabel": "esp32c3 \u2022 10.0.6.148",
+      "ip": "10.0.6.148",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#151510,#0a0a08)",
+        "borderColor": "rgba(140,160,80,0.3)",
+        "width": "34px",
+        "height": "34px",
+        "fontSize": "14px"
+      }
+    },
+    {
+      "id": "family-vm",
+      "type": "device",
+      "x": 850,
+      "y": 880,
+      "icon": "&#128187;",
+      "label": "The Family Scroll",
+      "sublabel": "VM \u2022 10.0.8.104",
+      "ip": "10.0.8.104",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#151520,#0a0a15)",
+        "borderColor": "rgba(120,120,180,0.3)",
+        "width": "40px",
+        "height": "40px",
+        "fontSize": "18px"
+      }
+    },
+    {
+      "id": "smart-plugs",
+      "type": "cluster",
+      "x": 1500,
+      "y": 550,
+      "icon": "&#128268;",
+      "label": "The Spark Sprites",
+      "sublabel": "Smart Plugs \u2022 10.0.10.x",
+      "badge": 4,
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a1a08,#101004)",
+        "borderColor": "rgba(200,180,60,0.3)"
+      },
+      "pulse": true,
+      "tip": {
+        "title": "The Spark Sprites",
+        "stats": [
+          [
+            "Devices",
+            "HS103, HS200, KL420, KL125"
+          ],
+          [
+            "VLAN",
+            "10 IoT"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "esp-outdoor",
+      "type": "cluster",
+      "x": 380,
+      "y": 260,
+      "icon": "&#127793;",
+      "label": "The Wild Runes",
+      "sublabel": "ESP Sensors \u2022 Outdoor",
+      "badge": 12,
+      "iconStyle": {
+        "background": "radial-gradient(circle,#0a1a0a,#050f05)",
+        "borderColor": "rgba(80,180,80,0.3)"
+      },
+      "pulse": true,
+      "tip": {
+        "title": "The Wild Runes",
+        "stats": [
+          [
+            "Devices",
+            "12 ESP/Tuya sensors"
+          ],
+          [
+            "Area",
+            "Outdoor / Shed"
+          ],
+          [
+            "VLAN",
+            "10 IoT"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "esp-office",
+      "type": "cluster",
+      "x": 1500,
+      "y": 380,
+      "icon": "&#127793;",
+      "label": "The Study Runes",
+      "sublabel": "ESP Sensors \u2022 Office",
+      "badge": 8,
+      "iconStyle": {
+        "background": "radial-gradient(circle,#0a1a0a,#050f05)",
+        "borderColor": "rgba(80,180,80,0.3)"
+      },
+      "pulse": true,
+      "tip": {
+        "title": "The Study Runes",
+        "stats": [
+          [
+            "Devices",
+            "8 ESP/sensor nodes"
+          ],
+          [
+            "Area",
+            "Office"
+          ],
+          [
+            "VLAN",
+            "10 IoT"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "google-home",
+      "type": "cluster",
+      "x": 1500,
+      "y": 470,
+      "icon": "&#127925;",
+      "label": "The Voice Stones",
+      "sublabel": "Google Home \u2022 10.0.10.x",
+      "badge": 2,
+      "iconStyle": {
+        "background": "radial-gradient(circle,#101520,#080a10)",
+        "borderColor": "rgba(80,160,220,0.3)"
+      },
+      "pulse": true,
+      "tip": {
+        "title": "The Voice Stones",
+        "stats": [
+          [
+            "Devices",
+            "Google Home, Home Mini"
+          ],
+          [
+            "VLAN",
+            "10 IoT"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "hikcams",
+      "type": "cluster",
+      "x": 440,
+      "y": 200,
+      "icon": "&#128065;",
+      "label": "The Watchers",
+      "sublabel": "HikVision Cams \u2022 10.0.10.x",
+      "badge": 2,
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a1010,#100808)",
+        "borderColor": "rgba(200,80,80,0.3)"
+      },
+      "pulse": true,
+      "tip": {
+        "title": "The Watchers",
+        "stats": [
+          [
+            "Devices",
+            "hikcam1 (.133), hikcam2 (.158)"
+          ],
+          [
+            "VLAN",
+            "10 IoT"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "smart-hubs",
+      "type": "cluster",
+      "x": 440,
+      "y": 130,
+      "icon": "&#128300;",
+      "label": "The Binding Stones",
+      "sublabel": "Smart Hubs \u2022 10.0.10.x",
+      "badge": 3,
+      "iconStyle": {
+        "background": "radial-gradient(circle,#151510,#0a0a08)",
+        "borderColor": "rgba(160,160,80,0.3)"
+      },
+      "tip": {
+        "title": "The Binding Stones",
+        "stats": [
+          [
+            "Devices",
+            "SwitchBot Hub, 2x HiSmart"
+          ],
+          [
+            "VLAN",
+            "10 IoT"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "iot-closet",
+      "type": "cluster",
+      "x": 820,
+      "y": 230,
+      "icon": "&#128161;",
+      "label": "The Hidden Sprites",
+      "sublabel": "IoT \u2022 Closet AP",
+      "badge": 6,
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a1510,#0f0a08)",
+        "borderColor": "rgba(200,160,80,0.3)"
+      },
+      "tip": {
+        "title": "The Hidden Sprites",
+        "stats": [
+          [
+            "Devices",
+            "Nest, WSD bulb, air purifier, misc"
+          ],
+          [
+            "AP",
+            "onhub-closet"
+          ],
+          [
+            "VLAN",
+            "10 IoT"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "iot-pumphouse",
+      "type": "cluster",
+      "x": 310,
+      "y": 750,
+      "icon": "&#128167;",
+      "label": "The Well Sprites",
+      "sublabel": "IoT \u2022 Pumphouse",
+      "badge": 2,
+      "iconStyle": {
+        "background": "radial-gradient(circle,#0a151a,#050a0f)",
+        "borderColor": "rgba(80,140,200,0.3)"
+      },
+      "tip": {
+        "title": "The Well Sprites",
+        "stats": [
+          [
+            "Devices",
+            "lwip0, pumphouse-radar"
+          ],
+          [
+            "AP",
+            "onhub-pumphouse"
+          ],
+          [
+            "VLAN",
+            "10 IoT"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "bed-air",
+      "type": "device",
+      "x": 1280,
+      "y": 920,
+      "icon": "&#127748;",
+      "label": "The Breath Stone",
+      "sublabel": "Air Sensor \u2022 10.0.10.116",
+      "ip": "10.0.10.116",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#0a1520,#050a10)",
+        "borderColor": "rgba(80,160,200,0.3)",
+        "width": "34px",
+        "height": "34px",
+        "fontSize": "14px"
+      }
+    },
+    {
+      "id": "neocharge",
+      "type": "device",
+      "x": 350,
+      "y": 600,
+      "icon": "&#9889;",
+      "label": "The Lightning Post",
+      "sublabel": "NeoCharge \u2022 10.0.10.234",
+      "ip": "10.0.10.234",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a1a08,#101004)",
+        "borderColor": "rgba(200,200,60,0.4)",
+        "width": "40px",
+        "height": "40px",
+        "fontSize": "18px"
+      },
+      "pulse": true
+    },
+    {
+      "id": "ipad",
+      "type": "device",
+      "x": 1420,
+      "y": 580,
+      "icon": "&#128195;",
+      "label": "The Ancient Slate",
+      "sublabel": "iPad 3rd Gen \u2022 10.0.10.223",
+      "ip": "10.0.10.223",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#151520,#0a0a15)",
+        "borderColor": "rgba(160,160,180,0.3)",
+        "width": "38px",
+        "height": "38px",
+        "fontSize": "16px"
+      }
+    },
+    {
+      "id": "shed-ble",
+      "type": "device",
+      "x": 280,
+      "y": 560,
+      "icon": "&#128225;",
+      "label": "The Whisper Stone",
+      "sublabel": "BLE Proxy \u2022 10.0.10.165",
+      "ip": "10.0.10.165",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#101510,#080a08)",
+        "borderColor": "rgba(80,160,80,0.3)",
+        "width": "34px",
+        "height": "34px",
+        "fontSize": "14px"
+      }
+    },
+    {
+      "id": "latitude-5490",
+      "type": "device",
+      "x": 1100,
+      "y": 220,
+      "icon": "&#128187;",
+      "label": "The Spare Tome",
+      "sublabel": "Latitude 5490 \u2022 10.0.11.141",
+      "ip": "10.0.11.141",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#151520,#0a0a15)",
+        "borderColor": "rgba(100,140,200,0.3)",
+        "width": "40px",
+        "height": "40px",
+        "fontSize": "18px"
+      }
+    },
+    {
+      "id": "pixel-4",
+      "type": "device",
+      "x": 1100,
+      "y": 340,
+      "icon": "&#128241;",
+      "label": "The Old Herald",
+      "sublabel": "Pixel 4 \u2022 10.0.11.184",
+      "ip": "10.0.11.184",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a1520,#0f0a15)",
+        "borderColor": "rgba(100,180,100,0.3)",
+        "width": "38px",
+        "height": "38px",
+        "fontSize": "16px"
+      }
+    },
+    {
+      "id": "wolf-creek",
+      "type": "device",
+      "x": 1100,
+      "y": 150,
+      "icon": "&#128187;",
+      "label": "Wolf Creek Tome",
+      "sublabel": "WolfCreekLaptop \u2022 10.0.11.185",
+      "ip": "10.0.11.185",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#151520,#0a0a15)",
+        "borderColor": "rgba(140,100,80,0.3)",
+        "width": "40px",
+        "height": "40px",
+        "fontSize": "18px"
+      }
     }
   ],
   "connections": [
@@ -1752,6 +2469,222 @@
       "from": "katana",
       "to": "ts-android2",
       "type": "offline"
+    },
+    {
+      "from": "flip3",
+      "to": "onhub-closet",
+      "type": "active",
+      "vlan": 6
+    },
+    {
+      "from": "flip3-5g",
+      "to": "eap225-outdoor",
+      "type": "active",
+      "vlan": 6
+    },
+    {
+      "from": "pixel-7",
+      "to": "onhub-family",
+      "type": "active",
+      "vlan": 6
+    },
+    {
+      "from": "users-air",
+      "to": "onhub-family",
+      "type": "active",
+      "vlan": 6
+    },
+    {
+      "from": "woodshed",
+      "to": "wndr4300sw-shed",
+      "type": "active",
+      "vlan": 6
+    },
+    {
+      "from": "lg-washer",
+      "to": "onhub-office",
+      "type": "active",
+      "vlan": 6
+    },
+    {
+      "from": "lg-dryer",
+      "to": "onhub-office",
+      "type": "active",
+      "vlan": 6
+    },
+    {
+      "from": "roomba",
+      "to": "onhub-bed",
+      "type": "active",
+      "vlan": 6
+    },
+    {
+      "from": "irobot",
+      "to": "onhub-closet",
+      "type": "active",
+      "vlan": 6
+    },
+    {
+      "from": "roku",
+      "to": "mr8300-host",
+      "type": "active",
+      "vlan": 6
+    },
+    {
+      "from": "echo",
+      "to": "onhub-closet",
+      "type": "active",
+      "vlan": 6
+    },
+    {
+      "from": "wled-main",
+      "to": "onhub-office",
+      "type": "active",
+      "vlan": 6
+    },
+    {
+      "from": "wled-aqi",
+      "to": "eap225-outdoor",
+      "type": "active",
+      "vlan": 6
+    },
+    {
+      "from": "esp32-bed1",
+      "to": "onhub-bed",
+      "type": "active",
+      "vlan": 6
+    },
+    {
+      "from": "esp32-bed2",
+      "to": "onhub-bed",
+      "type": "active",
+      "vlan": 6
+    },
+    {
+      "from": "esp32-bed3",
+      "to": "onhub-bed",
+      "type": "active",
+      "vlan": 6
+    },
+    {
+      "from": "family-vm",
+      "to": "hp-switch",
+      "type": "active",
+      "vlan": 8
+    },
+    {
+      "from": "smart-plugs",
+      "to": "onhub-office",
+      "type": "active",
+      "vlan": 10
+    },
+    {
+      "from": "esp-outdoor",
+      "to": "eap225-outdoor",
+      "type": "active",
+      "vlan": 10
+    },
+    {
+      "from": "esp-office",
+      "to": "onhub-office",
+      "type": "active",
+      "vlan": 10
+    },
+    {
+      "from": "google-home",
+      "to": "onhub-office",
+      "type": "active",
+      "vlan": 10
+    },
+    {
+      "from": "hikcams",
+      "to": "eap225-outdoor",
+      "type": "active",
+      "vlan": 10
+    },
+    {
+      "from": "smart-hubs",
+      "to": "eap225-outdoor",
+      "type": "active",
+      "vlan": 10
+    },
+    {
+      "from": "iot-closet",
+      "to": "onhub-closet",
+      "type": "active",
+      "vlan": 10
+    },
+    {
+      "from": "iot-pumphouse",
+      "to": "onhub-pumphouse",
+      "type": "active",
+      "vlan": 10
+    },
+    {
+      "from": "bed-air",
+      "to": "onhub-office",
+      "type": "active",
+      "vlan": 10
+    },
+    {
+      "from": "ipad",
+      "to": "onhub-office",
+      "type": "active",
+      "vlan": 10
+    },
+    {
+      "from": "shed-ble",
+      "to": "wndr4300sw-shed",
+      "type": "active",
+      "vlan": 10
+    },
+    {
+      "from": "latitude-5490",
+      "to": "mr8300-host",
+      "type": "active",
+      "vlan": 11
+    },
+    {
+      "from": "pixel-4",
+      "to": "mr8300-host",
+      "type": "active",
+      "vlan": 11
+    },
+    {
+      "from": "iphone",
+      "to": "ea6350v3-family",
+      "type": "active",
+      "vlan": 6
+    },
+    {
+      "from": "kindle",
+      "to": "ea6350v3-family",
+      "type": "active",
+      "vlan": 6
+    },
+    {
+      "from": "latitude-7390",
+      "to": "ea6350v3-family",
+      "type": "active",
+      "vlan": 6
+    },
+    {
+      "from": "s24-ultra",
+      "to": "ea6350v3-family",
+      "type": "active",
+      "vlan": 6
+    },
+    {
+      "from": "wolf-creek",
+      "to": "ea6350v3-family",
+      "type": "active",
+      "vlan": 11
+    },
+    {
+      "from": "neocharge",
+      "to": "wndr4300sw-shed",
+      "type": "active",
+      "vlan": 10
     }
   ],
   "connectionStyles": {
