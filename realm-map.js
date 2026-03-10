@@ -243,7 +243,7 @@ function renderTopology(topo) {
   topo.nodes.forEach(n => {
     const div = document.createElement('div');
     const tc = TYPE_TO_CLASS[n.type] || '';
-    div.className = 'realm-node' + (tc ? ' ' + tc : '');
+    div.className = 'realm-node' + (tc ? ' ' + tc : '') + (n.collectd ? ' collectd-monitored' : '');
     let ns = `left:${n.x}px;top:${n.y}px;`;
     if (n.type === 'tailscale' && !n.online) ns += 'opacity:0.4;';
     div.setAttribute('style', ns);

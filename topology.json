@@ -781,6 +781,40 @@
       }
     },
     {
+      "id": "game",
+      "type": "core",
+      "x": 900,
+      "y": 700,
+      "icon": "&#127918;",
+      "label": "The Arena",
+      "sublabel": "Ubuntu \u2022 10.0.6.160",
+      "ip": "10.0.6.160",
+      "collectd": "game",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0f2a,#100820)",
+        "borderColor": "#a060d0",
+        "width": "60px",
+        "height": "60px",
+        "fontSize": "28px"
+      },
+      "pulse": true,
+      "pulseStyle": {
+        "borderColor": "rgba(160,96,208,0.5)"
+      },
+      "scaleBar": {
+        "width": "80%",
+        "gradient": "linear-gradient(90deg,#a060d0,#6040c0)"
+      },
+      "tip": {
+        "title": "The Arena \u2014 Gaming Desktop",
+        "stats": [
+          ["Role", "Ubuntu Desktop"],
+          ["WiFi", "USB Adapter"],
+          ["Disk", "238 GB"]
+        ]
+      }
+    },
+    {
       "id": "ha",
       "type": "infra",
       "x": 1450,
@@ -1492,6 +1526,13 @@
       "from": "katana",
       "to": "goodwe",
       "type": "infra",
+      "vlan": 6
+    },
+    {
+      "from": "game",
+      "to": "onhub-closet",
+      "type": "active",
+      "collectd": "game",
       "vlan": 6
     },
     {
