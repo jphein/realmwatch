@@ -914,9 +914,18 @@ function addLogEntry(evt, nodeEl) {
 
   entry.innerHTML = `<button class="log-dismiss" title="Dismiss">\u2715</button><div class="log-time">${timeStr}</div><div class="log-speaker">${name}</div>${textContent}`;
 
-  // Dismiss button
+  // Dismiss button — also removes matching speech bubble
   entry.querySelector('.log-dismiss').addEventListener('click', () => {
     entry.classList.add('log-entry-dismiss');
+    // Find and dismiss matching quest bubble by text
+    if (logType === 'quest' && evt.text) {
+      for (const b of _activeBubbles) {
+        if (b.querySelector('.bubble-text')?.textContent?.includes(evt.text)) {
+          _dismissBubble(b);
+          break;
+        }
+      }
+    }
     entry.addEventListener('animationend', () => {
       entry.remove();
       logCount = Math.max(0, logCount - 1);
@@ -951,20 +960,23 @@ function addLogEntry(evt, nodeEl) {
 
 // Initial quest entries — rendered as full events (log + speech bubble + highlight)
 const _initialQuests = [
-  { type: 'quest', node: 'katana', text: 'Chart every node in the Digital Dominion \u2014 ensure all devices report their presence to the Citadel' },
-  { type: 'quest', node: 'hp-switch', text: 'Awaken all Guardian Towers \u2014 bring collectd scrying to every AP in the realm' },
-  { type: 'quest', node: 'gatekeeper', text: 'Unite the Enchanted Quarters \u2014 connect all IoT clusters through proper VLAN gateways' },
-  { type: 'quest', node: 'ts-iperf', text: 'Open Tailscale ACL \u2014 allow UDP 25826 from iperf and terra to katana for collectd scrying data' },
-  { type: 'quest', node: 'ts-openclaw', text: 'Install collectd on OpenClaw and open UDP 25826 in Tailscale ACL' },
-  { type: 'quest', node: 'gs308t', text: 'Map the Hub Stone \u2014 monitor all 8 switch ports and track inter-bridge traffic' },
-  { type: 'quest', node: 'hp-switch', text: 'Bridge the realms \u2014 verify GigaBeam and CPE710 links carry full VLAN trunks' },
+  { type: 'quest', node: 'katana', text: 'Chart every node in the Digital Dominion \u2014 ensure all devices report their presence to the Citadel', duration: 12 },
+  { type: 'quest', node: 'hp-switch', text: 'Awaken all Guardian Towers \u2014 bring collectd scrying to every AP in the realm', duration: 12 },
+  { type: 'quest', node: 'gatekeeper', text: 'Unite the Enchanted Quarters \u2014 connect all IoT clusters through proper VLAN gateways', duration: 12 },
+  { type: 'quest', node: 'ts-iperf', text: 'Open Tailscale ACL \u2014 allow UDP 25826 from iperf and terra to katana for collectd data', duration: 12 },
+  { type: 'quest', node: 'ts-terra', text: 'Open Tailscale ACL \u2014 allow UDP 25826 from terra to katana for collectd data', duration: 12 },
+  { type: 'quest', node: 'ts-openclaw', text: 'Install collectd on OpenClaw and open UDP 25826 in Tailscale ACL', duration: 12 },
+  { type: 'quest', node: 'ts-instance', text: 'Install collectd on Cloud Spire and open UDP 25826 in Tailscale ACL', duration: 12 },
+  { type: 'quest', node: 'gs308t', text: 'Map the Hub Stone \u2014 monitor all 8 switch ports and track inter-bridge traffic', duration: 12 },
+  { type: 'quest', node: 'hp-switch', text: 'Bridge the realms \u2014 verify GigaBeam and CPE710 links carry full VLAN trunks', duration: 12 },
 ];
 setTimeout(() => {
   addLogEntry({ type: 'system', node: 'katana', text: 'The Realm Map has been inscribed.', ts: Date.now()/1000 });
+  // Stagger quest bubbles — each one appears as the previous fades
   _initialQuests.forEach((q, i) => {
-    setTimeout(() => renderEvent({ ...q, ts: Date.now()/1000, duration: 30, _local: true }), i * 800);
+    setTimeout(() => renderEvent({ ...q, ts: Date.now()/1000, _local: true }), i * 2500);
   });
-}, 500);
+}, 1000);
 
 // Track active speech bubbles for repositioning during drag
 const _activeBubbles = new Set();
@@ -987,31 +999,47 @@ function updateBubblePositions() {
   });
 }
 
+function _dismissBubble(bubble) {
+  bubble.style.animation = 'bubbleOut 0.3s ease-in forwards';
+  setTimeout(() => { bubble.remove(); _activeBubbles.delete(bubble); }, 300);
+}
+
 function showSpeechBubble(nodeEl, evt, isAlert) {
+  // Remove existing bubble on same node to avoid stacking
+  for (const b of _activeBubbles) {
+    if (b._nodeEl === nodeEl) { _dismissBubble(b); break; }
+  }
+
   const bubble = document.createElement('div');
-  bubble.className = 'speech-bubble' + (isAlert ? ' alert-bubble' : '');
-  bubble._nodeEl = nodeEl; // track parent node
+  const isQuest = evt.type === 'quest';
+  bubble.className = 'speech-bubble' + (isAlert ? ' alert-bubble' : '') + (isQuest ? ' quest-bubble' : '');
+  bubble._nodeEl = nodeEl;
   const name = nodeEl.querySelector('.node-label')?.textContent || evt.node;
 
-  // Close button — bubbles stay open until user dismisses them
+  // Close button
   const closeBtn = document.createElement('button');
   closeBtn.className = 'bubble-close';
   closeBtn.innerHTML = '\u00D7';
   closeBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    bubble.style.animation = 'bubbleOut 0.3s ease-in forwards';
-    setTimeout(() => { bubble.remove(); _activeBubbles.delete(bubble); }, 300);
+    _dismissBubble(bubble);
   });
 
-  bubble.innerHTML = `<div class="bubble-name">${name}</div><div class="bubble-text">${evt.text || ''}</div>`;
+  const prefix = isQuest ? '<span style="color:#c090ff">&#9733;</span> ' : '';
+  bubble.innerHTML = `<div class="bubble-name">${name}</div><div class="bubble-text">${prefix}${evt.text || ''}</div>`;
   bubble.appendChild(closeBtn);
   if (evt.color) bubble.style.borderColor = evt.color;
 
-  // Append first (so offsetWidth/Height are available), then position above node
   const world = document.getElementById('map-world');
   world.appendChild(bubble);
   _positionBubble(bubble);
   _activeBubbles.add(bubble);
+
+  // Quests stay until manually closed; other bubbles auto-dismiss
+  if (!isQuest) {
+    const dur = (evt.duration || 15) * 1000;
+    setTimeout(() => { if (bubble.isConnected) _dismissBubble(bubble); }, dur);
+  }
 }
 
 function showHighlight(nodeEl, evt) {
