@@ -2208,6 +2208,23 @@
         "height": "40px",
         "fontSize": "18px"
       }
+    },
+    {
+      "id": "esp32-a90c10",
+      "type": "device",
+      "x": 430,
+      "y": 480,
+      "icon": "&#128308;",
+      "label": "Rune A90C10",
+      "sublabel": "esp32 \u2022 10.0.6.132",
+      "ip": "10.0.6.132",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#151510,#0a0a08)",
+        "borderColor": "rgba(140,160,80,0.3)",
+        "width": "34px",
+        "height": "34px",
+        "fontSize": "14px"
+      }
     }
   ],
   "connections": [
@@ -2685,6 +2702,12 @@
       "to": "wndr4300sw-shed",
       "type": "active",
       "vlan": 10
+    },
+    {
+      "from": "esp32-a90c10",
+      "to": "eap225-outdoor",
+      "type": "active",
+      "vlan": 6
     }
   ],
   "connectionStyles": {
