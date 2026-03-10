@@ -46,8 +46,8 @@ function scalePct(s) { return Math.max(0, Math.min(100, (s + 10) / 20 * 100)); }
 const infraNodes = {};
 
 // ── Topology renderer ──
-const TYPE_TO_CLASS = { tower: 'tower-node', cluster: 'cluster-node', bridge: 'bridge-node', infra: 'infra-node' };
-const CONN_TYPE_TO_CLASS = { active:'conn-active', wan:'conn-wan', ap:'conn-ap', infra:'conn-infra', vlan:'conn-vlan', bridge:'conn-bridge', mesh:'conn-mesh', offline:'conn-offline' };
+const TYPE_TO_CLASS = { tower: 'tower-node', cluster: 'cluster-node', bridge: 'bridge-node', infra: 'infra-node', portal: 'portal-node' };
+const CONN_TYPE_TO_CLASS = { active:'conn-active', wan:'conn-wan', ap:'conn-ap', infra:'conn-infra', vlan:'conn-vlan', bridge:'conn-bridge', mesh:'conn-mesh', offline:'conn-offline', portal:'conn-portal' };
 
 const _vlanLabels = [];
 const _connPaths = []; // path element per connection (same order as topo.connections)
@@ -888,6 +888,8 @@ document.querySelectorAll('.log-tab').forEach(tab => {
     document.querySelectorAll('.log-entry').forEach(entry => {
       if (activeTab === 'all') {
         entry.style.display = '';
+      } else if (activeTab === 'notion') {
+        entry.style.display = entry.classList.contains('notion-quest') ? '' : 'none';
       } else {
         entry.style.display = entry.classList.contains('log-' + activeTab) ? '' : 'none';
       }
@@ -913,6 +915,31 @@ document.getElementById('quest-log-header').addEventListener('click', () => {
 const _logBody = document.getElementById('quest-log-body');
 const _logCounter = document.getElementById('log-count');
 
+// ── Notion Sync Portal button ──
+const _syncBtn = document.getElementById('notion-sync-btn');
+if (_syncBtn) {
+  _syncBtn.addEventListener('click', async (e) => {
+    e.stopPropagation(); // Don't toggle quest log
+    if (_syncBtn.classList.contains('syncing')) return;
+    _syncBtn.classList.add('syncing');
+    _syncBtn.textContent = '\u231B Syncing...';
+    try {
+      const r = await fetch('/notion-sync');
+      const data = await r.json();
+      if (data.error) {
+        _syncBtn.textContent = '\u26A0 ' + data.error.substring(0, 30);
+        setTimeout(() => { _syncBtn.innerHTML = '&#127744; Sync Portal'; _syncBtn.classList.remove('syncing'); }, 3000);
+        return;
+      }
+      _syncBtn.innerHTML = `\u2714 ${data.new || 0} new`;
+      setTimeout(() => { _syncBtn.innerHTML = '&#127744; Sync Portal'; _syncBtn.classList.remove('syncing'); }, 2000);
+    } catch (err) {
+      _syncBtn.textContent = '\u26A0 Offline';
+      setTimeout(() => { _syncBtn.innerHTML = '&#127744; Sync Portal'; _syncBtn.classList.remove('syncing'); }, 3000);
+    }
+  });
+}
+
 function addLogEntry(evt, nodeEl) {
   if (!_logBody) return;
   const body = _logBody, counter = _logCounter;
@@ -933,11 +960,14 @@ function addLogEntry(evt, nodeEl) {
 
   const entry = document.createElement('div');
   const logType = evt.type || 'speech';
-  entry.className = `log-entry log-${logType} log-entry-new`;
+  const isNotion = evt._source === 'notion';
+  entry.className = `log-entry log-${logType} log-entry-new` + (isNotion ? ' notion-quest' : '');
+  if (isNotion && evt._notion_id) entry.dataset.notionId = evt._notion_id;
 
   let textContent = '';
   if (logType === 'quest' && evt.text) {
-    textContent = `<div class="log-text quest-text"><span class="quest-check" title="Click to complete">&#9744;</span> ${evt.text}</div>`;
+    const icon = isNotion ? '&#127744;' : '&#9744;';
+    textContent = `<div class="log-text quest-text"><span class="quest-check" title="Click to complete">${icon}</span> ${evt.text}</div>`;
   } else if (evt.text) {
     const prefix = logType === 'speech' ? '\u201C' : '';
     const suffix = logType === 'speech' ? '\u201D' : '';
@@ -972,17 +1002,17 @@ function addLogEntry(evt, nodeEl) {
     });
   });
 
-  // Quest checkbox toggle — persists completed state
+  // Quest checkbox toggle — persists completed state + Notion sync
   const check = entry.querySelector('.quest-check');
   if (check) {
     // Restore completed state
     if (evt.text && _completedQuests.includes(evt.text)) {
-      check.textContent = '\u2611';
+      check.innerHTML = '\u2611';
       entry.classList.add('quest-done');
     }
-    check.addEventListener('click', () => {
+    check.addEventListener('click', async () => {
       const done = check.textContent === '\u2611';
-      check.textContent = done ? '\u2610' : '\u2611';
+      check.innerHTML = done ? (isNotion ? '&#127744;' : '\u2610') : '\u2611';
       entry.classList.toggle('quest-done', !done);
       if (evt.text) {
         const idx = _completedQuests.indexOf(evt.text);
@@ -990,11 +1020,30 @@ function addLogEntry(evt, nodeEl) {
         else if (done && idx !== -1) _completedQuests.splice(idx, 1);
         _saveCompleted();
       }
+      // Sync completion to Notion
+      if (isNotion && evt._notion_id && !done) {
+        try {
+          check.style.opacity = '0.5';
+          const r = await fetch('/notion-complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notion_id: evt._notion_id }),
+          });
+          if (r.ok) {
+            check.style.opacity = '1';
+            check.innerHTML = '\u2705';
+          } else {
+            check.style.opacity = '1';
+          }
+        } catch (e) { check.style.opacity = '1'; }
+      }
     });
   }
 
   // Tab filter
-  if (activeTab !== 'all' && !entry.classList.contains('log-' + activeTab)) {
+  if (activeTab === 'notion') {
+    entry.style.display = entry.classList.contains('notion-quest') ? '' : 'none';
+  } else if (activeTab !== 'all' && !entry.classList.contains('log-' + activeTab)) {
     entry.style.display = 'none';
   }
 
@@ -1065,7 +1114,12 @@ function showSpeechBubble(nodeEl, evt, isAlert) {
 
   const bubble = document.createElement('div');
   const isQuest = evt.type === 'quest';
-  bubble.className = 'speech-bubble' + (isAlert ? ' alert-bubble' : '') + (isQuest ? ' quest-bubble' : '');
+  const isNotion = evt._source === 'notion';
+  let cls = 'speech-bubble';
+  if (isAlert) cls += ' alert-bubble';
+  if (isQuest) cls += ' quest-bubble';
+  if (isNotion) cls += ' notion-bubble';
+  bubble.className = cls;
   bubble._nodeEl = nodeEl;
   const name = nodeEl.querySelector('.node-label')?.textContent || evt.node;
 
@@ -1078,7 +1132,7 @@ function showSpeechBubble(nodeEl, evt, isAlert) {
     _dismissBubble(bubble);
   });
 
-  const prefix = isQuest ? '<span style="color:#c090ff">&#9733;</span> ' : '';
+  const prefix = isNotion ? '<span style="color:#a080e0">&#127744;</span> ' : (isQuest ? '<span style="color:#c090ff">&#9733;</span> ' : '');
   bubble.innerHTML = `<div class="bubble-name">${name}</div><div class="bubble-text">${prefix}${evt.text || ''}</div>`;
   bubble.appendChild(closeBtn);
   if (evt.color) bubble.style.borderColor = evt.color;

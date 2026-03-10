@@ -215,6 +215,33 @@
     border-color: rgba(144,96,192,0.4);
   }
 
+  /* Portal nodes (Notion gateway) */
+  .realm-node.portal-node .node-icon {
+    width: 70px;
+    height: 70px;
+    font-size: 32px;
+    box-shadow: 0 0 20px rgba(160,120,255,0.3), 0 0 40px rgba(120,80,220,0.1);
+    border-color: rgba(160,120,255,0.6);
+    animation: portalGlow 3s ease-in-out infinite;
+  }
+  .realm-node.portal-node .node-label {
+    font-size: 13px;
+    color: #c0a0f0;
+  }
+  .realm-node.portal-node .node-sublabel {
+    font-size: 10px;
+    color: #8060b0;
+  }
+  .realm-node.portal-node .pulse-ring {
+    width: 70px; height: 70px;
+    margin: -35px 0 0 -35px;
+    border-color: rgba(160,120,255,0.4);
+  }
+  @keyframes portalGlow {
+    0%, 100% { box-shadow: 0 0 20px rgba(160,120,255,0.3), 0 0 40px rgba(120,80,220,0.1); }
+    50% { box-shadow: 0 0 30px rgba(160,120,255,0.5), 0 0 60px rgba(120,80,220,0.2); }
+  }
+
   /* Infrastructure nodes */
   .realm-node.infra-node .node-icon {
     width: 52px;
@@ -316,6 +343,16 @@
     stroke: rgba(100,100,100,0.2);
     --sw: 1;
     --dash: 2 8;
+  }
+  .conn-portal {
+    stroke: rgba(160,120,255,0.5);
+    --sw: 2;
+    --dash: 3 6 1 6;
+    animation: dashFlow 6s linear infinite, portalPulse 2.5s ease-in-out infinite;
+  }
+  @keyframes portalPulse {
+    0%, 100% { stroke-opacity: 0.4; }
+    50% { stroke-opacity: 0.9; }
   }
   .conn-vlan {
     stroke: rgba(255,160,60,0.3);
@@ -765,6 +802,16 @@
   }
   .speech-bubble.quest-bubble .bubble-name {
     color: #c090ff;
+  }
+  .speech-bubble.notion-bubble {
+    border-color: rgba(120,80,220,0.7);
+    box-shadow: 0 0 20px rgba(0,0,0,0.5), 0 0 20px rgba(120,80,220,0.25);
+  }
+  .speech-bubble.notion-bubble::after {
+    border-color: rgba(120,80,220,0.7) transparent transparent;
+  }
+  .speech-bubble.notion-bubble .bubble-name {
+    color: #a080e0;
   }
   @keyframes bubbleIn {
     0%   { opacity: 0; transform: translateY(16px) scale(calc(var(--bubble-scale, 1) * 0.7)); filter: blur(4px) brightness(2); }
@@ -1317,6 +1364,34 @@
     opacity: 0.5;
   }
   .log-entry.quest-done .quest-check { color: #60c060; }
+  .log-entry.notion-quest {
+    border-left: 2px solid rgba(120,80,220,0.5);
+  }
+  .log-entry.notion-quest .log-speaker { color: #a080e0; }
+  .log-entry.notion-quest .quest-check { color: #a080e0; }
+  .log-entry.notion-quest .quest-check:hover { color: #c0a0ff; }
+  .log-entry.notion-quest.quest-done .quest-check { color: #60c060; }
+  .notion-sync-btn {
+    font-family: 'MedievalSharp', cursive;
+    font-size: 10px;
+    color: #a080e0;
+    background: rgba(120,80,220,0.15);
+    border: 1px solid rgba(120,80,220,0.3);
+    border-radius: 4px;
+    padding: 2px 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-left: 8px;
+  }
+  .notion-sync-btn:hover {
+    background: rgba(120,80,220,0.3);
+    color: #c0a0ff;
+    box-shadow: 0 0 8px rgba(120,80,220,0.2);
+  }
+  .notion-sync-btn.syncing {
+    opacity: 0.6;
+    pointer-events: none;
+  }
 
   /* Log entry dismiss */
   .log-entry {

@@ -185,6 +185,7 @@
 <div id="quest-log">
   <div id="quest-log-header">
     <span>Quest Log</span>
+    <button class="notion-sync-btn" id="notion-sync-btn" title="Sync quests from Notion">&#127744; Sync Portal</button>
     <span class="log-count" id="log-count">0 entries</span>
   </div>
   <div id="quest-log-tabs">
@@ -192,6 +193,7 @@
     <div class="log-tab" data-tab="speech">Speech</div>
     <div class="log-tab" data-tab="report">Reports</div>
     <div class="log-tab" data-tab="quest">Quests</div>
+    <div class="log-tab" data-tab="notion">Notion</div>
   </div>
   <div id="quest-log-body"></div>
 </div>
@@ -376,6 +378,9 @@
 
       <!-- Enchanted Quarters glow -->
       <circle cx="1450" cy="1050" r="180" fill="url(#glow-iot)"/>
+
+      <!-- Inner World (Portal) glow -->
+      <circle cx="1250" cy="630" r="80" fill="url(#glow-purple)"/>
 
       <!-- Infrastructure glows -->
       <circle cx="1450" cy="700" r="70" fill="url(#glow-blue)"/>

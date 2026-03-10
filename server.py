@@ -362,6 +362,26 @@ async def handle_list_tools() -> list[types.Tool]:
                 "required": ["id"],
             },
         ),
+        # ── Notion quest sync ──
+        types.Tool(
+            name="sync_notion_quests",
+            description=(
+                "Sync today's quests from Notion into the realm map. "
+                "Fetches todos with Status='Today' from the configured Notion database, "
+                "maps them to quest events on the Mystical Portal node, and pushes them "
+                "to the live map. Returns a summary of synced quests. "
+                "Requires NOTION_API_KEY and NOTION_DATABASE_ID env vars."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "force": {
+                        "type": "boolean",
+                        "description": "Force re-sync all quests (clears dedup cache). Default false.",
+                    },
+                },
+            },
+        ),
         # ── Service management tools ──
         types.Tool(
             name="manage_map_server",
@@ -833,6 +853,33 @@ async def handle_call_tool(
         with open(topo_path, "w") as f:
             json.dump(topo, f, indent=2)
         return [types.TextContent(type="text", text=f"Node '{node_id}' saved to topology.json: {json.dumps(existing, indent=2)}")]
+
+    elif name == "sync_notion_quests":
+        args = arguments or {}
+        force = args.get("force", False)
+        # Call the map server's /notion-sync endpoint (which does the actual work)
+        try:
+            url = f"{MAP_URL}/notion-sync" + ("?force=1" if force else "")
+            resp = urllib.request.urlopen(url, timeout=15)
+            data = json.loads(resp.read().decode())
+            if "error" in data:
+                return [types.TextContent(type="text", text=f"Notion sync error: {data['error']}")]
+            summary = (
+                f"Notion Quest Sync complete.\n"
+                f"New quests: {data.get('new', 0)}\n"
+                f"Total today: {data.get('total', 0)}\n"
+            )
+            events = data.get("events", [])
+            if events:
+                summary += "\nNew quests materialized:\n"
+                for e in events:
+                    summary += f"  - {e.get('text', '')}\n"
+            else:
+                summary += "\nNo new quests since last sync."
+            return [types.TextContent(type="text", text=summary)]
+        except Exception as e:
+            return [types.TextContent(type="text",
+                text=f"Failed to sync — is map_server.py running? Error: {e}")]
 
     elif name == "manage_map_server":
         action = (arguments or {}).get("action", "status")

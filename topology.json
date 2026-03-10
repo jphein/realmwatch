@@ -49,6 +49,16 @@
       "fontSize": 15,
       "color": "rgba(96,192,96,0.2)",
       "spacing": 4
+    },
+    {
+      "id": "inner-world",
+      "label": "The Inner World",
+      "x": 1180,
+      "y": 580,
+      "rotate": 2,
+      "fontSize": 14,
+      "color": "rgba(160,120,255,0.2)",
+      "spacing": 4
     }
   ],
   "nodes": [
@@ -824,6 +834,34 @@
           ["Role", "Ubuntu Desktop"],
           ["WiFi", "USB Adapter"],
           ["Disk", "238 GB"]
+        ]
+      }
+    },
+    {
+      "id": "notion-portal",
+      "type": "portal",
+      "x": 1250,
+      "y": 630,
+      "icon": "&#127744;",
+      "label": "The Mystical Portal",
+      "sublabel": "Notion Gateway",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a102a,#0f0820)",
+        "borderColor": "rgba(160,120,255,0.6)",
+        "width": "70px",
+        "height": "70px",
+        "fontSize": "32px"
+      },
+      "pulse": true,
+      "pulseStyle": {
+        "borderColor": "rgba(160,120,255,0.4)"
+      },
+      "tip": {
+        "title": "The Mystical Portal",
+        "stats": [
+          ["Type", "Notion Quest Gateway"],
+          ["Source", "Today's Focus"],
+          ["Sync", "Manual + Auto-poll"]
         ]
       }
     },
@@ -1620,6 +1658,11 @@
     },
     {
       "from": "katana",
+      "to": "notion-portal",
+      "type": "portal"
+    },
+    {
+      "from": "katana",
       "to": "ts-android",
       "type": "mesh"
     },
@@ -1698,6 +1741,9 @@
     },
     "offline": {
       "cssClass": "conn-offline"
+    },
+    "portal": {
+      "cssClass": "conn-portal"
     }
   }
 }

@@ -9,6 +9,7 @@ import time
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from engine import LitRPGEngine
 from collectd_reader import get_all_summaries
+import notion_sync
 
 engine = LitRPGEngine()
 PORT = 8777
@@ -98,6 +99,20 @@ class RealmHandler(SimpleHTTPRequestHandler):
                             pass
             self._json_response(get_events_since(since))
 
+        elif self.path.startswith("/notion-sync"):
+            try:
+                if "force=1" in self.path:
+                    notion_sync.force_resync()
+                result = notion_sync.sync_to_events()
+                if "error" in result:
+                    self._json_response(result, 503)
+                    return
+                for evt in result.get("events", []):
+                    push_event(evt)
+                self._json_response(result)
+            except Exception as e:
+                self._json_response({"error": str(e)}, 500)
+
         elif self.path == "/personas":
             self._json_response(_load_personas())
 
@@ -142,6 +157,26 @@ class RealmHandler(SimpleHTTPRequestHandler):
                 self._json_response({"ok": True, "personas": personas})
             except (json.JSONDecodeError, KeyError) as e:
                 self._json_response({"error": str(e)}, 400)
+        elif self.path == "/notion-complete":
+            try:
+                req = json.loads(body)
+                notion_id = req.get("notion_id", "")
+                if not notion_id:
+                    self._json_response({"error": "missing notion_id"}, 400)
+                    return
+                result = notion_sync.complete(notion_id)
+                if "error" in result:
+                    self._json_response(result, 503)
+                    return
+                push_event({
+                    "type": "system",
+                    "node": "notion-portal",
+                    "text": "A quest has been sealed in the archives.",
+                })
+                self._json_response(result)
+            except Exception as e:
+                self._json_response({"error": str(e)}, 500)
+
         elif self.path == "/ssh":
             try:
                 req = json.loads(body)
