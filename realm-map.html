@@ -87,6 +87,13 @@
   <div class="legend-section" data-section="controls">
     <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Controls</div>
     <div class="legend-section-body">
+      <div class="traffic-control" style="border-bottom:1px solid #40352880;padding-bottom:8px;margin-bottom:4px">
+        <label>Master Scale <span class="tc-val" id="master-scale-val">1.0x</span></label>
+        <input type="range" class="traffic-slider" id="master-scale-slider" min="0.3" max="2.5" step="0.1" value="1">
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:#706050;margin-top:2px">
+          <span>Miniature</span><span>Normal</span><span>Colossal</span>
+        </div>
+      </div>
       <div class="traffic-control">
         <label>Traffic Scale <span class="tc-val" id="traffic-scale-val">1.0x</span></label>
         <input type="range" class="traffic-slider" id="traffic-scale-slider" min="0.1" max="3" step="0.1" value="1">

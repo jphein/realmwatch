@@ -587,6 +587,23 @@ function updateUI(d) {
   firePulse();
 }
 
+// ── Master scale slider (multiplies node, text, bubble) ──
+let masterScale = 1.0;
+const masterSlider = document.getElementById('master-scale-slider');
+const masterScaleVal = document.getElementById('master-scale-val');
+
+function applyMasterScale() {
+  // Drive each sub-slider's effective value = base * master
+  nodeScaleSlider.dispatchEvent(new Event('input'));
+  textScaleSlider.dispatchEvent(new Event('input'));
+  bubbleScaleSlider.dispatchEvent(new Event('input'));
+}
+masterSlider.addEventListener('input', () => {
+  masterScale = parseFloat(masterSlider.value);
+  masterScaleVal.textContent = masterScale.toFixed(1) + 'x';
+  applyMasterScale();
+});
+
 // ── Traffic scale slider ──
 let trafficScale = 1.0;
 const trafficSlider = document.getElementById('traffic-scale-slider');
@@ -603,7 +620,7 @@ let nodeScale = 1.0;
 const nodeScaleSlider = document.getElementById('node-scale-slider');
 const nodeScaleVal = document.getElementById('node-scale-val');
 nodeScaleSlider.addEventListener('input', () => {
-  nodeScale = parseFloat(nodeScaleSlider.value);
+  nodeScale = parseFloat(nodeScaleSlider.value) * masterScale;
   nodeScaleVal.textContent = nodeScale.toFixed(1) + 'x';
   document.querySelectorAll('.realm-node').forEach(node => {
     node.style.transform = `scale(${nodeScale})`;
@@ -616,7 +633,7 @@ let textScale = 1.0;
 const textScaleSlider = document.getElementById('text-scale-slider');
 const textScaleVal = document.getElementById('text-scale-val');
 textScaleSlider.addEventListener('input', () => {
-  textScale = parseFloat(textScaleSlider.value);
+  textScale = parseFloat(textScaleSlider.value) * masterScale;
   textScaleVal.textContent = textScale.toFixed(1) + 'x';
   document.documentElement.style.setProperty('--text-scale', textScale);
   document.querySelectorAll('.node-label').forEach(el => {
@@ -638,7 +655,7 @@ let bubbleScale = 1.0;
 const bubbleScaleSlider = document.getElementById('bubble-scale-slider');
 const bubbleScaleVal = document.getElementById('bubble-scale-val');
 bubbleScaleSlider.addEventListener('input', () => {
-  bubbleScale = parseFloat(bubbleScaleSlider.value);
+  bubbleScale = parseFloat(bubbleScaleSlider.value) * masterScale;
   bubbleScaleVal.textContent = bubbleScale.toFixed(1) + 'x';
   document.documentElement.style.setProperty('--bubble-scale', bubbleScale);
 });
@@ -998,10 +1015,9 @@ const _initialQuests = [
   { type: 'quest', node: 'katana', text: 'Chart every node in the Digital Dominion \u2014 ensure all devices report their presence to the Citadel', duration: 12 },
   { type: 'quest', node: 'hp-switch', text: 'Awaken all Guardian Towers \u2014 bring collectd scrying to every AP in the realm', duration: 12 },
   { type: 'quest', node: 'gatekeeper', text: 'Unite the Enchanted Quarters \u2014 connect all IoT clusters through proper VLAN gateways', duration: 12 },
-  { type: 'quest', node: 'ts-iperf', text: 'Open Tailscale ACL \u2014 allow UDP 25826 from iperf and terra to katana for collectd data', duration: 12 },
-  { type: 'quest', node: 'ts-terra', text: 'Open Tailscale ACL \u2014 allow UDP 25826 from terra to katana for collectd data', duration: 12 },
-  { type: 'quest', node: 'ts-openclaw', text: 'Install collectd on OpenClaw and open UDP 25826 in Tailscale ACL', duration: 12 },
-  { type: 'quest', node: 'ts-instance', text: 'Install collectd on Cloud Spire and open UDP 25826 in Tailscale ACL', duration: 12 },
+  { type: 'quest', node: 'ts-iperf', text: 'Open Tailscale ACL \u2014 allow UDP 25826 from Speedstone to the Citadel for collectd metrics', duration: 12 },
+  { type: 'quest', node: 'ts-terra', text: 'Open Tailscale ACL \u2014 allow UDP 25826 from Terra to the Citadel for collectd metrics', duration: 12 },
+  { type: 'quest', node: 'ts-instance', text: 'Install collectd on Cloud Spire and open UDP 25826 in Tailscale ACL to reach the Citadel', duration: 12 },
   { type: 'quest', node: 'gs308t', text: 'Map the Hub Stone \u2014 monitor all 8 switch ports and track inter-bridge traffic', duration: 12 },
   { type: 'quest', node: 'hp-switch', text: 'Bridge the realms \u2014 verify GigaBeam and CPE710 links carry full VLAN trunks', duration: 12 },
 ];

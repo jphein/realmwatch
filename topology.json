@@ -1257,6 +1257,7 @@
         "fontSize": "22px"
       },
       "pulse": true,
+      "collectd": "openclaw",
       "tip": {
         "title": "OpenClaw",
         "stats": [
