@@ -2476,6 +2476,173 @@ setupPanelMinimize('realm-codex', '#codex-header');
 setupPanelMinimize('minimap', null);
 setupPanelMinimize('node-list', '#node-list-header');
 
+// ── Realm Search ──
+const _searchInput = document.getElementById('search-input');
+const _searchResults = document.getElementById('search-results');
+const _searchClear = document.getElementById('search-clear');
+let _searchIndex = null; // built lazily
+let _searchActiveIdx = -1;
+
+function _buildSearchIndex() {
+  if (!_topology || _searchIndex) return;
+  _searchIndex = _topology.nodes.map(n => ({
+    id: n.id,
+    icon: n.icon,
+    label: n.label,
+    sub: n.sublabel || '',
+    ip: n.ip || '',
+    type: n.type || 'core',
+    // Pre-join searchable text (lowercase, single allocation)
+    _text: [n.label, n.sublabel, n.ip, n.id, n.type].filter(Boolean).join(' ').toLowerCase(),
+  }));
+}
+
+function _searchRealm(query) {
+  _buildSearchIndex();
+  if (!_searchIndex || !query) return [];
+  const terms = query.toLowerCase().split(/\s+/);
+  const scored = [];
+  for (const entry of _searchIndex) {
+    let match = true;
+    let score = 0;
+    for (const t of terms) {
+      const idx = entry._text.indexOf(t);
+      if (idx === -1) { match = false; break; }
+      if (entry.label.toLowerCase().startsWith(t)) score += 10;
+      else if (entry.ip.startsWith(t)) score += 5;
+      else score += 1;
+    }
+    if (match) scored.push({ entry, score });
+  }
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, 12).map(s => s.entry);
+}
+
+function _highlightMatch(text, query) {
+  if (!query) return text;
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+  let result = text;
+  for (const t of terms) {
+    const idx = result.toLowerCase().indexOf(t);
+    if (idx !== -1) {
+      result = result.slice(0, idx) + '<mark>' + result.slice(idx, idx + t.length) + '</mark>' + result.slice(idx + t.length);
+    }
+  }
+  return result;
+}
+
+function _renderSearchResults(results, query) {
+  _searchActiveIdx = -1;
+  if (!results.length) {
+    // Safe: static text only
+    _searchResults.textContent = '';
+    const empty = document.createElement('div');
+    empty.className = 'sr-empty';
+    empty.textContent = 'No matches in the Realm';
+    _searchResults.appendChild(empty);
+    _searchResults.classList.add('open');
+    return;
+  }
+  const typeName = { core: 'Core', infra: 'Infra', tower: 'Tower', bridge: 'Bridge', cluster: 'IoT', tailscale: 'Astral' };
+  // Safe: all data sourced from server-side topology.json (trusted)
+  const frag = document.createDocumentFragment();
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i];
+    const item = document.createElement('div');
+    item.className = 'sr-item';
+    item.dataset.idx = i;
+    item.dataset.nodeId = r.id;
+
+    const iconEl = document.createElement('div');
+    iconEl.className = 'sr-icon';
+    iconEl.innerHTML = r.icon; // topology.json icon HTML entities (trusted)
+
+    const info = document.createElement('div');
+    info.className = 'sr-info';
+    const name = document.createElement('div');
+    name.className = 'sr-name';
+    name.innerHTML = _highlightMatch(r.label, query); // topology.json label (trusted)
+    const sub = document.createElement('div');
+    sub.className = 'sr-sub';
+    sub.textContent = r.sub;
+    info.appendChild(name);
+    info.appendChild(sub);
+
+    const typeEl = document.createElement('div');
+    typeEl.className = 'sr-type';
+    typeEl.textContent = typeName[r.type] || r.type;
+
+    item.appendChild(iconEl);
+    item.appendChild(info);
+    item.appendChild(typeEl);
+    frag.appendChild(item);
+  }
+  _searchResults.textContent = '';
+  _searchResults.appendChild(frag);
+  _searchResults.classList.add('open');
+}
+
+function _navigateToSearchResult(nodeId) {
+  const nodeEl = document.querySelector(`[data-tip="${CSS.escape(nodeId)}"]`);
+  if (!nodeEl) return;
+  const nodeLeft = parseInt(nodeEl.style.left) || 0;
+  const nodeTop = parseInt(nodeEl.style.top) || 0;
+  scale = 1.2;
+  panX = canvas.clientWidth / 2 - nodeLeft * scale;
+  panY = canvas.clientHeight / 2 - nodeTop * scale;
+  applyTransform();
+  showHighlight(nodeEl, { color: 'rgba(240,216,144,0.5)' });
+  _searchInput.blur();
+  _searchResults.classList.remove('open');
+}
+
+if (_searchInput) {
+  _searchInput.addEventListener('input', () => {
+    const q = _searchInput.value.trim();
+    _searchClear.style.display = q ? '' : 'none';
+    if (!q) { _searchResults.classList.remove('open'); return; }
+    _renderSearchResults(_searchRealm(q), q);
+  });
+
+  _searchInput.addEventListener('keydown', e => {
+    const items = _searchResults.querySelectorAll('.sr-item');
+    if (!items.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      _searchActiveIdx = Math.min(_searchActiveIdx + 1, items.length - 1);
+      items.forEach((el, i) => el.classList.toggle('active', i === _searchActiveIdx));
+      items[_searchActiveIdx]?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      _searchActiveIdx = Math.max(_searchActiveIdx - 1, 0);
+      items.forEach((el, i) => el.classList.toggle('active', i === _searchActiveIdx));
+      items[_searchActiveIdx]?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter' && _searchActiveIdx >= 0) {
+      e.preventDefault();
+      const id = items[_searchActiveIdx]?.dataset.nodeId;
+      if (id) _navigateToSearchResult(id);
+    } else if (e.key === 'Escape') {
+      _searchResults.classList.remove('open');
+      _searchInput.blur();
+    }
+  });
+
+  _searchResults.addEventListener('click', e => {
+    const item = e.target.closest('.sr-item');
+    if (item) _navigateToSearchResult(item.dataset.nodeId);
+  });
+
+  _searchClear.addEventListener('click', () => {
+    _searchInput.value = '';
+    _searchClear.style.display = 'none';
+    _searchResults.classList.remove('open');
+  });
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#realm-search')) _searchResults.classList.remove('open');
+  });
+}
+
 // ── Node List Panel (Realm Census) ──
 const NODE_TYPE_ORDER = ['core', 'infra', 'tower', 'bridge', 'cluster', 'tailscale'];
 const NODE_TYPE_LABELS = {

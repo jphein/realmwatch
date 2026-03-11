@@ -2501,7 +2501,7 @@
     },
     {
       "from": "pixel-7",
-      "to": "onhub-family",
+      "to": "wndr4300sw-shed",
       "type": "active",
       "vlan": 6
     },
