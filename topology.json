@@ -1499,8 +1499,9 @@
       "y": 240,
       "icon": "&#128241;",
       "label": "The Messenger",
-      "sublabel": "Flip3 \u2022 10.0.6.106",
-      "ip": "10.0.6.106",
+      "sublabel": "Flip3 \u2022 10.0.6.123",
+      "ip": "10.0.6.123",
+      "mac": "8a:3a:b0:49:ab:7e",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1520,#0f0a15)",
         "borderColor": "rgba(120,160,200,0.4)",
@@ -2489,7 +2490,7 @@
     },
     {
       "from": "flip3",
-      "to": "onhub-closet",
+      "to": "onhub-office",
       "type": "active",
       "vlan": 6
     },
