@@ -29,6 +29,7 @@ WIFI_CONN_TYPES = {"active"}
 
 _last_scan = {"ts": 0, "ap_clients": {}, "leases": 0, "unknown": [], "wifi": {}}
 _lock = threading.Lock()
+_event_callback = None  # set by map_server to push_event
 
 # Regex for parsing iwinfo assoclist output
 _MAC_RE = re.compile(r'^([0-9A-Fa-f:]{17})\s+(-?\d+)\s+dBm\s*/\s*(-?\d+)\s+dBm\s+\(SNR\s+(\d+)\)', re.MULTILINE)
@@ -212,6 +213,17 @@ def scan_and_update():
                 else:
                     conn["from"] = ap_id
                 changes.append({"node": node_id, "from_ap": old_ap, "to_ap": ap_id})
+
+                # Fire speech event on the receiving AP
+                if _event_callback:
+                    node_label = node_by_id.get(node_id, {}).get("label", node_id)
+                    ap_label = node_by_id.get(ap_id, {}).get("label", ap_id)
+                    _event_callback({
+                        "type": "speech",
+                        "node": ap_id,
+                        "text": f"{node_label} has arrived at {ap_label}.",
+                        "color": "#a0d0ff",
+                    })
 
     # --- Track unknown MACs (on WiFi but not in topology) ---
     unknown = []

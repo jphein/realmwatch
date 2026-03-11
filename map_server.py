@@ -265,5 +265,6 @@ class RealmHandler(SimpleHTTPRequestHandler):
 if __name__ == "__main__":
     print(f"Realm Map: http://localhost:{PORT}")
     print(f"collectd RRD: /var/lib/collectd/rrd/")
+    ap_scanner._event_callback = push_event
     ap_scanner.start_background_scanner()
     HTTPServer(("", PORT), RealmHandler).serve_forever()
