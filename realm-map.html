@@ -127,23 +127,29 @@
     </div>
   </div>
   <div class="legend-section" data-section="layers">
-    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Layers</div>
+    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Layers &amp; Panels</div>
     <div class="legend-section-body">
-      <div class="vis-group-label">Map Layers</div>
-      <div class="layer-row">
-        <label class="topo-switch"><input type="checkbox" id="vis-terrain-orig"><span class="topo-switch-track"></span></label>
-        <span class="layer-name">Original Terrain</span>
-        <input type="range" class="layer-opacity" id="layer-terrain-orig-slider" min="0" max="1" step="0.05" value="0.5">
-      </div>
+      <div class="vis-group-label">Terrain</div>
       <div class="layer-row">
         <label class="topo-switch"><input type="checkbox" id="vis-terrain" checked><span class="topo-switch-track"></span></label>
         <span class="layer-name">Biome Terrain</span>
         <input type="range" class="layer-opacity" id="layer-terrain-slider" min="0" max="1" step="0.05" value="1">
       </div>
       <div class="layer-row">
+        <label class="topo-switch"><input type="checkbox" id="vis-terrain-orig"><span class="topo-switch-track"></span></label>
+        <span class="layer-name">Original Terrain</span>
+        <input type="range" class="layer-opacity" id="layer-terrain-orig-slider" min="0" max="1" step="0.05" value="0.5">
+      </div>
+      <div class="layer-row">
         <label class="topo-switch"><input type="checkbox" id="vis-topo" checked><span class="topo-switch-track"></span></label>
         <span class="layer-name">Topographic</span>
         <input type="range" class="layer-opacity" id="layer-topo-slider" min="0" max="1" step="0.05" value="1">
+      </div>
+      <div class="vis-group-label">Map Elements</div>
+      <div class="layer-row">
+        <label class="topo-switch"><input type="checkbox" id="vis-nodes" checked><span class="topo-switch-track"></span></label>
+        <span class="layer-name">Nodes</span>
+        <input type="range" class="layer-opacity" id="layer-nodes-slider" min="0" max="1" step="0.05" value="1">
       </div>
       <div class="layer-row">
         <label class="topo-switch"><input type="checkbox" id="vis-connections" checked><span class="topo-switch-track"></span></label>
@@ -151,29 +157,36 @@
         <input type="range" class="layer-opacity" id="layer-connections-slider" min="0" max="1" step="0.05" value="1">
       </div>
       <div class="layer-row">
-        <label class="topo-switch"><input type="checkbox" id="vis-regions" checked><span class="topo-switch-track"></span></label>
-        <span class="layer-name">Regions</span>
-        <input type="range" class="layer-opacity" id="layer-regions-slider" min="0" max="1" step="0.05" value="1">
-      </div>
-      <div class="layer-row">
-        <label class="topo-switch"><input type="checkbox" id="vis-nodes" checked><span class="topo-switch-track"></span></label>
-        <span class="layer-name">Nodes</span>
-        <input type="range" class="layer-opacity" id="layer-nodes-slider" min="0" max="1" step="0.05" value="1">
-      </div>
-      <div class="layer-row">
         <label class="topo-switch"><input type="checkbox" id="vis-labels" checked><span class="topo-switch-track"></span></label>
         <span class="layer-name">Labels</span>
         <input type="range" class="layer-opacity" id="layer-labels-slider" min="0" max="1" step="0.05" value="1">
       </div>
       <div class="layer-row">
+        <label class="topo-switch"><input type="checkbox" id="vis-sublabels" checked><span class="topo-switch-track"></span></label>
+        <span class="layer-name">Sublabels</span>
+        <input type="range" class="layer-opacity" id="layer-sublabels-slider" min="0" max="1" step="0.05" value="1">
+      </div>
+      <div class="layer-row">
+        <label class="topo-switch"><input type="checkbox" id="vis-regions" checked><span class="topo-switch-track"></span></label>
+        <span class="layer-name">Regions</span>
+        <input type="range" class="layer-opacity" id="layer-regions-slider" min="0" max="1" step="0.05" value="1">
+      </div>
+      <div class="layer-row">
+        <label class="topo-switch"><input type="checkbox" id="vis-vlanlabels" checked><span class="topo-switch-track"></span></label>
+        <span class="layer-name">VLAN Labels</span>
+        <input type="range" class="layer-opacity" id="layer-vlanlabels-slider" min="0" max="1" step="0.05" value="1">
+      </div>
+      <div class="layer-row">
         <label class="topo-switch"><input type="checkbox" id="vis-bubbles" checked><span class="topo-switch-track"></span></label>
-        <span class="layer-name">Bubbles</span>
+        <span class="layer-name">Speech Bubbles</span>
         <input type="range" class="layer-opacity" id="layer-bubbles-slider" min="0" max="1" step="0.05" value="1">
       </div>
       <div class="vis-group-label">Panels</div>
       <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-titlebar" checked><span class="topo-switch-track"></span></label><span>Title Bar</span></div>
-      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-statuspanel" checked><span class="topo-switch-track"></span></label><span>Status Panel</span></div>
+      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-search" checked><span class="topo-switch-track"></span></label><span>Search</span></div>
+      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-statuspanel" checked><span class="topo-switch-track"></span></label><span>Realm Vitals</span></div>
       <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-legend" checked><span class="topo-switch-track"></span></label><span>Legend</span></div>
+      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-spellbook" checked><span class="topo-switch-track"></span></label><span>Spellbook</span></div>
       <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-codex" checked><span class="topo-switch-track"></span></label><span>Codex</span></div>
       <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-questlog" checked><span class="topo-switch-track"></span></label><span>Quest Log</span></div>
       <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-minimap" checked><span class="topo-switch-track"></span></label><span>Minimap</span></div>

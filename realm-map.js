@@ -3084,12 +3084,16 @@
       ["vis-connections", "#connections"],
       ["vis-nodes", null, ".realm-node"],
       ["vis-labels", null, ".node-label"],
+      ["vis-sublabels", null, ".node-sublabel"],
       ["vis-regions", "#region-labels"],
+      ["vis-vlanlabels", null, ".vlan-label"],
       ["vis-bubbles", null, ".speech-bubble"],
       // Panels
       ["vis-titlebar", "#title-bar"],
+      ["vis-search", "#realm-search"],
       ["vis-statuspanel", "#realm-panel"],
       ["vis-legend", "#legend"],
+      ["vis-spellbook", "#spellbook"],
       ["vis-codex", "#realm-codex"],
       ["vis-questlog", "#quest-log"],
       ["vis-minimap", "#minimap"],
@@ -3121,6 +3125,8 @@
       ["layer-regions-slider", "#region-labels", false],
       ["layer-nodes-slider", null, true, ".realm-node"],
       ["layer-labels-slider", null, true, ".node-label"],
+      ["layer-sublabels-slider", null, true, ".node-sublabel"],
+      ["layer-vlanlabels-slider", null, true, ".vlan-label"],
       ["layer-bubbles-slider", null, true, ".speech-bubble"]
     ];
     for (const [sliderId, sel, isMulti, multiSel] of opacityLayers) {
@@ -3316,7 +3322,7 @@
   }
   animateMotes();
   var LAYOUT_KEY = "realm-map-layout-v2";
-  var SETTINGS_KEY = "realm-map-settings-v2";
+  var SETTINGS_KEY = "realm-map-settings-v3";
   var _PERSIST_SLIDERS = [
     "master-scale",
     "traffic-scale",
@@ -3352,6 +3358,8 @@
     "layer-regions",
     "layer-nodes",
     "layer-labels",
+    "layer-sublabels",
+    "layer-vlanlabels",
     "layer-bubbles"
   ];
   var _PERSIST_CHECKBOXES = [
@@ -3362,11 +3370,15 @@
     "vis-connections",
     "vis-nodes",
     "vis-labels",
+    "vis-sublabels",
     "vis-regions",
+    "vis-vlanlabels",
     "vis-bubbles",
     "vis-titlebar",
+    "vis-search",
     "vis-statuspanel",
     "vis-legend",
+    "vis-spellbook",
     "vis-codex",
     "vis-questlog",
     "vis-minimap",
