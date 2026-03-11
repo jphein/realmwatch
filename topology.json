@@ -89,7 +89,8 @@
       "tip": {
         "title": "Katana \u2014 The Citadel",
         "stats": []
-      }
+      },
+      "mac": "00:d8:61:bb:9f:8e"
     },
     {
       "id": "gatekeeper",
@@ -282,7 +283,8 @@
             "10.0.6.110"
           ]
         ]
-      }
+      },
+      "mac": "34:98:b5:a7:89:21"
     },
     {
       "id": "hp-switch",
@@ -318,7 +320,8 @@
             "3 DSL, 4 Treelink, 5 Althea, 6 Admin, 7 Test, 8 IoT, 9 VPN, 10 LAN, 11 Family, 12 Oasis, 20 ATT Fiber, 38 Treelink"
           ]
         ]
-      }
+      },
+      "mac": "78:48:59:a8:25:97"
     },
     {
       "id": "mr8300-host",
@@ -351,7 +354,8 @@
             "WiFi AP"
           ]
         ]
-      }
+      },
+      "mac": "30:23:03:82:5e:c0"
     },
     {
       "id": "onhub-office",
@@ -383,7 +387,8 @@
             "Office AP"
           ]
         ]
-      }
+      },
+      "mac": "a4:2b:b0:b7:d3:a0"
     },
     {
       "id": "onhub-closet",
@@ -416,7 +421,8 @@
             "Network Closet AP"
           ]
         ]
-      }
+      },
+      "mac": "2c:56:dc:df:bd:9d"
     },
     {
       "id": "wndr4300sw-shed",
@@ -449,7 +455,8 @@
             "Shed AP"
           ]
         ]
-      }
+      },
+      "mac": "a0:63:91:8d:bd:4a"
     },
     {
       "id": "onhub-pumphouse",
@@ -481,7 +488,8 @@
             "Pumphouse AP"
           ]
         ]
-      }
+      },
+      "mac": "18:d6:c7:b6:d5:2d"
     },
     {
       "id": "wrt1900ac-family",
@@ -514,7 +522,8 @@
             "Family AP"
           ]
         ]
-      }
+      },
+      "mac": "94:10:3e:7e:7b:c5"
     },
     {
       "id": "ea6350-cl",
@@ -547,7 +556,8 @@
             "Citadel AP"
           ]
         ]
-      }
+      },
+      "mac": "60:38:e0:a6:7d:d5"
     },
     {
       "id": "eap225-outdoor",
@@ -580,7 +590,8 @@
             "Outdoor AP"
           ]
         ]
-      }
+      },
+      "mac": "10:27:f5:7a:02:aa"
     },
     {
       "id": "ea6350v3-family",
@@ -612,7 +623,8 @@
             "Family AP"
           ]
         ]
-      }
+      },
+      "mac": "60:38:e0:96:1c:31"
     },
     {
       "id": "onhub-family",
@@ -644,7 +656,8 @@
             "Family Room AP"
           ]
         ]
-      }
+      },
+      "mac": "18:d6:c7:72:d8:65"
     },
     {
       "id": "onhub-bed",
@@ -676,7 +689,8 @@
             "Bedroom AP"
           ]
         ]
-      }
+      },
+      "mac": "9c:5c:8e:cb:db:8d"
     },
     {
       "id": "cpe710-ap",
@@ -707,7 +721,8 @@
             "Point-to-Point Bridge"
           ]
         ]
-      }
+      },
+      "mac": "00:5f:67:81:8b:6a"
     },
     {
       "id": "cpe710-client",
@@ -738,7 +753,8 @@
             "Point-to-Point Bridge"
           ]
         ]
-      }
+      },
+      "mac": "5c:a6:e6:b7:8a:c0"
     },
     {
       "id": "gigabeam0",
@@ -769,7 +785,8 @@
             "60GHz Bridge"
           ]
         ]
-      }
+      },
+      "mac": "60:22:32:d2:5d:e7"
     },
     {
       "id": "gigabeam1",
@@ -800,7 +817,8 @@
             "60GHz Bridge"
           ]
         ]
-      }
+      },
+      "mac": "60:22:32:d2:63:6a"
     },
     {
       "id": "game",
@@ -844,7 +862,8 @@
             "238 GB"
           ]
         ]
-      }
+      },
+      "mac": "00:c0:ca:a4:72:b0"
     },
     {
       "id": "tab-s5e",
@@ -882,7 +901,8 @@
             "Closet AP"
           ]
         ]
-      }
+      },
+      "mac": "aa:36:98:2b:b3:e3"
     },
     {
       "id": "notion-portal",
@@ -948,7 +968,8 @@
             "10.0.6.108"
           ]
         ]
-      }
+      },
+      "mac": "52:54:00:40:91:ec"
     },
     {
       "id": "goodwe",
@@ -979,7 +1000,8 @@
             "10.0.6.244"
           ]
         ]
-      }
+      },
+      "mac": "28:9c:6e:01:01:6a"
     },
     {
       "id": "nodered",
@@ -1008,7 +1030,8 @@
             "10.0.6.118"
           ]
         ]
-      }
+      },
+      "mac": "a6:fb:2c:1b:6f:25"
     },
     {
       "id": "nest-circle",
@@ -1525,7 +1548,8 @@
         "width": "40px",
         "height": "40px",
         "fontSize": "18px"
-      }
+      },
+      "mac": "be:68:f4:5b:e2:03"
     },
     {
       "id": "s24-ultra",
@@ -1534,15 +1558,16 @@
       "y": 1020,
       "icon": "&#128241;",
       "label": "<REDACTED>",
-      "sublabel": "S24 Ultra \u2022 10.0.6.139",
-      "ip": "10.0.6.139",
+      "sublabel": "S24 Ultra \u2022 10.0.6.131",
+      "ip": "10.0.6.131",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1520,#0f0a15)",
         "borderColor": "rgba(140,120,200,0.4)",
         "width": "40px",
         "height": "40px",
         "fontSize": "18px"
-      }
+      },
+      "mac": "b6:3b:87:b7:bf:de"
     },
     {
       "id": "iphone",
@@ -1551,15 +1576,16 @@
       "y": 1080,
       "icon": "&#128241;",
       "label": "The Apple Shard",
-      "sublabel": "iPhone \u2022 10.0.6.154",
-      "ip": "10.0.6.154",
+      "sublabel": "iPhone \u2022 10.0.6.125",
+      "ip": "10.0.6.125",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1520,#0f0a15)",
         "borderColor": "rgba(160,160,160,0.4)",
         "width": "40px",
         "height": "40px",
         "fontSize": "18px"
-      }
+      },
+      "mac": "0a:bb:37:e9:b9:be"
     },
     {
       "id": "pixel-7",
@@ -1576,7 +1602,8 @@
         "width": "40px",
         "height": "40px",
         "fontSize": "18px"
-      }
+      },
+      "mac": "c6:c8:21:a7:b1:9a"
     },
     {
       "id": "users-air",
@@ -1593,7 +1620,8 @@
         "width": "44px",
         "height": "44px",
         "fontSize": "20px"
-      }
+      },
+      "mac": "10:94:bb:e5:fe:fe"
     },
     {
       "id": "latitude-7390",
@@ -1610,7 +1638,8 @@
         "width": "44px",
         "height": "44px",
         "fontSize": "20px"
-      }
+      },
+      "mac": "7c:76:35:37:05:69"
     },
     {
       "id": "woodshed",
@@ -1630,7 +1659,8 @@
         "height": "44px",
         "fontSize": "20px"
       },
-      "pulse": true
+      "pulse": true,
+      "mac": "d8:84:66:31:48:29"
     },
     {
       "id": "kindle",
@@ -1647,7 +1677,8 @@
         "width": "38px",
         "height": "38px",
         "fontSize": "16px"
-      }
+      },
+      "mac": "f0:4f:7c:fe:65:af"
     },
     {
       "id": "lg-washer",
@@ -1664,7 +1695,8 @@
         "width": "40px",
         "height": "40px",
         "fontSize": "18px"
-      }
+      },
+      "mac": "d4:8d:26:86:c5:b1"
     },
     {
       "id": "lg-dryer",
@@ -1681,7 +1713,8 @@
         "width": "40px",
         "height": "40px",
         "fontSize": "18px"
-      }
+      },
+      "mac": "44:27:45:53:a2:f1"
     },
     {
       "id": "roomba",
@@ -1698,7 +1731,8 @@
         "width": "40px",
         "height": "40px",
         "fontSize": "18px"
-      }
+      },
+      "mac": "c0:e4:34:16:c0:a5"
     },
     {
       "id": "irobot",
@@ -1715,7 +1749,8 @@
         "width": "40px",
         "height": "40px",
         "fontSize": "18px"
-      }
+      },
+      "mac": "50:14:79:16:0c:0f"
     },
     {
       "id": "roku",
@@ -1732,7 +1767,8 @@
         "width": "40px",
         "height": "40px",
         "fontSize": "18px"
-      }
+      },
+      "mac": "b8:3e:59:d5:ab:9f"
     },
     {
       "id": "echo",
@@ -1749,7 +1785,8 @@
         "width": "40px",
         "height": "40px",
         "fontSize": "18px"
-      }
+      },
+      "mac": "18:65:71:80:77:9e"
     },
     {
       "id": "wled-main",
@@ -1766,7 +1803,8 @@
         "width": "38px",
         "height": "38px",
         "fontSize": "16px"
-      }
+      },
+      "mac": "34:b7:da:f8:ef:64"
     },
     {
       "id": "wled-aqi",
@@ -1783,7 +1821,8 @@
         "width": "38px",
         "height": "38px",
         "fontSize": "16px"
-      }
+      },
+      "mac": "d8:3b:da:e5:36:d8"
     },
     {
       "id": "esp32-bed1",
@@ -1800,7 +1839,8 @@
         "width": "34px",
         "height": "34px",
         "fontSize": "14px"
-      }
+      },
+      "mac": "d8:3b:da:25:82:3c"
     },
     {
       "id": "esp32-bed2",
@@ -1817,7 +1857,8 @@
         "width": "34px",
         "height": "34px",
         "fontSize": "14px"
-      }
+      },
+      "mac": "34:b7:da:f8:eb:1c"
     },
     {
       "id": "esp32-bed3",
@@ -1834,7 +1875,8 @@
         "width": "34px",
         "height": "34px",
         "fontSize": "14px"
-      }
+      },
+      "mac": "34:b7:da:f8:ea:e8"
     },
     {
       "id": "family-vm",
@@ -1851,7 +1893,8 @@
         "width": "40px",
         "height": "40px",
         "fontSize": "18px"
-      }
+      },
+      "mac": "52:54:00:27:33:5c"
     },
     {
       "id": "smart-plugs",
@@ -2105,7 +2148,8 @@
         "width": "34px",
         "height": "34px",
         "fontSize": "14px"
-      }
+      },
+      "mac": "c4:5b:be:61:fb:7a"
     },
     {
       "id": "neocharge",
@@ -2123,7 +2167,8 @@
         "height": "40px",
         "fontSize": "18px"
       },
-      "pulse": true
+      "pulse": true,
+      "mac": "48:e7:29:94:c1:48"
     },
     {
       "id": "ipad",
@@ -2140,7 +2185,8 @@
         "width": "38px",
         "height": "38px",
         "fontSize": "16px"
-      }
+      },
+      "mac": "4c:b1:99:49:ad:66"
     },
     {
       "id": "shed-ble",
@@ -2157,7 +2203,8 @@
         "width": "34px",
         "height": "34px",
         "fontSize": "14px"
-      }
+      },
+      "mac": "48:ca:43:ca:69:34"
     },
     {
       "id": "latitude-5490",
@@ -2174,7 +2221,8 @@
         "width": "40px",
         "height": "40px",
         "fontSize": "18px"
-      }
+      },
+      "mac": "c8:f7:50:8a:72:1b"
     },
     {
       "id": "pixel-4",
@@ -2191,7 +2239,8 @@
         "width": "38px",
         "height": "38px",
         "fontSize": "16px"
-      }
+      },
+      "mac": "ee:0e:15:13:15:58"
     },
     {
       "id": "wolf-creek",
@@ -2225,7 +2274,8 @@
         "width": "34px",
         "height": "34px",
         "fontSize": "14px"
-      }
+      },
+      "mac": "2c:bc:bb:a9:0c:10"
     }
   ],
   "connections": [
