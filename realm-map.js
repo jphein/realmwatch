@@ -2783,7 +2783,14 @@
       const entry = _searchIndex?.find((e) => e.id === nodeId);
       const panelEl = entry?.sel ? document.querySelector(entry.sel) : null;
       if (panelEl) {
+        if (panelEl.classList.contains("panel-minimized")) {
+          panelEl.classList.remove("panel-minimized");
+          panelEl.style.animation = "";
+        }
         panelEl.style.display = "";
+        const visId = "vis-" + entry.sel.replace("#", "");
+        const visCb = document.getElementById(visId);
+        if (visCb && !visCb.checked) visCb.checked = true;
         panelEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
         panelEl.style.transition = "box-shadow 0.3s";
         panelEl.style.boxShadow = "0 0 20px rgba(240,216,144,0.5)";

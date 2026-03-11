@@ -2603,13 +2603,23 @@ function _renderSearchResults(results, query) {
 }
 
 function _navigateToSearchResult(nodeId) {
-  // Panel results: scroll panel into view and flash it
+  // Panel results: restore panel, scroll into view, and flash it
   if (nodeId.startsWith('_panel:')) {
     const entry = _searchIndex?.find(e => e.id === nodeId);
     const panelEl = entry?.sel ? document.querySelector(entry.sel) : null;
     if (panelEl) {
-      // Ensure panel is visible (un-minimize if needed)
+      // Un-minimize if minimized
+      if (panelEl.classList.contains('panel-minimized')) {
+        panelEl.classList.remove('panel-minimized');
+        panelEl.style.animation = '';
+      }
+      // Un-hide if toggled off via vis- checkbox
       panelEl.style.display = '';
+      // Also re-check any corresponding vis- checkbox
+      const visId = 'vis-' + entry.sel.replace('#', '');
+      const visCb = document.getElementById(visId);
+      if (visCb && !visCb.checked) visCb.checked = true;
+
       panelEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       panelEl.style.transition = 'box-shadow 0.3s';
       panelEl.style.boxShadow = '0 0 20px rgba(240,216,144,0.5)';
