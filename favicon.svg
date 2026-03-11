@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <radialGradient id="g" cx="50%" cy="45%" r="50%">
+      <stop offset="0%" stop-color="#e0d0ff"/>
+      <stop offset="40%" stop-color="#7040c0"/>
+      <stop offset="100%" stop-color="#1a0a30"/>
+    </radialGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- Dark circle base -->
+  <circle cx="32" cy="32" r="30" fill="#0a0a1a" stroke="#5030a0" stroke-width="2"/>
+  <!-- Inner orb -->
+  <circle cx="32" cy="30" r="18" fill="url(#g)" opacity="0.9"/>
+  <!-- Rune star -->
+  <g filter="url(#glow)" opacity="0.95">
+    <polygon points="32,10 36,26 52,26 39,35 43,51 32,41 21,51 25,35 12,26 28,26" fill="none" stroke="#c0a0ff" stroke-width="1.5" stroke-linejoin="round"/>
+  </g>
+  <!-- Center sparkle -->
+  <circle cx="32" cy="30" r="3" fill="#fff" opacity="0.8"/>
+  <circle cx="32" cy="30" r="6" fill="#c0a0ff" opacity="0.3"/>
+  <!-- Outer ring runes (decorative dots) -->
+  <g fill="#8060d0" opacity="0.6">
+    <circle cx="32" cy="4" r="1.5"/>
+    <circle cx="52" cy="12" r="1.5"/>
+    <circle cx="58" cy="32" r="1.5"/>
+    <circle cx="52" cy="52" r="1.5"/>
+    <circle cx="32" cy="60" r="1.5"/>
+    <circle cx="12" cy="52" r="1.5"/>
+    <circle cx="6" cy="32" r="1.5"/>
+    <circle cx="12" cy="12" r="1.5"/>
+  </g>
+</svg>
