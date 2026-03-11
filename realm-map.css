@@ -573,6 +573,43 @@
     box-shadow: 0 0 20px rgba(240,216,144,0.08), 0 0 4px rgba(240,216,144,0.15), inset 0 0 12px rgba(240,216,144,0.03);
     background: rgba(10,10,25,0.92);
   }
+
+  /* Magic Morph Mode */
+  #realm-search.magic-morph #search-input {
+    border-color: #c080ff;
+    box-shadow: 0 0 15px rgba(192,128,255,0.4), inset 0 0 10px rgba(192,128,255,0.1);
+    background: rgba(20,10,35,0.95);
+    color: #e0b0ff;
+    animation: magicPulse 2s ease-in-out infinite;
+  }
+  #realm-search.magic-morph #search-icon {
+    color: #e0b0ff !important;
+    opacity: 0.9 !important;
+    filter: drop-shadow(0 0 5px rgba(192,128,255,0.8));
+    animation: iconSpin 4s linear infinite;
+  }
+  @keyframes magicPulse {
+    0%, 100% { box-shadow: 0 0 15px rgba(192,128,255,0.4), inset 0 0 10px rgba(192,128,255,0.1); }
+    50% { box-shadow: 0 0 25px rgba(192,128,255,0.7), inset 0 0 15px rgba(192,128,255,0.2); border-color: #e0b0ff; }
+  }
+  @keyframes iconSpin {
+    0% { transform: translateY(-50%) rotate(0deg); }
+    100% { transform: translateY(-50%) rotate(360deg); }
+  }
+  #realm-search.magic-morph #search-input::placeholder {
+    color: rgba(192,128,255,0.6);
+    font-style: italic;
+  }
+  #realm-search.magic-morph .sr-item {
+      color: #c080ff;
+      border-bottom: 1px solid rgba(192,128,255,0.2);
+  }
+  #realm-search.magic-morph .sr-empty {
+      color: #e0b0ff;
+      font-weight: bold;
+      text-shadow: 0 0 8px rgba(192,128,255,0.4);
+  }
+
   #search-icon {
     position: absolute;
     left: 11px;

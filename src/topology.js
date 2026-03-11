@@ -285,6 +285,10 @@ export function renderTopology(topo) {
     world.appendChild(div);
 
     if (n.tip) tips[n.id] = { title: n.tip.title, stats: [...(n.tip.stats || [])] };
+    else {
+      const auto = []; if (n.type) auto.push(['Type', n.type]); if (n.ip) auto.push(['IP', n.ip]);
+      tips[n.id] = { title: n.label || n.id, stats: auto };
+    }
     if (n.ip || n.ssh) infraNodes[n.id] = { name: n.label, ip: n.ip || '', collectdHost: n.collectd || null, sshHost: n.ssh || null, tsHost: n.tsHost || null };
     if (n.tsHost) _tsHostMap[n.tsHost] = n.id;
   });

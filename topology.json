@@ -1531,6 +1531,27 @@
         "width": "40px",
         "height": "40px",
         "fontSize": "18px"
+      },
+      "tip": {
+        "title": "Samsung Galaxy Z Flip3",
+        "stats": [
+          [
+            "Model",
+            "Galaxy Z Flip3"
+          ],
+          [
+            "MAC",
+            "8a:3a:b0:49:ab:7e"
+          ],
+          [
+            "Role",
+            "Primary phone"
+          ],
+          [
+            "IP",
+            "10.0.6.123"
+          ]
+        ]
       }
     },
     {
@@ -1549,7 +1570,24 @@
         "height": "40px",
         "fontSize": "18px"
       },
-      "mac": "be:68:f4:5b:e2:03"
+      "mac": "be:68:f4:5b:e2:03",
+      "tip": {
+        "title": "Flip3 5G Radio",
+        "stats": [
+          [
+            "Model",
+            "Galaxy Z Flip3 (5GHz)"
+          ],
+          [
+            "Role",
+            "Secondary WiFi radio"
+          ],
+          [
+            "IP",
+            "10.0.6.138"
+          ]
+        ]
+      }
     },
     {
       "id": "s24-ultra",
@@ -1567,7 +1605,28 @@
         "height": "40px",
         "fontSize": "18px"
       },
-      "mac": "b6:3b:87:b7:bf:de"
+      "mac": "b6:3b:87:b7:bf:de",
+      "tip": {
+        "title": "Samsung Galaxy S24 Ultra",
+        "stats": [
+          [
+            "Model",
+            "Galaxy S24 Ultra"
+          ],
+          [
+            "MAC",
+            "b6:3b:87:b7:bf:de"
+          ],
+          [
+            "Role",
+            "<Owner>'s phone"
+          ],
+          [
+            "IP",
+            "10.0.6.131"
+          ]
+        ]
+      }
     },
     {
       "id": "iphone",
@@ -1585,7 +1644,28 @@
         "height": "40px",
         "fontSize": "18px"
       },
-      "mac": "0a:bb:37:e9:b9:be"
+      "mac": "0a:bb:37:e9:b9:be",
+      "tip": {
+        "title": "iPhone",
+        "stats": [
+          [
+            "Model",
+            "iPhone"
+          ],
+          [
+            "MAC",
+            "0a:bb:37:e9:b9:be"
+          ],
+          [
+            "Role",
+            "Family device"
+          ],
+          [
+            "IP",
+            "10.0.6.125"
+          ]
+        ]
+      }
     },
     {
       "id": "pixel-7",
@@ -1603,7 +1683,24 @@
         "height": "40px",
         "fontSize": "18px"
       },
-      "mac": "c6:c8:21:a7:b1:9a"
+      "mac": "c6:c8:21:a7:b1:9a",
+      "tip": {
+        "title": "Pixel 7",
+        "stats": [
+          [
+            "Model",
+            "Google Pixel 7"
+          ],
+          [
+            "Role",
+            "Spare device"
+          ],
+          [
+            "IP",
+            "10.0.6.146"
+          ]
+        ]
+      }
     },
     {
       "id": "users-air",
@@ -1621,7 +1718,24 @@
         "height": "44px",
         "fontSize": "20px"
       },
-      "mac": "10:94:bb:e5:fe:fe"
+      "mac": "10:94:bb:e5:fe:fe",
+      "tip": {
+        "title": "MacBook Air",
+        "stats": [
+          [
+            "Model",
+            "MacBook Air"
+          ],
+          [
+            "Role",
+            "Portable workstation"
+          ],
+          [
+            "IP",
+            "10.0.6.143"
+          ]
+        ]
+      }
     },
     {
       "id": "latitude-7390",
@@ -1639,7 +1753,24 @@
         "height": "44px",
         "fontSize": "20px"
       },
-      "mac": "7c:76:35:37:05:69"
+      "mac": "7c:76:35:37:05:69",
+      "tip": {
+        "title": "Dell Latitude 7390",
+        "stats": [
+          [
+            "Model",
+            "Dell Latitude 7390"
+          ],
+          [
+            "Role",
+            "Laptop"
+          ],
+          [
+            "IP",
+            "10.0.6.156"
+          ]
+        ]
+      }
     },
     {
       "id": "woodshed",
@@ -1660,7 +1791,20 @@
         "fontSize": "20px"
       },
       "pulse": true,
-      "mac": "d8:84:66:31:48:29"
+      "mac": "d8:84:66:31:48:29",
+      "tip": {
+        "title": "Woodshed Device",
+        "stats": [
+          [
+            "Role",
+            "Shed endpoint"
+          ],
+          [
+            "IP",
+            "10.0.6.105"
+          ]
+        ]
+      }
     },
     {
       "id": "kindle",
@@ -1678,7 +1822,24 @@
         "height": "38px",
         "fontSize": "16px"
       },
-      "mac": "f0:4f:7c:fe:65:af"
+      "mac": "f0:4f:7c:fe:65:af",
+      "tip": {
+        "title": "Amazon Kindle",
+        "stats": [
+          [
+            "Model",
+            "Kindle"
+          ],
+          [
+            "Role",
+            "E-reader"
+          ],
+          [
+            "IP",
+            "10.0.6.134"
+          ]
+        ]
+      }
     },
     {
       "id": "lg-washer",
@@ -1696,7 +1857,24 @@
         "height": "40px",
         "fontSize": "18px"
       },
-      "mac": "d4:8d:26:86:c5:b1"
+      "mac": "d4:8d:26:86:c5:b1",
+      "tip": {
+        "title": "LG Washer",
+        "stats": [
+          [
+            "Model",
+            "LG Smart Washer"
+          ],
+          [
+            "Role",
+            "Laundry \u2014 wash cycle"
+          ],
+          [
+            "IP",
+            "10.0.6.107"
+          ]
+        ]
+      }
     },
     {
       "id": "lg-dryer",
@@ -1714,7 +1892,24 @@
         "height": "40px",
         "fontSize": "18px"
       },
-      "mac": "44:27:45:53:a2:f1"
+      "mac": "44:27:45:53:a2:f1",
+      "tip": {
+        "title": "LG Dryer",
+        "stats": [
+          [
+            "Model",
+            "LG Smart Dryer"
+          ],
+          [
+            "Role",
+            "Laundry \u2014 dry cycle"
+          ],
+          [
+            "IP",
+            "10.0.6.130"
+          ]
+        ]
+      }
     },
     {
       "id": "roomba",
@@ -1732,7 +1927,24 @@
         "height": "40px",
         "fontSize": "18px"
       },
-      "mac": "c0:e4:34:16:c0:a5"
+      "mac": "c0:e4:34:16:c0:a5",
+      "tip": {
+        "title": "Roomba",
+        "stats": [
+          [
+            "Model",
+            "iRobot Roomba"
+          ],
+          [
+            "Role",
+            "Floor cleaning"
+          ],
+          [
+            "IP",
+            "10.0.6.120"
+          ]
+        ]
+      }
     },
     {
       "id": "irobot",
@@ -1750,7 +1962,24 @@
         "height": "40px",
         "fontSize": "18px"
       },
-      "mac": "50:14:79:16:0c:0f"
+      "mac": "50:14:79:16:0c:0f",
+      "tip": {
+        "title": "iRobot Braava",
+        "stats": [
+          [
+            "Model",
+            "iRobot Braava"
+          ],
+          [
+            "Role",
+            "Floor mopping"
+          ],
+          [
+            "IP",
+            "10.0.6.142"
+          ]
+        ]
+      }
     },
     {
       "id": "roku",
@@ -1768,7 +1997,24 @@
         "height": "40px",
         "fontSize": "18px"
       },
-      "mac": "b8:3e:59:d5:ab:9f"
+      "mac": "b8:3e:59:d5:ab:9f",
+      "tip": {
+        "title": "Roku",
+        "stats": [
+          [
+            "Model",
+            "Roku Streaming"
+          ],
+          [
+            "Role",
+            "Media streaming"
+          ],
+          [
+            "IP",
+            "10.0.6.249"
+          ]
+        ]
+      }
     },
     {
       "id": "echo",
@@ -1786,7 +2032,24 @@
         "height": "40px",
         "fontSize": "18px"
       },
-      "mac": "18:65:71:80:77:9e"
+      "mac": "18:65:71:80:77:9e",
+      "tip": {
+        "title": "Amazon Echo",
+        "stats": [
+          [
+            "Model",
+            "Amazon Echo"
+          ],
+          [
+            "Role",
+            "Voice assistant"
+          ],
+          [
+            "IP",
+            "10.0.6.151"
+          ]
+        ]
+      }
     },
     {
       "id": "wled-main",
@@ -1804,7 +2067,28 @@
         "height": "38px",
         "fontSize": "16px"
       },
-      "mac": "34:b7:da:f8:ef:64"
+      "mac": "34:b7:da:f8:ef:64",
+      "tip": {
+        "title": "WLED Main Strip",
+        "stats": [
+          [
+            "Model",
+            "WLED Controller"
+          ],
+          [
+            "Hostname",
+            "mamastrip"
+          ],
+          [
+            "Role",
+            "LED strip \u2014 main"
+          ],
+          [
+            "IP",
+            "10.0.6.149"
+          ]
+        ]
+      }
     },
     {
       "id": "wled-aqi",
@@ -1822,7 +2106,28 @@
         "height": "38px",
         "fontSize": "16px"
       },
-      "mac": "d8:3b:da:e5:36:d8"
+      "mac": "d8:3b:da:e5:36:d8",
+      "tip": {
+        "title": "WLED AQI Crystal",
+        "stats": [
+          [
+            "Model",
+            "WLED Controller"
+          ],
+          [
+            "Hostname",
+            "claqi"
+          ],
+          [
+            "Role",
+            "LED strip \u2014 AQI display"
+          ],
+          [
+            "IP",
+            "10.0.6.152"
+          ]
+        ]
+      }
     },
     {
       "id": "esp32-bed1",
@@ -1840,7 +2145,24 @@
         "height": "34px",
         "fontSize": "14px"
       },
-      "mac": "d8:3b:da:25:82:3c"
+      "mac": "d8:3b:da:25:82:3c",
+      "tip": {
+        "title": "ESP32 Bed Sensor 1",
+        "stats": [
+          [
+            "Model",
+            "ESP32"
+          ],
+          [
+            "Role",
+            "Bed presence sensor"
+          ],
+          [
+            "IP",
+            "10.0.6.112"
+          ]
+        ]
+      }
     },
     {
       "id": "esp32-bed2",
@@ -1858,7 +2180,24 @@
         "height": "34px",
         "fontSize": "14px"
       },
-      "mac": "34:b7:da:f8:eb:1c"
+      "mac": "34:b7:da:f8:eb:1c",
+      "tip": {
+        "title": "ESP32 Bed Sensor 2",
+        "stats": [
+          [
+            "Model",
+            "ESP32"
+          ],
+          [
+            "Role",
+            "Bed presence sensor"
+          ],
+          [
+            "IP",
+            "10.0.6.147"
+          ]
+        ]
+      }
     },
     {
       "id": "esp32-bed3",
@@ -1876,7 +2215,24 @@
         "height": "34px",
         "fontSize": "14px"
       },
-      "mac": "34:b7:da:f8:ea:e8"
+      "mac": "34:b7:da:f8:ea:e8",
+      "tip": {
+        "title": "ESP32 Bed Sensor 3",
+        "stats": [
+          [
+            "Model",
+            "ESP32"
+          ],
+          [
+            "Role",
+            "Bed presence sensor"
+          ],
+          [
+            "IP",
+            "10.0.6.148"
+          ]
+        ]
+      }
     },
     {
       "id": "family-vm",
@@ -1894,7 +2250,28 @@
         "height": "40px",
         "fontSize": "18px"
       },
-      "mac": "52:54:00:27:33:5c"
+      "mac": "52:54:00:27:33:5c",
+      "tip": {
+        "title": "Family VM",
+        "stats": [
+          [
+            "Model",
+            "KVM Guest"
+          ],
+          [
+            "Host",
+            "nodered"
+          ],
+          [
+            "Role",
+            "Family desktop VM"
+          ],
+          [
+            "IP",
+            "10.0.8.104"
+          ]
+        ]
+      }
     },
     {
       "id": "smart-plugs",
@@ -2149,7 +2526,24 @@
         "height": "34px",
         "fontSize": "14px"
       },
-      "mac": "c4:5b:be:61:fb:7a"
+      "mac": "c4:5b:be:61:fb:7a",
+      "tip": {
+        "title": "Air Purifier",
+        "stats": [
+          [
+            "Model",
+            "Smart Air Purifier"
+          ],
+          [
+            "Role",
+            "Bedroom air quality"
+          ],
+          [
+            "IP",
+            "10.0.10.116"
+          ]
+        ]
+      }
     },
     {
       "id": "neocharge",
@@ -2168,7 +2562,24 @@
         "fontSize": "18px"
       },
       "pulse": true,
-      "mac": "48:e7:29:94:c1:48"
+      "mac": "48:e7:29:94:c1:48",
+      "tip": {
+        "title": "NeoCharge",
+        "stats": [
+          [
+            "Model",
+            "NeoCharge Smart Splitter"
+          ],
+          [
+            "Role",
+            "EV charging manager"
+          ],
+          [
+            "IP",
+            "10.0.10.234"
+          ]
+        ]
+      }
     },
     {
       "id": "ipad",
@@ -2186,7 +2597,24 @@
         "height": "38px",
         "fontSize": "16px"
       },
-      "mac": "4c:b1:99:49:ad:66"
+      "mac": "4c:b1:99:49:ad:66",
+      "tip": {
+        "title": "iPad",
+        "stats": [
+          [
+            "Model",
+            "Apple iPad"
+          ],
+          [
+            "Role",
+            "Tablet"
+          ],
+          [
+            "IP",
+            "10.0.10.223"
+          ]
+        ]
+      }
     },
     {
       "id": "shed-ble",
@@ -2204,7 +2632,24 @@
         "height": "34px",
         "fontSize": "14px"
       },
-      "mac": "48:ca:43:ca:69:34"
+      "mac": "48:ca:43:ca:69:34",
+      "tip": {
+        "title": "Shed BLE Beacon",
+        "stats": [
+          [
+            "Model",
+            "BLE Beacon"
+          ],
+          [
+            "Role",
+            "Bluetooth presence"
+          ],
+          [
+            "IP",
+            "10.0.10.165"
+          ]
+        ]
+      }
     },
     {
       "id": "latitude-5490",
@@ -2222,7 +2667,24 @@
         "height": "40px",
         "fontSize": "18px"
       },
-      "mac": "c8:f7:50:8a:72:1b"
+      "mac": "c8:f7:50:8a:72:1b",
+      "tip": {
+        "title": "Dell Latitude 5490",
+        "stats": [
+          [
+            "Model",
+            "Dell Latitude 5490"
+          ],
+          [
+            "Role",
+            "Spare laptop"
+          ],
+          [
+            "IP",
+            "10.0.11.141"
+          ]
+        ]
+      }
     },
     {
       "id": "pixel-4",
@@ -2240,7 +2702,24 @@
         "height": "38px",
         "fontSize": "16px"
       },
-      "mac": "ee:0e:15:13:15:58"
+      "mac": "ee:0e:15:13:15:58",
+      "tip": {
+        "title": "Pixel 4",
+        "stats": [
+          [
+            "Model",
+            "Google Pixel 4"
+          ],
+          [
+            "Role",
+            "Retired phone"
+          ],
+          [
+            "IP",
+            "10.0.11.184"
+          ]
+        ]
+      }
     },
     {
       "id": "wolf-creek",
@@ -2257,6 +2736,23 @@
         "width": "40px",
         "height": "40px",
         "fontSize": "18px"
+      },
+      "tip": {
+        "title": "Wolf Creek Laptop",
+        "stats": [
+          [
+            "Model",
+            "Laptop"
+          ],
+          [
+            "Role",
+            "Portable device"
+          ],
+          [
+            "IP",
+            "10.0.11.185"
+          ]
+        ]
       }
     },
     {
@@ -2275,7 +2771,55 @@
         "height": "34px",
         "fontSize": "14px"
       },
-      "mac": "2c:bc:bb:a9:0c:10"
+      "mac": "2c:bc:bb:a9:0c:10",
+      "tip": {
+        "title": "ESP32 A90C10",
+        "stats": [
+          [
+            "Model",
+            "ESP32"
+          ],
+          [
+            "Role",
+            "Sensor node"
+          ],
+          [
+            "IP",
+            "10.0.6.132"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "scrying-pool",
+      "label": "The Scrying Pool",
+      "sublabel": "Ask and the Aether answers",
+      "icon": "&#128302;",
+      "type": "portal",
+      "x": 1250,
+      "y": 520,
+      "region": "inner-world",
+      "iconStyle": {
+        "width": "56px",
+        "height": "56px"
+      },
+      "tip": {
+        "title": "The Scrying Pool",
+        "stats": [
+          [
+            "Role",
+            "AI Oracle"
+          ],
+          [
+            "Interface",
+            "Search bar (? prefix)"
+          ],
+          [
+            "Source",
+            "Claude Code + MCP"
+          ]
+        ]
+      }
     }
   ],
   "connections": [
@@ -2720,7 +3264,7 @@
     },
     {
       "from": "iphone",
-      "to": "onhub-bed",
+      "to": "wrt1900ac-family",
       "type": "active",
       "vlan": 6
     },
@@ -2738,7 +3282,7 @@
     },
     {
       "from": "s24-ultra",
-      "to": "onhub-office",
+      "to": "wrt1900ac-family",
       "type": "active",
       "vlan": 6
     },
@@ -2758,6 +3302,12 @@
       "from": "esp32-a90c10",
       "to": "wndr4300sw-shed",
       "type": "active",
+      "vlan": 6
+    },
+    {
+      "from": "scrying-pool",
+      "to": "katana",
+      "type": "ethereal",
       "vlan": 6
     }
   ],

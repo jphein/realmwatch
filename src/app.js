@@ -442,6 +442,21 @@ function updateInfraNodes(d) {
   DOM.towersTotal.textContent = towersTotal;
 }
 
+function updateHASublabels(d) {
+  const ha = d.ha;
+  if (!ha) return;
+  for (const [nodeId, info] of Object.entries(ha)) {
+    const n = getNodeDOM(nodeId);
+    if (n.sub) n.sub.textContent = info.sublabel;
+    // Also inject into tooltip
+    if (tips[nodeId]) {
+      const existing = tips[nodeId].stats.filter(s => s[0] !== 'HA Status');
+      existing.push(['HA Status', info.sublabel]);
+      tips[nodeId].stats = existing;
+    }
+  }
+}
+
 function updateTooltips(d) {
   const { forge, mana, essence, astral } = d;
   const gpu = forge.gpu;
@@ -521,6 +536,7 @@ export function updateUI(d) {
   updateGauges(d);
   updateCoreSublabels(d);
   updateInfraNodes(d);
+  updateHASublabels(d);
   updateTooltips(d);
 
   // Periodic status report to quest log (every 60s)
@@ -1089,6 +1105,12 @@ function renderEvent(evt) {
   } else if (evt.type === 'quest') {
     showSpeechBubble(nodeEl, evt);
     showHighlight(nodeEl, { color: 'rgba(192,144,255,0.5)' });
+  } else if (evt.type === 'oracle_query') {
+    showSpeechBubble(nodeEl, { ...evt, text: '\u2728 ' + evt.text, color: '#c080ff' });
+    showHighlight(nodeEl, { color: 'rgba(192,128,255,0.6)' });
+  } else if (evt.type === 'oracle_response') {
+    showSpeechBubble(nodeEl, { ...evt, color: evt.color || '#e0b0ff' });
+    showHighlight(nodeEl, { color: 'rgba(192,128,255,0.4)' });
   }
 }
 
@@ -2477,6 +2499,7 @@ setupPanelMinimize('minimap', null);
 setupPanelMinimize('node-list', '#node-list-header');
 
 // ── Realm Search ──
+const _realmSearch = document.getElementById('realm-search');
 const _searchInput = document.getElementById('search-input');
 const _searchResults = document.getElementById('search-results');
 const _searchClear = document.getElementById('search-clear');
@@ -2644,13 +2667,61 @@ function _navigateToSearchResult(nodeId) {
 
 if (_searchInput) {
   _searchInput.addEventListener('input', () => {
-    const q = _searchInput.value.trim();
+    const rawVal = _searchInput.value;
+    const isMagic = rawVal.startsWith('?');
+    const q = rawVal.trim();
+
+    _realmSearch.classList.toggle('magic-morph', isMagic);
     _searchClear.style.display = q ? '' : 'none';
-    if (!q) { _searchResults.classList.remove('open'); return; }
-    _renderSearchResults(_searchRealm(q), q);
+
+    if (!q) {
+      _searchResults.classList.remove('open');
+      return;
+    }
+
+    if (isMagic) {
+      _searchResults.textContent = '';
+      const hint = document.createElement('div');
+      hint.className = 'sr-empty';
+      hint.textContent = q.length > 1 ? '\u2728 Press Enter to consult the Oracle...' : '\u2728 Ask the Oracle anything...';
+      _searchResults.appendChild(hint);
+      _searchResults.classList.add('open');
+    } else {
+      _renderSearchResults(_searchRealm(q), q);
+    }
   });
 
   _searchInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && _realmSearch.classList.contains('magic-morph')) {
+      const q = _searchInput.value.trim();
+      if (q.length > 1) {
+        e.preventDefault();
+        const query = q.substring(1).trim();
+
+        // Fire as event through existing system
+        fetch('/event', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'oracle_query', node: 'scrying-pool', text: query, color: '#c080ff' })
+        }).catch(err => console.error('Oracle query failed:', err));
+
+        // Visual feedback
+        _searchResults.textContent = '';
+        const sent = document.createElement('div');
+        sent.className = 'sr-empty';
+        sent.textContent = '\u2728 Query cast into the Aether...';
+        _searchResults.appendChild(sent);
+
+        setTimeout(() => {
+          _searchInput.value = '';
+          _realmSearch.classList.remove('magic-morph');
+          _searchResults.classList.remove('open');
+          _searchClear.style.display = 'none';
+        }, 1200);
+        return;
+      }
+    }
+
     const items = _searchResults.querySelectorAll('.sr-item');
     if (!items.length) return;
     if (e.key === 'ArrowDown') {

@@ -12,6 +12,7 @@ from collectd_reader import get_all_summaries
 import notion_sync
 import ap_scanner
 import codex_sync
+import ha_bridge
 
 engine = LitRPGEngine()
 PORT = 8777
@@ -89,6 +90,7 @@ class RealmHandler(SimpleHTTPRequestHandler):
             status["host"] = engine.get_host_config()
             status["collectd"] = get_all_summaries()
             status["wifi"] = ap_scanner.get_wifi_signal()
+            status["ha"] = ha_bridge.get_ha_states()
             self._json_response(status)
 
         elif self.path.startswith("/events"):
@@ -267,4 +269,5 @@ if __name__ == "__main__":
     print(f"collectd RRD: /var/lib/collectd/rrd/")
     ap_scanner._event_callback = push_event
     ap_scanner.start_background_scanner()
+    ha_bridge.start_ha_bridge()
     HTTPServer(("", PORT), RealmHandler).serve_forever()

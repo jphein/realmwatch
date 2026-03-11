@@ -309,7 +309,10 @@ async def handle_list_tools() -> list[types.Tool]:
             name="get_map_events",
             description=(
                 "Fetch recent events from the live map server. "
-                "Returns speech bubbles, highlights, and alerts. "
+                "Returns speech bubbles, highlights, alerts, and oracle queries. "
+                "Events with type='oracle_query' are questions from the map search bar "
+                "(user typed ?question). Answer them by posting a speech event to "
+                "node='scrying-pool' via map_node_chat or map_event. "
                 "Optionally pass 'since' as a Unix timestamp to get only new events."
             ),
             inputSchema={

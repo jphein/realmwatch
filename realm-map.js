@@ -332,6 +332,12 @@
       }
       world2.appendChild(div);
       if (n.tip) tips[n.id] = { title: n.tip.title, stats: [...n.tip.stats || []] };
+      else {
+        const auto = [];
+        if (n.type) auto.push(["Type", n.type]);
+        if (n.ip) auto.push(["IP", n.ip]);
+        tips[n.id] = { title: n.label || n.id, stats: auto };
+      }
       if (n.ip || n.ssh) infraNodes[n.id] = { name: n.label, ip: n.ip || "", collectdHost: n.collectd || null, sshHost: n.ssh || null, tsHost: n.tsHost || null };
       if (n.tsHost) _tsHostMap[n.tsHost] = n.id;
     });
@@ -777,6 +783,19 @@
     DOM.towersOnline.textContent = towersOnline;
     DOM.towersTotal.textContent = towersTotal;
   }
+  function updateHASublabels(d) {
+    const ha = d.ha;
+    if (!ha) return;
+    for (const [nodeId, info] of Object.entries(ha)) {
+      const n = getNodeDOM(nodeId);
+      if (n.sub) n.sub.textContent = info.sublabel;
+      if (tips[nodeId]) {
+        const existing = tips[nodeId].stats.filter((s) => s[0] !== "HA Status");
+        existing.push(["HA Status", info.sublabel]);
+        tips[nodeId].stats = existing;
+      }
+    }
+  }
   function updateTooltips(d) {
     const { forge, mana, essence, astral } = d;
     const gpu = forge.gpu;
@@ -857,6 +876,7 @@
     updateGauges(d);
     updateCoreSublabels(d);
     updateInfraNodes(d);
+    updateHASublabels(d);
     updateTooltips(d);
     if (Date.now() - _lastReportTs > 6e4) {
       _lastReportTs = Date.now();
@@ -1373,6 +1393,12 @@
     } else if (evt.type === "quest") {
       showSpeechBubble(nodeEl, evt);
       showHighlight(nodeEl, { color: "rgba(192,144,255,0.5)" });
+    } else if (evt.type === "oracle_query") {
+      showSpeechBubble(nodeEl, { ...evt, text: "\u2728 " + evt.text, color: "#c080ff" });
+      showHighlight(nodeEl, { color: "rgba(192,128,255,0.6)" });
+    } else if (evt.type === "oracle_response") {
+      showSpeechBubble(nodeEl, { ...evt, color: evt.color || "#e0b0ff" });
+      showHighlight(nodeEl, { color: "rgba(192,128,255,0.4)" });
     }
   }
   var logCount = 0;
@@ -2661,6 +2687,7 @@
   setupPanelMinimize("realm-codex", "#codex-header");
   setupPanelMinimize("minimap", null);
   setupPanelMinimize("node-list", "#node-list-header");
+  var _realmSearch = document.getElementById("realm-search");
   var _searchInput = document.getElementById("search-input");
   var _searchResults = document.getElementById("search-results");
   var _searchClear = document.getElementById("search-clear");
@@ -2816,15 +2843,51 @@
   }
   if (_searchInput) {
     _searchInput.addEventListener("input", () => {
-      const q = _searchInput.value.trim();
+      const rawVal = _searchInput.value;
+      const isMagic = rawVal.startsWith("?");
+      const q = rawVal.trim();
+      _realmSearch.classList.toggle("magic-morph", isMagic);
       _searchClear.style.display = q ? "" : "none";
       if (!q) {
         _searchResults.classList.remove("open");
         return;
       }
-      _renderSearchResults(_searchRealm(q), q);
+      if (isMagic) {
+        _searchResults.textContent = "";
+        const hint = document.createElement("div");
+        hint.className = "sr-empty";
+        hint.textContent = q.length > 1 ? "\u2728 Press Enter to consult the Oracle..." : "\u2728 Ask the Oracle anything...";
+        _searchResults.appendChild(hint);
+        _searchResults.classList.add("open");
+      } else {
+        _renderSearchResults(_searchRealm(q), q);
+      }
     });
     _searchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && _realmSearch.classList.contains("magic-morph")) {
+        const q = _searchInput.value.trim();
+        if (q.length > 1) {
+          e.preventDefault();
+          const query = q.substring(1).trim();
+          fetch("/event", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ type: "oracle_query", node: "scrying-pool", text: query, color: "#c080ff" })
+          }).catch((err) => console.error("Oracle query failed:", err));
+          _searchResults.textContent = "";
+          const sent = document.createElement("div");
+          sent.className = "sr-empty";
+          sent.textContent = "\u2728 Query cast into the Aether...";
+          _searchResults.appendChild(sent);
+          setTimeout(() => {
+            _searchInput.value = "";
+            _realmSearch.classList.remove("magic-morph");
+            _searchResults.classList.remove("open");
+            _searchClear.style.display = "none";
+          }, 1200);
+          return;
+        }
+      }
       const items = _searchResults.querySelectorAll(".sr-item");
       if (!items.length) return;
       if (e.key === "ArrowDown") {
