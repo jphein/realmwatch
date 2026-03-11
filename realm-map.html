@@ -120,17 +120,50 @@
       </div>
     </div>
   </div>
-  <div class="legend-section" data-section="visibility">
-    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Visibility</div>
+  <div class="legend-section" data-section="layers">
+    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Layers</div>
     <div class="legend-section-body">
       <div class="vis-group-label">Map Layers</div>
-      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-terrain" checked><span class="topo-switch-track"></span></label><span>Biome Terrain</span></div>
-      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-topo" checked><span class="topo-switch-track"></span></label><span>Topographic</span></div>
-      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-connections" checked><span class="topo-switch-track"></span></label><span>Ley Lines</span></div>
-      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-nodes" checked><span class="topo-switch-track"></span></label><span>Nodes</span></div>
-      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-labels" checked><span class="topo-switch-track"></span></label><span>Node Labels</span></div>
-      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-regions" checked><span class="topo-switch-track"></span></label><span>Region Labels</span></div>
-      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-bubbles" checked><span class="topo-switch-track"></span></label><span>Speech Bubbles</span></div>
+      <div class="layer-row">
+        <label class="topo-switch"><input type="checkbox" id="vis-terrain-orig"><span class="topo-switch-track"></span></label>
+        <span class="layer-name">Original Terrain</span>
+        <input type="range" class="layer-opacity" id="layer-terrain-orig-slider" min="0" max="1" step="0.05" value="0.5">
+      </div>
+      <div class="layer-row">
+        <label class="topo-switch"><input type="checkbox" id="vis-terrain" checked><span class="topo-switch-track"></span></label>
+        <span class="layer-name">Biome Terrain</span>
+        <input type="range" class="layer-opacity" id="layer-terrain-slider" min="0" max="1" step="0.05" value="1">
+      </div>
+      <div class="layer-row">
+        <label class="topo-switch"><input type="checkbox" id="vis-topo" checked><span class="topo-switch-track"></span></label>
+        <span class="layer-name">Topographic</span>
+        <input type="range" class="layer-opacity" id="layer-topo-slider" min="0" max="1" step="0.05" value="1">
+      </div>
+      <div class="layer-row">
+        <label class="topo-switch"><input type="checkbox" id="vis-connections" checked><span class="topo-switch-track"></span></label>
+        <span class="layer-name">Ley Lines</span>
+        <input type="range" class="layer-opacity" id="layer-connections-slider" min="0" max="1" step="0.05" value="1">
+      </div>
+      <div class="layer-row">
+        <label class="topo-switch"><input type="checkbox" id="vis-regions" checked><span class="topo-switch-track"></span></label>
+        <span class="layer-name">Regions</span>
+        <input type="range" class="layer-opacity" id="layer-regions-slider" min="0" max="1" step="0.05" value="1">
+      </div>
+      <div class="layer-row">
+        <label class="topo-switch"><input type="checkbox" id="vis-nodes" checked><span class="topo-switch-track"></span></label>
+        <span class="layer-name">Nodes</span>
+        <input type="range" class="layer-opacity" id="layer-nodes-slider" min="0" max="1" step="0.05" value="1">
+      </div>
+      <div class="layer-row">
+        <label class="topo-switch"><input type="checkbox" id="vis-labels" checked><span class="topo-switch-track"></span></label>
+        <span class="layer-name">Labels</span>
+        <input type="range" class="layer-opacity" id="layer-labels-slider" min="0" max="1" step="0.05" value="1">
+      </div>
+      <div class="layer-row">
+        <label class="topo-switch"><input type="checkbox" id="vis-bubbles" checked><span class="topo-switch-track"></span></label>
+        <span class="layer-name">Bubbles</span>
+        <input type="range" class="layer-opacity" id="layer-bubbles-slider" min="0" max="1" step="0.05" value="1">
+      </div>
       <div class="vis-group-label">Panels</div>
       <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-titlebar" checked><span class="topo-switch-track"></span></label><span>Title Bar</span></div>
       <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-statuspanel" checked><span class="topo-switch-track"></span></label><span>Status Panel</span></div>
@@ -546,6 +579,58 @@
           <feGaussianBlur stdDeviation="5"/>
         </filter>
       </defs>
+
+      <!-- Original handcrafted terrain (from baseline, scaled 1.5x to match 4800x3300) -->
+      <g id="terrain-original" transform="scale(1.5)" style="display:none">
+        <rect width="3200" height="2200" fill="#0a0a12"/>
+        <ellipse cx="800" cy="700" rx="600" ry="450" fill="#111822" filter="url(#terrain-blur-lg)" opacity="0.8"/>
+        <ellipse cx="800" cy="700" rx="520" ry="380" fill="#141e2a" opacity="0.6"/>
+        <ellipse cx="800" cy="650" rx="700" ry="500" fill="#0f1620" filter="url(#terrain-blur-lg)" opacity="0.5"/>
+        <ellipse cx="220" cy="320" rx="160" ry="140" fill="#151828" filter="url(#terrain-blur)" opacity="0.6"/>
+        <ellipse cx="220" cy="320" rx="120" ry="100" fill="#181c30" opacity="0.4"/>
+        <polygon points="150,250 180,220 220,260 260,230 300,270 280,310 170,290" fill="#1a1f35" opacity="0.3"/>
+        <polygon points="650,500 700,380 750,480 800,350 850,460 900,400 920,490" fill="#1a2535" opacity="0.5"/>
+        <polygon points="660,510 710,400 760,490 810,370 860,470 905,410 920,495" fill="none" stroke="rgba(160,140,100,0.1)" stroke-width="1"/>
+        <ellipse cx="900" cy="1050" rx="400" ry="200" fill="#111822" filter="url(#terrain-blur)" opacity="0.5"/>
+        <ellipse cx="1450" cy="1050" rx="350" ry="250" fill="#101a18" filter="url(#terrain-blur-lg)" opacity="0.6"/>
+        <ellipse cx="1450" cy="1050" rx="280" ry="200" fill="#121e1c" opacity="0.4"/>
+        <circle cx="1350" cy="950" r="8" fill="rgba(96,192,96,0.06)"/>
+        <circle cx="1550" cy="1000" r="6" fill="rgba(96,192,96,0.05)"/>
+        <circle cx="1450" cy="1120" r="7" fill="rgba(96,192,96,0.04)"/>
+        <circle cx="1650" cy="1080" r="5" fill="rgba(96,192,96,0.05)"/>
+        <ellipse cx="2300" cy="650" rx="600" ry="550" fill="#0c1020" opacity="0.6"/>
+        <ellipse cx="2300" cy="650" rx="520" ry="470" fill="rgba(40,60,120,0.08)"/>
+        <circle cx="750" cy="550" r="120" fill="url(#glow-gold)"/>
+        <circle cx="950" cy="400" r="80" fill="url(#glow-blue)"/>
+        <circle cx="1050" cy="750" r="100" fill="url(#glow-green)"/>
+        <circle cx="600" cy="800" r="90" fill="url(#glow-blue)"/>
+        <circle cx="1150" cy="280" r="60" fill="url(#glow-amber)"/>
+        <circle cx="1350" cy="450" r="60" fill="url(#glow-amber)"/>
+        <circle cx="750" cy="300" r="60" fill="url(#glow-amber)"/>
+        <circle cx="350" cy="500" r="50" fill="url(#glow-amber)"/>
+        <circle cx="500" cy="350" r="50" fill="url(#glow-amber)"/>
+        <circle cx="1000" cy="280" r="50" fill="url(#glow-amber)"/>
+        <circle cx="220" cy="340" r="80" fill="url(#glow-purple)"/>
+        <circle cx="1450" cy="1050" r="180" fill="url(#glow-iot)"/>
+        <circle cx="1450" cy="700" r="70" fill="url(#glow-blue)"/>
+        <circle cx="300" cy="200" r="60" fill="url(#glow-gold)"/>
+        <path d="M750,580 Q850,650 950,630 Q1050,610 1100,700" fill="none" stroke="rgba(160,140,100,0.08)" stroke-width="3"/>
+        <path d="M750,580 Q700,680 620,780" fill="none" stroke="rgba(160,140,100,0.08)" stroke-width="3"/>
+        <path d="M950,630 Q920,500 950,420" fill="none" stroke="rgba(160,140,100,0.06)" stroke-width="2"/>
+        <path d="M800,500 Q900,350 1000,280" fill="none" stroke="rgba(192,144,96,0.06)" stroke-width="2"/>
+        <path d="M700,500 Q600,400 500,350" fill="none" stroke="rgba(192,144,96,0.06)" stroke-width="2"/>
+        <path d="M950,800 Q1100,900 1300,1000" fill="none" stroke="rgba(96,192,96,0.05)" stroke-width="2"/>
+        <path d="M400,500 Q300,400 220,340" fill="none" stroke="rgba(144,96,192,0.05)" stroke-width="2"/>
+        <g transform="translate(120,1900)" opacity="0.3">
+          <line x1="0" y1="-40" x2="0" y2="40" stroke="#a89870" stroke-width="1"/>
+          <line x1="-40" y1="0" x2="40" y2="0" stroke="#a89870" stroke-width="1"/>
+          <polygon points="0,-45 -6,-10 6,-10" fill="#f0d890"/>
+          <text x="0" y="-52" text-anchor="middle" fill="#f0d890" font-family="Cinzel,serif" font-size="12">N</text>
+          <text x="0" y="62" text-anchor="middle" fill="#a89870" font-family="Cinzel,serif" font-size="10">S</text>
+          <text x="52" y="4" text-anchor="middle" fill="#a89870" font-family="Cinzel,serif" font-size="10">E</text>
+          <text x="-52" y="4" text-anchor="middle" fill="#a89870" font-family="Cinzel,serif" font-size="10">W</text>
+        </g>
+      </g>
 
       <!-- Dynamic terrain generated from topology data -->
       <g id="terrain-dynamic"></g>

@@ -1,3 +1,5 @@
+// Built from src/ modules — do not edit directly
+
 (() => {
   var __defProp = Object.defineProperty;
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
@@ -3014,7 +3016,8 @@
   (/* @__PURE__ */ __name((function wireVisibilityToggles() {
     const toggles = [
       // Map layers
-      ["vis-terrain", "#terrain"],
+      ["vis-terrain", "#terrain-dynamic"],
+      ["vis-terrain-orig", "#terrain-original"],
       ["vis-topo", "#topo-svg"],
       ["vis-connections", "#connections"],
       ["vis-nodes", null, ".realm-node"],
@@ -3044,6 +3047,34 @@
           });
           if (!window._visState) window._visState = {};
           window._visState[multiSel] = show;
+        }
+        saveSettings();
+      });
+    }
+    const opacityLayers = [
+      ["layer-terrain-orig-slider", "#terrain-original", false],
+      ["layer-terrain-slider", "#terrain-dynamic", false],
+      ["layer-topo-slider", "#topo-svg", false],
+      ["layer-connections-slider", "#connections", false],
+      ["layer-regions-slider", "#region-labels", false],
+      ["layer-nodes-slider", null, true, ".realm-node"],
+      ["layer-labels-slider", null, true, ".node-label"],
+      ["layer-bubbles-slider", null, true, ".speech-bubble"]
+    ];
+    for (const [sliderId, sel, isMulti, multiSel] of opacityLayers) {
+      const sl = document.getElementById(sliderId);
+      if (!sl) continue;
+      sl.addEventListener("input", () => {
+        const v = sl.value;
+        if (sel) {
+          const el = document.querySelector(sel);
+          if (el) el.style.opacity = v;
+        } else if (multiSel) {
+          document.querySelectorAll(multiSel).forEach((el) => {
+            el.style.opacity = v;
+          });
+          if (!window._layerOpacity) window._layerOpacity = {};
+          window._layerOpacity[multiSel] = v;
         }
         saveSettings();
       });
@@ -3229,7 +3260,7 @@
   __name(animateMotes, "animateMotes");
   animateMotes();
   var LAYOUT_KEY = "realm-map-layout-v2";
-  var SETTINGS_KEY = "realm-map-settings-v1";
+  var SETTINGS_KEY = "realm-map-settings-v2";
   var _PERSIST_SLIDERS = [
     "master-scale",
     "traffic-scale",
@@ -3257,11 +3288,20 @@
     "biome-glow",
     "biome-roads",
     "biome-peaks",
-    "biome-grid"
+    "biome-grid",
+    "layer-terrain-orig",
+    "layer-terrain",
+    "layer-topo",
+    "layer-connections",
+    "layer-regions",
+    "layer-nodes",
+    "layer-labels",
+    "layer-bubbles"
   ];
   var _PERSIST_CHECKBOXES = [
     "topo-toggle-cb",
     "vis-terrain",
+    "vis-terrain-orig",
     "vis-topo",
     "vis-connections",
     "vis-nodes",

@@ -2734,7 +2734,8 @@ document.getElementById('layout-reset-btn')?.addEventListener('click', resetToOr
   // [checkboxId, singleSelector, multiSelector]
   const toggles = [
     // Map layers
-    ['vis-terrain',      '#terrain'],
+    ['vis-terrain',      '#terrain-dynamic'],
+    ['vis-terrain-orig', '#terrain-original'],
     ['vis-topo',         '#topo-svg'],
     ['vis-connections',  '#connections'],
     ['vis-nodes',        null, '.realm-node'],
@@ -2765,7 +2766,35 @@ document.getElementById('layout-reset-btn')?.addEventListener('click', resetToOr
         if (!window._visState) window._visState = {};
         window._visState[multiSel] = show;
       }
-      saveSettings(); // immediate — no debounce for discrete toggles
+      saveSettings();
+    });
+  }
+
+  // Layer opacity sliders: [sliderId, target selector or multi-selector, isMulti]
+  const opacityLayers = [
+    ['layer-terrain-orig-slider', '#terrain-original', false],
+    ['layer-terrain-slider',      '#terrain-dynamic',  false],
+    ['layer-topo-slider',         '#topo-svg',         false],
+    ['layer-connections-slider',  '#connections',       false],
+    ['layer-regions-slider',      '#region-labels',     false],
+    ['layer-nodes-slider',        null,                 true, '.realm-node'],
+    ['layer-labels-slider',       null,                 true, '.node-label'],
+    ['layer-bubbles-slider',      null,                 true, '.speech-bubble'],
+  ];
+  for (const [sliderId, sel, isMulti, multiSel] of opacityLayers) {
+    const sl = document.getElementById(sliderId);
+    if (!sl) continue;
+    sl.addEventListener('input', () => {
+      const v = sl.value;
+      if (sel) {
+        const el = document.querySelector(sel);
+        if (el) el.style.opacity = v;
+      } else if (multiSel) {
+        document.querySelectorAll(multiSel).forEach(el => { el.style.opacity = v; });
+        if (!window._layerOpacity) window._layerOpacity = {};
+        window._layerOpacity[multiSel] = v;
+      }
+      saveSettings();
     });
   }
 })();
@@ -2952,7 +2981,7 @@ animateMotes();
 
 // ── Layout persistence (localStorage) ──
 const LAYOUT_KEY = 'realm-map-layout-v2';
-const SETTINGS_KEY = 'realm-map-settings-v1';
+const SETTINGS_KEY = 'realm-map-settings-v2';
 
 // All slider/toggle IDs to persist
 const _PERSIST_SLIDERS = [
@@ -2961,10 +2990,12 @@ const _PERSIST_SLIDERS = [
   'topo-opacity', 'topo-spread', 'topo-contour', 'topo-rw', 'topo-rd',
   'layout-attract', 'layout-repulse', 'layout-edge', 'layout-spacing', 'layout-tilt',
   'biome-land', 'biome-glow', 'biome-roads', 'biome-peaks', 'biome-grid',
+  'layer-terrain-orig', 'layer-terrain', 'layer-topo', 'layer-connections',
+  'layer-regions', 'layer-nodes', 'layer-labels', 'layer-bubbles',
 ];
 const _PERSIST_CHECKBOXES = [
   'topo-toggle-cb',
-  'vis-terrain', 'vis-topo', 'vis-connections', 'vis-nodes', 'vis-labels',
+  'vis-terrain', 'vis-terrain-orig', 'vis-topo', 'vis-connections', 'vis-nodes', 'vis-labels',
   'vis-regions', 'vis-bubbles', 'vis-titlebar', 'vis-statuspanel', 'vis-legend',
   'vis-codex', 'vis-questlog', 'vis-minimap', 'vis-nodelist',
 ];

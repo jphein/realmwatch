@@ -1725,6 +1725,27 @@
   }
   .vis-toggle-row .topo-switch { flex-shrink: 0; }
 
+  /* Layer rows with inline opacity slider */
+  .layer-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 0;
+    font-size: 11px;
+    color: #d4c5a0;
+  }
+  .layer-row .topo-switch { flex-shrink: 0; }
+  .layer-row .layer-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .layer-opacity {
+    width: 56px;
+    flex-shrink: 0;
+    height: 14px;
+    accent-color: #a89870;
+    opacity: 0.7;
+    cursor: pointer;
+  }
+  .layer-opacity:hover { opacity: 1; }
+
   /* Region labels */
   .region-label {
     position: absolute;
