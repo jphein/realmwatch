@@ -56,6 +56,11 @@ const _PERF = {
   get dragLineThrottle() { return _perfTier === 'low' ? 3 : 1; }, // update lines every Nth drag frame
 };
 
+// ── World dimensions (scaled up from topology's 3200x2200 coordinate space) ──
+const WORLD_W = 4800, WORLD_H = 3300;
+const WORLD_SCALE = WORLD_W / 3200;  // 1.5
+let _mapTilt = 0;
+
 // ── Infrastructure node definitions (populated from topology.json) ──
 const infraNodes = {};
 
@@ -235,26 +240,15 @@ function _computePathD(fp, tp, fromAngle, toAngle, fromId, toId) {
 
 function renderTopology(topo) {
   _topology = topo;
+  // Scale positions from topology 3200x2200 space to world space
+  topo.nodes.forEach(n => { n.x = Math.round(n.x * WORLD_SCALE); n.y = Math.round(n.y * WORLD_SCALE); });
+  (topo.regions || []).forEach(r => { r.x = Math.round(r.x * WORLD_SCALE); r.y = Math.round(r.y * WORLD_SCALE); });
   const world = document.getElementById('map-world');
   const connSvg = document.querySelector('#connections');
   const nodeMap = {};
   topo.nodes.forEach(n => { nodeMap[n.id] = n; });
 
-  // Region labels
-  const rc = document.getElementById('region-labels');
-  (topo.regions || []).forEach(r => {
-    const el = document.createElement('div');
-    el.className = 'region-label';
-    let s = `left:${r.x}px;top:${r.y}px;`;
-    if (r.rotate) s += `transform:rotate(${r.rotate}deg);`;
-    if (r.fontSize) s += `font-size:${r.fontSize}px;`;
-    if (r.color) s += `color:${r.color};`;
-    if (r.spacing) s += `letter-spacing:${r.spacing}px;`;
-    el.setAttribute('style', s);
-    el.dataset.rotate = r.rotate || 0;
-    el.textContent = r.label;
-    rc.appendChild(el);
-  });
+  // Region labels are now generated dynamically by updateRegionLabels()
 
   // Nodes first (so getNodeCenter works for path routing)
   topo.nodes.forEach(n => {
@@ -373,6 +367,282 @@ function renderTopology(topo) {
 
 // ── Render topology (must happen before updateUI / tooltips / dragging) ──
 if (window._pendingTopo) { renderTopology(window._pendingTopo); delete window._pendingTopo; }
+
+// ── Dynamic Biome Terrain (generated from topology VLANs/zones) ──
+let _biomeLandScale = 1.0, _biomeGlow = 1.0, _biomeRoads = 0.5, _biomePeaks = 0.5, _biomeGrid = 0.03;
+
+const VLAN_BIOMES = {
+  6:  { name:'Citadel',   land:'#141a28', glow:[240,216,144], accent:'#1a1810' },
+  8:  { name:'Family',    land:'#1a1814', glow:[192,160,96],  accent:'#1a1510' },
+  10: { name:'Enchanted', land:'#101a18', glow:[96,192,96],   accent:'#0a1a10' },
+  11: { name:'Guest',     land:'#101620', glow:[100,160,220], accent:'#0c1420' },
+  0:  { name:'Astral',    land:'#0e1028', glow:[144,96,192],  accent:'#0c0c20' },
+};
+
+function _nodeCenter(n) {
+  const iw = n.iconStyle?.width ? parseInt(n.iconStyle.width) : 64;
+  const ih = n.iconStyle?.height ? parseInt(n.iconStyle.height) : 64;
+  return { x: n.x + iw / 2, y: n.y + ih / 2 };
+}
+
+function generateTerrain() {
+  if (!_topology) return;
+  const el = document.getElementById('terrain-dynamic');
+  if (!el) return;
+  const W = WORLD_W, H = WORLD_H;
+
+  // Assign nodes to VLANs from connection data (majority vote)
+  const vlanCounts = {};
+  _topology.connections.forEach(c => {
+    if (!c.vlan) return;
+    [c.from, c.to].forEach(id => {
+      if (!vlanCounts[id]) vlanCounts[id] = {};
+      vlanCounts[id][c.vlan] = (vlanCounts[id][c.vlan] || 0) + 1;
+    });
+  });
+  const nodeVlan = {};
+  for (const [id, cts] of Object.entries(vlanCounts)) {
+    let best = 6, max = 0;
+    for (const [v, c] of Object.entries(cts)) { if (c > max) { max = c; best = +v; } }
+    nodeVlan[id] = best;
+  }
+  _topology.nodes.forEach(n => {
+    if (!nodeVlan[n.id]) nodeVlan[n.id] = (n.tailscale || n.type === 'tailscale') ? 0 : 6;
+  });
+
+  // Group nodes by VLAN
+  const groups = {};
+  _topology.nodes.forEach(n => {
+    const v = nodeVlan[n.id];
+    if (!groups[v]) groups[v] = [];
+    groups[v].push(n);
+  });
+
+  // Compute biome zones (centroid + bounding ellipse)
+  const biomes = [];
+  for (const [vlan, nodes] of Object.entries(groups)) {
+    const theme = VLAN_BIOMES[vlan] || VLAN_BIOMES[6];
+    let sx = 0, sy = 0;
+    const pts = nodes.map(n => { const c = _nodeCenter(n); sx += c.x; sy += c.y; return c; });
+    const cx = sx / pts.length, cy = sy / pts.length;
+    let maxDx = 0, maxDy = 0;
+    pts.forEach(p => { maxDx = Math.max(maxDx, Math.abs(p.x - cx)); maxDy = Math.max(maxDy, Math.abs(p.y - cy)); });
+    const pad = 180 * _biomeLandScale;
+    const rx = (maxDx * 1.2 + pad) * _biomeLandScale;
+    const ry = (maxDy * 1.2 + pad) * _biomeLandScale;
+    biomes.push({ vlan: +vlan, theme, cx, cy, rx: Math.max(rx, 250), ry: Math.max(ry, 200), nodes, pts });
+  }
+  biomes.sort((a, b) => (b.rx * b.ry) - (a.rx * a.ry)); // largest first
+
+  // Build SVG content
+  const g = _biomeGlow;
+  let s = `<rect width="${W}" height="${H}" fill="#0a0a12"/>`;
+
+  // ── Biome landmasses ──
+  for (const b of biomes) {
+    const { theme, cx, cy, rx, ry } = b;
+    const [gr, gg, gb] = theme.glow;
+    // Outer haze
+    s += `<ellipse cx="${cx}" cy="${cy}" rx="${rx * 1.4}" ry="${ry * 1.4}" fill="${theme.land}" filter="url(#terrain-blur-lg)" opacity="0.4"/>`;
+    // Inner landmass
+    s += `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${theme.accent}" opacity="0.6"/>`;
+    // Radial glow
+    if (g > 0) {
+      s += `<circle cx="${cx}" cy="${cy}" r="${rx * 0.9}" fill="none" opacity="1">`;
+      // Use inline radialGradient via style
+      s += `</circle>`;
+      s += `<circle cx="${cx}" cy="${cy}" r="${rx * 0.9}" fill="rgba(${gr},${gg},${gb},${0.12 * g})" filter="url(#terrain-blur-lg)"/>`;
+    }
+  }
+
+  // ── Per-node glows (magical auras) ──
+  if (g > 0) {
+    for (const n of _topology.nodes) {
+      const c = _nodeCenter(n);
+      const v = nodeVlan[n.id];
+      const theme = VLAN_BIOMES[v] || VLAN_BIOMES[6];
+      const [gr, gg, gb] = theme.glow;
+      const r = n.type === 'core' ? 120 : n.type === 'tower' ? 70 : n.type === 'infra' ? 55 : n.type === 'bridge' ? 60 : 40;
+      const op = n.type === 'core' ? 0.15 * g : 0.08 * g;
+      s += `<circle cx="${c.x}" cy="${c.y}" r="${r}" fill="rgba(${gr},${gg},${gb},${op})" filter="url(#terrain-blur)"/>`;
+    }
+  }
+
+  // ── Mountain peaks near core/infra nodes ──
+  if (_biomePeaks > 0) {
+    for (const n of _topology.nodes) {
+      if (n.type !== 'core' && n.type !== 'infra') continue;
+      const c = _nodeCenter(n);
+      const sz = n.type === 'core' ? 60 : 35;
+      const pk = _biomePeaks;
+      // Generate deterministic mountain from node ID hash
+      let hash = 0;
+      for (let i = 0; i < n.id.length; i++) hash = ((hash << 5) - hash + n.id.charCodeAt(i)) | 0;
+      const pts = [];
+      const spikes = n.type === 'core' ? 6 : 4;
+      for (let i = 0; i < spikes; i++) {
+        const a = (i / spikes) * Math.PI * 2 - Math.PI / 2;
+        const r = sz * pk * (0.7 + ((hash >> (i * 3)) & 7) / 20);
+        pts.push(`${(c.x + Math.cos(a) * r) | 0},${(c.y + Math.sin(a) * r) | 0}`);
+      }
+      s += `<polygon points="${pts.join(' ')}" fill="#1a2535" opacity="${0.4 * pk}"/>`;
+      s += `<polygon points="${pts.join(' ')}" fill="none" stroke="rgba(160,140,100,${0.08 * pk})" stroke-width="1"/>`;
+    }
+  }
+
+  // ── Roads along connections ──
+  if (_biomeRoads > 0) {
+    const nodeMap = {};
+    _topology.nodes.forEach(n => { nodeMap[n.id] = n; });
+    for (const c of _topology.connections) {
+      const fn = nodeMap[c.from], tn = nodeMap[c.to];
+      if (!fn || !tn) continue;
+      const fp = _nodeCenter(fn), tp = _nodeCenter(tn);
+      const mx = (fp.x + tp.x) / 2, my = (fp.y + tp.y) / 2;
+      const v = c.vlan || nodeVlan[c.from] || 6;
+      const theme = VLAN_BIOMES[v] || VLAN_BIOMES[6];
+      const [gr, gg, gb] = theme.glow;
+      const op = (c.type === 'mesh' || c.type === 'portal') ? 0.03 : 0.06;
+      s += `<path d="M${fp.x|0},${fp.y|0} Q${mx|0},${my|0} ${tp.x|0},${tp.y|0}" fill="none" stroke="rgba(${gr},${gg},${gb},${op * _biomeRoads})" stroke-width="${c.type === 'active' ? 3 : 2}"/>`;
+    }
+  }
+
+  // ── Compass rose ──
+  s += `<g transform="translate(180,${H - 200})" opacity="0.3">`;
+  s += `<line x1="0" y1="-40" x2="0" y2="40" stroke="#a89870" stroke-width="1"/>`;
+  s += `<line x1="-40" y1="0" x2="40" y2="0" stroke="#a89870" stroke-width="1"/>`;
+  s += `<polygon points="0,-45 -6,-10 6,-10" fill="#f0d890"/>`;
+  s += `<text x="0" y="-52" text-anchor="middle" fill="#f0d890" font-family="Cinzel,serif" font-size="12">N</text>`;
+  s += `<text x="0" y="62" text-anchor="middle" fill="#a89870" font-family="Cinzel,serif" font-size="10">S</text>`;
+  s += `<text x="52" y="4" text-anchor="middle" fill="#a89870" font-family="Cinzel,serif" font-size="10">E</text>`;
+  s += `<text x="-52" y="4" text-anchor="middle" fill="#a89870" font-family="Cinzel,serif" font-size="10">W</text>`;
+  s += `</g>`;
+
+  // ── Grid lines ──
+  if (_biomeGrid > 0) {
+    s += `<g opacity="${_biomeGrid}" stroke="#a89870" stroke-width="0.5">`;
+    for (let y = 400; y < H; y += 400) s += `<line x1="0" y1="${y}" x2="${W}" y2="${y}"/>`;
+    for (let x = 600; x < W; x += 600) s += `<line x1="${x}" y1="0" x2="${x}" y2="${H}"/>`;
+    s += `</g>`;
+  }
+
+  el.innerHTML = s;
+}
+
+// ── Dynamic Region Labels (computed from VLAN node clusters) ──
+const VLAN_REGION_LABELS = {
+  6:  { label: 'The Citadel',           color: 'rgba(240,216,144,0.22)', spacing: 6 },
+  8:  { label: 'The Family Hearth',     color: 'rgba(192,160,96,0.22)',  spacing: 5 },
+  10: { label: 'The Enchanted Quarters', color: 'rgba(96,192,96,0.22)',  spacing: 5 },
+  11: { label: 'The Guest Marches',     color: 'rgba(100,160,220,0.22)', spacing: 4 },
+  0:  { label: 'The Astral Sea',        color: 'rgba(144,96,192,0.22)',  spacing: 5 },
+};
+
+// Sub-region labels for VLAN 6 (the largest group), split by node type
+const CITADEL_SUBLABELS = {
+  core:   { label: 'The Inner Keep',      fontSize: 14, color: 'rgba(240,216,144,0.18)', spacing: 4 },
+  tower:  { label: 'The Guardian Towers',  fontSize: 13, color: 'rgba(192,144,96,0.18)',  spacing: 3 },
+  bridge: { label: 'The Signal Bridges',   fontSize: 13, color: 'rgba(144,96,192,0.18)',  spacing: 3 },
+  infra:  { label: 'The Deep Forges',      fontSize: 13, color: 'rgba(160,140,100,0.18)', spacing: 3 },
+};
+
+function updateRegionLabels() {
+  if (!_topology) return;
+  const rc = document.getElementById('region-labels');
+  if (!rc) return;
+  rc.innerHTML = '';
+
+  // Reuse VLAN assignment logic from generateTerrain
+  const vlanCounts = {};
+  _topology.connections.forEach(c => {
+    if (!c.vlan) return;
+    [c.from, c.to].forEach(id => {
+      if (!vlanCounts[id]) vlanCounts[id] = {};
+      vlanCounts[id][c.vlan] = (vlanCounts[id][c.vlan] || 0) + 1;
+    });
+  });
+  const nodeVlan = {};
+  for (const [id, cts] of Object.entries(vlanCounts)) {
+    let best = 6, max = 0;
+    for (const [v, c] of Object.entries(cts)) { if (c > max) { max = c; best = +v; } }
+    nodeVlan[id] = best;
+  }
+  _topology.nodes.forEach(n => {
+    if (!nodeVlan[n.id]) nodeVlan[n.id] = (n.tailscale || n.type === 'tailscale') ? 0 : 6;
+  });
+
+  // Group by VLAN
+  const groups = {};
+  _topology.nodes.forEach(n => {
+    const v = nodeVlan[n.id];
+    if (!groups[v]) groups[v] = [];
+    groups[v].push(n);
+  });
+
+  // Place main VLAN region label above each cluster centroid
+  for (const [vlan, nodes] of Object.entries(groups)) {
+    const cfg = VLAN_REGION_LABELS[vlan] || VLAN_REGION_LABELS[6];
+    const { cx, cy, minY } = _clusterBounds(nodes);
+    _addRegionLabel(rc, cfg.label, cx, minY - 55, {
+      fontSize: 18, color: cfg.color, spacing: cfg.spacing, rotate: 0
+    });
+
+    // Sub-labels for VLAN 6 (split by node type)
+    if (+vlan === 6) {
+      const byType = {};
+      nodes.forEach(n => {
+        const t = n.type || 'device';
+        if (!byType[t]) byType[t] = [];
+        byType[t].push(n);
+      });
+      for (const [type, typeNodes] of Object.entries(byType)) {
+        const sub = CITADEL_SUBLABELS[type];
+        if (!sub || typeNodes.length < 2) continue;
+        const tb = _clusterBounds(typeNodes);
+        _addRegionLabel(rc, sub.label, tb.cx, tb.minY - 35, {
+          fontSize: sub.fontSize, color: sub.color, spacing: sub.spacing, rotate: 0
+        });
+      }
+    }
+  }
+
+  // Reapply globe Z if tilted
+  if (_mapTilt > 0) {
+    const peakH = _mapTilt * 5;
+    const counterRot = `x ${-_mapTilt}deg`;
+    rc.style.translate = `0px 0px ${peakH * 0.7}px`;
+    rc.style.rotate = counterRot;
+  }
+}
+
+function _clusterBounds(nodes) {
+  let sx = 0, sy = 0, minY = Infinity;
+  const pts = nodes.map(n => {
+    const c = _nodeCenter(n);
+    sx += c.x; sy += c.y;
+    if (c.y < minY) minY = c.y;
+    return c;
+  });
+  return { cx: sx / pts.length, cy: sy / pts.length, minY, pts };
+}
+
+function _addRegionLabel(container, text, x, y, opts) {
+  const el = document.createElement('div');
+  el.className = 'region-label';
+  let s = `left:${x}px;top:${y}px;transform:translateX(-50%)`;
+  if (opts.rotate) s += ` rotate(${opts.rotate}deg)`;
+  s += ';';
+  if (opts.fontSize) s += `font-size:${opts.fontSize}px;`;
+  if (opts.color) s += `color:${opts.color};`;
+  if (opts.spacing) s += `letter-spacing:${opts.spacing}px;`;
+  el.setAttribute('style', s);
+  el.textContent = text;
+  container.appendChild(el);
+}
+
+// Generate terrain + region labels after topology is rendered
+generateTerrain();
+updateRegionLabels();
 
 // ── Cached DOM references (queried once, reused every poll cycle) ──
 const DOM = {
@@ -654,6 +924,7 @@ masterSlider.addEventListener('input', () => {
   masterScale = parseFloat(masterSlider.value);
   masterScaleVal.textContent = masterScale.toFixed(1) + 'x';
   applyMasterScale();
+  scheduleSave();
 });
 
 // ── Traffic scale slider ──
@@ -663,8 +934,8 @@ const trafficScaleVal = document.getElementById('traffic-scale-val');
 trafficSlider.addEventListener('input', () => {
   trafficScale = parseFloat(trafficSlider.value);
   trafficScaleVal.textContent = trafficScale.toFixed(1) + 'x';
-  // Re-apply with current data
   if (lastStatus && lastStatus.collectd) updateConnectionTraffic(lastStatus.collectd);
+  scheduleSave();
 });
 
 // ── Node scale slider ──
@@ -678,6 +949,7 @@ nodeScaleSlider.addEventListener('input', () => {
     node.style.transform = `scale(${nodeScale})`;
   });
   updateLinePositions();
+  scheduleSave();
 });
 
 // ── Text scale slider ──
@@ -700,6 +972,7 @@ textScaleSlider.addEventListener('input', () => {
   document.querySelectorAll('.region-label').forEach(el => {
     el.style.transform = `rotate(${el.dataset.rotate || 0}deg) scale(${textScale})`;
   });
+  scheduleSave();
 });
 
 // ── Bubble scale slider ──
@@ -710,6 +983,7 @@ bubbleScaleSlider.addEventListener('input', () => {
   bubbleScale = parseFloat(bubbleScaleSlider.value) * masterScale;
   bubbleScaleVal.textContent = bubbleScale.toFixed(1) + 'x';
   document.documentElement.style.setProperty('--bubble-scale', bubbleScale);
+  scheduleSave();
 });
 
 // ── Update speed slider ──
@@ -719,6 +993,7 @@ const updateSpeedVal = document.getElementById('update-speed-val');
 updateSpeedSlider.addEventListener('input', () => {
   updateSpeedMs = parseInt(updateSpeedSlider.value) * 1000;
   updateSpeedVal.textContent = updateSpeedSlider.value + 's';
+  scheduleSave();
 });
 
 // ── Connection traffic animation ──
@@ -901,8 +1176,8 @@ const _TOPO_DEFS = `<defs>
 // Grid for heightmap — padded beyond visible area so edges don't cut off
 const _TOPO_PAD = 50;  // grid cells of padding beyond each edge
 const _TOPO_SX = 10, _TOPO_SY = 10;  // world units per grid cell
-const _TOPO_W = Math.ceil(3200 / _TOPO_SX) + _TOPO_PAD * 2;
-const _TOPO_H = Math.ceil(2200 / _TOPO_SY) + _TOPO_PAD * 2;
+const _TOPO_W = Math.ceil(WORLD_W / _TOPO_SX) + _TOPO_PAD * 2;
+const _TOPO_H = Math.ceil(WORLD_H / _TOPO_SY) + _TOPO_PAD * 2;
 
 function renderTopoLayer(collectd) {
   if (!_topoSvg || !_topoEnabled || !_topology.nodes) return;
@@ -990,7 +1265,8 @@ function renderTopoLayer(collectd) {
   // 3) Marching squares → SVG contour paths with elevation coloring
   const nC = _topoContours;
   const cStep = nC > 0 ? 1 / (nC + 1) : 0;
-  const parts = [_TOPO_DEFS];
+  const VB = '-500 -500 5800 4300';
+  const bandEls = [];
 
   for (let ci = 1; ci <= nC; ci++) {
     const lev = ci * cStep;
@@ -1038,20 +1314,36 @@ function renderTopoLayer(collectd) {
 
     if (!pathD) continue;
 
-    // Elevation fill halo — wide soft glow (skip some on low tier)
+    // Build per-band SVG content
+    let inner = '';
+    // Include defs only in first band (IDs are document-global)
+    if (bandEls.length === 0) inner += _TOPO_DEFS;
+
+    // Elevation fill halo
     if (ci % _PERF.topoHaloRes === 0) {
       const fillOp = t < 0.15 ? 0.09 : 0.05;
-      parts.push(`<path d="${pathD}" fill="none" stroke="${col}" stroke-width="25" opacity="${fillOp}" stroke-linecap="round" stroke-linejoin="round"/>`);
+      inner += `<path d="${pathD}" fill="none" stroke="${col}" stroke-width="25" opacity="${fillOp}" stroke-linecap="round" stroke-linejoin="round"/>`;
     }
-
-    // Crisp contour line (skip expensive SVG filters on low tier)
+    // Crisp contour line
     const sw = isIdx ? 3 : 1.3;
     const op = isIdx ? 0.6 : 0.3;
     const filter = isIdx && _PERF.topoFilters ? ' filter="url(#topo-shimmer)" class="topo-idx"' : (isIdx ? ' class="topo-idx"' : '');
-    parts.push(`<path d="${pathD}" fill="none" stroke="${col}" stroke-width="${sw}" opacity="${op}" stroke-linecap="round"${filter}/>`);
+    inner += `<path d="${pathD}" fill="none" stroke="${col}" stroke-width="${sw}" opacity="${op}" stroke-linecap="round"${filter}/>`;
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', VB);
+    svg.setAttribute('class', 'topo-band');
+    svg.dataset.elev = t.toFixed(3);
+    svg.innerHTML = inner;
+    bandEls.push(svg);
   }
 
-  _topoSvg.innerHTML = parts.join('\n');
+  // Replace topo container contents
+  _topoSvg.innerHTML = '';
+  bandEls.forEach(s => _topoSvg.appendChild(s));
+
+  // Apply 3D Z if globe is active
+  if (_mapTilt > 0) _applyTopoZ();
 }
 
 // Topo controls
@@ -1079,21 +1371,25 @@ function renderTopoLayer(collectd) {
     _topoEnabled = toggle.checked;
     _topoSvg.classList.toggle('active', _topoEnabled);
     if (_topoEnabled) scheduleRender();
+    saveSettings();
   });
   opSlider.addEventListener('input', () => {
     _topoOpacity = parseFloat(opSlider.value);
     opVal.textContent = _topoOpacity.toFixed(2);
     _topoSvg.style.setProperty('--topo-opacity', _topoOpacity);
+    scheduleSave();
   });
   spSlider.addEventListener('input', () => {
     _topoSpread = parseInt(spSlider.value);
     spVal.textContent = _topoSpread;
     if (_topoEnabled) scheduleRender();
+    scheduleSave();
   });
   cnSlider.addEventListener('input', () => {
     _topoContours = parseInt(cnSlider.value);
     cnVal.textContent = _topoContours;
     if (_topoEnabled) scheduleRender();
+    scheduleSave();
   });
 
   const rwSlider = document.getElementById('topo-rw-slider');
@@ -1104,11 +1400,13 @@ function renderTopoLayer(collectd) {
     _topoRiverWidth = parseFloat(rwSlider.value);
     rwVal.textContent = _topoRiverWidth.toFixed(2);
     if (_topoEnabled) scheduleRender();
+    scheduleSave();
   });
   if (rdSlider) rdSlider.addEventListener('input', () => {
     _topoRiverDepth = parseFloat(rdSlider.value);
     rdVal.textContent = _topoRiverDepth.toFixed(2);
     if (_topoEnabled) scheduleRender();
+    scheduleSave();
   });
 
   if (_topoEnabled && _topology.nodes) renderTopoLayer(null);
@@ -1529,6 +1827,14 @@ function showSpeechBubble(nodeEl, evt, isAlert) {
   world.appendChild(bubble);
   _positionBubble(bubble);
   _activeBubbles.add(bubble);
+  // Respect visibility toggle
+  if (window._visState && window._visState['.speech-bubble'] === false) bubble.style.visibility = 'hidden';
+  // Float above globe surface when tilted
+  if (_mapTilt > 0) {
+    const bz = _mapTilt * 5 + _mapTilt * 3 + _mapTilt * 8 + _mapTilt * 3;
+    bubble.style.translate = `0px 0px ${bz}px`;
+    bubble.style.rotate = `x ${-_mapTilt}deg`;
+  }
 
   // Quests stay until manually closed; other bubbles auto-dismiss
   if (!isQuest) {
@@ -1616,16 +1922,114 @@ const world = document.getElementById('map-world');
 let scale = 1, panX = 0, panY = 0;
 let dragging = false, lastX, lastY;
 
+let _lastGlobeTilt = 0;
+
 function applyTransform() {
-  world.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+  if (_mapTilt > 0) {
+    world.style.transformStyle = 'preserve-3d';
+    const cx = WORLD_W / 2, cy = WORLD_H / 2;
+    world.style.transform = `translate(${panX}px, ${panY}px) scale(${scale}) translate(${cx}px, ${cy}px) rotateX(${_mapTilt}deg) translate(${-cx}px, ${-cy}px)`;
+    if (_mapTilt !== _lastGlobeTilt) {
+      _applyGlobeZ();
+      _lastGlobeTilt = _mapTilt;
+    }
+  } else {
+    if (_lastGlobeTilt !== 0) {
+      _clearGlobeZ();
+      _lastGlobeTilt = 0;
+    }
+    world.style.transformStyle = '';
+    world.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+  }
   updateMinimap();
+}
+
+// Spherical dome: nodes at center pop toward viewer, edges recede
+// Topo bands become 3D peaks; nodes float above and face the camera
+function _applyGlobeZ() {
+  if (!_topology) return;
+  const cx = WORLD_W / 2, cy = WORLD_H / 2;
+  const maxD2 = cx * cx + cy * cy;
+  const R = _mapTilt * 8;        // dome curvature
+  const peakH = _mapTilt * 5;    // topo peak height
+  const nodeFloat = _mapTilt * 3; // node hover above peaks
+  const counterRot = `x ${-_mapTilt}deg`; // billboard — face the camera
+
+  // 3D topo peaks — each contour band at its elevation Z
+  const topoEl = document.getElementById('topo-svg');
+  if (topoEl) {
+    topoEl.style.transformStyle = 'preserve-3d';
+    topoEl.querySelectorAll('.topo-band').forEach(band => {
+      const elev = parseFloat(band.dataset.elev) || 0;
+      band.style.translate = `0px 0px ${elev * peakH}px`;
+    });
+  }
+
+  // Connection lines float at mid-peak height
+  const connSvg = document.getElementById('connections');
+  if (connSvg) connSvg.style.translate = `0px 0px ${peakH * 0.4}px`;
+
+  // Region labels at peak level, face camera
+  const regionEl = document.getElementById('region-labels');
+  if (regionEl) {
+    regionEl.style.translate = `0px 0px ${peakH * 0.7}px`;
+    regionEl.style.rotate = counterRot;
+  }
+
+  // Per-node dome Z + float; counter-rotate to face camera (billboard)
+  for (const n of _topology.nodes) {
+    const el = _nodeElCache[n.id] || document.querySelector(`[data-tip="${n.id}"]`);
+    if (!el) continue;
+    const dx = n.x - cx, dy = n.y - cy;
+    const d2 = (dx * dx + dy * dy) / maxD2;
+    const dome = R * Math.max(0, 1 - d2);
+    const z = peakH + nodeFloat + dome;
+    el.style.translate = `0px 0px ${z}px`;
+    el.style.rotate = counterRot;
+  }
+
+  // Speech bubbles float high, face camera
+  const bubbleZ = peakH + nodeFloat + R + _mapTilt * 3;
+  document.querySelectorAll('.speech-bubble').forEach(b => {
+    b.style.translate = `0px 0px ${bubbleZ}px`;
+    b.style.rotate = counterRot;
+  });
+}
+
+function _applyTopoZ() {
+  const peakH = _mapTilt * 5;
+  const topoEl = document.getElementById('topo-svg');
+  if (!topoEl) return;
+  topoEl.style.transformStyle = 'preserve-3d';
+  topoEl.querySelectorAll('.topo-band').forEach(band => {
+    const elev = parseFloat(band.dataset.elev) || 0;
+    band.style.translate = `0px 0px ${elev * peakH}px`;
+  });
+}
+
+function _clearGlobeZ() {
+  if (!_topology) return;
+  for (const n of _topology.nodes) {
+    const el = _nodeElCache[n.id] || document.querySelector(`[data-tip="${n.id}"]`);
+    if (el) { el.style.translate = ''; el.style.rotate = ''; }
+  }
+  const topoEl = document.getElementById('topo-svg');
+  const connSvg = document.getElementById('connections');
+  const regionEl = document.getElementById('region-labels');
+  if (topoEl) {
+    topoEl.style.transformStyle = '';
+    topoEl.querySelectorAll('.topo-band').forEach(b => { b.style.translate = ''; });
+  }
+  if (connSvg) connSvg.style.translate = '';
+  if (regionEl) { regionEl.style.translate = ''; regionEl.style.rotate = ''; }
+  document.querySelectorAll('.speech-bubble').forEach(b => { b.style.translate = ''; b.style.rotate = ''; });
 }
 
 function centerMap() {
   const cw = canvas.clientWidth, ch = canvas.clientHeight;
-  scale = Math.min(cw / 3200, ch / 2200) * 1.2;
-  panX = (cw - 3200 * scale) / 2;
-  panY = (ch - 2200 * scale) / 2;
+  scale = Math.min(cw / WORLD_W, ch / WORLD_H) * 1.2;
+  panX = (cw - WORLD_W * scale) / 2;
+  panY = (ch - WORLD_H * scale) / 2;
   applyTransform();
 }
 
@@ -1676,7 +2080,7 @@ canvas.addEventListener('touchmove', e => {
     const rect = canvas.getBoundingClientRect();
     const mx = midX - rect.left, my = midY - rect.top;
     const oldScale = scale;
-    scale = Math.max(0.3, Math.min(3, scale * (newDist / _pinchDist)));
+    scale = Math.max(0.1, Math.min(3, scale * (newDist / _pinchDist)));
     panX = mx - (mx - panX) * (scale / oldScale);
     panY = my - (my - panY) * (scale / oldScale);
     _pinchDist = newDist;
@@ -1699,7 +2103,7 @@ canvas.addEventListener('wheel', e => {
   const mx = e.clientX - rect.left, my = e.clientY - rect.top;
   const oldScale = scale;
   const delta = e.deltaY > 0 ? 0.9 : 1.1;
-  scale = Math.max(0.3, Math.min(3, scale * delta));
+  scale = Math.max(0.1, Math.min(3, scale * delta));
   panX = mx - (mx - panX) * (scale / oldScale);
   panY = my - (my - panY) * (scale / oldScale);
   applyTransform();
@@ -1731,7 +2135,7 @@ document.querySelectorAll('.realm-node').forEach(node => {
 // ── Minimap ──
 const minimap = document.getElementById('minimap');
 const viewport = document.getElementById('minimap-viewport');
-const mmW = 200, mmH = 138, worldW = 3200, worldH = 2200;
+const mmW = 200, mmH = 138, worldW = WORLD_W, worldH = WORLD_H;
 
 // Generate minimap dots from topology data (no more hardcoded positions)
 const MINIMAP_COLORS = {
@@ -2269,7 +2673,8 @@ document.querySelectorAll('.realm-node').forEach(node => {
 // ── Panel Minimize System (double-click header → fantasy icon) ──
 const PANEL_ICONS = {
   'realm-panel':  { icon: '\u2694', tooltip: 'Realm Vitals',  color: '#f0d890', rgb: [240,216,144] },
-  'legend':       { icon: '\u2726', tooltip: 'Map Legend',     color: '#64b4ff', rgb: [100,180,255] },
+  'legend':       { icon: '\uD83D\uDDFA', tooltip: 'Legend',         color: '#80b0ff', rgb: [128,176,255] },
+  'spellbook':    { icon: '\uD83D\uDCD6', tooltip: 'Spellbook',     color: '#c0a0ff', rgb: [192,160,255] },
   'quest-log':    { icon: '\u2619', tooltip: 'Quest Log',     color: '#a0ff60', rgb: [160,255,96] },
   'realm-codex':  { icon: '\u2630', tooltip: 'Realm Codex',   color: '#9060c0', rgb: [144,96,192] },
   'minimap':      { icon: '\u25CE', tooltip: 'Minimap',       color: '#60a0c0', rgb: [96,160,192] },
@@ -2401,11 +2806,13 @@ function setupPanelMinimize(panelId, handleSelector) {
 // Wire up all panels
 setupPanelMinimize('realm-panel', 'h3');
 setupPanelMinimize('legend', 'h3');
+setupPanelMinimize('spellbook', 'h3');
 
-// Legend collapsible sections
+// Legend + Spellbook collapsible sections
 document.querySelectorAll('.legend-section-header').forEach(header => {
   header.addEventListener('click', () => {
     header.parentElement.classList.toggle('collapsed');
+    saveSettings();
   });
 });
 // Start with Nodes and Effects collapsed, Lines and Controls open
@@ -2422,6 +2829,7 @@ document.querySelector('.legend-section[data-section="effects"]')?.classList.add
       const v = parseFloat(sl.value);
       setter(v);
       if (vl) vl.textContent = id === 'fx-pulse' ? v.toFixed(1) + 'x' : v.toFixed(2);
+      scheduleSave();
     });
   }
   wire('fx-ambient', () => _sparkleAmbient, v => { _sparkleAmbient = v; });
@@ -2462,9 +2870,9 @@ document.querySelector('.legend-section[data-section="effects"]')?.classList.add
         _perfTier = qSel.value;
       }
       qVal.textContent = _perfTier;
-      // Force topo re-render with new quality settings
       _topoHash = '';
       if (_topoEnabled) renderTopoLayer(_lastTopoCollectd);
+      saveSettings();
     });
   }
 })();
@@ -2552,6 +2960,367 @@ function updateNodeListStatus(d) {
 
 // Build the node list from topology
 buildNodeList();
+
+// ── Auto-Arrange Layout (force-directed, non-blocking) ──
+// Stores topology.json original positions for reset
+const _originalPositions = {};
+if (_topology) _topology.nodes.forEach(n => { _originalPositions[n.id] = { x: n.x, y: n.y }; });
+
+// Pre-build connection index array: [fromIdx, toIdx, fromId, toId] for O(1) lookup
+const _connIdx = [];
+if (_topology) {
+  const idxMap = {};
+  _topology.nodes.forEach((n, i) => { idxMap[n.id] = i; });
+  _topology.connections.forEach(c => {
+    const a = idxMap[c.from], b = idxMap[c.to];
+    if (a !== undefined && b !== undefined) _connIdx.push([a, b, c.from, c.to]);
+  });
+}
+
+let _layoutRunning = false;
+// Exposed layout parameters (wired to sliders)
+let _layoutAttract = 4.0;   // spring strength multiplier (x0.001)
+let _layoutRepulse = 80;    // repulsion base (x1000)
+let _layoutEdgeLen = 80;    // base ideal edge length
+let _layoutSpacing = 8;     // same-depth peer spacing (x1000)
+
+function autoArrangeLayout() {
+  if (!_topology || _layoutRunning) return;
+  _layoutRunning = true;
+  const btn = document.getElementById('layout-auto-btn');
+  if (btn) { btn.classList.add('running'); btn.textContent = '\u2728 Arranging\u2026'; }
+
+  const nodes = _topology.nodes;
+  const N = nodes.length;
+
+  // ── Build graph ──
+  const degree = new Float32Array(N);
+  const neighbors = new Array(N);
+  for (let i = 0; i < N; i++) neighbors[i] = [];
+  for (const [a, b] of _connIdx) {
+    degree[a]++; degree[b]++;
+    neighbors[a].push(b);
+    neighbors[b].push(a);
+  }
+
+  // ── Find the heart (most important node) ──
+  const typeRank = { core: 5, infra: 4, bridge: 3, tower: 3, portal: 2, cluster: 2, device: 1, tailscale: 1 };
+  let heartIdx = 0;
+  for (let i = 1; i < N; i++) {
+    const s = (typeRank[nodes[i].type] || 1) * 2 + degree[i];
+    const hs = (typeRank[nodes[heartIdx].type] || 1) * 2 + degree[heartIdx];
+    if (s > hs) heartIdx = i;
+  }
+
+  // ── BFS tree from heart ──
+  const parent = new Int32Array(N).fill(-1);
+  const depth = new Int32Array(N).fill(-1);
+  const children = new Array(N);
+  for (let i = 0; i < N; i++) children[i] = [];
+  const bfs = [heartIdx]; depth[heartIdx] = 0;
+  let qi = 0;
+  while (qi < bfs.length) {
+    const cur = bfs[qi++];
+    // Visit higher-degree neighbors first (hubs become main branches)
+    const unvisited = neighbors[cur].filter(nb => depth[nb] === -1);
+    unvisited.sort((a, b) => degree[b] - degree[a]);
+    for (const nb of unvisited) {
+      depth[nb] = depth[cur] + 1;
+      parent[nb] = cur;
+      children[cur].push(nb);
+      bfs.push(nb);
+    }
+  }
+  // Disconnected nodes become children of heart
+  for (let i = 0; i < N; i++) {
+    if (depth[i] === -1) { depth[i] = 1; parent[i] = heartIdx; children[heartIdx].push(i); }
+  }
+
+  // ── Compute subtree sizes (for angular space allocation) ──
+  const subtreeSize = new Int32Array(N).fill(1);
+  // Process in reverse BFS order (leaves first)
+  for (let k = bfs.length - 1; k >= 0; k--) {
+    const idx = bfs[k];
+    for (const ch of children[idx]) subtreeSize[idx] += subtreeSize[ch];
+  }
+
+  // ── Radial tree layout ──
+  // Each node gets an angular wedge proportional to its subtree size.
+  // Children are placed within their parent's wedge.
+  const W = WORLD_W * 0.85, H = WORLD_H * 0.85, CX = W / 2, CY = H / 2;
+  const pos = new Array(N);
+
+  // Ring distances from center — deeper = farther. Use slider edge length as base.
+  const ringDist = (d) => d === 0 ? 0 : _layoutEdgeLen + (d - 1) * _layoutEdgeLen * 0.85;
+
+  // Each node gets: startAngle, endAngle (its wedge), and position
+  const wedge = new Array(N); // { start, end }
+  wedge[heartIdx] = { start: 0, end: Math.PI * 2 };
+  pos[heartIdx] = { x: CX, y: CY };
+
+  // BFS order placement — parent wedge subdivided among children
+  for (let k = 0; k < bfs.length; k++) {
+    const idx = bfs[k];
+    const ch = children[idx];
+    if (ch.length === 0) continue;
+    const w = wedge[idx];
+    const totalLeaves = ch.reduce((s, c) => s + subtreeSize[c], 0);
+
+    // For root: full circle. For others: spread within parent's wedge.
+    let angleStart = w.start;
+    for (const c of ch) {
+      const fraction = subtreeSize[c] / totalLeaves;
+      const angleEnd = angleStart + (w.end - w.start) * fraction;
+      wedge[c] = { start: angleStart, end: angleEnd };
+      const midAngle = (angleStart + angleEnd) / 2;
+      const r = ringDist(depth[c]);
+      pos[c] = {
+        x: CX + Math.cos(midAngle) * r,
+        y: CY + Math.sin(midAngle) * r * 0.82, // landscape squash
+      };
+      angleStart = angleEnd;
+    }
+  }
+
+  // ── Overlap-removal pass (brief force sim, non-blocking) ──
+  // The tree layout is already beautiful, just nudge overlapping nodes apart
+  // and pull non-tree connections slightly closer
+  const vel = new Array(N);
+  for (let i = 0; i < N; i++) vel[i] = { x: 0, y: 0 };
+
+  const neighborSets = new Array(N);
+  for (let i = 0; i < N; i++) neighborSets[i] = new Set(neighbors[i]);
+
+  const STEPS = 120;
+  const CHUNK = 30;
+  let step = 0;
+
+  function simChunk() {
+    const endStep = Math.min(step + CHUNK, STEPS);
+    while (step < endStep) {
+      const temp = 1 - step / STEPS;
+
+      // Overlap repulsion — short range only, just prevent nodes sitting on top of each other
+      const repBase = _layoutRepulse * 400 * (0.1 + 0.9 * temp);
+      for (let i = 0; i < N; i++) {
+        for (let j = i + 1; j < N; j++) {
+          const dx = pos[i].x - pos[j].x;
+          const dy = pos[i].y - pos[j].y;
+          const d2 = dx * dx + dy * dy + 100;
+          if (d2 > 40000) continue; // only within ~200px
+          const f = repBase / d2;
+          vel[i].x += dx * f; vel[i].y += dy * f;
+          vel[j].x -= dx * f; vel[j].y -= dy * f;
+        }
+      }
+
+      // Pull non-tree edges closer (cross-connections that the tree layout missed)
+      for (const [iA, iB] of _connIdx) {
+        if (parent[iA] === iB || parent[iB] === iA) continue; // tree edge — already good
+        const dx = pos[iB].x - pos[iA].x;
+        const dy = pos[iB].y - pos[iA].y;
+        const d = Math.sqrt(dx * dx + dy * dy) + 0.1;
+        const idealLen = _layoutEdgeLen * 1.5;
+        if (d <= idealLen) continue; // already close enough
+        const f = _layoutAttract * 0.0005 * (d - idealLen) * temp;
+        vel[iA].x += (dx / d) * f; vel[iA].y += (dy / d) * f;
+        vel[iB].x -= (dx / d) * f; vel[iB].y -= (dy / d) * f;
+      }
+
+      // Same-depth spacing
+      for (let i = 0; i < N; i++) {
+        for (let j = i + 1; j < N; j++) {
+          if (depth[i] !== depth[j]) continue;
+          const dx = pos[i].x - pos[j].x;
+          const dy = pos[i].y - pos[j].y;
+          const d2 = dx * dx + dy * dy + 1;
+          if (d2 < 10000) {
+            const push = _layoutSpacing * 500 * temp / d2;
+            vel[i].x += dx * push; vel[i].y += dy * push;
+            vel[j].x -= dx * push; vel[j].y -= dy * push;
+          }
+        }
+      }
+
+      // Apply
+      for (let i = 0; i < N; i++) {
+        vel[i].x *= 0.7; vel[i].y *= 0.7;
+        const vLen = Math.sqrt(vel[i].x * vel[i].x + vel[i].y * vel[i].y);
+        if (vLen > 6) { vel[i].x *= 6 / vLen; vel[i].y *= 6 / vLen; }
+        pos[i].x += vel[i].x; pos[i].y += vel[i].y;
+      }
+      step++;
+    }
+
+    if (step < STEPS) {
+      requestAnimationFrame(simChunk);
+    } else {
+      // ── Post-process: center + scale to fill world ──
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (let i = 0; i < N; i++) {
+        if (pos[i].x < minX) minX = pos[i].x;
+        if (pos[i].x > maxX) maxX = pos[i].x;
+        if (pos[i].y < minY) minY = pos[i].y;
+        if (pos[i].y > maxY) maxY = pos[i].y;
+      }
+      const usedW = maxX - minX + 200, usedH = maxY - minY + 200;
+      const PAD = 120;
+      const fitScale = Math.min((W - PAD * 2) / usedW, (H - PAD * 2) / usedH);
+      const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+      for (let i = 0; i < N; i++) {
+        pos[i].x = CX + (pos[i].x - cx) * fitScale;
+        pos[i].y = CY + (pos[i].y - cy) * fitScale;
+      }
+
+      _animateToPositions(pos, 900, () => {
+        _layoutRunning = false;
+        generateTerrain();
+        updateRegionLabels();
+        if (btn) { btn.classList.remove('running'); btn.textContent = '\u2728 Auto-Arrange'; }
+      });
+    }
+  }
+  requestAnimationFrame(simChunk);
+}
+
+function resetToOriginalPositions() {
+  if (_layoutRunning) return;
+  const nodes = _topology.nodes;
+  const pos = nodes.map(n => {
+    const orig = _originalPositions[n.id];
+    return orig ? { x: orig.x, y: orig.y } : { x: n.x, y: n.y };
+  });
+  _animateToPositions(pos, 700, () => { generateTerrain(); updateRegionLabels(); });
+}
+
+// Cache node element refs for animation (avoid querySelector in hot loop)
+const _nodeElCache = {};
+if (_topology) _topology.nodes.forEach(n => {
+  _nodeElCache[n.id] = document.querySelector(`[data-tip="${n.id}"]`);
+});
+
+function _animateToPositions(targetPos, duration, onDone) {
+  const nodes = _topology.nodes;
+  const startPos = nodes.map(n => ({ x: n.x, y: n.y }));
+  const startTime = performance.now();
+
+  function step(now) {
+    const t = Math.min(1, (now - startTime) / duration);
+    // Smooth ease-out cubic
+    const e = 1 - (1 - t) * (1 - t) * (1 - t);
+
+    for (let i = 0; i < nodes.length; i++) {
+      const nx = startPos[i].x + (targetPos[i].x - startPos[i].x) * e;
+      const ny = startPos[i].y + (targetPos[i].y - startPos[i].y) * e;
+      nodes[i].x = nx;
+      nodes[i].y = ny;
+      const el = _nodeElCache[nodes[i].id];
+      if (el) { el.style.left = nx + 'px'; el.style.top = ny + 'px'; }
+    }
+    updateLinePositions();
+    updateBubblePositions();
+
+    if (t < 1) {
+      requestAnimationFrame(step);
+    } else {
+      _topoNodeMap = null;
+      _topoHash = '';
+      if (_topoEnabled) renderTopoLayer(_lastTopoCollectd);
+      scheduleSave();
+      if (onDone) onDone();
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+// Wire layout buttons + sliders
+document.getElementById('layout-auto-btn')?.addEventListener('click', autoArrangeLayout);
+document.getElementById('layout-reset-btn')?.addEventListener('click', resetToOriginalPositions);
+
+(function wireLayoutSliders() {
+  const sliders = [
+    ['layout-attract', v => { _layoutAttract = v; }],
+    ['layout-repulse', v => { _layoutRepulse = v; }],
+    ['layout-edge',    v => { _layoutEdgeLen = v; }],
+    ['layout-spacing', v => { _layoutSpacing = v; }],
+    ['layout-tilt',    v => { _mapTilt = v; applyTransform(); }, v => v + '\u00B0'],
+  ];
+  for (const entry of sliders) {
+    const [id, setter, fmt] = entry;
+    const sl = document.getElementById(id + '-slider');
+    const vl = document.getElementById(id + '-val');
+    if (!sl) continue;
+    sl.addEventListener('input', () => {
+      const v = parseFloat(sl.value);
+      setter(v);
+      if (vl) vl.textContent = fmt ? fmt(v) : (v % 1 === 0 ? v : v.toFixed(1));
+      scheduleSave();
+    });
+  }
+})();
+
+// ── Biome sliders ──
+(function wireBiomeSliders() {
+  const sliders = [
+    ['biome-land', v => { _biomeLandScale = v; generateTerrain(); }],
+    ['biome-glow', v => { _biomeGlow = v; generateTerrain(); }],
+    ['biome-roads', v => { _biomeRoads = v; generateTerrain(); }],
+    ['biome-peaks', v => { _biomePeaks = v; generateTerrain(); }],
+    ['biome-grid', v => { _biomeGrid = v; generateTerrain(); }],
+  ];
+  for (const [id, setter] of sliders) {
+    const sl = document.getElementById(id + '-slider');
+    const vl = document.getElementById(id + '-val');
+    if (!sl) continue;
+    sl.addEventListener('input', () => {
+      const v = parseFloat(sl.value);
+      setter(v);
+      if (vl) vl.textContent = v.toFixed(2);
+      scheduleSave();
+    });
+  }
+})();
+
+// ── Visibility Toggles ──
+(function wireVisibilityToggles() {
+  // [checkboxId, singleSelector, multiSelector]
+  const toggles = [
+    // Map layers
+    ['vis-terrain',      '#terrain'],
+    ['vis-topo',         '#topo-svg'],
+    ['vis-connections',  '#connections'],
+    ['vis-nodes',        null, '.realm-node'],
+    ['vis-labels',       null, '.node-label'],
+    ['vis-regions',      '#region-labels'],
+    ['vis-bubbles',      null, '.speech-bubble'],
+    // Panels
+    ['vis-titlebar',     '#title-bar'],
+    ['vis-statuspanel',  '#realm-panel'],
+    ['vis-legend',       '#legend'],
+    ['vis-codex',        '#realm-codex'],
+    ['vis-questlog',     '#quest-log'],
+    ['vis-minimap',      '#minimap'],
+    ['vis-nodelist',     '#node-list'],
+  ];
+  for (const [id, sel, multiSel] of toggles) {
+    const cb = document.getElementById(id);
+    if (!cb) continue;
+    cb.addEventListener('change', () => {
+      const show = cb.checked;
+      if (sel) {
+        const el = document.querySelector(sel);
+        if (el) el.style.display = show ? '' : 'none';
+      } else if (multiSel) {
+        document.querySelectorAll(multiSel).forEach(el => {
+          el.style.visibility = show ? '' : 'hidden';
+        });
+        if (!window._visState) window._visState = {};
+        window._visState[multiSel] = show;
+      }
+      saveSettings(); // immediate — no debounce for discrete toggles
+    });
+  }
+})();
 
 // ── Magic Motes Trail (for draggable elements) ──
 const moteCanvas = document.createElement('canvas');
@@ -2734,11 +3503,87 @@ function animateMotes() {
 animateMotes();
 
 // ── Layout persistence (localStorage) ──
-const LAYOUT_KEY = 'realm-map-layout';
+const LAYOUT_KEY = 'realm-map-layout-v2';
+const SETTINGS_KEY = 'realm-map-settings-v1';
+
+// All slider/toggle IDs to persist
+const _PERSIST_SLIDERS = [
+  'master-scale', 'traffic-scale', 'node-scale', 'text-scale', 'bubble-scale', 'update-speed',
+  'fx-ambient', 'fx-nodes', 'fx-leylines', 'fx-glow', 'fx-pulse', 'fx-leyglow',
+  'topo-opacity', 'topo-spread', 'topo-contour', 'topo-rw', 'topo-rd',
+  'layout-attract', 'layout-repulse', 'layout-edge', 'layout-spacing', 'layout-tilt',
+  'biome-land', 'biome-glow', 'biome-roads', 'biome-peaks', 'biome-grid',
+];
+const _PERSIST_CHECKBOXES = [
+  'topo-toggle-cb',
+  'vis-terrain', 'vis-topo', 'vis-connections', 'vis-nodes', 'vis-labels',
+  'vis-regions', 'vis-bubbles', 'vis-titlebar', 'vis-statuspanel', 'vis-legend',
+  'vis-codex', 'vis-questlog', 'vis-minimap', 'vis-nodelist',
+];
+
+function saveSettings() {
+  if (_restoring) return;
+  const s = { sliders: {}, checkboxes: {}, quality: null, collapsed: [] };
+  _PERSIST_SLIDERS.forEach(id => {
+    const sl = document.getElementById(id + '-slider');
+    if (sl) s.sliders[id] = sl.value;
+  });
+  _PERSIST_CHECKBOXES.forEach(id => {
+    const cb = document.getElementById(id);
+    if (cb) s.checkboxes[id] = cb.checked;
+  });
+  const qSel = document.getElementById('fx-quality-select');
+  if (qSel) s.quality = qSel.value;
+  document.querySelectorAll('.legend-section.collapsed').forEach(sec => {
+    const ds = sec.dataset.section;
+    if (ds) s.collapsed.push(ds);
+  });
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+}
+
+let _restoring = false;
+function restoreSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return false;
+    const s = JSON.parse(raw);
+    _restoring = true; // suppress saves during restore
+    // Restore sliders — set value then fire input event to apply
+    if (s.sliders) {
+      for (const [id, val] of Object.entries(s.sliders)) {
+        const sl = document.getElementById(id + '-slider');
+        if (sl) { sl.value = val; sl.dispatchEvent(new Event('input')); }
+      }
+    }
+    // Restore checkboxes — set checked then fire change event to apply
+    if (s.checkboxes) {
+      for (const [id, checked] of Object.entries(s.checkboxes)) {
+        const cb = document.getElementById(id);
+        if (cb && cb.checked !== checked) { cb.checked = checked; cb.dispatchEvent(new Event('change')); }
+      }
+    }
+    // Restore quality tier
+    if (s.quality) {
+      const qSel = document.getElementById('fx-quality-select');
+      if (qSel) { qSel.value = s.quality; qSel.dispatchEvent(new Event('change')); }
+    }
+    // Restore collapsed sections
+    if (s.collapsed) {
+      document.querySelectorAll('.legend-section').forEach(sec => {
+        const ds = sec.dataset.section;
+        if (ds) sec.classList.toggle('collapsed', s.collapsed.includes(ds));
+      });
+    }
+    _restoring = false;
+    return true;
+  } catch (e) { _restoring = false; }
+  return false;
+}
+
 function saveLayout() {
   const layout = { panels: {}, nodes: {}, minimized: [] };
   // Save panel positions and minimized state
-  ['realm-panel','legend','quest-log','realm-codex','minimap','node-list'].forEach(id => {
+  ['realm-panel','legend','spellbook','quest-log','realm-codex','minimap','node-list'].forEach(id => {
     const el = document.getElementById(id);
     if (el && el.style.left) {
       layout.panels[id] = { left: el.style.left, top: el.style.top };
@@ -2753,6 +3598,7 @@ function saveLayout() {
     if (tip) layout.nodes[tip] = { left: n.style.left, top: n.style.top };
   });
   localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout));
+  saveSettings();
 }
 
 function restoreLayout() {
@@ -2869,6 +3715,7 @@ function makeDraggable(el, handleSelector, moteColor) {
 // Make all fixed panels draggable with magic motes
 makeDraggable(document.getElementById('realm-panel'), 'h3', [240,216,144]);
 makeDraggable(document.getElementById('legend'), 'h3', [100,180,255]);
+makeDraggable(document.getElementById('spellbook'), 'h3', [192,160,255]);
 makeDraggable(document.getElementById('quest-log'), '#quest-log-header', [160,255,96]);
 makeDraggable(document.getElementById('realm-codex'), '#codex-header', [144,96,192]);
 makeDraggable(document.getElementById('minimap'), null, [96,160,192]);
@@ -2880,11 +3727,16 @@ makeDraggable(document.getElementById('node-list'), '#node-list-header', [192,14
   let dragNode = null, dragOffsetX = 0, dragOffsetY = 0, hasMoved = false;
   let _longPressTimer = null;
   let _dragFrame = 0, _dragRafPending = false;
+  let _lastNodeTapTime = 0, _lastNodeTapped = null;
+  let _dragStartCx = 0, _dragStartCy = 0;
+  const DRAG_THRESHOLD = 8; // px before a tap becomes a drag
   const mapWorld = document.getElementById('map-world');
 
   function startNodeDrag(node, cx, cy) {
     dragNode = node;
     hasMoved = false;
+    _dragStartCx = cx;
+    _dragStartCy = cy;
     const nodeLeft = parseInt(node.style.left) || 0;
     const nodeTop = parseInt(node.style.top) || 0;
     const worldRect = mapWorld.getBoundingClientRect();
@@ -2898,7 +3750,12 @@ makeDraggable(document.getElementById('node-list'), '#node-list-header', [192,14
 
   function moveNodeDrag(cx, cy) {
     if (!dragNode) return;
-    hasMoved = true;
+    // Require minimum movement before committing to a drag
+    if (!hasMoved) {
+      const dx = cx - _dragStartCx, dy = cy - _dragStartCy;
+      if (dx * dx + dy * dy < DRAG_THRESHOLD * DRAG_THRESHOLD) return;
+      hasMoved = true;
+    }
     dragging = false;
     _touchPanning = false;
     const worldRect = mapWorld.getBoundingClientRect();
@@ -2931,10 +3788,11 @@ makeDraggable(document.getElementById('node-list'), '#node-list-header', [192,14
   function endNodeDrag() {
     if (_longPressTimer) { clearTimeout(_longPressTimer); _longPressTimer = null; }
     if (dragNode) {
+      const tappedNode = dragNode;
       dragNode.style.zIndex = '';
       dragNode.style.transition = '';
       if (hasMoved) {
-        const rect = dragNode.getBoundingClientRect();
+        const rect = tappedNode.getBoundingClientRect();
         const cx = rect.left + rect.width/2;
         const cy = rect.top + rect.height/2;
         for (let i = 0; i < 12; i++) {
@@ -2945,6 +3803,20 @@ makeDraggable(document.getElementById('node-list'), '#node-list-header', [192,14
         _topoNodeMap = null; // invalidate cached node map
         _topoHash = '';      // force re-render
         if (_topoEnabled) renderTopoLayer(_lastTopoCollectd);
+        generateTerrain();
+        updateRegionLabels();
+      } else {
+        // No movement — this was a tap. Check for double-tap (mobile persona editor).
+        const now = Date.now();
+        if (_lastNodeTapped === tappedNode && now - _lastNodeTapTime < 400) {
+          const key = tappedNode.dataset.tip;
+          if (key) openPersonaEditor(key);
+          _lastNodeTapTime = 0;
+          _lastNodeTapped = null;
+        } else {
+          _lastNodeTapTime = now;
+          _lastNodeTapped = tappedNode;
+        }
       }
       dragNode = null;
     }
@@ -2983,9 +3855,11 @@ makeDraggable(document.getElementById('node-list'), '#node-list-header', [192,14
 
 // Restore saved layout on load, or apply defaults (only legend + vitals maximized)
 if (!restoreLayout()) {
-  ['quest-log', 'realm-codex', 'minimap', 'node-list'].forEach(id => {
+  ['spellbook', 'quest-log', 'realm-codex', 'minimap', 'node-list'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.add('panel-minimized');
   });
 }
+// Always restore settings (sliders, toggles, collapsed sections) independently
+restoreSettings();
 

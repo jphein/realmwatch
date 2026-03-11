@@ -52,7 +52,7 @@
 </div>
 
 <div id="legend">
-  <h3>Map Legend</h3>
+  <h3>&#128506; Legend</h3>
   <div class="legend-section" data-section="lines">
     <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Ley Lines</div>
     <div class="legend-section-body">
@@ -77,6 +77,10 @@
       <div class="legend-item"><span style="font-size:14px;width:24px;text-align:center;margin-right:4px">&#127757;</span>Astral Peer (TS)</div>
     </div>
   </div>
+</div>
+
+<div id="spellbook">
+  <h3>&#128214; Spellbook</h3>
   <div class="legend-section" data-section="effects">
     <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Magical Effects</div>
     <div class="legend-section-body">
@@ -112,6 +116,84 @@
           <option value="medium">Medium</option>
           <option value="high">High (desktop)</option>
         </select>
+      </div>
+    </div>
+  </div>
+  <div class="legend-section" data-section="visibility">
+    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Visibility</div>
+    <div class="legend-section-body">
+      <div class="vis-group-label">Map Layers</div>
+      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-terrain" checked><span class="topo-switch-track"></span></label><span>Biome Terrain</span></div>
+      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-topo" checked><span class="topo-switch-track"></span></label><span>Topographic</span></div>
+      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-connections" checked><span class="topo-switch-track"></span></label><span>Ley Lines</span></div>
+      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-nodes" checked><span class="topo-switch-track"></span></label><span>Nodes</span></div>
+      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-labels" checked><span class="topo-switch-track"></span></label><span>Node Labels</span></div>
+      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-regions" checked><span class="topo-switch-track"></span></label><span>Region Labels</span></div>
+      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-bubbles" checked><span class="topo-switch-track"></span></label><span>Speech Bubbles</span></div>
+      <div class="vis-group-label">Panels</div>
+      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-titlebar" checked><span class="topo-switch-track"></span></label><span>Title Bar</span></div>
+      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-statuspanel" checked><span class="topo-switch-track"></span></label><span>Status Panel</span></div>
+      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-legend" checked><span class="topo-switch-track"></span></label><span>Legend</span></div>
+      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-codex" checked><span class="topo-switch-track"></span></label><span>Codex</span></div>
+      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-questlog" checked><span class="topo-switch-track"></span></label><span>Quest Log</span></div>
+      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-minimap" checked><span class="topo-switch-track"></span></label><span>Minimap</span></div>
+      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-nodelist" checked><span class="topo-switch-track"></span></label><span>Realm Census</span></div>
+    </div>
+  </div>
+  <div class="legend-section collapsed" data-section="layout">
+    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Layout</div>
+    <div class="legend-section-body">
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button class="layout-btn" id="layout-auto-btn" style="flex:1">&#10024; Auto-Arrange</button>
+        <button class="layout-btn layout-btn-dim" id="layout-reset-btn" style="flex:1">&#9881; Original</button>
+      </div>
+      <div class="traffic-control">
+        <label>Attraction <span class="tc-val" id="layout-attract-val">4.0</span></label>
+        <input type="range" class="traffic-slider" id="layout-attract-slider" min="0.5" max="12" step="0.5" value="4">
+      </div>
+      <div class="traffic-control">
+        <label>Repulsion <span class="tc-val" id="layout-repulse-val">80</span></label>
+        <input type="range" class="traffic-slider" id="layout-repulse-slider" min="10" max="300" step="10" value="80">
+      </div>
+      <div class="traffic-control">
+        <label>Edge Length <span class="tc-val" id="layout-edge-val">80</span></label>
+        <input type="range" class="traffic-slider" id="layout-edge-slider" min="30" max="200" step="5" value="80">
+      </div>
+      <div class="traffic-control">
+        <label>Spacing <span class="tc-val" id="layout-spacing-val">8</span></label>
+        <input type="range" class="traffic-slider" id="layout-spacing-slider" min="0" max="30" step="1" value="8">
+      </div>
+      <div class="traffic-control" style="margin-top:8px;border-top:1px solid #30281880;padding-top:6px">
+        <label>Globe Tilt <span class="tc-val" id="layout-tilt-val">0&deg;</span></label>
+        <input type="range" class="traffic-slider" id="layout-tilt-slider" min="0" max="45" step="1" value="0">
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:#706050;margin-top:2px">
+          <span>Flat</span><span>Tilted</span><span>Globe</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="legend-section" data-section="biomes">
+    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Biomes</div>
+    <div class="legend-section-body">
+      <div class="traffic-control">
+        <label>Landmass Scale <span class="tc-val" id="biome-land-val">1.0</span></label>
+        <input type="range" class="traffic-slider" id="biome-land-slider" min="0.3" max="2" step="0.1" value="1">
+      </div>
+      <div class="traffic-control">
+        <label>Glow Intensity <span class="tc-val" id="biome-glow-val">1.0</span></label>
+        <input type="range" class="traffic-slider" id="biome-glow-slider" min="0" max="2" step="0.1" value="1">
+      </div>
+      <div class="traffic-control">
+        <label>Road Visibility <span class="tc-val" id="biome-roads-val">0.5</span></label>
+        <input type="range" class="traffic-slider" id="biome-roads-slider" min="0" max="1" step="0.05" value="0.5">
+      </div>
+      <div class="traffic-control">
+        <label>Peaks <span class="tc-val" id="biome-peaks-val">0.5</span></label>
+        <input type="range" class="traffic-slider" id="biome-peaks-slider" min="0" max="1" step="0.05" value="0.5">
+      </div>
+      <div class="traffic-control">
+        <label>Grid <span class="tc-val" id="biome-grid-val">0.03</span></label>
+        <input type="range" class="traffic-slider" id="biome-grid-slider" min="0" max="0.15" step="0.01" value="0.03">
       </div>
     </div>
   </div>
@@ -430,7 +512,7 @@
   <div id="map-world">
 
     <!-- SVG Terrain background -->
-    <svg id="terrain" viewBox="0 0 3200 2200" xmlns="http://www.w3.org/2000/svg">
+    <svg id="terrain" viewBox="0 0 4800 3300" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <radialGradient id="glow-gold" cx="50%" cy="50%" r="50%">
           <stop offset="0%" stop-color="rgba(240,216,144,0.15)"/>
@@ -464,111 +546,15 @@
         </filter>
       </defs>
 
-      <!-- Ocean / void background -->
-      <rect width="3200" height="2200" fill="#0a0a12"/>
-
-      <!-- Central island / landmass where the Citadel sits -->
-      <ellipse cx="800" cy="700" rx="600" ry="450" fill="#111822" filter="url(#terrain-blur-lg)" opacity="0.8"/>
-      <ellipse cx="800" cy="700" rx="520" ry="380" fill="#141e2a" opacity="0.6"/>
-
-      <!-- Guardian Towers ring (wider landmass around the Citadel) -->
-      <ellipse cx="800" cy="650" rx="700" ry="500" fill="#0f1620" filter="url(#terrain-blur-lg)" opacity="0.5"/>
-
-      <!-- The Signal Bridges outcrop (north-west) -->
-      <ellipse cx="220" cy="320" rx="160" ry="140" fill="#151828" filter="url(#terrain-blur)" opacity="0.6"/>
-      <ellipse cx="220" cy="320" rx="120" ry="100" fill="#181c30" opacity="0.4"/>
-      <!-- Rocky texture hints -->
-      <polygon points="150,250 180,220 220,260 260,230 300,270 280,310 170,290" fill="#1a1f35" opacity="0.3"/>
-
-      <!-- Mountain range near the Forge -->
-      <polygon points="650,500 700,380 750,480 800,350 850,460 900,400 920,490" fill="#1a2535" opacity="0.5"/>
-      <polygon points="660,510 710,400 760,490 810,370 860,470 905,410 920,495" fill="none" stroke="rgba(160,140,100,0.1)" stroke-width="1"/>
-
-      <!-- Southern landmass extension (Family area + IoT region approach) -->
-      <ellipse cx="900" cy="1050" rx="400" ry="200" fill="#111822" filter="url(#terrain-blur)" opacity="0.5"/>
-
-      <!-- The Enchanted Quarters island (IoT, south-east) -->
-      <ellipse cx="1450" cy="1050" rx="350" ry="250" fill="#101a18" filter="url(#terrain-blur-lg)" opacity="0.6"/>
-      <ellipse cx="1450" cy="1050" rx="280" ry="200" fill="#121e1c" opacity="0.4"/>
-      <!-- Magical sparkle hints in the IoT region -->
-      <circle cx="1350" cy="950" r="8" fill="rgba(96,192,96,0.06)"/>
-      <circle cx="1550" cy="1000" r="6" fill="rgba(96,192,96,0.05)"/>
-      <circle cx="1450" cy="1120" r="7" fill="rgba(96,192,96,0.04)"/>
-      <circle cx="1650" cy="1080" r="5" fill="rgba(96,192,96,0.05)"/>
-
-      <!-- The Astral Sea (right side, expanded further right) -->
-      <ellipse cx="2300" cy="650" rx="600" ry="550" fill="#0c1020" opacity="0.6"/>
-      <ellipse cx="2300" cy="650" rx="520" ry="470" fill="rgba(40,60,120,0.08)"/>
-
-      <!-- Glowing region markers -->
-      <circle cx="750" cy="550" r="120" fill="url(#glow-gold)"/>
-      <circle cx="950" cy="400" r="80" fill="url(#glow-blue)"/>
-      <circle cx="1050" cy="750" r="100" fill="url(#glow-green)"/>
-      <circle cx="600" cy="800" r="90" fill="url(#glow-blue)"/>
-
-      <!-- Guardian Tower region glows -->
-      <circle cx="1150" cy="280" r="60" fill="url(#glow-amber)"/>
-      <circle cx="1350" cy="450" r="60" fill="url(#glow-amber)"/>
-      <circle cx="750" cy="300" r="60" fill="url(#glow-amber)"/>
-      <circle cx="350" cy="500" r="50" fill="url(#glow-amber)"/>
-      <circle cx="500" cy="350" r="50" fill="url(#glow-amber)"/>
-      <circle cx="1000" cy="280" r="50" fill="url(#glow-amber)"/>
-
-      <!-- Signal Bridges glow -->
-      <circle cx="220" cy="340" r="80" fill="url(#glow-purple)"/>
-
-      <!-- Enchanted Quarters glow -->
-      <circle cx="1450" cy="1050" r="180" fill="url(#glow-iot)"/>
-
-      <!-- Inner World (Portal) glow -->
-      <circle cx="1250" cy="630" r="80" fill="url(#glow-purple)"/>
-
-      <!-- Infrastructure glows -->
-      <circle cx="1450" cy="700" r="70" fill="url(#glow-blue)"/>
-      <circle cx="300" cy="200" r="60" fill="url(#glow-gold)"/>
-
-      <!-- Decorative paths / roads -->
-      <path d="M750,580 Q850,650 950,630 Q1050,610 1100,700" fill="none" stroke="rgba(160,140,100,0.08)" stroke-width="3"/>
-      <path d="M750,580 Q700,680 620,780" fill="none" stroke="rgba(160,140,100,0.08)" stroke-width="3"/>
-      <path d="M950,630 Q920,500 950,420" fill="none" stroke="rgba(160,140,100,0.06)" stroke-width="2"/>
-      <!-- Path to Guardian Towers -->
-      <path d="M800,500 Q900,350 1000,280" fill="none" stroke="rgba(192,144,96,0.06)" stroke-width="2"/>
-      <path d="M700,500 Q600,400 500,350" fill="none" stroke="rgba(192,144,96,0.06)" stroke-width="2"/>
-      <!-- Path to Enchanted Quarters -->
-      <path d="M950,800 Q1100,900 1300,1000" fill="none" stroke="rgba(96,192,96,0.05)" stroke-width="2"/>
-      <!-- Path to Signal Bridges -->
-      <path d="M400,500 Q300,400 220,340" fill="none" stroke="rgba(144,96,192,0.05)" stroke-width="2"/>
-
-      <!-- Compass rose (bottom-left) -->
-      <g transform="translate(120,1900)" opacity="0.3">
-        <line x1="0" y1="-40" x2="0" y2="40" stroke="#a89870" stroke-width="1"/>
-        <line x1="-40" y1="0" x2="40" y2="0" stroke="#a89870" stroke-width="1"/>
-        <polygon points="0,-45 -6,-10 6,-10" fill="#f0d890"/>
-        <text x="0" y="-52" text-anchor="middle" fill="#f0d890" font-family="Cinzel,serif" font-size="12">N</text>
-        <text x="0" y="62" text-anchor="middle" fill="#a89870" font-family="Cinzel,serif" font-size="10">S</text>
-        <text x="52" y="4" text-anchor="middle" fill="#a89870" font-family="Cinzel,serif" font-size="10">E</text>
-        <text x="-52" y="4" text-anchor="middle" fill="#a89870" font-family="Cinzel,serif" font-size="10">W</text>
-      </g>
-
-      <!-- Grid lines (subtle) -->
-      <g opacity="0.03" stroke="#a89870" stroke-width="0.5">
-        <line x1="0" y1="400" x2="3200" y2="400"/>
-        <line x1="0" y1="800" x2="3200" y2="800"/>
-        <line x1="0" y1="1200" x2="3200" y2="1200"/>
-        <line x1="0" y1="1600" x2="3200" y2="1600"/>
-        <line x1="0" y1="2000" x2="3200" y2="2000"/>
-        <line x1="600" y1="0" x2="600" y2="2200"/>
-        <line x1="1200" y1="0" x2="1200" y2="2200"/>
-        <line x1="1800" y1="0" x2="1800" y2="2200"/>
-        <line x1="2400" y1="0" x2="2400" y2="2200"/>
-      </g>
+      <!-- Dynamic terrain generated from topology data -->
+      <g id="terrain-dynamic"></g>
     </svg>
 
     <!-- Topographic contour overlay (SVG — crisp vector lines) -->
-    <svg id="topo-svg" viewBox="-500 -500 4200 3200" xmlns="http://www.w3.org/2000/svg" class="active"></svg>
+    <div id="topo-svg" class="active"></div>
 
     <!-- Connection lines SVG overlay -->
-    <svg id="connections" viewBox="0 0 3200 2200" xmlns="http://www.w3.org/2000/svg">
+    <svg id="connections" viewBox="0 0 4800 3300" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <filter id="conn-glow-low" x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur stdDeviation="2" result="blur"/>
