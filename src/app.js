@@ -2483,18 +2483,38 @@ const _searchClear = document.getElementById('search-clear');
 let _searchIndex = null; // built lazily
 let _searchActiveIdx = -1;
 
+const _panelEntries = [
+  { id: '_panel:realm-panel',  icon: '&#9876;',   label: 'Realm Vitals',  sub: 'CPU, RAM, GPU gauges',        kind: 'Panel', sel: '#realm-panel' },
+  { id: '_panel:legend',       icon: '&#128506;',  label: 'Legend',        sub: 'Ley line & node type key',    kind: 'Panel', sel: '#legend' },
+  { id: '_panel:spellbook',    icon: '&#128214;',  label: 'Spellbook',     sub: 'Effects, layers, layout',     kind: 'Panel', sel: '#spellbook' },
+  { id: '_panel:realm-codex',  icon: '&#128220;',  label: 'Realm Codex',   sub: 'Lore, tools, personas',       kind: 'Panel', sel: '#realm-codex' },
+  { id: '_panel:quest-log',    icon: '&#9753;',    label: 'Quest Log',     sub: 'Events, quests, speech',      kind: 'Panel', sel: '#quest-log' },
+  { id: '_panel:node-list',    icon: '&#9873;',    label: 'Realm Census',  sub: 'All nodes by region',         kind: 'Panel', sel: '#node-list' },
+  { id: '_panel:minimap',      icon: '&#9678;',    label: 'Minimap',       sub: 'Overview navigation',         kind: 'Panel', sel: '#minimap' },
+];
 function _buildSearchIndex() {
   if (!_topology || _searchIndex) return;
-  _searchIndex = _topology.nodes.map(n => ({
-    id: n.id,
-    icon: n.icon,
-    label: n.label,
-    sub: n.sublabel || '',
-    ip: n.ip || '',
-    type: n.type || 'core',
-    // Pre-join searchable text (lowercase, single allocation)
-    _text: [n.label, n.sublabel, n.ip, n.id, n.type].filter(Boolean).join(' ').toLowerCase(),
-  }));
+  _searchIndex = [
+    ..._topology.nodes.map(n => ({
+      id: n.id,
+      icon: n.icon,
+      label: n.label,
+      sub: n.sublabel || '',
+      ip: n.ip || '',
+      type: n.type || 'core',
+      _text: [n.label, n.sublabel, n.ip, n.id, n.type].filter(Boolean).join(' ').toLowerCase(),
+    })),
+    ..._panelEntries.map(p => ({
+      id: p.id,
+      icon: p.icon,
+      label: p.label,
+      sub: p.sub,
+      ip: '',
+      type: p.kind,
+      sel: p.sel,
+      _text: [p.label, p.sub, p.kind].join(' ').toLowerCase(),
+    })),
+  ];
 }
 
 function _searchRealm(query) {
@@ -2583,6 +2603,22 @@ function _renderSearchResults(results, query) {
 }
 
 function _navigateToSearchResult(nodeId) {
+  // Panel results: scroll panel into view and flash it
+  if (nodeId.startsWith('_panel:')) {
+    const entry = _searchIndex?.find(e => e.id === nodeId);
+    const panelEl = entry?.sel ? document.querySelector(entry.sel) : null;
+    if (panelEl) {
+      // Ensure panel is visible (un-minimize if needed)
+      panelEl.style.display = '';
+      panelEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      panelEl.style.transition = 'box-shadow 0.3s';
+      panelEl.style.boxShadow = '0 0 20px rgba(240,216,144,0.5)';
+      setTimeout(() => { panelEl.style.boxShadow = ''; }, 1200);
+    }
+    _searchInput.blur();
+    _searchResults.classList.remove('open');
+    return;
+  }
   const nodeEl = document.querySelector(`[data-tip="${CSS.escape(nodeId)}"]`);
   if (!nodeEl) return;
   const nodeLeft = parseInt(nodeEl.style.left) || 0;
@@ -2916,7 +2952,6 @@ document.getElementById('layout-reset-btn')?.addEventListener('click', resetToOr
     ['vis-search',       '#realm-search'],
     ['vis-statuspanel',  '#realm-panel'],
     ['vis-legend',       '#legend'],
-    ['vis-spellbook',    '#spellbook'],
     ['vis-codex',        '#realm-codex'],
     ['vis-questlog',     '#quest-log'],
     ['vis-minimap',      '#minimap'],
@@ -3171,7 +3206,7 @@ const _PERSIST_CHECKBOXES = [
   'topo-toggle-cb',
   'vis-terrain', 'vis-terrain-orig', 'vis-topo', 'vis-connections', 'vis-nodes', 'vis-labels',
   'vis-sublabels', 'vis-regions', 'vis-vlanlabels', 'vis-bubbles',
-  'vis-titlebar', 'vis-search', 'vis-statuspanel', 'vis-legend', 'vis-spellbook',
+  'vis-titlebar', 'vis-search', 'vis-statuspanel', 'vis-legend',
   'vis-codex', 'vis-questlog', 'vis-minimap', 'vis-nodelist',
 ];
 
