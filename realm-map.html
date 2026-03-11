@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="color-scheme" content="dark">
 <title>The Realm — Geographic Map</title>
 <link rel="stylesheet" href="realm-map.css">
 </head>
@@ -77,56 +78,102 @@
     </div>
   </div>
   <div class="legend-section" data-section="effects">
-    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Effects</div>
+    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Magical Effects</div>
     <div class="legend-section-body">
-      <div class="legend-item"><span class="legend-collectd-frame">&#9670;</span>Collectd Scrying</div>
-      <div class="legend-item"><span style="font-size:10px;width:24px;text-align:center;margin-right:4px;color:#60c060">&#9679;</span>Pulse = Online</div>
-      <div class="legend-item"><span style="font-size:10px;width:24px;text-align:center;margin-right:4px;color:#f09040">&#10022;</span>Traffic Glow</div>
+      <div class="traffic-control">
+        <label>Ambient Sparkles <span class="tc-val" id="fx-ambient-val">0.30</span></label>
+        <input type="range" class="traffic-slider" id="fx-ambient-slider" min="0" max="1" step="0.05" value="0.3">
+      </div>
+      <div class="traffic-control">
+        <label>Node Auras <span class="tc-val" id="fx-nodes-val">0.50</span></label>
+        <input type="range" class="traffic-slider" id="fx-nodes-slider" min="0" max="1" step="0.05" value="0.5">
+      </div>
+      <div class="traffic-control">
+        <label>Ley Line Sparks <span class="tc-val" id="fx-leylines-val">0.40</span></label>
+        <input type="range" class="traffic-slider" id="fx-leylines-slider" min="0" max="1" step="0.05" value="0.4">
+      </div>
+      <div class="traffic-control">
+        <label>Glow Size <span class="tc-val" id="fx-glow-val">1.00</span></label>
+        <input type="range" class="traffic-slider" id="fx-glow-slider" min="0.3" max="3" step="0.1" value="1">
+      </div>
+      <div class="traffic-control">
+        <label>Pulse Speed <span class="tc-val" id="fx-pulse-val">1.0x</span></label>
+        <input type="range" class="traffic-slider" id="fx-pulse-slider" min="0.2" max="3" step="0.1" value="1">
+      </div>
+      <div class="traffic-control">
+        <label>Ley Line Glow <span class="tc-val" id="fx-leyglow-val">1.00</span></label>
+        <input type="range" class="traffic-slider" id="fx-leyglow-slider" min="0" max="2" step="0.1" value="1">
+      </div>
     </div>
   </div>
-  <div class="legend-section" data-section="controls">
-    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Controls</div>
+  <div class="legend-section collapsed" data-section="scale">
+    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Scale</div>
     <div class="legend-section-body">
-      <div class="traffic-control" style="border-bottom:1px solid #40352880;padding-bottom:8px;margin-bottom:4px">
-        <label>Master Scale <span class="tc-val" id="master-scale-val">1.0x</span></label>
+      <div class="traffic-control">
+        <label>Master <span class="tc-val" id="master-scale-val">1.0x</span></label>
         <input type="range" class="traffic-slider" id="master-scale-slider" min="0.3" max="2.5" step="0.1" value="1">
-        <div style="display:flex;justify-content:space-between;font-size:9px;color:#706050;margin-top:2px">
-          <span>Miniature</span><span>Normal</span><span>Colossal</span>
-        </div>
       </div>
+      <div class="traffic-control">
+        <label>Nodes <span class="tc-val" id="node-scale-val">1.0x</span></label>
+        <input type="range" class="traffic-slider" id="node-scale-slider" min="0.5" max="2" step="0.1" value="1">
+      </div>
+      <div class="traffic-control">
+        <label>Text <span class="tc-val" id="text-scale-val">1.0x</span></label>
+        <input type="range" class="traffic-slider" id="text-scale-slider" min="0.5" max="2" step="0.1" value="1">
+      </div>
+      <div class="traffic-control">
+        <label>Bubbles <span class="tc-val" id="bubble-scale-val">1.0x</span></label>
+        <input type="range" class="traffic-slider" id="bubble-scale-slider" min="0.5" max="2" step="0.1" value="1">
+      </div>
+    </div>
+  </div>
+  <div class="legend-section collapsed" data-section="traffic">
+    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Traffic</div>
+    <div class="legend-section-body">
       <div class="traffic-control">
         <label>Traffic Scale <span class="tc-val" id="traffic-scale-val">1.0x</span></label>
         <input type="range" class="traffic-slider" id="traffic-scale-slider" min="0.1" max="3" step="0.1" value="1">
-        <div style="display:flex;justify-content:space-between;font-size:9px;color:#706050;margin-top:2px">
-          <span>Subtle</span><span>Normal</span><span>Dramatic</span>
-        </div>
-      </div>
-      <div class="traffic-control">
-        <label>Node Scale <span class="tc-val" id="node-scale-val">1.0x</span></label>
-        <input type="range" class="traffic-slider" id="node-scale-slider" min="0.5" max="2" step="0.1" value="1">
-        <div style="display:flex;justify-content:space-between;font-size:9px;color:#706050;margin-top:2px">
-          <span>Tiny</span><span>Normal</span><span>Grand</span>
-        </div>
-      </div>
-      <div class="traffic-control">
-        <label>Text Scale <span class="tc-val" id="text-scale-val">1.0x</span></label>
-        <input type="range" class="traffic-slider" id="text-scale-slider" min="0.5" max="2" step="0.1" value="1">
-        <div style="display:flex;justify-content:space-between;font-size:9px;color:#706050;margin-top:2px">
-          <span>Whisper</span><span>Normal</span><span>Booming</span>
-        </div>
-      </div>
-      <div class="traffic-control">
-        <label>Bubble Scale <span class="tc-val" id="bubble-scale-val">1.0x</span></label>
-        <input type="range" class="traffic-slider" id="bubble-scale-slider" min="0.5" max="2" step="0.1" value="1">
-        <div style="display:flex;justify-content:space-between;font-size:9px;color:#706050;margin-top:2px">
-          <span>Murmur</span><span>Normal</span><span>Shout</span>
-        </div>
       </div>
       <div class="traffic-control">
         <label>Update Speed <span class="tc-val" id="update-speed-val">5s</span></label>
         <input type="range" class="traffic-slider" id="update-speed-slider" min="1" max="30" step="1" value="5">
+      </div>
+    </div>
+  </div>
+  <div class="legend-section" data-section="topographic">
+    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Topographic</div>
+    <div class="legend-section-body">
+      <div class="traffic-control" style="margin-bottom:6px;display:flex;align-items:center;gap:8px">
+        <label style="margin:0">Overlay</label>
+        <label class="topo-switch"><input type="checkbox" id="topo-toggle-cb" checked><span class="topo-switch-track"></span></label>
+      </div>
+      <div class="traffic-control">
+        <label>Opacity <span class="tc-val" id="topo-opacity-val">0.6</span></label>
+        <input type="range" class="traffic-slider" id="topo-opacity-slider" min="0.1" max="1" step="0.05" value="0.6">
+      </div>
+      <div class="traffic-control">
+        <label>Peak Spread <span class="tc-val" id="topo-spread-val">120</span></label>
+        <input type="range" class="traffic-slider" id="topo-spread-slider" min="40" max="300" step="10" value="120">
         <div style="display:flex;justify-content:space-between;font-size:9px;color:#706050;margin-top:2px">
-          <span>Frenzy</span><span>Calm</span><span>Slumber</span>
+          <span>Sharp</span><span>Rolling</span><span>Vast</span>
+        </div>
+      </div>
+      <div class="traffic-control">
+        <label>Contours <span class="tc-val" id="topo-contour-val">12</span></label>
+        <input type="range" class="traffic-slider" id="topo-contour-slider" min="0" max="30" step="1" value="12">
+      </div>
+      <div class="traffic-control">
+        <label>River Width <span class="tc-val" id="topo-rw-val">0.40</span></label>
+        <input type="range" class="traffic-slider" id="topo-rw-slider" min="0.1" max="1.5" step="0.05" value="0.4">
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:#706050;margin-top:2px">
+          <span>Creek</span><span>River</span><span>Canyon</span>
+        </div>
+      </div>
+      <div class="traffic-control">
+        <label>River Depth <span class="tc-val" id="topo-rd-val">0.60</span></label>
+        <input type="range" class="traffic-slider" id="topo-rd-slider" min="0.1" max="1.0" step="0.05" value="0.6">
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:#706050;margin-top:2px">
+          <span>Shallow</span><span>Deep</span>
         </div>
       </div>
     </div>
@@ -507,6 +554,9 @@
         <line x1="2400" y1="0" x2="2400" y2="2200"/>
       </g>
     </svg>
+
+    <!-- Topographic contour overlay (SVG — crisp vector lines) -->
+    <svg id="topo-svg" viewBox="-500 -500 4200 3200" xmlns="http://www.w3.org/2000/svg" class="active"></svg>
 
     <!-- Connection lines SVG overlay -->
     <svg id="connections" viewBox="0 0 3200 2200" xmlns="http://www.w3.org/2000/svg">

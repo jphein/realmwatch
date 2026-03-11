@@ -2495,7 +2495,7 @@
     },
     {
       "from": "flip3-5g",
-      "to": "eap225-outdoor",
+      "to": "wndr4300sw-shed",
       "type": "active",
       "vlan": 6
     },

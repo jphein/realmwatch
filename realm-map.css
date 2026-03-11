@@ -2,6 +2,9 @@
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
+  html {
+    background: #0a0a12;
+  }
   body {
     background: #0a0a12;
     color: #d4c5a0;
@@ -12,6 +15,7 @@
     touch-action: none;
     -webkit-user-select: none;
     user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }
   input, textarea, select {
     -webkit-user-select: text;
@@ -25,6 +29,7 @@
     position: relative;
     overflow: hidden;
     cursor: grab;
+    background: #0a0a12;
   }
   #map-canvas:active { cursor: grabbing; }
 
@@ -33,6 +38,44 @@
     width: 3200px;
     height: 2200px;
     transform-origin: 0 0;
+    background: transparent;
+  }
+
+  /* Topographic contour SVG overlay — sized larger than map to avoid edge cutoff */
+  #topo-svg {
+    position: absolute;
+    left: -500px; top: -500px;
+    width: calc(100% + 1000px);
+    height: calc(100% + 1000px);
+    z-index: 1;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+    overflow: hidden;
+  }
+  #topo-svg.active { opacity: var(--topo-opacity, 0.6); }
+
+  /* Topo toggle switch */
+  .topo-switch { position: relative; display: inline-block; width: 36px; height: 18px; cursor: pointer; }
+  .topo-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .topo-switch-track {
+    position: absolute; inset: 0; border-radius: 9px;
+    background: #3a3020; transition: background 0.3s;
+  }
+  .topo-switch-track::after {
+    content: ''; position: absolute; width: 14px; height: 14px; left: 2px; top: 2px;
+    border-radius: 50%; background: #706050; transition: transform 0.3s, background 0.3s;
+  }
+  .topo-switch input:checked + .topo-switch-track { background: #5a7040; }
+  .topo-switch input:checked + .topo-switch-track::after { transform: translateX(18px); background: #a0c060; }
+
+  /* Index contour shimmer — slow magical pulse */
+  #topo-svg .topo-idx {
+    animation: topoShimmer 8s ease-in-out infinite;
+  }
+  @keyframes topoShimmer {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 0.75; }
   }
 
   /* SVG background terrain */
@@ -40,6 +83,7 @@
     position: absolute;
     top: 0; left: 0;
     width: 100%; height: 100%;
+    background: none;
   }
 
   /* Location markers */
@@ -82,7 +126,7 @@
     position: absolute;
     inset: -3px;
     border-radius: 50%;
-    padding: 3px;
+    border: 3px solid transparent;
     background: conic-gradient(
       from var(--frame-angle, 0deg),
       rgba(100,200,255,0.8),
@@ -90,13 +134,23 @@
       rgba(100,255,180,0.7),
       rgba(255,200,100,0.6),
       rgba(100,200,255,0.8)
-    );
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask-composite: exclude;
+    ) border-box;
+    -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0) border-box;
+    -webkit-mask-composite: destination-out;
+    mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0) border-box;
+    mask-composite: subtract;
     animation: arcaneFrame 4s linear infinite;
     pointer-events: none;
+  }
+  /* Fallback for browsers that don't support mask-composite (Android Chrome) */
+  @supports not (mask-composite: subtract) {
+    .collectd-monitored .node-icon::before {
+      -webkit-mask: none;
+      mask: none;
+      background: none;
+      border: 3px solid rgba(100,200,255,0.5);
+      box-shadow: 0 0 8px rgba(100,200,255,0.3), inset 0 0 8px rgba(160,100,255,0.2);
+    }
   }
   .collectd-monitored .node-icon::after {
     content: '';
@@ -511,8 +565,8 @@
   }
   .legend-section-body {
     overflow: hidden;
-    max-height: 300px;
-    transition: max-height 0.4s ease, opacity 0.3s ease, padding 0.3s ease;
+    max-height: 500px;
+    transition: max-height 0.3s ease, opacity 0.2s ease, padding 0.2s ease;
     opacity: 1;
     padding: 2px 0;
   }
@@ -520,6 +574,7 @@
     max-height: 0;
     opacity: 0;
     padding: 0;
+    overflow: hidden;
   }
   .legend-swatch {
     width: 24px;
@@ -616,7 +671,14 @@
     border-radius: 8px;
     padding: 14px 18px;
     min-width: 200px;
+    max-height: 90vh !important;
+    max-height: 90dvh !important;
+    overflow-y: auto !important;
+    scrollbar-width: thin;
+    scrollbar-color: #3a3020 transparent;
   }
+  #realm-panel::-webkit-scrollbar { width: 5px; }
+  #realm-panel::-webkit-scrollbar-thumb { background: #3a3020; border-radius: 3px; }
   #realm-panel h3 {
     font-family: 'Cinzel', serif;
     font-size: 14px;
