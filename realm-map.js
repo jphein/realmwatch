@@ -42,6 +42,20 @@ function fmtRate(bps) {
 }
 function scalePct(s) { return Math.max(0, Math.min(100, (s + 10) / 20 * 100)); }
 
+// ── Performance tier (auto-detect mobile, cap effects) ──
+const _isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+const _cpuCores = navigator.hardwareConcurrency || 2;
+let _perfTier = _isMobile ? (_cpuCores >= 6 ? 'medium' : 'low') : 'high';
+const _PERF = {
+  get moteCap()       { return _perfTier === 'low' ? 80  : _perfTier === 'medium' ? 180 : 400; },
+  get topoFilters()   { return _perfTier !== 'low'; },
+  get topoHaloRes()   { return _perfTier === 'low' ? 2 : 1; }, // skip every Nth halo
+  get sparkleDiv()    { return _perfTier === 'low' ? 4  : _perfTier === 'medium' ? 2 : 1; },
+  get moteGlow()      { return _perfTier !== 'low'; },
+  get moteStarCross() { return _perfTier === 'high'; },
+  get dragLineThrottle() { return _perfTier === 'low' ? 3 : 1; }, // update lines every Nth drag frame
+};
+
 // ── Infrastructure node definitions (populated from topology.json) ──
 const infraNodes = {};
 
@@ -799,27 +813,27 @@ function updateConnectionTraffic(collectd) {
     else if (intensity > 0.15) line.classList.add('conn-traffic-low');
   });
 
-  // Scale node icons based on traffic through them
-  document.querySelectorAll('.realm-node').forEach(node => {
-    const tip = node.dataset.tip;
-    if (!tip) return;
-    const traffic = getNodeTraffic(collectd, tip);
-    const icon = node.querySelector('.node-icon');
-    if (!icon) return;
+  // Scale node icons based on traffic (use cached DOM refs, not querySelectorAll)
+  for (const tipKey of Object.keys(_nodeDOM)) {
+    const n = _nodeDOM[tipKey];
+    if (!n.el) continue;
+    const icon = n._icon || (n._icon = n.el.querySelector('.node-icon'));
+    if (!icon) continue;
+    const traffic = getNodeTraffic(collectd, tipKey);
     if (!traffic || traffic.total === 0) {
-      icon.style.transform = '';
-      icon.style.filter = '';
-      return;
+      if (n._lastTrafficScale) { icon.style.transform = ''; icon.style.filter = ''; n._lastTrafficScale = 0; }
+      continue;
     }
     const rawI = Math.max(0, Math.min(1, (Math.log10(traffic.total + 1) - 3) / 4));
     const intensity = Math.min(1, rawI * trafficScale);
-    // Scale icon 1.0 → 1.5x based on traffic
-    const scale = 1 + intensity * 0.5;
-    icon.style.transform = `scale(${scale.toFixed(2)})`;
-    // Add glow brightness boost
-    if (intensity > 0.3) icon.style.filter = `brightness(${(1 + intensity * 0.4).toFixed(2)})`;
-    else icon.style.filter = '';
-  });
+    const s = 1 + intensity * 0.5;
+    // Skip DOM write if value unchanged (within 0.01)
+    if (Math.abs(s - (n._lastTrafficScale || 1)) > 0.01) {
+      icon.style.transform = `scale(${s.toFixed(2)})`;
+      icon.style.filter = intensity > 0.3 ? `brightness(${(1 + intensity * 0.4).toFixed(2)})` : '';
+      n._lastTrafficScale = s;
+    }
+  }
 }
 
 // ── Topographic Heightmap Layer (optimized) ──
@@ -899,14 +913,17 @@ function renderTopoLayer(collectd) {
   for (const n of _topology.nodes) {
     const t = getNodeTraffic(collectd, n.id);
     trafficMap.set(n.id, t);
-    hash += '|' + (t ? (t.total | 0) : 0);
+    hash += '|' + (t ? (Math.log2(t.total + 1) | 0) : 0); // log2 buckets — traffic must ~double to trigger re-render
   }
   if (hash === _topoHash) return;
   _topoHash = hash;
 
   const W = _TOPO_W, H = _TOPO_H, sx = _TOPO_SX, sy = _TOPO_SY, pad = _TOPO_PAD;
   const sigma = _topoSpread / sx;
-  const hmap = new Float32Array(W * H);
+  if (!renderTopoLayer._hmap || renderTopoLayer._hmap.length !== W * H)
+    renderTopoLayer._hmap = new Float32Array(W * H);
+  const hmap = renderTopoLayer._hmap;
+  hmap.fill(0); // reset (fill(0.15) is below)
   const nodeMap = _getTopoNodeMap();
 
   // 0) Base terrain (uniform — edges extend past viewport, SVG clips naturally)
@@ -1021,14 +1038,16 @@ function renderTopoLayer(collectd) {
 
     if (!pathD) continue;
 
-    // Elevation fill halo — wide soft glow between contour bands
-    const fillOp = t < 0.15 ? 0.09 : 0.05;
-    parts.push(`<path d="${pathD}" fill="none" stroke="${col}" stroke-width="25" opacity="${fillOp}" stroke-linecap="round" stroke-linejoin="round"/>`);
+    // Elevation fill halo — wide soft glow (skip some on low tier)
+    if (ci % _PERF.topoHaloRes === 0) {
+      const fillOp = t < 0.15 ? 0.09 : 0.05;
+      parts.push(`<path d="${pathD}" fill="none" stroke="${col}" stroke-width="25" opacity="${fillOp}" stroke-linecap="round" stroke-linejoin="round"/>`);
+    }
 
-    // Crisp contour line
+    // Crisp contour line (skip expensive SVG filters on low tier)
     const sw = isIdx ? 3 : 1.3;
     const op = isIdx ? 0.6 : 0.3;
-    const filter = isIdx ? ' filter="url(#topo-shimmer)" class="topo-idx"' : '';
+    const filter = isIdx && _PERF.topoFilters ? ' filter="url(#topo-shimmer)" class="topo-idx"' : (isIdx ? ' class="topo-idx"' : '');
     parts.push(`<path d="${pathD}" fill="none" stroke="${col}" stroke-width="${sw}" opacity="${op}" stroke-linecap="round"${filter}/>`);
   }
 
@@ -2329,15 +2348,18 @@ function setupPanelMinimize(panelId, handleSelector) {
   });
 
   // Make minimized icon draggable (drags the whole panel)
-  let _minDx = 0, _minDy = 0, _minDragging = false, _minMoved = false;
+  let _minDx = 0, _minDy = 0, _minDragging = false, _minMoved = false, _minStartX = 0, _minStartY = 0;
   function minStartDrag(cx, cy) {
     _minDragging = true; _minMoved = false;
+    _minStartX = cx; _minStartY = cy;
     const rect = panel.getBoundingClientRect();
     _minDx = cx - rect.left; _minDy = cy - rect.top;
     minIcon.style.cursor = 'grabbing';
   }
   function minMoveDrag(cx, cy) {
     if (!_minDragging) return;
+    // Require 6px movement threshold before counting as drag (prevents false drag on mobile tap)
+    if (!_minMoved && Math.abs(cx - _minStartX) + Math.abs(cy - _minStartY) < 6) return;
     _minMoved = true;
     panel.style.left = (cx - _minDx) + 'px';
     panel.style.top = (cy - _minDy) + 'px';
@@ -2359,6 +2381,21 @@ function setupPanelMinimize(panelId, handleSelector) {
   minIcon.addEventListener('touchstart', e => { if (e.touches.length !== 1) return; e.preventDefault(); e.stopPropagation(); minStartDrag(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
   window.addEventListener('touchmove', e => { if (_minDragging && e.touches.length) minMoveDrag(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
   window.addEventListener('touchend', minEndDrag, { passive: true });
+  // Touch tap-to-restore (click doesn't fire because touchstart preventDefault)
+  minIcon.addEventListener('touchend', e => {
+    if (_minMoved) return; // was a drag, not a tap
+    if (!panel.classList.contains('panel-minimized')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    panel.classList.remove('panel-minimized');
+    panel.style.animation = '';
+    const rect = panel.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+    for (let i = 0; i < 6; i++) {
+      spawnMote(cx + (Math.random() - 0.5) * 60, cy + (Math.random() - 0.5) * 60, cfg.rgb);
+    }
+    scheduleSave();
+  });
 }
 
 // Wire up all panels
@@ -2411,6 +2448,25 @@ document.querySelector('.legend-section[data-section="effects"]')?.classList.add
       p.style.opacity = Math.min(1, v);
     });
   });
+
+  // Quality tier selector
+  const qSel = document.getElementById('fx-quality-select');
+  const qVal = document.getElementById('fx-quality-val');
+  if (qSel) {
+    // Show detected tier on load
+    qVal.textContent = _perfTier + (_isMobile ? ' (mobile)' : '');
+    qSel.addEventListener('change', () => {
+      if (qSel.value === 'auto') {
+        _perfTier = _isMobile ? (_cpuCores >= 6 ? 'medium' : 'low') : 'high';
+      } else {
+        _perfTier = qSel.value;
+      }
+      qVal.textContent = _perfTier;
+      // Force topo re-render with new quality settings
+      _topoHash = '';
+      if (_topoEnabled) renderTopoLayer(_lastTopoCollectd);
+    });
+  }
 })();
 
 setupPanelMinimize('quest-log', '#quest-log-header');
@@ -2534,86 +2590,79 @@ let _sparkleNodes = 0.5;     // node aura sparkle rate
 let _sparkleLeyLines = 0.4;  // ley line sparkle rate
 let _sparkleGlowSize = 1.0;  // glow multiplier
 
+// Cached map-world rect for sparkle spawners (updated once per spawn cycle)
+let _sparkleRect = null;
+const _sparkleColors = [[240,216,144],[180,200,255],[160,255,180],[200,160,255],[255,200,120]];
+
 function _spawnAmbientSparkles() {
-  if (_sparkleAmbient <= 0) return;
-  // Spawn ambient sparkles across the visible map area
-  const rate = _sparkleAmbient * 0.15;
+  if (_sparkleAmbient <= 0 || motes.length >= _PERF.moteCap) return;
+  const rate = _sparkleAmbient * 0.15 / _PERF.sparkleDiv;
   if (Math.random() < rate) {
-    const x = Math.random() * moteCanvas.width;
-    const y = Math.random() * moteCanvas.height;
-    const colors = [[240,216,144],[180,200,255],[160,255,180],[200,160,255],[255,200,120]];
-    const c = colors[Math.random() * colors.length | 0];
+    const c = _sparkleColors[Math.random() * 5 | 0];
     motes.push({
-      x, y,
-      vx: (Math.random() - 0.5) * 0.2,
-      vy: -0.1 - Math.random() * 0.3,
-      life: 1.0,
-      decay: 0.004 + Math.random() * 0.008,
-      size: 1 + Math.random() * 2,
-      color: c,
-      wobble: Math.random() * Math.PI * 2,
-      wobbleSpeed: 0.03 + Math.random() * 0.06,
+      x: Math.random() * moteCanvas.width, y: Math.random() * moteCanvas.height,
+      vx: (Math.random() - 0.5) * 0.2, vy: -0.1 - Math.random() * 0.3,
+      life: 1.0, decay: 0.004 + Math.random() * 0.008,
+      size: 1 + Math.random() * 2, color: c,
+      wobble: Math.random() * Math.PI * 2, wobbleSpeed: 0.03 + Math.random() * 0.06,
       twinkle: true,
     });
   }
 }
 
 function _spawnNodeSparkles() {
-  if (_sparkleNodes <= 0 || !_topology || !_topology.nodes) return;
-  const rate = _sparkleNodes * 0.02;
-  const mapEl = document.getElementById('map-world');
-  if (!mapEl) return;
-  const rect = mapEl.getBoundingClientRect();
+  if (_sparkleNodes <= 0 || !_topology || !_topology.nodes || motes.length >= _PERF.moteCap) return;
+  const rate = _sparkleNodes * 0.02 / _PERF.sparkleDiv;
+  if (!_sparkleRect) return;
+  const rect = _sparkleRect;
+  const cw = moteCanvas.width, ch = moteCanvas.height;
   for (const n of _topology.nodes) {
     if (Math.random() > rate) continue;
     const iw = (n.iconStyle && n.iconStyle.width) ? parseInt(n.iconStyle.width) : 64;
     const ih = (n.iconStyle && n.iconStyle.height) ? parseInt(n.iconStyle.height) : 64;
     const sx = rect.left + (n.x + iw/2) * scale + (Math.random() - 0.5) * iw * scale * 0.6;
     const sy = rect.top + (n.y + ih/2) * scale + (Math.random() - 0.5) * ih * scale * 0.6;
+    // Skip offscreen nodes
+    if (sx < -20 || sx > cw + 20 || sy < -20 || sy > ch + 20) continue;
+    if (motes.length >= _PERF.moteCap) break;
     const isCore = n.type === 'core';
-    const c = isCore ? [255,220,100] : n.type === 'tower' ? [120,200,255] : [160,255,140];
     motes.push({
       x: sx, y: sy,
-      vx: (Math.random() - 0.5) * 0.4,
-      vy: -0.3 - Math.random() * 0.6,
-      life: 1.0,
-      decay: 0.008 + Math.random() * 0.012,
+      vx: (Math.random() - 0.5) * 0.4, vy: -0.3 - Math.random() * 0.6,
+      life: 1.0, decay: 0.008 + Math.random() * 0.012,
       size: isCore ? 2 + Math.random() * 2 : 1 + Math.random() * 1.5,
-      color: c,
-      wobble: Math.random() * Math.PI * 2,
-      wobbleSpeed: 0.04 + Math.random() * 0.08,
+      color: isCore ? [255,220,100] : n.type === 'tower' ? [120,200,255] : [160,255,140],
+      wobble: Math.random() * Math.PI * 2, wobbleSpeed: 0.04 + Math.random() * 0.08,
       twinkle: true,
     });
   }
 }
 
+const _leyColors = { wan: [100,180,255], bridge: [180,120,255], _default: [140,220,180] };
 function _spawnLeyLineSparkles() {
-  if (_sparkleLeyLines <= 0 || !_topology || !_topology.connections) return;
-  const rate = _sparkleLeyLines * 0.015;
-  const mapEl = document.getElementById('map-world');
-  if (!mapEl) return;
-  const rect = mapEl.getBoundingClientRect();
+  if (_sparkleLeyLines <= 0 || !_topology || !_topology.connections || motes.length >= _PERF.moteCap) return;
+  const rate = _sparkleLeyLines * 0.015 / _PERF.sparkleDiv;
+  if (!_sparkleRect) return;
+  const rect = _sparkleRect;
   const nodeMap = _getTopoNodeMap();
+  const cw = moteCanvas.width, ch = moteCanvas.height;
   for (const c of _topology.connections) {
     if (Math.random() > rate) continue;
     const fn = nodeMap.get(c.from), tn = nodeMap.get(c.to);
     if (!fn || !tn) continue;
     const t = Math.random();
-    const wx = fn.x + (tn.x - fn.x) * t;
-    const wy = fn.y + (tn.y - fn.y) * t;
-    const sx = rect.left + wx * scale + (Math.random() - 0.5) * 10;
-    const sy = rect.top + wy * scale + (Math.random() - 0.5) * 10;
-    const colors = c.type === 'wan' ? [100,180,255] : c.type === 'bridge' ? [180,120,255] : [140,220,180];
+    const sx = rect.left + (fn.x + (tn.x - fn.x) * t) * scale + (Math.random() - 0.5) * 10;
+    const sy = rect.top + (fn.y + (tn.y - fn.y) * t) * scale + (Math.random() - 0.5) * 10;
+    if (sx < -20 || sx > cw + 20 || sy < -20 || sy > ch + 20) continue;
+    if (motes.length >= _PERF.moteCap) break;
     motes.push({
       x: sx, y: sy,
       vx: (tn.x - fn.x) * scale * 0.0004 + (Math.random() - 0.5) * 0.3,
       vy: (tn.y - fn.y) * scale * 0.0004 - 0.15,
-      life: 1.0,
-      decay: 0.01 + Math.random() * 0.015,
+      life: 1.0, decay: 0.01 + Math.random() * 0.015,
       size: 1 + Math.random() * 1.5,
-      color: colors,
-      wobble: Math.random() * Math.PI * 2,
-      wobbleSpeed: 0.05 + Math.random() * 0.1,
+      color: _leyColors[c.type] || _leyColors._default,
+      wobble: Math.random() * Math.PI * 2, wobbleSpeed: 0.05 + Math.random() * 0.1,
       twinkle: true,
     });
   }
@@ -2621,23 +2670,37 @@ function _spawnLeyLineSparkles() {
 
 let _sparkleTimer = 0;
 function animateMotes() {
-  moteCtx.clearRect(0, 0, moteCanvas.width, moteCanvas.height);
+  const cw = moteCanvas.width, ch = moteCanvas.height;
+  moteCtx.clearRect(0, 0, cw, ch);
 
-  // Spawn ambient sparkles every frame
+  // Refresh cached rect once per spawn cycle (not every frame)
   _sparkleTimer++;
-  if (_sparkleTimer % 2 === 0) _spawnAmbientSparkles();
-  if (_sparkleTimer % 8 === 0) _spawnNodeSparkles();
-  if (_sparkleTimer % 6 === 0) _spawnLeyLineSparkles();
+  const spawnDiv = _PERF.sparkleDiv;
+  if (_sparkleTimer % (2 * spawnDiv) === 0) _spawnAmbientSparkles();
+  if (_sparkleTimer % (8 * spawnDiv) === 0) {
+    const mapEl = document.getElementById('map-world');
+    if (mapEl) _sparkleRect = mapEl.getBoundingClientRect();
+    _spawnNodeSparkles();
+  }
+  if (_sparkleTimer % (6 * spawnDiv) === 0) _spawnLeyLineSparkles();
 
-  for (let i = motes.length - 1; i >= 0; i--) {
+  const doGlow = _PERF.moteGlow;
+  const doStar = _PERF.moteStarCross;
+  let writeIdx = 0;
+
+  for (let i = 0, len = motes.length; i < len; i++) {
     const m = motes[i];
     m.x += m.vx + Math.sin(m.wobble) * 0.3;
     m.y += m.vy + Math.cos(m.wobble) * 0.2;
     m.wobble += m.wobbleSpeed;
     m.life -= m.decay;
-    if (m.life <= 0) { motes.splice(i, 1); continue; }
+    if (m.life <= 0) continue; // dead — skip (swap-and-pop compaction below)
+    // Keep alive mote in compacted position
+    if (writeIdx !== i) motes[writeIdx] = m;
+    writeIdx++;
+    // Skip offscreen
+    if (m.x < -10 || m.x > cw + 10 || m.y < -10 || m.y > ch + 10) continue;
     const [r, g, b] = m.color;
-    // Twinkle effect: modulate alpha with a sine wave
     let a = m.life * 0.8;
     if (m.twinkle) a *= 0.5 + 0.5 * Math.sin(m.wobble * 3);
     if (a < 0.01) continue;
@@ -2646,13 +2709,15 @@ function animateMotes() {
     moteCtx.arc(m.x, m.y, sz, 0, Math.PI * 2);
     moteCtx.fillStyle = `rgba(${r},${g},${b},${a.toFixed(2)})`;
     moteCtx.fill();
-    // Glow halo
-    moteCtx.beginPath();
-    moteCtx.arc(m.x, m.y, sz * 2.5, 0, Math.PI * 2);
-    moteCtx.fillStyle = `rgba(${r},${g},${b},${(a * 0.12).toFixed(3)})`;
-    moteCtx.fill();
-    // Star-cross for brighter sparkles
-    if (m.twinkle && a > 0.3 && sz > 1.5) {
+    // Glow halo (skip on low tier)
+    if (doGlow) {
+      moteCtx.beginPath();
+      moteCtx.arc(m.x, m.y, sz * 2.5, 0, Math.PI * 2);
+      moteCtx.fillStyle = `rgba(${r},${g},${b},${(a * 0.12).toFixed(3)})`;
+      moteCtx.fill();
+    }
+    // Star-cross (high tier only)
+    if (doStar && m.twinkle && a > 0.3 && sz > 1.5) {
       moteCtx.strokeStyle = `rgba(${r},${g},${b},${(a * 0.4).toFixed(2)})`;
       moteCtx.lineWidth = 0.5;
       const cr = sz * 3;
@@ -2662,6 +2727,8 @@ function animateMotes() {
       moteCtx.stroke();
     }
   }
+  // Compact: truncate dead motes in one shot (no splice shifting)
+  motes.length = writeIdx;
   requestAnimationFrame(animateMotes);
 }
 animateMotes();
@@ -2812,6 +2879,7 @@ makeDraggable(document.getElementById('node-list'), '#node-list-header', [192,14
 (function() {
   let dragNode = null, dragOffsetX = 0, dragOffsetY = 0, hasMoved = false;
   let _longPressTimer = null;
+  let _dragFrame = 0, _dragRafPending = false;
   const mapWorld = document.getElementById('map-world');
 
   function startNodeDrag(node, cx, cy) {
@@ -2846,7 +2914,12 @@ makeDraggable(document.getElementById('node-list'), '#node-list-header', [192,14
       const tn = _topology.nodes.find(n => n.id === tipId);
       if (tn) { tn.x = nx; tn.y = ny; }
     }
-    updateLinePositions();
+    // Throttle expensive line recomputation (rAF + perf tier skip)
+    _dragFrame++;
+    if (_dragFrame % _PERF.dragLineThrottle === 0 && !_dragRafPending) {
+      _dragRafPending = true;
+      requestAnimationFrame(() => { _dragRafPending = false; updateLinePositions(); });
+    }
     updateBubblePositions();
     if (Math.random() < 0.3) {
       const colors = [[240,216,144],[160,255,96],[100,180,255]];
