@@ -547,13 +547,11 @@
 
   /* Realm Search */
   #realm-search {
-    position: fixed;
-    top: 18px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 55;
+    position: relative;
     width: 280px;
+    margin: 6px auto 0;
     transition: width 0.3s ease;
+    pointer-events: auto;
   }
   #realm-search:focus-within { width: 360px; }
   #realm-search #search-input {
