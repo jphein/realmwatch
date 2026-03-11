@@ -6,6 +6,9 @@ Node identity resolution order:
   2. IP match  — DHCP lease IP matches a topology node's "ip" field
 When a MAC-matched node's IP has changed, the topology is auto-updated.
 Unknown MACs (not matching any node) are tracked in scan results.
+
+WiFi signal data (dBm, SNR, TX/RX rates) is collected per-client and
+stored in memory for the map server — no collectd exec plugin needed.
 """
 
 import json
@@ -24,8 +27,13 @@ SCAN_INTERVAL = 90  # seconds
 # Connection types that represent WiFi links (eligible for roaming updates)
 WIFI_CONN_TYPES = {"active"}
 
-_last_scan = {"ts": 0, "ap_clients": {}, "leases": 0, "unknown": []}
+_last_scan = {"ts": 0, "ap_clients": {}, "leases": 0, "unknown": [], "wifi": {}}
 _lock = threading.Lock()
+
+# Regex for parsing iwinfo assoclist output
+_MAC_RE = re.compile(r'^([0-9A-Fa-f:]{17})\s+(-?\d+)\s+dBm\s*/\s*(-?\d+)\s+dBm\s+\(SNR\s+(\d+)\)', re.MULTILINE)
+_RX_RE = re.compile(r'RX:\s+([\d.]+)\s+MBit/s.*?(\d+)\s+Pkts')
+_TX_RE = re.compile(r'TX:\s+([\d.]+)\s+MBit/s.*?(\d+)\s+Pkts')
 
 
 def _ssh(host, cmd, timeout=8):
@@ -52,10 +60,40 @@ def _get_dhcp_leases():
     return leases
 
 
-def _get_ap_clients(ap_ip):
-    """Get wireless client MACs from an AP → set of lowercase MACs."""
+def _get_ap_clients_with_signal(ap_ip):
+    """Get wireless clients with signal data from an AP.
+    Returns: {mac: {signal, noise, snr, tx_rate, rx_rate, tx_pkts, rx_pkts}}
+    """
     raw = _ssh(ap_ip, "for i in $(iwinfo 2>/dev/null | grep ESSID | cut -d' ' -f1); do iwinfo $i assoclist 2>/dev/null; done")
-    return set(re.findall(r'([0-9A-Fa-f:]{17})', raw.lower()))
+    clients = {}
+    # Split into per-client blocks (each starts with a MAC line)
+    blocks = re.split(r'(?=^[0-9A-Fa-f]{2}:)', raw, flags=re.MULTILINE)
+    for block in blocks:
+        if not block.strip():
+            continue
+        mac_m = _MAC_RE.search(block)
+        if not mac_m:
+            # Try simpler MAC extraction for partial matches
+            simple = re.match(r'^([0-9A-Fa-f:]{17})', block)
+            if simple:
+                clients[simple.group(1).lower()] = {}
+            continue
+        mac = mac_m.group(1).lower()
+        info = {
+            "signal": int(mac_m.group(2)),
+            "noise": int(mac_m.group(3)),
+            "snr": int(mac_m.group(4)),
+        }
+        rx_m = _RX_RE.search(block)
+        if rx_m:
+            info["rx_rate"] = float(rx_m.group(1))
+            info["rx_pkts"] = int(rx_m.group(2))
+        tx_m = _TX_RE.search(block)
+        if tx_m:
+            info["tx_rate"] = float(tx_m.group(1))
+            info["tx_pkts"] = int(tx_m.group(2))
+        clients[mac] = info
+    return clients
 
 
 def _load_topo():
@@ -83,13 +121,13 @@ def scan_and_update():
 
     # Parallel scan: DHCP leases + all APs at once
     leases = {}
-    ap_clients = {}  # ap_node_id → set of MACs
+    ap_clients = {}  # ap_node_id → {mac: {signal data}}
 
     with ThreadPoolExecutor(max_workers=len(ap_nodes) + 1) as pool:
         lease_future = pool.submit(_get_dhcp_leases)
         ap_futures = {}
         for node_id, ip in ap_nodes.items():
-            ap_futures[pool.submit(_get_ap_clients, ip)] = node_id
+            ap_futures[pool.submit(_get_ap_clients_with_signal, ip)] = node_id
 
         leases = lease_future.result()
         for future in as_completed(ap_futures):
@@ -98,8 +136,8 @@ def scan_and_update():
 
     # Build MAC→AP map
     mac_to_ap = {}
-    for ap_id, macs in ap_clients.items():
-        for mac in macs:
+    for ap_id, clients in ap_clients.items():
+        for mac in clients:
             mac_to_ap[mac] = ap_id
 
     # --- Node identity resolution ---
@@ -187,6 +225,16 @@ def scan_and_update():
                 "hostname": lease_info[1] if lease_info else None,
             })
 
+    # --- Build per-node WiFi signal data ---
+    wifi = {}  # node_id → {ap, signal, snr, tx_rate, rx_rate}
+    for mac, ap_id in mac_to_ap.items():
+        node_id = mac_to_node.get(mac)
+        if not node_id:
+            continue
+        info = ap_clients.get(ap_id, {}).get(mac, {})
+        if info:
+            wifi[node_id] = {"ap": ap_id, **info}
+
     if changes or ip_updates:
         _save_topo(topo)
 
@@ -195,6 +243,7 @@ def scan_and_update():
         _last_scan["ap_clients"] = {k: len(v) for k, v in ap_clients.items()}
         _last_scan["leases"] = len(leases)
         _last_scan["unknown"] = unknown
+        _last_scan["wifi"] = wifi
 
     return {
         "scanned": len(ap_nodes),
@@ -202,12 +251,19 @@ def scan_and_update():
         "changes": changes,
         "ip_updates": ip_updates,
         "unknown": unknown,
+        "wifi_clients": len(wifi),
     }
 
 
 def get_last_scan():
     with _lock:
         return dict(_last_scan)
+
+
+def get_wifi_signal():
+    """Get per-node WiFi signal data from last scan."""
+    with _lock:
+        return dict(_last_scan.get("wifi", {}))
 
 
 def _scanner_loop():
@@ -221,7 +277,7 @@ def _scanner_loop():
                 print(f"[AP Scanner] {u['node']} IP changed: {u['old_ip']} → {u['new_ip']}")
             unk = result.get("unknown", [])
             if unk:
-                print(f"[AP Scanner] {len(unk)} unknown clients on WiFi")
+                print(f"[AP Scanner] {len(unk)} unknown clients, {result.get('wifi_clients', 0)} with signal data")
         except Exception as e:
             print(f"[AP Scanner] Error: {e}")
         time.sleep(SCAN_INTERVAL)

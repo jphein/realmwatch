@@ -88,6 +88,7 @@ class RealmHandler(SimpleHTTPRequestHandler):
             status["adult"] = engine.adult_observation(status)
             status["host"] = engine.get_host_config()
             status["collectd"] = get_all_summaries()
+            status["wifi"] = ap_scanner.get_wifi_signal()
             self._json_response(status)
 
         elif self.path.startswith("/events"):
@@ -129,6 +130,9 @@ class RealmHandler(SimpleHTTPRequestHandler):
 
         elif self.path == "/scan/status":
             self._json_response(ap_scanner.get_last_scan())
+
+        elif self.path == "/scan/wifi":
+            self._json_response(ap_scanner.get_wifi_signal())
 
         elif self.path.startswith("/codex-sync"):
             try:
