@@ -88,20 +88,26 @@
 
 <div id="spellbook">
   <h3>&#128214; Spellbook</h3>
-  <div class="spell-page-nav" id="spell-page-nav">
+  <div class="spell-tab-bar" id="spell-tab-bar">
+    <button class="spell-tab active" data-spell="0" title="Enchantments">&#10024;</button>
+    <button class="spell-tab" data-spell="1" title="Cartography">&#128506;</button>
+    <button class="spell-tab" data-spell="2" title="Terrain">&#9968;</button>
+    <button class="spell-tab" data-spell="3" title="Config">&#9881;</button>
+  </div>
+  <div class="spell-page-nav" id="spell-page-nav" style="display:none">
     <button class="spell-page-btn" id="spell-prev">&#9664;</button>
     <span class="spell-page-label" id="spell-page-label">I &middot; Enchantments</span>
     <button class="spell-page-btn" id="spell-next">&#9654;</button>
-    <div class="spell-page-dots" id="spell-page-dots">
-      <div class="spell-page-dot active"></div>
-      <div class="spell-page-dot"></div>
-      <div class="spell-page-dot"></div>
-      <div class="spell-page-dot"></div>
-    </div>
   </div>
   <div class="spell-page" data-spell-page="0">
+  <div class="spell-presets">
+    <button class="preset-btn" data-preset="minimal" title="Clean &amp; minimal">&#9788; Calm</button>
+    <button class="preset-btn" data-preset="cinematic" title="Rich effects, deep glow">&#127912; Epic</button>
+    <button class="preset-btn" data-preset="performance" title="Low GPU, max speed">&#9889; Fast</button>
+    <button class="preset-btn" data-preset="full" title="Everything maxed">&#10024; Full</button>
+  </div>
   <div class="legend-section" data-section="effects">
-    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Magical Effects</div>
+    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Magical Effects <button class="section-reset" data-reset="effects" title="Reset to defaults">&#8634;</button></div>
     <div class="legend-section-body">
       <div class="traffic-control">
         <label>Ambient Sparkles <span class="tc-val" id="fx-ambient-val">0.30</span></label>
@@ -141,7 +147,7 @@
   </div><!-- /spell-page 0 -->
   <div class="spell-page" data-spell-page="1" style="display:none">
   <div class="legend-section" data-section="layers">
-    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Layers &amp; Panels</div>
+    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Layers &amp; Panels <button class="section-reset" data-reset="layers" title="Reset to defaults">&#8634;</button></div>
     <div class="legend-section-body">
       <div class="vis-group-label">Terrain</div>
       <div class="layer-row">
@@ -208,7 +214,7 @@
     </div>
   </div>
   <div class="legend-section collapsed" data-section="layout">
-    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Layout</div>
+    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Layout <button class="section-reset" data-reset="layout" title="Reset to defaults">&#8634;</button></div>
     <div class="legend-section-body">
       <div style="display:flex;gap:6px;margin-bottom:8px">
         <button class="layout-btn" id="layout-auto-btn" style="flex:1">&#10024; Auto-Arrange</button>
@@ -242,7 +248,7 @@
   </div><!-- /spell-page 1 -->
   <div class="spell-page" data-spell-page="2" style="display:none">
   <div class="legend-section" data-section="biomes">
-    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Biomes</div>
+    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Biomes <button class="section-reset" data-reset="biomes" title="Reset to defaults">&#8634;</button></div>
     <div class="legend-section-body">
       <div class="traffic-control">
         <label>Landmass Scale <span class="tc-val" id="biome-land-val">1.0</span></label>
@@ -267,7 +273,7 @@
     </div>
   </div>
   <div class="legend-section collapsed" data-section="scale">
-    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Scale</div>
+    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Scale <button class="section-reset" data-reset="scale" title="Reset to defaults">&#8634;</button></div>
     <div class="legend-section-body">
       <div class="traffic-control">
         <label>Master <span class="tc-val" id="master-scale-val">1.0x</span></label>
@@ -288,7 +294,7 @@
     </div>
   </div>
   <div class="legend-section collapsed" data-section="traffic">
-    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Traffic</div>
+    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Traffic <button class="section-reset" data-reset="traffic" title="Reset to defaults">&#8634;</button></div>
     <div class="legend-section-body">
       <div class="traffic-control">
         <label>Traffic Scale <span class="tc-val" id="traffic-scale-val">1.0x</span></label>
@@ -301,7 +307,7 @@
     </div>
   </div>
   <div class="legend-section" data-section="topographic">
-    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Topographic</div>
+    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Topographic <button class="section-reset" data-reset="topographic" title="Reset to defaults">&#8634;</button></div>
     <div class="legend-section-body">
       <div class="traffic-control" style="margin-bottom:6px;display:flex;align-items:center;gap:8px">
         <label style="margin:0">Overlay</label>

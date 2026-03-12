@@ -2560,31 +2560,78 @@ setupPanelMinimize('spellbook', 'h3');
 
 // ── Spellbook Page Navigation ──
 const _spellPages = document.querySelectorAll('#spellbook .spell-page');
-const _spellPageNames = ['I \u00b7 Enchantments', 'II \u00b7 Cartography', 'III \u00b7 Terrain', 'IV \u00b7 Arcane Config'];
-const _spellDots = document.querySelectorAll('.spell-page-dot');
+const _spellTabs = document.querySelectorAll('.spell-tab');
 let _spellPage = 0;
 function _showSpellPage(idx) {
   _spellPage = Math.max(0, Math.min(idx, _spellPages.length - 1));
   _spellPages.forEach((p, i) => { p.style.display = i === _spellPage ? '' : 'none'; });
-  const label = document.getElementById('spell-page-label');
-  if (label) label.textContent = _spellPageNames[_spellPage] || `Page ${_spellPage + 1}`;
-  const prev = document.getElementById('spell-prev');
-  const next = document.getElementById('spell-next');
-  if (prev) prev.disabled = _spellPage === 0;
-  if (next) next.disabled = _spellPage === _spellPages.length - 1;
-  _spellDots.forEach((d, i) => d.classList.toggle('active', i === _spellPage));
+  _spellTabs.forEach((t, i) => t.classList.toggle('active', i === _spellPage));
   saveSettings();
 }
-document.getElementById('spell-prev')?.addEventListener('click', (e) => { e.stopPropagation(); _showSpellPage(_spellPage - 1); });
-document.getElementById('spell-next')?.addEventListener('click', (e) => { e.stopPropagation(); _showSpellPage(_spellPage + 1); });
-// Click label or nav area to advance, right-click to go back
-document.getElementById('spell-page-nav')?.addEventListener('click', (e) => {
-  if (e.target.closest('.spell-page-btn')) return;
-  _showSpellPage((_spellPage + 1) % _spellPages.length);
+_spellTabs.forEach(tab => {
+  tab.addEventListener('click', (e) => {
+    e.stopPropagation();
+    _showSpellPage(parseInt(tab.dataset.spell));
+  });
 });
-document.getElementById('spell-page-nav')?.addEventListener('contextmenu', (e) => {
-  e.preventDefault();
-  _showSpellPage((_spellPage - 1 + _spellPages.length) % _spellPages.length);
+
+// ── Spellbook Presets ──
+const _PRESETS = {
+  minimal:     { 'fx-ambient': 0.05, 'fx-nodes': 0.1, 'fx-leylines': 0.05, 'fx-glow': 0.3, 'fx-pulse': 0.5, 'fx-leyglow': 0.2 },
+  cinematic:   { 'fx-ambient': 0.6,  'fx-nodes': 0.8, 'fx-leylines': 0.7,  'fx-glow': 2.0, 'fx-pulse': 0.8, 'fx-leyglow': 1.5 },
+  performance: { 'fx-ambient': 0,    'fx-nodes': 0.2, 'fx-leylines': 0.1,  'fx-glow': 0.5, 'fx-pulse': 1.0, 'fx-leyglow': 0.5 },
+  full:        { 'fx-ambient': 0.5,  'fx-nodes': 0.7, 'fx-leylines': 0.6,  'fx-glow': 1.5, 'fx-pulse': 1.2, 'fx-leyglow': 1.2 },
+};
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const preset = _PRESETS[btn.dataset.preset];
+    if (!preset) return;
+    for (const [id, val] of Object.entries(preset)) {
+      const sl = document.getElementById(id + '-slider');
+      if (sl) { sl.value = val; sl.dispatchEvent(new Event('input')); }
+    }
+    if (btn.dataset.preset === 'performance') {
+      const q = document.getElementById('fx-quality-select');
+      if (q) { q.value = 'low'; q.dispatchEvent(new Event('change')); }
+    }
+    saveSettings();
+  });
+});
+
+// ── Section Reset Buttons ──
+const _SECTION_DEFAULTS = {
+  effects:     { 'fx-ambient': 0.3, 'fx-nodes': 0.5, 'fx-leylines': 0.4, 'fx-glow': 1.0, 'fx-pulse': 1.0, 'fx-leyglow': 1.0 },
+  biomes:      { 'biome-land': 1.0, 'biome-glow': 1.0, 'biome-roads': 0.5, 'biome-peaks': 0.5, 'biome-grid': 0.03 },
+  scale:       { 'master-scale': 1.0, 'node-scale': 1.0, 'text-scale': 1.0, 'bubble-scale': 1.0 },
+  traffic:     { 'traffic-scale': 1.0, 'update-speed': 5 },
+  topographic: { 'topo-opacity': 0.6, 'topo-spread': 120, 'topo-contour': 12, 'topo-rw': 0.4, 'topo-rd': 0.6 },
+  layout:      { 'layout-attract': 4.0, 'layout-repulse': 80, 'layout-edge': 80, 'layout-spacing': 8, 'layout-tilt': 0 },
+};
+document.querySelectorAll('.section-reset').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (btn.dataset.reset === 'layers') {
+      // Reset all layer checkboxes to checked, opacities to 1
+      ['vis-terrain','vis-topo','vis-nodes','vis-connections','vis-labels','vis-sublabels','vis-regions','vis-vlanlabels','vis-bubbles',
+       'vis-titlebar','vis-search','vis-statuspanel','vis-legend','vis-codex','vis-questlog','vis-minimap','vis-nodelist'].forEach(id => {
+        const cb = document.getElementById(id);
+        if (cb && !cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change')); }
+      });
+      ['layer-terrain','layer-terrain-orig','layer-topo','layer-nodes','layer-connections','layer-labels','layer-sublabels','layer-regions','layer-vlanlabels','layer-bubbles'].forEach(id => {
+        const sl = document.getElementById(id + '-slider');
+        if (sl) { sl.value = 1; sl.dispatchEvent(new Event('input')); }
+      });
+      saveSettings();
+      return;
+    }
+    const defaults = _SECTION_DEFAULTS[btn.dataset.reset];
+    if (!defaults) return;
+    for (const [id, val] of Object.entries(defaults)) {
+      const sl = document.getElementById(id + '-slider');
+      if (sl) { sl.value = val; sl.dispatchEvent(new Event('input')); }
+    }
+    saveSettings();
+  });
 });
 
 // Legend + Spellbook collapsible sections
@@ -3460,6 +3507,7 @@ const _PERSIST_CHECKBOXES = [
 let _saveTimer = null;
 export function saveSettings() {
   if (_restoring) return;
+  _initialRestoreDone = true;  // user interacted, don't let async restore override
   const vp = document.getElementById('map-viewport');
   const activePeTab = document.querySelector('.pe-tab.active');
   const s = {
@@ -3540,19 +3588,21 @@ function _applySettings(s) {
   _restoring = false;
 }
 
+let _initialRestoreDone = false;
 export function restoreSettings() {
-  // Try localStorage first (instant), then async fetch from DB (authoritative)
+  // Try localStorage first (instant)
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (raw) _applySettings(JSON.parse(raw));
   } catch (e) { /* ignore */ }
-  // Async: load from server DB (overrides localStorage if newer)
+  // Async: load from server DB (only if user hasn't interacted yet)
   fetch('/settings').then(r => r.ok ? r.json() : null).then(s => {
-    if (s && Object.keys(s).length > 0) {
+    if (s && Object.keys(s).length > 0 && !_initialRestoreDone) {
       _applySettings(s);
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
     }
-  }).catch(() => {});
+    _initialRestoreDone = true;
+  }).catch(() => { _initialRestoreDone = true; });
   return true;
 }
 

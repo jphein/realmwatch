@@ -734,55 +734,91 @@
   #spellbook { scrollbar-width: thin; scrollbar-color: #3a3020 transparent; }
   #spellbook::-webkit-scrollbar { width: 5px; }
   #spellbook::-webkit-scrollbar-thumb { background: #3a3020; border-radius: 3px; }
-  .spell-page-nav {
+  /* Spell tab bar — clickable page icons */
+  .spell-tab-bar {
     display: flex;
-    align-items: center;
     justify-content: center;
-    margin: 0;
-    padding: 6px 12px 8px;
-    border-bottom: 1px solid rgba(212,197,160,0.08);
-    background: linear-gradient(180deg, rgba(30,24,14,0.4) 0%, transparent 100%);
+    gap: 2px;
+    padding: 6px 12px 0;
+    border-bottom: 1px solid rgba(212,197,160,0.06);
     position: sticky;
     top: 0;
     z-index: 2;
-    cursor: pointer;
-    user-select: none;
-    gap: 12px;
+    background: linear-gradient(180deg, rgba(18,14,10,0.98) 0%, rgba(18,14,10,0.92) 100%);
   }
-  .spell-page-nav:hover { background: linear-gradient(180deg, rgba(40,32,18,0.5) 0%, transparent 100%); }
-  .spell-page-btn {
+  .spell-tab {
+    flex: 1;
     background: none;
     border: none;
-    color: #706040;
-    font-size: 9px;
-    padding: 4px;
+    border-bottom: 2px solid transparent;
+    color: #605040;
+    font-size: 15px;
+    padding: 6px 0 5px;
     cursor: pointer;
+    transition: all 0.25s ease;
+    border-radius: 6px 6px 0 0;
+    line-height: 1;
+  }
+  .spell-tab:hover {
+    color: #d4c5a0;
+    background: rgba(212,197,160,0.04);
+  }
+  .spell-tab.active {
+    color: #f0d890;
+    border-bottom-color: #c0a060;
+    background: rgba(192,160,96,0.06);
+    text-shadow: 0 0 10px rgba(240,216,144,0.3);
+  }
+
+  /* Presets row */
+  .spell-presets {
+    display: flex;
+    gap: 4px;
+    padding: 8px 12px 4px;
+  }
+  .preset-btn {
+    flex: 1;
+    background: rgba(40,32,18,0.5);
+    border: 1px solid rgba(120,90,40,0.2);
+    border-radius: 6px;
+    color: #a09070;
+    font-size: 10px;
+    padding: 5px 2px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    line-height: 1.2;
+  }
+  .preset-btn:hover {
+    background: rgba(60,45,20,0.6);
+    border-color: rgba(192,160,96,0.3);
+    color: #f0d890;
+    box-shadow: 0 0 8px rgba(192,160,96,0.15);
+  }
+  .preset-btn:active {
+    transform: scale(0.96);
+  }
+
+  /* Section reset button */
+  .section-reset {
+    float: right;
+    background: none;
+    border: none;
+    color: #504030;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 0 2px;
     transition: all 0.2s ease;
     line-height: 1;
   }
-  .spell-page-btn:hover { color: #f0d890; }
-  .spell-page-btn:disabled { opacity: 0.15; cursor: default; }
-  .spell-page-label {
-    font-family: 'Cinzel', serif;
-    font-size: 10px;
-    color: #c0a870;
-    letter-spacing: 1.5px;
-    text-shadow: 0 0 8px rgba(192,168,112,0.15);
+  .section-reset:hover {
+    color: #f0d890;
+    text-shadow: 0 0 6px rgba(240,216,144,0.3);
   }
-  .spell-page-dots {
-    display: flex;
-    gap: 5px;
-    align-items: center;
-  }
-  .spell-page-dot {
-    width: 5px; height: 5px;
-    border-radius: 50%;
-    background: #3a3020;
-    transition: all 0.3s ease;
-  }
-  .spell-page-dot.active {
-    background: #c0a870;
-    box-shadow: 0 0 6px rgba(192,168,112,0.4);
+
+  /* Legacy nav (hidden, kept for compatibility) */
+  .spell-page-nav {
+    display: none;
   }
   .spell-page {
     padding: 4px 16px 12px;
