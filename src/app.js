@@ -2301,6 +2301,7 @@ const PANEL_ICONS = {
   'realm-codex':  { icon: '\u2630', tooltip: 'Realm Codex',   color: '#9060c0', rgb: [144,96,192] },
   'minimap':      { icon: '\u25CE', tooltip: 'Minimap',       color: '#60a0c0', rgb: [96,160,192] },
   'node-list':    { icon: '\u2691', tooltip: 'Realm Census',  color: '#c09060', rgb: [192,144,96] },
+  'debug-panel':  { icon: '\uD83D\uDD2E', tooltip: 'Arcane Mirror', color: '#a070d0', rgb: [160,112,208] },
 };
 
 function setupPanelMinimize(panelId, handleSelector) {
@@ -2532,6 +2533,7 @@ setupPanelMinimize('quest-log', '#quest-log-header');
 setupPanelMinimize('realm-codex', '#codex-header');
 setupPanelMinimize('minimap', null);
 setupPanelMinimize('node-list', '#node-list-header');
+setupPanelMinimize('debug-panel', '#debug-header');
 
 // ── Realm Search ──
 const _realmSearch = document.getElementById('realm-search');
@@ -3407,7 +3409,7 @@ export function restoreSettings() {
 export function saveLayout() {
   const layout = { panels: {}, nodes: {}, minimized: [] };
   // Save panel positions and minimized state
-  ['realm-panel','legend','spellbook','quest-log','realm-codex','minimap','node-list'].forEach(id => {
+  ['realm-panel','legend','spellbook','quest-log','realm-codex','minimap','node-list','debug-panel'].forEach(id => {
     const el = document.getElementById(id);
     if (el && el.style.left) {
       layout.panels[id] = { left: el.style.left, top: el.style.top };

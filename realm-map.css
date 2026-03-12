@@ -2224,7 +2224,7 @@
     overflow-x: auto; flex-shrink: 0;
   }
   .debug-tab {
-    padding: 4px 8px; font-size: 10px; cursor: pointer; color: #706088;
+    padding: 4px 6px; font-size: 9px; cursor: pointer; color: #706088;
     border-bottom: 2px solid transparent; white-space: nowrap; transition: color 0.2s;
   }
   .debug-tab:hover { color: #b090d0; }

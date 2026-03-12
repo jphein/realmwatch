@@ -2487,7 +2487,8 @@
     "quest-log": { icon: "\u2619", tooltip: "Quest Log", color: "#a0ff60", rgb: [160, 255, 96] },
     "realm-codex": { icon: "\u2630", tooltip: "Realm Codex", color: "#9060c0", rgb: [144, 96, 192] },
     "minimap": { icon: "\u25CE", tooltip: "Minimap", color: "#60a0c0", rgb: [96, 160, 192] },
-    "node-list": { icon: "\u2691", tooltip: "Realm Census", color: "#c09060", rgb: [192, 144, 96] }
+    "node-list": { icon: "\u2691", tooltip: "Realm Census", color: "#c09060", rgb: [192, 144, 96] },
+    "debug-panel": { icon: "\u{1F52E}", tooltip: "Arcane Mirror", color: "#a070d0", rgb: [160, 112, 208] }
   };
   function setupPanelMinimize(panelId, handleSelector) {
     const panel = document.getElementById(panelId);
@@ -2728,6 +2729,7 @@
   setupPanelMinimize("realm-codex", "#codex-header");
   setupPanelMinimize("minimap", null);
   setupPanelMinimize("node-list", "#node-list-header");
+  setupPanelMinimize("debug-panel", "#debug-header");
   var _realmSearch = document.getElementById("realm-search");
   var _searchInput = document.getElementById("search-input");
   var _searchResults = document.getElementById("search-results");
@@ -3614,7 +3616,7 @@
   }
   function saveLayout() {
     const layout = { panels: {}, nodes: {}, minimized: [] };
-    ["realm-panel", "legend", "spellbook", "quest-log", "realm-codex", "minimap", "node-list"].forEach((id) => {
+    ["realm-panel", "legend", "spellbook", "quest-log", "realm-codex", "minimap", "node-list", "debug-panel"].forEach((id) => {
       const el = document.getElementById(id);
       if (el && el.style.left) {
         layout.panels[id] = { left: el.style.left, top: el.style.top };
