@@ -360,13 +360,14 @@ export async function refreshTopology() {
     // Save scroll position
     const vp = document.getElementById('map-viewport');
     const sx = vp?.scrollLeft, sy = vp?.scrollTop;
-    // Clear existing DOM
+    // Clear existing DOM + caches
     const world = document.getElementById('map-world');
     world.querySelectorAll('.realm-node, .region-label, .vlan-label').forEach(el => el.remove());
     const svg = document.querySelector('#connections');
     svg.innerHTML = '';
     _connPaths.length = 0;
     _vlanLabels.length = 0;
+    Object.keys(_nodeDOM).forEach(k => delete _nodeDOM[k]);
     // Re-render
     renderTopology(topo);
     // Restore scroll
