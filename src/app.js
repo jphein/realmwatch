@@ -2554,9 +2554,9 @@ function setupPanelMinimize(panelId, handleSelector) {
 }
 
 // Wire up all panels
-setupPanelMinimize('realm-panel', 'h3');
-setupPanelMinimize('legend', 'h3');
-setupPanelMinimize('spellbook', 'h3');
+setupPanelMinimize('realm-panel', '.panel-header');
+setupPanelMinimize('legend', '.panel-header');
+setupPanelMinimize('spellbook', '.panel-header');
 
 // ── Spellbook Page Navigation ──
 const _spellPages = document.querySelectorAll('#spellbook .spell-page');

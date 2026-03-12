@@ -21,8 +21,8 @@
   </div>
 </div>
 
-<div id="realm-panel">
-  <h3>Realm Vitals</h3>
+<div id="realm-panel" class="panel" style="--panel-accent:rgba(240,216,144,0.5)">
+  <div class="panel-header"><span class="panel-hdr-icon">&#9876;</span><span class="panel-hdr-title">Realm Vitals</span></div>
   <div class="realm-gauge">
     <span class="gauge-label">Great Forge</span>
     <div class="gauge-track"><div class="gauge-fill" id="g-forge" style="width:8.8%;background:linear-gradient(90deg,#4a90d9,#f09040)"></div></div>
@@ -58,8 +58,8 @@
   </div>
 </div>
 
-<div id="legend">
-  <h3>&#128506; Legend</h3>
+<div id="legend" class="panel" style="--panel-accent:rgba(128,176,255,0.5)">
+  <div class="panel-header"><span class="panel-hdr-icon">&#128506;</span><span class="panel-hdr-title">Legend</span></div>
   <div class="legend-section" data-section="lines">
     <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Ley Lines</div>
     <div class="legend-section-body">
@@ -86,8 +86,8 @@
   </div>
 </div>
 
-<div id="spellbook">
-  <h3>&#128214; Spellbook</h3>
+<div id="spellbook" class="panel" style="--panel-accent:rgba(192,160,255,0.5)">
+  <div class="panel-header"><span class="panel-hdr-icon">&#128214;</span><span class="panel-hdr-title">Spellbook</span></div>
   <div class="spell-tab-bar" id="spell-tab-bar">
     <button class="spell-tab active" data-spell="0" title="Enchantments">&#10024;</button>
     <button class="spell-tab" data-spell="1" title="Cartography">&#128506;</button>
@@ -442,10 +442,11 @@
   </div><!-- /spell-page 3 -->
 </div>
 
-<div id="realm-codex">
-  <div id="codex-header">
-    <span>The Realm Codex</span>
-    <span class="codex-subtitle">Archives &amp; Lore</span>
+<div id="realm-codex" class="panel" style="--panel-accent:rgba(144,96,192,0.5)">
+  <div id="codex-header" class="panel-header">
+    <span class="panel-hdr-icon">&#9776;</span>
+    <span class="panel-hdr-title">The Realm Codex</span>
+    <span class="panel-hdr-badge codex-subtitle">Archives &amp; Lore</span>
   </div>
   <div id="codex-body">
 
@@ -540,11 +541,12 @@
   </div>
 </div>
 
-<div id="quest-log">
-  <div id="quest-log-header">
-    <span>Quest Log</span>
+<div id="quest-log" class="panel" style="--panel-accent:rgba(160,255,96,0.5)">
+  <div id="quest-log-header" class="panel-header">
+    <span class="panel-hdr-icon">&#9753;</span>
+    <span class="panel-hdr-title">Quest Log</span>
     <button class="notion-sync-btn" id="notion-sync-btn" title="Sync quests from Notion">&#127744; Sync Portal</button>
-    <span class="log-count" id="log-count">0 entries</span>
+    <span class="panel-hdr-badge log-count" id="log-count">0 entries</span>
   </div>
   <div id="quest-log-tabs">
     <div class="log-tab active" data-tab="all">All</div>
@@ -556,9 +558,10 @@
   <div id="quest-log-body"></div>
 </div>
 
-<div id="debug-panel" style="display:none">
-  <div id="debug-header">
-    <span>&#128302; Arcane Mirror</span>
+<div id="debug-panel" class="panel" style="display:none;--panel-accent:rgba(160,112,208,0.5)">
+  <div id="debug-header" class="panel-header">
+    <span class="panel-hdr-icon">&#128302;</span>
+    <span class="panel-hdr-title">Arcane Mirror</span>
     <span id="debug-poll-count" class="debug-stat"></span>
     <button id="debug-close" class="debug-close-btn">&times;</button>
   </div>
@@ -727,15 +730,16 @@
   </div>
 </div>
 
-<div id="node-list">
-  <div id="node-list-header">
-    <span>Realm Census</span>
-    <span class="nl-count" id="nl-count">-- nodes</span>
+<div id="node-list" class="panel" style="--panel-accent:rgba(192,144,96,0.5)">
+  <div id="node-list-header" class="panel-header">
+    <span class="panel-hdr-icon">&#9873;</span>
+    <span class="panel-hdr-title">Realm Census</span>
+    <span class="panel-hdr-badge nl-count" id="nl-count">-- nodes</span>
   </div>
   <div id="node-list-body"></div>
 </div>
 
-<div id="minimap">
+<div id="minimap" class="panel" style="--panel-accent:rgba(96,160,192,0.5)">
   <div id="minimap-viewport"></div>
 </div>
 

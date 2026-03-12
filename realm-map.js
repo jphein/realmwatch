@@ -2875,9 +2875,9 @@
     });
   }
   __name(setupPanelMinimize, "setupPanelMinimize");
-  setupPanelMinimize("realm-panel", "h3");
-  setupPanelMinimize("legend", "h3");
-  setupPanelMinimize("spellbook", "h3");
+  setupPanelMinimize("realm-panel", ".panel-header");
+  setupPanelMinimize("legend", ".panel-header");
+  setupPanelMinimize("spellbook", ".panel-header");
   var _spellPages = document.querySelectorAll("#spellbook .spell-page");
   var _spellTabs = document.querySelectorAll(".spell-tab");
   var _spellPage = 0;
