@@ -3244,6 +3244,7 @@ document.getElementById('layout-reset-btn')?.addEventListener('click', resetToOr
     ['vis-search',       '#realm-search'],
     ['vis-statuspanel',  '#realm-panel'],
     ['vis-legend',       '#legend'],
+    ['vis-spellbook',    '#spellbook'],
     ['vis-codex',        '#realm-codex'],
     ['vis-questlog',     '#quest-log'],
     ['vis-minimap',      '#minimap'],
@@ -3286,6 +3287,7 @@ document.getElementById('layout-reset-btn')?.addEventListener('click', resetToOr
     ['panel-search-slider',       '#realm-search',      false],
     ['panel-vitals-slider',       '#realm-panel',       false],
     ['panel-legend-slider',       '#legend',            false],
+    ['panel-spellbook-slider',    '#spellbook',         false],
     ['panel-codex-slider',        '#realm-codex',       false],
     ['panel-questlog-slider',     '#quest-log',         false],
     ['panel-minimap-slider',      '#minimap',           false],
@@ -3505,13 +3507,13 @@ const _PERSIST_SLIDERS = [
   'layer-regions', 'layer-nodes', 'layer-labels', 'layer-sublabels',
   'layer-vlanlabels', 'layer-bubbles',
   'panel-titlebar', 'panel-search', 'panel-vitals', 'panel-legend',
-  'panel-codex', 'panel-questlog', 'panel-minimap', 'panel-nodelist', 'panel-mirror',
+  'panel-codex', 'panel-spellbook', 'panel-questlog', 'panel-minimap', 'panel-nodelist', 'panel-mirror',
 ];
 const _PERSIST_CHECKBOXES = [
   'topo-toggle-cb',
   'vis-terrain', 'vis-terrain-orig', 'vis-topo', 'vis-connections', 'vis-nodes', 'vis-labels',
   'vis-sublabels', 'vis-regions', 'vis-vlanlabels', 'vis-bubbles',
-  'vis-titlebar', 'vis-search', 'vis-statuspanel', 'vis-legend',
+  'vis-titlebar', 'vis-search', 'vis-statuspanel', 'vis-legend', 'vis-spellbook',
   'vis-codex', 'vis-questlog', 'vis-minimap', 'vis-nodelist', 'vis-debug',
 ];
 
