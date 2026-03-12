@@ -2,7 +2,7 @@
 // Imports from extracted modules
 import { WORLD_W, WORLD_H, _isMobile, _cpuCores, _perfTier, setPerfTier, _PERF, _mapTilt, setMapTilt } from './config.js';
 import { scaleLabel, scaleColor, fmtBytes, fmtRate, scalePct } from './utils.js';
-import { tips, _topology, infraNodes, isTS, CONN_TYPE_TO_CLASS, _tsHostMap, _vlanLabels, _connPaths, _nodeDOM, getNodeDOM, getNodeCenter, updateLinePositions, _getNodePos, _computePathD } from './topology.js';
+import { tips, _topology, infraNodes, isTS, CONN_TYPE_TO_CLASS, _tsHostMap, _vlanLabels, _connPaths, _nodeDOM, getNodeDOM, getNodeCenter, updateLinePositions, _getNodePos, _computePathD, refreshTopology } from './topology.js';
 
 // ── Dynamic Biome Terrain (generated from topology VLANs/zones) ──
 let _biomeLandScale = 1.0, _biomeGlow = 1.0, _biomeRoads = 0.5, _biomePeaks = 0.5, _biomeGrid = 0.03;
@@ -1083,6 +1083,9 @@ async function pollEvents() {
   setTimeout(pollEvents, EVENTS_POLL_MS);
 }
 pollEvents();
+
+// Refresh topology every 90s to pick up new/removed nodes (e.g. unknown WiFi clients)
+setInterval(refreshTopology, 90000);
 
 const _pageLoadTs = Date.now() / 1000;
 

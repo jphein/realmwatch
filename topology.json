@@ -1,73 +1,11 @@
 {
-  "regions": [
-    {
-      "id": "citadel",
-      "label": "The Citadel",
-      "x": 650,
-      "y": 250,
-      "rotate": -5
-    },
-    {
-      "id": "astral-sea",
-      "label": "The Astral Sea",
-      "x": 2050,
-      "y": 150,
-      "rotate": 3
-    },
-    {
-      "id": "outer-dark",
-      "label": "The Outer Darkness",
-      "x": 250,
-      "y": 1050,
-      "fontSize": 14
-    },
-    {
-      "id": "guardian-towers",
-      "label": "The Guardian Towers",
-      "x": 850,
-      "y": 170,
-      "rotate": -2,
-      "fontSize": 15,
-      "color": "rgba(192,144,96,0.2)",
-      "spacing": 4
-    },
-    {
-      "id": "signal-bridges",
-      "label": "The Signal Bridges",
-      "x": 100,
-      "y": 180,
-      "fontSize": 13,
-      "color": "rgba(144,96,192,0.2)",
-      "spacing": 3
-    },
-    {
-      "id": "enchanted-quarters",
-      "label": "The Enchanted Quarters",
-      "x": 1280,
-      "y": 840,
-      "rotate": 2,
-      "fontSize": 15,
-      "color": "rgba(96,192,96,0.2)",
-      "spacing": 4
-    },
-    {
-      "id": "inner-world",
-      "label": "The Inner World",
-      "x": 1180,
-      "y": 580,
-      "rotate": 2,
-      "fontSize": 14,
-      "color": "rgba(160,120,255,0.2)",
-      "spacing": 4
-    }
-  ],
   "nodes": [
     {
       "id": "katana",
       "type": "core",
       "ip": "10.0.6.129",
-      "x": 718,
-      "y": 545,
+      "x": 100.5,
+      "y": 200.3,
       "icon": "&#9876;",
       "label": "Katana",
       "sublabel": "The Citadel \u2022 10.0.6.129",
@@ -1516,45 +1454,6 @@
       }
     },
     {
-      "id": "flip3",
-      "type": "device",
-      "x": 700,
-      "y": 240,
-      "icon": "&#128241;",
-      "label": "The Messenger",
-      "sublabel": "Flip3 \u2022 10.0.6.123",
-      "ip": "10.0.6.123",
-      "mac": "8a:3a:b0:49:ab:7e",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a1520,#0f0a15)",
-        "borderColor": "rgba(120,160,200,0.4)",
-        "width": "40px",
-        "height": "40px",
-        "fontSize": "18px"
-      },
-      "tip": {
-        "title": "Samsung Galaxy Z Flip3",
-        "stats": [
-          [
-            "Model",
-            "Galaxy Z Flip3"
-          ],
-          [
-            "MAC",
-            "8a:3a:b0:49:ab:7e"
-          ],
-          [
-            "Role",
-            "Primary phone"
-          ],
-          [
-            "IP",
-            "10.0.6.123"
-          ]
-        ]
-      }
-    },
-    {
       "id": "flip3-5g",
       "type": "device",
       "x": 450,
@@ -1570,7 +1469,7 @@
         "height": "40px",
         "fontSize": "18px"
       },
-      "mac": "be:68:f4:5b:e2:03",
+      "mac": "2a:cd:f4:cb:56:8c",
       "tip": {
         "title": "Flip3 5G Radio",
         "stats": [
@@ -1596,8 +1495,8 @@
       "y": 1020,
       "icon": "&#128241;",
       "label": "<REDACTED>",
-      "sublabel": "S24 Ultra \u2022 10.0.6.131",
-      "ip": "10.0.6.131",
+      "sublabel": "S24 Ultra \u2022 10.0.6.117",
+      "ip": "10.0.6.117",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1520,#0f0a15)",
         "borderColor": "rgba(140,120,200,0.4)",
@@ -1635,8 +1534,8 @@
       "y": 1080,
       "icon": "&#128241;",
       "label": "The Apple Shard",
-      "sublabel": "iPhone \u2022 10.0.6.125",
-      "ip": "10.0.6.125",
+      "sublabel": "iPhone \u2022 10.0.6.113",
+      "ip": "10.0.6.113",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1520,#0f0a15)",
         "borderColor": "rgba(160,160,160,0.4)",
@@ -1709,8 +1608,8 @@
       "y": 1080,
       "icon": "&#128187;",
       "label": "The Windborne Tome",
-      "sublabel": "MacBook Air \u2022 10.0.6.143",
-      "ip": "10.0.6.143",
+      "sublabel": "MacBook Air \u2022 10.0.10.152",
+      "ip": "10.0.10.152",
       "iconStyle": {
         "background": "radial-gradient(circle,#151520,#0a0a15)",
         "borderColor": "rgba(160,160,180,0.4)",
@@ -1718,7 +1617,7 @@
         "height": "44px",
         "fontSize": "20px"
       },
-      "mac": "10:94:bb:e5:fe:fe",
+      "mac": "a8:48:fa:c1:d3:d5",
       "tip": {
         "title": "MacBook Air",
         "stats": [
@@ -2391,7 +2290,8 @@
             "10 IoT"
           ]
         ]
-      }
+      },
+      "mac": "d4:f5:47:64:4a:bc"
     },
     {
       "id": "hikcams",
@@ -2693,8 +2593,8 @@
       "y": 340,
       "icon": "&#128241;",
       "label": "The Old Herald",
-      "sublabel": "Pixel 4 \u2022 10.0.11.184",
-      "ip": "10.0.11.184",
+      "sublabel": "Pixel 4 \u2022 10.0.11.193",
+      "ip": "10.0.11.193",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1520,#0f0a15)",
         "borderColor": "rgba(100,180,100,0.3)",
@@ -2844,6 +2744,603 @@
           ]
         ]
       }
+    },
+    {
+      "id": "flip3",
+      "type": "device",
+      "x": 700,
+      "y": 240,
+      "icon": "&#128241;",
+      "label": "The Messenger",
+      "sublabel": "Flip3 \u2022 10.0.6.122",
+      "ip": "10.0.6.122",
+      "mac": "6a:47:05:86:5f:e3",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a1520,#0f0a15)",
+        "borderColor": "rgba(120,160,200,0.4)",
+        "width": "40px",
+        "height": "40px",
+        "fontSize": "18px"
+      },
+      "tip": {
+        "title": "Samsung Galaxy Z Flip3",
+        "stats": [
+          [
+            "Model",
+            "Galaxy Z Flip3"
+          ],
+          [
+            "MAC",
+            "6a:47:05:86:5f:e3"
+          ],
+          [
+            "Role",
+            "Primary phone"
+          ],
+          [
+            "IP",
+            "10.0.6.122"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "_unknown_f24a37407ca1",
+      "type": "device",
+      "_auto": true,
+      "x": 2300,
+      "y": 750,
+      "icon": "&#128123;",
+      "label": "Galaxy-Tab-A7-Lite",
+      "sublabel": "10.0.6.157 \u2022 f2:4a:37...",
+      "ip": "10.0.6.157",
+      "mac": "f2:4a:37:40:7c:a1",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "_unknown_d8eb466182d1",
+      "type": "device",
+      "_auto": true,
+      "x": 2510,
+      "y": 750,
+      "icon": "&#128123;",
+      "label": "Nest-Thermostat-82D1",
+      "sublabel": "10.0.10.119 \u2022 d8:eb:46...",
+      "ip": "10.0.10.119",
+      "mac": "d8:eb:46:61:82:d1",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "_unknown_fc584a862e9e",
+      "type": "device",
+      "_auto": true,
+      "x": 2300,
+      "y": 800,
+      "icon": "&#128123;",
+      "label": "WSD-bulb-m0",
+      "sublabel": "10.0.10.129 \u2022 fc:58:4a...",
+      "ip": "10.0.10.129",
+      "mac": "fc:58:4a:86:2e:9e",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "_unknown_e868e7d50978",
+      "type": "device",
+      "_auto": true,
+      "x": 2370,
+      "y": 800,
+      "icon": "&#128123;",
+      "label": "ESP_D50978",
+      "sublabel": "10.0.10.101 \u2022 e8:68:e7...",
+      "ip": "10.0.10.101",
+      "mac": "e8:68:e7:d5:09:78",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "_unknown_ac678428b56d",
+      "type": "device",
+      "_auto": true,
+      "x": 2510,
+      "y": 800,
+      "icon": "&#128123;",
+      "label": "Nest-Thermostat-B56D",
+      "sublabel": "10.0.10.247 \u2022 ac:67:84...",
+      "ip": "10.0.10.247",
+      "mac": "ac:67:84:28:b5:6d",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "_unknown_600194a441c1",
+      "type": "device",
+      "_auto": true,
+      "x": 2440,
+      "y": 900,
+      "icon": "&#128123;",
+      "label": "ESP_A441C1",
+      "sublabel": "10.0.10.110 \u2022 60:01:94...",
+      "ip": "10.0.10.110",
+      "mac": "60:01:94:a4:41:c1",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "_unknown_e848b8aa3933",
+      "type": "device",
+      "_auto": true,
+      "x": 2510,
+      "y": 950,
+      "icon": "&#128123;",
+      "label": "HS200",
+      "sublabel": "10.0.10.108 \u2022 e8:48:b8...",
+      "ip": "10.0.10.108",
+      "mac": "e8:48:b8:aa:39:33",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "_unknown_ca2c4fad7ef5",
+      "type": "device",
+      "_auto": true,
+      "x": 2370,
+      "y": 1000,
+      "icon": "&#128123;",
+      "label": "HiSmart-01-ca2c4fad7",
+      "sublabel": "10.0.10.138 \u2022 ca:2c:4f...",
+      "ip": "10.0.10.138",
+      "mac": "ca:2c:4f:ad:7e:f5",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "_unknown_bcddc282ed19",
+      "type": "device",
+      "_auto": true,
+      "x": 2510,
+      "y": 1000,
+      "icon": "&#128123;",
+      "label": "ESP_82ED19",
+      "sublabel": "10.0.10.86 \u2022 bc:dd:c2...",
+      "ip": "10.0.10.86",
+      "mac": "bc:dd:c2:82:ed:19",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "_unknown_b0a7b9933d17",
+      "type": "device",
+      "_auto": true,
+      "x": 2370,
+      "y": 1050,
+      "icon": "&#128123;",
+      "label": "KL420",
+      "sublabel": "10.0.10.134 \u2022 b0:a7:b9...",
+      "ip": "10.0.10.134",
+      "mac": "b0:a7:b9:93:3d:17",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "_unknown_14c14e6d333f",
+      "type": "device",
+      "_auto": true,
+      "x": 2370,
+      "y": 1100,
+      "icon": "&#128123;",
+      "label": "Nest-Thermostat-333F",
+      "sublabel": "10.0.10.80 \u2022 14:c1:4e...",
+      "ip": "10.0.10.80",
+      "mac": "14:c1:4e:6d:33:3f",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "_unknown_14c14e61276c",
+      "type": "device",
+      "_auto": true,
+      "x": 2370,
+      "y": 1150,
+      "icon": "&#128123;",
+      "label": "Nest-Thermostat-276C",
+      "sublabel": "10.0.10.84 \u2022 14:c1:4e...",
+      "ip": "10.0.10.84",
+      "mac": "14:c1:4e:61:27:6c",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "_unknown_14c14e2616b5",
+      "type": "device",
+      "_auto": true,
+      "x": 2440,
+      "y": 1150,
+      "icon": "&#128123;",
+      "label": "Nest-Thermostat-16B5",
+      "sublabel": "10.0.10.249 \u2022 14:c1:4e...",
+      "ip": "10.0.10.249",
+      "mac": "14:c1:4e:26:16:b5",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "_unknown_bcddc282eff7",
+      "type": "device",
+      "_auto": true,
+      "x": 2300,
+      "y": 1200,
+      "icon": "&#128123;",
+      "label": "ESP_82EFF7",
+      "sublabel": "10.0.10.82 \u2022 bc:dd:c2...",
+      "ip": "10.0.10.82",
+      "mac": "bc:dd:c2:82:ef:f7",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "_unknown_e868e7cfaa92",
+      "type": "device",
+      "_auto": true,
+      "x": 2370,
+      "y": 1200,
+      "icon": "&#128123;",
+      "label": "ESP_CFAA92",
+      "sublabel": "10.0.10.107 \u2022 e8:68:e7...",
+      "ip": "10.0.10.107",
+      "mac": "e8:68:e7:cf:aa:92",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "_unknown_24a160393fb0",
+      "type": "device",
+      "_auto": true,
+      "x": 2440,
+      "y": 1200,
+      "icon": "&#128123;",
+      "label": "ESP_393FB0",
+      "sublabel": "10.0.10.91 \u2022 24:a1:60...",
+      "ip": "10.0.10.91",
+      "mac": "24:a1:60:39:3f:b0",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "_unknown_ac67b2d1f2e4",
+      "type": "device",
+      "_auto": true,
+      "x": 2510,
+      "y": 1200,
+      "icon": "&#128123;",
+      "label": "espressif",
+      "sublabel": "10.0.10.89 \u2022 ac:67:b2...",
+      "ip": "10.0.10.89",
+      "mac": "ac:67:b2:d1:f2:e4",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "_unknown_68c63ad2b03d",
+      "type": "device",
+      "_auto": true,
+      "x": 2300,
+      "y": 1250,
+      "icon": "&#128123;",
+      "label": "SwitchBot-HubMini-D2",
+      "sublabel": "10.0.10.143 \u2022 68:c6:3a...",
+      "ip": "10.0.10.143",
+      "mac": "68:c6:3a:d2:b0:3d",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "_unknown_483fda6a0ea8",
+      "type": "device",
+      "_auto": true,
+      "x": 2370,
+      "y": 1250,
+      "icon": "&#128123;",
+      "label": "ESP_6A0EA8",
+      "sublabel": "10.0.10.88 \u2022 48:3f:da...",
+      "ip": "10.0.10.88",
+      "mac": "48:3f:da:6a:0e:a8",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "_unknown_f0f5bdfd3504",
+      "type": "device",
+      "_auto": true,
+      "x": 2440,
+      "y": 1250,
+      "icon": "&#128123;",
+      "label": "pumphouse-radar",
+      "sublabel": "10.0.10.128 \u2022 f0:f5:bd...",
+      "ip": "10.0.10.128",
+      "mac": "f0:f5:bd:fd:35:04",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "_unknown_ca2c4fac00a1",
+      "type": "device",
+      "_auto": true,
+      "x": 2510,
+      "y": 1250,
+      "icon": "&#128123;",
+      "label": "HiSmart-01-ca2c4fac0",
+      "sublabel": "10.0.10.139 \u2022 ca:2c:4f...",
+      "ip": "10.0.10.139",
+      "mac": "ca:2c:4f:ac:00:a1",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "_unknown_c006c3f65895",
+      "type": "device",
+      "_auto": true,
+      "x": 2300,
+      "y": 1350,
+      "icon": "&#128123;",
+      "label": "KL125",
+      "sublabel": "10.0.10.121 \u2022 c0:06:c3...",
+      "ip": "10.0.10.121",
+      "mac": "c0:06:c3:f6:58:95",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "_unknown_b4e84212e7ac",
+      "type": "device",
+      "_auto": true,
+      "x": 2510,
+      "y": 1350,
+      "icon": "&#128123;",
+      "label": "bl606a0",
+      "sublabel": "10.0.10.96 \u2022 b4:e8:42...",
+      "ip": "10.0.10.96",
+      "mac": "b4:e8:42:12:e7:ac",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "_unknown_2cf43208cff0",
+      "type": "device",
+      "_auto": true,
+      "x": 2510,
+      "y": 1400,
+      "icon": "&#128123;",
+      "label": "ESP_08CFF0",
+      "sublabel": "10.0.10.98 \u2022 2c:f4:32...",
+      "ip": "10.0.10.98",
+      "mac": "2c:f4:32:08:cf:f0",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "_unknown_b4e62d79b610",
+      "type": "device",
+      "_auto": true,
+      "x": 2300,
+      "y": 1450,
+      "icon": "&#128123;",
+      "label": "ESP_79B610",
+      "sublabel": "10.0.10.100 \u2022 b4:e6:2d...",
+      "ip": "10.0.10.100",
+      "mac": "b4:e6:2d:79:b6:10",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "_unknown_6032b17282e1",
+      "type": "device",
+      "_auto": true,
+      "x": 2370,
+      "y": 1450,
+      "icon": "&#128123;",
+      "label": "HS103",
+      "sublabel": "10.0.10.173 \u2022 60:32:b1...",
+      "ip": "10.0.10.173",
+      "mac": "60:32:b1:72:82:e1",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "_unknown_b43a31d1771e",
+      "type": "device",
+      "_auto": true,
+      "x": 2300,
+      "y": 1500,
+      "icon": "&#128123;",
+      "label": "gecko_os-71E",
+      "sublabel": "10.0.10.243 \u2022 b4:3a:31...",
+      "ip": "10.0.10.243",
+      "mac": "b4:3a:31:d1:77:1e",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      }
+    },
+    {
+      "id": "apcupsmini1",
+      "type": "infra",
+      "x": 580,
+      "y": 320,
+      "icon": "&#9889;",
+      "label": "The Ward Stone",
+      "sublabel": "APC UPS Mini"
+    },
+    {
+      "id": "mobileups",
+      "type": "infra",
+      "x": 580,
+      "y": 380,
+      "icon": "&#128737;",
+      "label": "The Wandering Shield",
+      "sublabel": "Mobile UPS"
     }
   ],
   "connections": [
@@ -3108,13 +3605,13 @@
     },
     {
       "from": "flip3",
-      "to": "onhub-closet",
+      "to": "onhub-office",
       "type": "active",
       "vlan": 6
     },
     {
       "from": "flip3-5g",
-      "to": "wrt1900ac-family",
+      "to": "onhub-pumphouse",
       "type": "active",
       "vlan": 6
     },
@@ -3126,7 +3623,7 @@
     },
     {
       "from": "users-air",
-      "to": "onhub-family",
+      "to": "onhub-closet",
       "type": "active",
       "vlan": 6
     },
@@ -3162,7 +3659,7 @@
     },
     {
       "from": "roku",
-      "to": "ea6350-cl",
+      "to": "mr8300-host",
       "type": "active",
       "vlan": 6
     },
@@ -3288,7 +3785,7 @@
     },
     {
       "from": "iphone",
-      "to": "wrt1900ac-family",
+      "to": "onhub-bed",
       "type": "active",
       "vlan": 6
     },
@@ -3306,7 +3803,7 @@
     },
     {
       "from": "s24-ultra",
-      "to": "wrt1900ac-family",
+      "to": "onhub-office",
       "type": "active",
       "vlan": 6
     },
@@ -3333,35 +3830,203 @@
       "to": "katana",
       "type": "ethereal",
       "vlan": 6
+    },
+    {
+      "from": "_unknown_f24a37407ca1",
+      "to": "onhub-bed",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_d8eb466182d1",
+      "to": "onhub-closet",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_fc584a862e9e",
+      "to": "onhub-closet",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_e868e7d50978",
+      "to": "onhub-closet",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_ac678428b56d",
+      "to": "onhub-closet",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_600194a441c1",
+      "to": "onhub-office",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_e848b8aa3933",
+      "to": "onhub-office",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_ca2c4fad7ef5",
+      "to": "onhub-office",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_bcddc282ed19",
+      "to": "onhub-office",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_b0a7b9933d17",
+      "to": "onhub-office",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_14c14e6d333f",
+      "to": "onhub-office",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_14c14e61276c",
+      "to": "onhub-office",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_14c14e2616b5",
+      "to": "onhub-office",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_bcddc282eff7",
+      "to": "eap225-outdoor",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_e868e7cfaa92",
+      "to": "eap225-outdoor",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_24a160393fb0",
+      "to": "eap225-outdoor",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_ac67b2d1f2e4",
+      "to": "eap225-outdoor",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_68c63ad2b03d",
+      "to": "eap225-outdoor",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_483fda6a0ea8",
+      "to": "eap225-outdoor",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_f0f5bdfd3504",
+      "to": "eap225-outdoor",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_ca2c4fac00a1",
+      "to": "eap225-outdoor",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_c006c3f65895",
+      "to": "eap225-outdoor",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_b4e84212e7ac",
+      "to": "eap225-outdoor",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_2cf43208cff0",
+      "to": "wndr4300sw-shed",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_b4e62d79b610",
+      "to": "wndr4300sw-shed",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_6032b17282e1",
+      "to": "wndr4300sw-shed",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_b43a31d1771e",
+      "to": "wndr4300sw-shed",
+      "type": "active"
     }
   ],
-  "connectionStyles": {
-    "active": {
-      "cssClass": "conn-active"
+  "regions": [
+    {
+      "id": "citadel",
+      "label": "The Citadel",
+      "x": 650,
+      "y": 250,
+      "rotate": -5
     },
-    "wan": {
-      "cssClass": "conn-wan"
+    {
+      "id": "astral-sea",
+      "label": "The Astral Sea",
+      "x": 2050,
+      "y": 150,
+      "rotate": 3
     },
-    "ap": {
-      "cssClass": "conn-ap"
+    {
+      "id": "outer-dark",
+      "label": "The Outer Darkness",
+      "x": 250,
+      "y": 1050,
+      "fontSize": 14
     },
-    "infra": {
-      "cssClass": "conn-infra"
+    {
+      "id": "guardian-towers",
+      "label": "The Guardian Towers",
+      "x": 850,
+      "y": 170,
+      "rotate": -2,
+      "fontSize": 15,
+      "color": "rgba(192,144,96,0.2)",
+      "spacing": 4
     },
-    "vlan": {
-      "cssClass": "conn-vlan"
+    {
+      "id": "signal-bridges",
+      "label": "The Signal Bridges",
+      "x": 100,
+      "y": 180,
+      "fontSize": 13,
+      "color": "rgba(144,96,192,0.2)",
+      "spacing": 3
     },
-    "bridge": {
-      "cssClass": "conn-bridge"
+    {
+      "id": "enchanted-quarters",
+      "label": "The Enchanted Quarters",
+      "x": 1280,
+      "y": 840,
+      "rotate": 2,
+      "fontSize": 15,
+      "color": "rgba(96,192,96,0.2)",
+      "spacing": 4
     },
-    "mesh": {
-      "cssClass": "conn-mesh"
-    },
-    "offline": {
-      "cssClass": "conn-offline"
-    },
-    "portal": {
-      "cssClass": "conn-portal"
+    {
+      "id": "inner-world",
+      "label": "The Inner World",
+      "x": 1180,
+      "y": 580,
+      "rotate": 2,
+      "fontSize": 14,
+      "color": "rgba(160,120,255,0.2)",
+      "spacing": 4
     }
-  }
+  ]
 }

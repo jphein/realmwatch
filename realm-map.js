@@ -1,4 +1,9 @@
+// Built from src/ modules — do not edit directly
+
 (() => {
+  var __defProp = Object.defineProperty;
+  var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
+
   // src/config.js
   var WORLD_W = 4800;
   var WORLD_H = 3300;
@@ -9,10 +14,12 @@
   function setPerfTier(t) {
     _perfTier = t;
   }
+  __name(setPerfTier, "setPerfTier");
   var _mapTilt = 0;
   function setMapTilt(v) {
     _mapTilt = v;
   }
+  __name(setMapTilt, "setMapTilt");
   var _PERF = {
     get moteCap() {
       return _perfTier === "low" ? 80 : _perfTier === "medium" ? 180 : 400;
@@ -37,44 +44,12 @@
     }
   };
 
-  // src/utils.js
-  function scaleLabel(s) {
-    if (s <= -7) return "Deep Depletion";
-    if (s <= -3) return "Depleted";
-    if (s <= 3) return "Balanced";
-    if (s <= 7) return "Replete";
-    return "Full Plenitude";
-  }
-  function scaleColor(s) {
-    if (s <= -7) return "#ff4040";
-    if (s <= -3) return "#f09040";
-    if (s <= 3) return "#f0d040";
-    if (s <= 7) return "#a0d060";
-    return "#a0ff60";
-  }
-  function fmtBytes(b) {
-    if (b == null) return "N/A";
-    if (b > 1073741824) return (b / 1073741824).toFixed(2) + " GB";
-    if (b > 1048576) return (b / 1048576).toFixed(1) + " MB";
-    if (b > 1024) return (b / 1024).toFixed(0) + " KB";
-    return b + " B";
-  }
-  function fmtRate(bps) {
-    if (bps == null || bps === 0) return "0";
-    if (bps > 1048576) return (bps / 1048576).toFixed(1) + " MB/s";
-    if (bps > 1024) return (bps / 1024).toFixed(0) + " KB/s";
-    return bps + " B/s";
-  }
-  function scalePct(s) {
-    return Math.max(0, Math.min(100, (s + 10) / 20 * 100));
-  }
-
   // src/topology.js
   var tips = {};
   var _topology = null;
   var infraNodes = {};
   var TYPE_TO_CLASS = { tower: "tower-node", cluster: "cluster-node", bridge: "bridge-node", infra: "infra-node", portal: "portal-node" };
-  var isTS = (n) => n.type === "tailscale" || n.tailscale;
+  var isTS = /* @__PURE__ */ __name((n) => n.type === "tailscale" || n.tailscale, "isTS");
   var CONN_TYPE_TO_CLASS = { active: "conn-active", wan: "conn-wan", ap: "conn-ap", infra: "conn-infra", vlan: "conn-vlan", bridge: "conn-bridge", mesh: "conn-mesh", offline: "conn-offline", portal: "conn-portal" };
   var _tsHostMap = {};
   var _vlanLabels = [];
@@ -93,6 +68,7 @@
     };
     return _nodeDOM[tipKey];
   }
+  __name(getNodeDOM, "getNodeDOM");
   function _getNodePos(nodeId) {
     const n = getNodeDOM(nodeId);
     if (n.el) return getNodeCenter(n.el);
@@ -103,14 +79,16 @@
     }
     return null;
   }
+  __name(_getNodePos, "_getNodePos");
   function _computeFanAngles() {
     if (!_topology) return [];
     const nodeConns = {};
     _topology.connections.forEach((c, i) => {
+      var _a, _b;
       const fp = _getNodePos(c.from), tp = _getNodePos(c.to);
       if (!fp || !tp) return;
-      (nodeConns[c.from] ||= []).push({ angle: Math.atan2(tp.y - fp.y, tp.x - fp.x), connIdx: i, isFrom: true });
-      (nodeConns[c.to] ||= []).push({ angle: Math.atan2(fp.y - tp.y, fp.x - tp.x), connIdx: i, isFrom: false });
+      (nodeConns[_a = c.from] || (nodeConns[_a] = [])).push({ angle: Math.atan2(tp.y - fp.y, tp.x - fp.x), connIdx: i, isFrom: true });
+      (nodeConns[_b = c.to] || (nodeConns[_b] = [])).push({ angle: Math.atan2(fp.y - tp.y, fp.x - tp.x), connIdx: i, isFrom: false });
     });
     const result = _topology.connections.map(() => ({ fromAngle: 0, toAngle: 0 }));
     const MIN_GAP = 0.1;
@@ -135,6 +113,7 @@
     }
     return result;
   }
+  __name(_computeFanAngles, "_computeFanAngles");
   var _obstacles = [];
   function _buildObstacles() {
     _obstacles = [];
@@ -159,11 +138,13 @@
       _obstacles.push({ id: n.id, x: cx, y: cy, rx, ry });
     }
   }
+  __name(_buildObstacles, "_buildObstacles");
   function _hashStr(s) {
     let h = 0;
     for (let i = 0; i < s.length; i++) h = (h << 5) - h + s.charCodeAt(i) | 0;
     return h;
   }
+  __name(_hashStr, "_hashStr");
   function _computePathD(fp, tp, fromAngle, toAngle, fromId, toId) {
     const dist = Math.hypot(tp.x - fp.x, tp.y - fp.y);
     if (dist < 1) return `M${fp.x},${fp.y}L${tp.x},${tp.y}`;
@@ -214,6 +195,7 @@
     }
     return d;
   }
+  __name(_computePathD, "_computePathD");
   function getNodeCenter(nodeEl) {
     const left = parseInt(nodeEl.style.left) || 0;
     const top = parseInt(nodeEl.style.top) || 0;
@@ -226,6 +208,7 @@
     }
     return { x: left + 32, y: top + 32 };
   }
+  __name(getNodeCenter, "getNodeCenter");
   function updateLinePositions() {
     if (!_topology) return;
     _buildObstacles();
@@ -251,6 +234,7 @@
       }
     });
   }
+  __name(updateLinePositions, "updateLinePositions");
   function renderTopology(topo) {
     _topology = topo;
     topo.nodes.forEach((n) => {
@@ -381,6 +365,7 @@
       }
     });
   }
+  __name(renderTopology, "renderTopology");
   function loadTopology() {
     const xhr = new XMLHttpRequest();
     xhr.open("GET", "/topology", false);
@@ -390,7 +375,73 @@
       renderTopology(topo);
     }
   }
+  __name(loadTopology, "loadTopology");
+  var _lastNodeCount = 0;
+  async function refreshTopology() {
+    try {
+      const r = await fetch("/topology");
+      if (!r.ok) return;
+      const topo = await r.json();
+      const nc = (topo.nodes || []).length;
+      const cc = (topo.connections || []).length;
+      if (nc === _lastNodeCount && cc === (_topology?.connections || []).length) return;
+      _lastNodeCount = nc;
+      const vp = document.getElementById("map-viewport");
+      const sx = vp?.scrollLeft, sy = vp?.scrollTop;
+      const world2 = document.getElementById("map-world");
+      world2.querySelectorAll(".realm-node, .region-label, .vlan-label").forEach((el) => el.remove());
+      const svg = document.querySelector("#connections");
+      svg.innerHTML = "";
+      _connPaths.length = 0;
+      _vlanLabels.length = 0;
+      renderTopology(topo);
+      if (vp && sx != null) {
+        vp.scrollLeft = sx;
+        vp.scrollTop = sy;
+      }
+    } catch (e) {
+    }
+  }
+  __name(refreshTopology, "refreshTopology");
   loadTopology();
+  _lastNodeCount = (_topology?.nodes || []).length;
+
+  // src/utils.js
+  function scaleLabel(s) {
+    if (s <= -7) return "Deep Depletion";
+    if (s <= -3) return "Depleted";
+    if (s <= 3) return "Balanced";
+    if (s <= 7) return "Replete";
+    return "Full Plenitude";
+  }
+  __name(scaleLabel, "scaleLabel");
+  function scaleColor(s) {
+    if (s <= -7) return "#ff4040";
+    if (s <= -3) return "#f09040";
+    if (s <= 3) return "#f0d040";
+    if (s <= 7) return "#a0d060";
+    return "#a0ff60";
+  }
+  __name(scaleColor, "scaleColor");
+  function fmtBytes(b) {
+    if (b == null) return "N/A";
+    if (b > 1073741824) return (b / 1073741824).toFixed(2) + " GB";
+    if (b > 1048576) return (b / 1048576).toFixed(1) + " MB";
+    if (b > 1024) return (b / 1024).toFixed(0) + " KB";
+    return b + " B";
+  }
+  __name(fmtBytes, "fmtBytes");
+  function fmtRate(bps) {
+    if (bps == null || bps === 0) return "0";
+    if (bps > 1048576) return (bps / 1048576).toFixed(1) + " MB/s";
+    if (bps > 1024) return (bps / 1024).toFixed(0) + " KB/s";
+    return bps + " B/s";
+  }
+  __name(fmtRate, "fmtRate");
+  function scalePct(s) {
+    return Math.max(0, Math.min(100, (s + 10) / 20 * 100));
+  }
+  __name(scalePct, "scalePct");
 
   // src/app.js
   var _biomeLandScale = 1;
@@ -410,6 +461,7 @@
     const ih = n.iconStyle?.height ? parseInt(n.iconStyle.height) : 64;
     return { x: n.x + iw / 2, y: n.y + ih / 2 };
   }
+  __name(_nodeCenter, "_nodeCenter");
   function generateTerrain() {
     if (!_topology) return;
     const el = document.getElementById("terrain-dynamic");
@@ -542,6 +594,7 @@
     }
     el.innerHTML = s;
   }
+  __name(generateTerrain, "generateTerrain");
   var VLAN_REGION_LABELS = {
     6: { label: "The Citadel", color: "rgba(240,216,144,0.22)", spacing: 6 },
     8: { label: "The Family Hearth", color: "rgba(192,160,96,0.22)", spacing: 5 },
@@ -624,6 +677,7 @@
       rc.style.rotate = counterRot;
     }
   }
+  __name(updateRegionLabels, "updateRegionLabels");
   function _clusterBounds(nodes) {
     let sx = 0, sy = 0, minY = Infinity;
     const pts = nodes.map((n) => {
@@ -635,6 +689,7 @@
     });
     return { cx: sx / pts.length, cy: sy / pts.length, minY, pts };
   }
+  __name(_clusterBounds, "_clusterBounds");
   function _addRegionLabel(container, text, x, y, opts) {
     const el = document.createElement("div");
     el.className = "region-label";
@@ -648,6 +703,7 @@
     el.textContent = text;
     container.appendChild(el);
   }
+  __name(_addRegionLabel, "_addRegionLabel");
   generateTerrain();
   updateRegionLabels();
   var DOM = {
@@ -684,6 +740,7 @@
     DOM.rsVal.style.color = scaleColor(d.realm_scale);
     DOM.rsLabel.textContent = scaleLabel(d.realm_scale);
   }
+  __name(updateGauges, "updateGauges");
   function updateCoreSublabels(d) {
     const { forge, mana, essence, astral } = d;
     const gpu = forge.gpu;
@@ -717,14 +774,17 @@
     if (oN.sub) oN.sub.textContent = astral.nodes.oracle ? "ubox0 \u2022 10.0.6.11" : "SILENT \u2022 10.0.6.11";
     if (oN.pulse) oN.pulse.style.display = astral.nodes.oracle ? "" : "none";
   }
+  __name(updateCoreSublabels, "updateCoreSublabels");
   function findStatusKey(nodeStatus, tipKey) {
     return Object.keys(nodeStatus).find((k) => k.toLowerCase() === tipKey.toLowerCase()) || Object.keys(nodeStatus).find((k) => k.replace(/-/g, "").toLowerCase() === tipKey.replace(/-/g, "").toLowerCase());
   }
+  __name(findStatusKey, "findStatusKey");
   function findCollectd(collectd, tipKey, statusKey) {
     const info = infraNodes[tipKey];
     if (info && info.collectdHost && collectd[info.collectdHost]) return collectd[info.collectdHost];
     return collectd[statusKey || tipKey] || collectd[tipKey] || Object.values(collectd).find((c) => c.hostname && c.hostname.toLowerCase().replace(/[-_]/g, "") === tipKey.toLowerCase().replace(/[-_]/g, ""));
   }
+  __name(findCollectd, "findCollectd");
   function buildCollectdExtra(cd) {
     const extra = [];
     if (cd.load_1 != null) extra.push(["Load", `${cd.load_1.toFixed(2)} / ${(cd.load_5 || 0).toFixed(2)} / ${(cd.load_15 || 0).toFixed(2)}`]);
@@ -752,6 +812,7 @@
     }
     return extra;
   }
+  __name(buildCollectdExtra, "buildCollectdExtra");
   function updateInfraNodes(d) {
     const nodeStatus = d.astral.nodes || {};
     let towersOnline = 0, towersTotal = 0;
@@ -786,6 +847,7 @@
     DOM.towersOnline.textContent = towersOnline;
     DOM.towersTotal.textContent = towersTotal;
   }
+  __name(updateInfraNodes, "updateInfraNodes");
   function updateHASublabels(d) {
     const ha = d.ha;
     if (!ha) return;
@@ -799,6 +861,7 @@
       }
     }
   }
+  __name(updateHASublabels, "updateHASublabels");
   function updateTooltips(d) {
     const { forge, mana, essence, astral } = d;
     const gpu = forge.gpu;
@@ -874,6 +937,7 @@
       tips[nodeId].stats = [...existing, ...tsStats];
     });
   }
+  __name(updateTooltips, "updateTooltips");
   function updateUI(d) {
     lastStatus = d;
     updateGauges(d);
@@ -901,6 +965,7 @@
     clearTimeout(_dbgRefreshTimer);
     _dbgRefreshTimer = setTimeout(_dbgRefresh, 200);
   }
+  __name(updateUI, "updateUI");
   var masterScale = 1;
   var masterSlider = document.getElementById("master-scale-slider");
   var masterScaleVal = document.getElementById("master-scale-val");
@@ -909,6 +974,7 @@
     textScaleSlider.dispatchEvent(new Event("input"));
     bubbleScaleSlider.dispatchEvent(new Event("input"));
   }
+  __name(applyMasterScale, "applyMasterScale");
   masterSlider.addEventListener("input", () => {
     masterScale = parseFloat(masterSlider.value);
     masterScaleVal.textContent = masterScale.toFixed(1) + "x";
@@ -1011,6 +1077,7 @@
     });
     return bestTotal > 0 ? { rx: bestRx, tx: bestTx, total: bestTotal } : null;
   }
+  __name(getNodeTraffic, "getNodeTraffic");
   var _connLinesWithData = _connPaths.filter((p) => p && p.dataset.to);
   var _connBaseWidths = /* @__PURE__ */ new Map();
   _connPaths.forEach((path) => {
@@ -1079,6 +1146,7 @@
       }
     }
   }
+  __name(updateConnectionTraffic, "updateConnectionTraffic");
   var _topoSvg = document.getElementById("topo-svg");
   var _topoEnabled = true;
   var _topoOpacity = 0.6;
@@ -1096,6 +1164,7 @@
     for (const n of _topology.nodes) _topoNodeMap.set(n.id, n);
     return _topoNodeMap;
   }
+  __name(_getTopoNodeMap, "_getTopoNodeMap");
   function _topoNodeHeight(node, trafficMap) {
     const traffic = trafficMap.get(node.id);
     let h = 0.18;
@@ -1108,6 +1177,7 @@
     else if (node.type === "bridge") h = Math.max(h, 0.28);
     return h;
   }
+  __name(_topoNodeHeight, "_topoNodeHeight");
   function _topoColor(t) {
     if (t < 0.15) {
       const s = t / 0.15;
@@ -1120,6 +1190,7 @@
       return `rgb(${106 + 106 * s | 0},${74 + 86 * s | 0},${80 - 16 * s | 0})`;
     }
   }
+  __name(_topoColor, "_topoColor");
   var _TOPO_DEFS = `<defs>
 <filter id="topo-glow" x="-15%" y="-15%" width="130%" height="130%">
   <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
@@ -1226,14 +1297,14 @@
           const v00 = hmap[i], v10 = hmap[i + 1], v01 = hmap[i + W], v11 = hmap[i + W + 1];
           const cls = (v00 >= lev) << 3 | (v10 >= lev) << 2 | (v11 >= lev) << 1 | v01 >= lev;
           if (cls === 0 || cls === 15) continue;
-          const lrp = (a, b) => b === a ? 0.5 : (lev - a) / (b - a);
+          const lrp = /* @__PURE__ */ __name((a, b) => b === a ? 0.5 : (lev - a) / (b - a), "lrp");
           const T = [(gx + lrp(v00, v10) - pad) * sx, (gy - pad) * sy];
           const B = [(gx + lrp(v01, v11) - pad) * sx, (gy + 1 - pad) * sy];
           const L = [(gx - pad) * sx, (gy + lrp(v00, v01) - pad) * sy];
           const R = [(gx + 1 - pad) * sx, (gy + lrp(v10, v11) - pad) * sy];
-          const seg = (a, b) => {
+          const seg = /* @__PURE__ */ __name((a, b) => {
             pathD += `M${a[0] | 0},${a[1] | 0}L${b[0] | 0},${b[1] | 0}`;
-          };
+          }, "seg");
           switch (cls) {
             case 1:
             case 14:
@@ -1306,7 +1377,8 @@
     bandEls.forEach((s) => _topoSvg.appendChild(s));
     if (_mapTilt > 0) _applyTopoZ();
   }
-  (function initTopoControls() {
+  __name(renderTopoLayer, "renderTopoLayer");
+  (/* @__PURE__ */ __name((function initTopoControls() {
     const toggle = document.getElementById("topo-toggle-cb");
     const opSlider = document.getElementById("topo-opacity-slider");
     const opVal = document.getElementById("topo-opacity-val");
@@ -1323,6 +1395,7 @@
         renderTopoLayer(_lastTopoCollectd);
       });
     }
+    __name(scheduleRender, "scheduleRender");
     toggle.addEventListener("change", () => {
       _topoEnabled = toggle.checked;
       _topoSvg.classList.toggle("active", _topoEnabled);
@@ -1364,7 +1437,7 @@
       scheduleSave();
     });
     if (_topoEnabled && _topology.nodes) renderTopoLayer(null);
-  })();
+  }), "initTopoControls"))();
   var lastEventTs = 0;
   var EVENTS_POLL_MS = 1e3;
   async function pollEvents() {
@@ -1377,7 +1450,9 @@
     }
     setTimeout(pollEvents, EVENTS_POLL_MS);
   }
+  __name(pollEvents, "pollEvents");
   pollEvents();
+  setInterval(refreshTopology, 9e4);
   var _pageLoadTs = Date.now() / 1e3;
   function renderEvent(evt) {
     lastEventTs = Math.max(lastEventTs, evt.ts || 0);
@@ -1406,6 +1481,7 @@
       showHighlight(nodeEl, { color: "rgba(192,128,255,0.4)" });
     }
   }
+  __name(renderEvent, "renderEvent");
   var logCount = 0;
   var MAX_LOG = 80;
   var activeTab = "all";
@@ -1490,6 +1566,7 @@
       });
     });
   }
+  __name(renderCodexNotion, "renderCodexNotion");
   fetch("/codex-sync").then((r) => r.json()).then(renderCodexNotion).catch(() => {
   });
   document.getElementById("quest-log-header").addEventListener("click", () => {
@@ -1631,14 +1708,17 @@
     }
     counter.textContent = `${Math.min(logCount, MAX_LOG)} entries`;
   }
+  __name(addLogEntry, "addLogEntry");
   var _dismissedQuests = JSON.parse(localStorage.getItem("realm-dismissed-quests") || "[]");
   var _completedQuests = JSON.parse(localStorage.getItem("realm-completed-quests") || "[]");
   function _saveDismissed() {
     localStorage.setItem("realm-dismissed-quests", JSON.stringify(_dismissedQuests));
   }
+  __name(_saveDismissed, "_saveDismissed");
   function _saveCompleted() {
     localStorage.setItem("realm-completed-quests", JSON.stringify(_completedQuests));
   }
+  __name(_saveCompleted, "_saveCompleted");
   var _initialQuests = [
     { type: "quest", node: "katana", text: "Chart every node in the Digital Dominion \u2014 ensure all devices report their presence to the Citadel", duration: 12 },
     { type: "quest", node: "hp-switch", text: "Awaken all Guardian Towers \u2014 bring collectd scrying to every AP in the realm", duration: 12 },
@@ -1664,6 +1744,7 @@
     bubble.style.left = nodeLeft + iconW / 2 - bubble.offsetWidth / 2 + "px";
     bubble.style.top = nodeTop - bubble.offsetHeight - 12 + "px";
   }
+  __name(_positionBubble, "_positionBubble");
   function updateBubblePositions() {
     _activeBubbles.forEach((b) => {
       if (!b.isConnected) {
@@ -1673,6 +1754,7 @@
       _positionBubble(b);
     });
   }
+  __name(updateBubblePositions, "updateBubblePositions");
   function _dismissBubble(bubble) {
     bubble.style.animation = "bubbleOut 0.3s ease-in forwards";
     setTimeout(() => {
@@ -1680,6 +1762,7 @@
       _activeBubbles.delete(bubble);
     }, 300);
   }
+  __name(_dismissBubble, "_dismissBubble");
   function showSpeechBubble(nodeEl, evt, isAlert) {
     for (const b of _activeBubbles) {
       if (b._nodeEl === nodeEl) {
@@ -1725,6 +1808,7 @@
       }, dur);
     }
   }
+  __name(showSpeechBubble, "showSpeechBubble");
   function showHighlight(nodeEl, evt) {
     const iconEl = nodeEl.querySelector(".node-icon");
     if (!iconEl) return;
@@ -1738,6 +1822,7 @@
     iconEl.appendChild(flash);
     setTimeout(() => flash.remove(), 1500);
   }
+  __name(showHighlight, "showHighlight");
   var _pulseCore = document.getElementById("pulse-core");
   var _pulseRing1 = document.getElementById("pulse-ring1");
   var _pulseRing2 = document.getElementById("pulse-ring2");
@@ -1763,6 +1848,7 @@
     void scan.offsetWidth;
     scan.style.animation = "scanPass 1.2s ease-in-out forwards";
   }
+  __name(firePulse, "firePulse");
   function showOffline() {
     if (_pulseCore) {
       _pulseCore.style.background = "#804040";
@@ -1773,6 +1859,7 @@
       _pulseLabel.style.color = "#604040";
     }
   }
+  __name(showOffline, "showOffline");
   var STATUS_URL = "/status";
   async function poll() {
     try {
@@ -1791,6 +1878,7 @@
     }
     setTimeout(poll, updateSpeedMs);
   }
+  __name(poll, "poll");
   poll();
   var canvas = document.getElementById("map-canvas");
   var world = document.getElementById("map-world");
@@ -1820,6 +1908,7 @@
     }
     updateMinimap();
   }
+  __name(applyTransform, "applyTransform");
   function _applyGlobeZ() {
     if (!_topology) return;
     const cx = WORLD_W / 2, cy = WORLD_H / 2;
@@ -1859,6 +1948,7 @@
       b.style.rotate = counterRot;
     });
   }
+  __name(_applyGlobeZ, "_applyGlobeZ");
   function _applyTopoZ() {
     const peakH = _mapTilt * 5;
     const topoEl = document.getElementById("topo-svg");
@@ -1869,6 +1959,7 @@
       band.style.translate = `0px 0px ${elev * peakH}px`;
     });
   }
+  __name(_applyTopoZ, "_applyTopoZ");
   function _clearGlobeZ() {
     if (!_topology) return;
     for (const n of _topology.nodes) {
@@ -1897,6 +1988,7 @@
       b.style.rotate = "";
     });
   }
+  __name(_clearGlobeZ, "_clearGlobeZ");
   function centerMap() {
     const cw = canvas.clientWidth, ch = canvas.clientHeight;
     scale = Math.min(cw / WORLD_W, ch / WORLD_H) * 1.2;
@@ -1904,6 +1996,7 @@
     panY = (ch - WORLD_H * scale) / 2;
     applyTransform();
   }
+  __name(centerMap, "centerMap");
   function panToNode(x, y) {
     const cw = canvas.clientWidth, ch = canvas.clientHeight;
     scale = 1.2;
@@ -1911,6 +2004,7 @@
     panY = ch / 2 - y * scale;
     applyTransform();
   }
+  __name(panToNode, "panToNode");
   canvas.addEventListener("mousedown", (e) => {
     dragging = true;
     lastX = e.clientX;
@@ -2040,6 +2134,7 @@
     viewport.style.width = Math.min(mmW, vw) + "px";
     viewport.style.height = Math.min(mmH, vh) + "px";
   }
+  __name(updateMinimap, "updateMinimap");
   centerMap();
   window.addEventListener("resize", centerMap);
   var currentEditNode = null;
@@ -2077,12 +2172,14 @@
     peOverlay.classList.add("open");
     peSaved.classList.remove("show");
   }
+  __name(openPersonaEditor, "openPersonaEditor");
   function closePersonaEditor() {
     peEditor.classList.remove("open");
     peOverlay.classList.remove("open");
     currentEditNode = null;
     stopStatsRefresh();
   }
+  __name(closePersonaEditor, "closePersonaEditor");
   function renderHints() {
     peHints.innerHTML = "";
     peHintsList.forEach((hint, i) => {
@@ -2098,6 +2195,7 @@
       });
     });
   }
+  __name(renderHints, "renderHints");
   peHintInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && peHintInput.value.trim()) {
       e.preventDefault();
@@ -2163,20 +2261,24 @@
     if (name === "shell") renderShellPane(currentEditNode);
     if (name === "links") renderConnectionsPane(currentEditNode);
   }
+  __name(_switchToTab, "_switchToTab");
   function startStatsRefresh() {
     stopStatsRefresh();
     renderStatsPane(currentEditNode);
     _statsInterval = setInterval(() => renderStatsPane(currentEditNode), 5e3);
   }
+  __name(startStatsRefresh, "startStatsRefresh");
   function stopStatsRefresh() {
     if (_statsInterval) {
       clearInterval(_statsInterval);
       _statsInterval = null;
     }
   }
+  __name(stopStatsRefresh, "stopStatsRefresh");
   function _barClass(pct) {
     return pct > 85 ? "bar-crit" : pct > 60 ? "bar-warn" : "bar-ok";
   }
+  __name(_barClass, "_barClass");
   function renderStatsPane(nodeKey) {
     const body = document.getElementById("pe-stats-body");
     const titleEl = document.getElementById("pe-stats-title");
@@ -2288,6 +2390,7 @@
     }
     body.innerHTML = html;
   }
+  __name(renderStatsPane, "renderStatsPane");
   var _linksBody = document.getElementById("pe-links-body");
   var _linksTarget = document.getElementById("pe-links-target");
   var _linksType = document.getElementById("pe-links-type");
@@ -2304,10 +2407,12 @@
     if (!_topology) return [];
     return _topology.connections.map((c, i) => ({ ...c, _idx: i })).filter((c) => c.from === nodeId || c.to === nodeId);
   }
+  __name(_getNodeConns, "_getNodeConns");
   function _nodeLabel(id) {
     const n = _topology?.nodes.find((nd) => nd.id === id);
     return n ? n.label : id;
   }
+  __name(_nodeLabel, "_nodeLabel");
   function renderConnectionsPane(nodeKey) {
     if (!_linksBody) return;
     const conns = _getNodeConns(nodeKey);
@@ -2350,6 +2455,7 @@
     });
     _linksTarget.querySelectorAll("option").forEach((o) => o.hidden = o.value === nodeKey);
   }
+  __name(renderConnectionsPane, "renderConnectionsPane");
   function _saveConnections() {
     if (!_topology) return;
     fetch("/connections", {
@@ -2358,6 +2464,7 @@
       body: JSON.stringify({ connections: _topology.connections })
     });
   }
+  __name(_saveConnections, "_saveConnections");
   document.getElementById("pe-links-add-btn").addEventListener("click", () => {
     const target = _linksTarget.value;
     if (!target || !currentEditNode) return;
@@ -2386,6 +2493,7 @@
     connSvg.appendChild(path);
     _connPaths[idx] = path;
   }
+  __name(_addConnectionPath, "_addConnectionPath");
   var _shellHistory = {};
   var _shellOutput = document.getElementById("pe-shell-output");
   var _shellInput = document.getElementById("pe-shell-input");
@@ -2403,6 +2511,7 @@
     (_shellHistory[nodeKey] || []).forEach((e) => _appendShellEntry(e));
     _shellOutput.scrollTop = _shellOutput.scrollHeight;
   }
+  __name(renderShellPane, "renderShellPane");
   function _appendShellEntry(entry) {
     const cmd = document.createElement("div");
     cmd.className = "pe-shell-cmd";
@@ -2420,6 +2529,7 @@
       _shellOutput.appendChild(err);
     }
   }
+  __name(_appendShellEntry, "_appendShellEntry");
   async function _runShellCmd(nodeKey, command) {
     const info = infraNodes[nodeKey];
     if (!info?.sshHost) return;
@@ -2453,7 +2563,7 @@
         err.textContent = entry.error;
         _shellOutput.appendChild(err);
       }
-      (_shellHistory[nodeKey] ||= []).push(entry);
+      (_shellHistory[nodeKey] || (_shellHistory[nodeKey] = [])).push(entry);
     } catch (e) {
       spin.remove();
       const err = document.createElement("div");
@@ -2465,6 +2575,7 @@
     _shellInput.focus();
     _shellOutput.scrollTop = _shellOutput.scrollHeight;
   }
+  __name(_runShellCmd, "_runShellCmd");
   _shellInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && e.target.value.trim() && currentEditNode) {
       e.preventDefault();
@@ -2522,6 +2633,7 @@
       }
       scheduleSave();
     }
+    __name(doMinimize, "doMinimize");
     handle.addEventListener("dblclick", (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -2570,6 +2682,7 @@
       minIcon.style.cursor = "grabbing";
       panel.style.transition = "none";
     }
+    __name(minStartDrag, "minStartDrag");
     function minMoveDrag(cx, cy) {
       if (!_minDragging) return;
       if (!_minMoved && Math.abs(cx - _minStartX) + Math.abs(cy - _minStartY) < 6) return;
@@ -2581,6 +2694,7 @@
       panel.style.transform = "none";
       if (Math.random() < 0.4) spawnMote(cx + (Math.random() - 0.5) * 20, cy + (Math.random() - 0.5) * 20, cfg.rgb);
     }
+    __name(minMoveDrag, "minMoveDrag");
     function minEndDrag() {
       if (_minDragging) {
         _minDragging = false;
@@ -2592,6 +2706,7 @@
         }
       }
     }
+    __name(minEndDrag, "minEndDrag");
     minIcon.addEventListener("mousedown", (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -2627,6 +2742,7 @@
       scheduleSave();
     });
   }
+  __name(setupPanelMinimize, "setupPanelMinimize");
   setupPanelMinimize("realm-panel", "h3");
   setupPanelMinimize("legend", "h3");
   setupPanelMinimize("spellbook", "h3");
@@ -2648,6 +2764,7 @@
     _spellDots.forEach((d, i) => d.classList.toggle("active", i === _spellPage));
     saveSettings();
   }
+  __name(_showSpellPage, "_showSpellPage");
   document.getElementById("spell-prev")?.addEventListener("click", (e) => {
     e.stopPropagation();
     _showSpellPage(_spellPage - 1);
@@ -2672,7 +2789,7 @@
   });
   document.querySelector('.legend-section[data-section="nodes"]')?.classList.add("collapsed");
   document.querySelector('.legend-section[data-section="effects"]')?.classList.add("collapsed");
-  (function initEffectsControls() {
+  (/* @__PURE__ */ __name((function initEffectsControls() {
     function wire(id, getter, setter) {
       const sl = document.getElementById(id + "-slider");
       const vl = document.getElementById(id + "-val");
@@ -2684,6 +2801,7 @@
         scheduleSave();
       });
     }
+    __name(wire, "wire");
     wire("fx-ambient", () => _sparkleAmbient, (v) => {
       _sparkleAmbient = v;
     });
@@ -2729,7 +2847,7 @@
         saveSettings();
       });
     }
-  })();
+  }), "initEffectsControls"))();
   setupPanelMinimize("quest-log", "#quest-log-header");
   setupPanelMinimize("realm-codex", "#codex-header");
   setupPanelMinimize("minimap", null);
@@ -2774,6 +2892,7 @@
       }))
     ];
   }
+  __name(_buildSearchIndex, "_buildSearchIndex");
   function _searchRealm(query) {
     _buildSearchIndex();
     if (!_searchIndex || !query) return [];
@@ -2797,6 +2916,7 @@
     scored.sort((a, b) => b.score - a.score);
     return scored.slice(0, 12).map((s) => s.entry);
   }
+  __name(_searchRealm, "_searchRealm");
   function _highlightMatch(text, query) {
     if (!query) return text;
     const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
@@ -2809,6 +2929,7 @@
     }
     return result;
   }
+  __name(_highlightMatch, "_highlightMatch");
   function _renderSearchResults(results, query) {
     _searchActiveIdx = -1;
     if (!results.length) {
@@ -2853,6 +2974,7 @@
     _searchResults.appendChild(frag);
     _searchResults.classList.add("open");
   }
+  __name(_renderSearchResults, "_renderSearchResults");
   function _navigateToSearchResult(nodeId) {
     if (nodeId.startsWith("_panel:")) {
       const entry = _searchIndex?.find((e) => e.id === nodeId);
@@ -2889,6 +3011,7 @@
     _searchInput.blur();
     _searchResults.classList.remove("open");
   }
+  __name(_navigateToSearchResult, "_navigateToSearchResult");
   if (_searchInput) {
     _searchInput.addEventListener("input", () => {
       const rawVal = _searchInput.value;
@@ -3022,6 +3145,7 @@
     });
     if (countEl) countEl.textContent = total + " nodes";
   }
+  __name(buildNodeList, "buildNodeList");
   function updateNodeListStatus(d) {
     if (!d || !d.astral) return;
     const nodeStatus = d.astral.nodes || {};
@@ -3034,6 +3158,7 @@
       dot.className = "nl-status " + (online === true ? "online" : online === false ? "offline" : "unknown");
     });
   }
+  __name(updateNodeListStatus, "updateNodeListStatus");
   buildNodeList();
   var _originalPositions = {};
   if (_topology) _topology.nodes.forEach((n) => {
@@ -3112,6 +3237,7 @@
       worldH: WORLD_H
     });
   }
+  __name(autoArrangeLayout, "autoArrangeLayout");
   function resetToOriginalPositions() {
     if (_layoutRunning) return;
     const nodes = _topology.nodes;
@@ -3124,6 +3250,7 @@
       updateRegionLabels();
     });
   }
+  __name(resetToOriginalPositions, "resetToOriginalPositions");
   var _nodeElCache = {};
   if (_topology) _topology.nodes.forEach((n) => {
     _nodeElCache[n.id] = document.querySelector(`[data-tip="${n.id}"]`);
@@ -3158,11 +3285,13 @@
         if (onDone) onDone();
       }
     }
+    __name(step, "step");
     requestAnimationFrame(step);
   }
+  __name(_animateToPositions, "_animateToPositions");
   document.getElementById("layout-auto-btn")?.addEventListener("click", autoArrangeLayout);
   document.getElementById("layout-reset-btn")?.addEventListener("click", resetToOriginalPositions);
-  (function wireLayoutSliders() {
+  (/* @__PURE__ */ __name((function wireLayoutSliders() {
     const sliders = [
       ["layout-attract", (v) => {
         _layoutAttract = v;
@@ -3193,8 +3322,8 @@
         scheduleSave();
       });
     }
-  })();
-  (function wireBiomeSliders() {
+  }), "wireLayoutSliders"))();
+  (/* @__PURE__ */ __name((function wireBiomeSliders() {
     const sliders = [
       ["biome-land", (v) => {
         _biomeLandScale = v;
@@ -3228,8 +3357,8 @@
         scheduleSave();
       });
     }
-  })();
-  (function wireVisibilityToggles() {
+  }), "wireBiomeSliders"))();
+  (/* @__PURE__ */ __name((function wireVisibilityToggles() {
     const toggles = [
       // Map layers
       ["vis-terrain", "#terrain-dynamic"],
@@ -3301,7 +3430,7 @@
         saveSettings();
       });
     }
-  })();
+  }), "wireVisibilityToggles"))();
   var moteCanvas = document.createElement("canvas");
   moteCanvas.id = "mote-canvas";
   moteCanvas.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:300";
@@ -3312,6 +3441,7 @@
     moteCanvas.width = window.innerWidth;
     moteCanvas.height = window.innerHeight;
   }
+  __name(resizeMoteCanvas, "resizeMoteCanvas");
   resizeMoteCanvas();
   window.addEventListener("resize", resizeMoteCanvas);
   function spawnMote(x, y, color) {
@@ -3330,6 +3460,7 @@
       wobbleSpeed: 0.05 + Math.random() * 0.1
     });
   }
+  __name(spawnMote, "spawnMote");
   var _sparkleAmbient = 0.3;
   var _sparkleNodes = 0.5;
   var _sparkleLeyLines = 0.4;
@@ -3356,6 +3487,7 @@
       });
     }
   }
+  __name(_spawnAmbientSparkles, "_spawnAmbientSparkles");
   function _spawnNodeSparkles() {
     if (_sparkleNodes <= 0 || !_topology || !_topology.nodes || motes.length >= _PERF.moteCap) return;
     const rate = _sparkleNodes * 0.02 / _PERF.sparkleDiv;
@@ -3386,6 +3518,7 @@
       });
     }
   }
+  __name(_spawnNodeSparkles, "_spawnNodeSparkles");
   var _leyColors = { wan: [100, 180, 255], bridge: [180, 120, 255], _default: [140, 220, 180] };
   function _spawnLeyLineSparkles() {
     if (_sparkleLeyLines <= 0 || !_topology || !_topology.connections || motes.length >= _PERF.moteCap) return;
@@ -3418,6 +3551,7 @@
       });
     }
   }
+  __name(_spawnLeyLineSparkles, "_spawnLeyLineSparkles");
   var _sparkleTimer = 0;
   function animateMotes() {
     const cw = moteCanvas.width, ch = moteCanvas.height;
@@ -3474,6 +3608,7 @@
     motes.length = writeIdx;
     requestAnimationFrame(animateMotes);
   }
+  __name(animateMotes, "animateMotes");
   animateMotes();
   var LAYOUT_KEY = "realm-map-layout-v2";
   var SETTINGS_KEY = "realm-map-settings-v3";
@@ -3567,6 +3702,7 @@
       });
     }, 500);
   }
+  __name(saveSettings, "saveSettings");
   var _restoring = false;
   function _applySettings(s) {
     _restoring = true;
@@ -3604,6 +3740,7 @@
     if (s.spellPage != null) _showSpellPage(s.spellPage);
     _restoring = false;
   }
+  __name(_applySettings, "_applySettings");
   function restoreSettings() {
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
@@ -3619,6 +3756,7 @@
     });
     return true;
   }
+  __name(restoreSettings, "restoreSettings");
   function saveLayout() {
     const layout = { panels: {}, nodes: {}, minimized: [] };
     ["realm-panel", "legend", "spellbook", "quest-log", "realm-codex", "minimap", "node-list", "debug-panel"].forEach((id) => {
@@ -3643,6 +3781,7 @@
     });
     saveSettings();
   }
+  __name(saveLayout, "saveLayout");
   function _applyLayout(layout) {
     if (!layout) return false;
     let applied = false;
@@ -3687,6 +3826,7 @@
     }
     return applied;
   }
+  __name(_applyLayout, "_applyLayout");
   function restoreLayout() {
     try {
       const raw = localStorage.getItem(LAYOUT_KEY);
@@ -3711,6 +3851,7 @@
     }
     return false;
   }
+  __name(restoreLayout, "restoreLayout");
   var _layoutSaveTimer = null;
   function scheduleSave() {
     if (_restoring || _layoutSaveTimer) return;
@@ -3719,6 +3860,7 @@
       saveLayout();
     }, 500);
   }
+  __name(scheduleSave, "scheduleSave");
   window.addEventListener("beforeunload", () => {
     if (_layoutSaveTimer) {
       clearTimeout(_layoutSaveTimer);
@@ -3739,6 +3881,7 @@
       handle.style.cursor = "grabbing";
       el.style.transition = "none";
     }
+    __name(startDrag, "startDrag");
     function moveDrag(cx, cy) {
       if (!isDragging) return;
       el.style.left = cx - dx + "px";
@@ -3750,6 +3893,7 @@
         spawnMote(cx + (Math.random() - 0.5) * 20, cy + (Math.random() - 0.5) * 20, moteColor);
       }
     }
+    __name(moveDrag, "moveDrag");
     function endDrag() {
       if (isDragging) {
         isDragging = false;
@@ -3757,6 +3901,7 @@
         scheduleSave();
       }
     }
+    __name(endDrag, "endDrag");
     handle.addEventListener("mousedown", (e) => {
       if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return;
       e.preventDefault();
@@ -3776,6 +3921,7 @@
     }, { passive: true });
     window.addEventListener("touchend", endDrag, { passive: true });
   }
+  __name(makeDraggable, "makeDraggable");
   makeDraggable(document.getElementById("realm-panel"), "h3", [240, 216, 144]);
   makeDraggable(document.getElementById("legend"), "h3", [100, 180, 255]);
   makeDraggable(document.getElementById("spellbook"), "h3", [192, 160, 255]);
@@ -3807,6 +3953,7 @@
       node.style.zIndex = "25";
       node.style.transition = "none";
     }
+    __name(startNodeDrag, "startNodeDrag");
     function moveNodeDrag(cx, cy) {
       if (!dragNode) return;
       if (!hasMoved) {
@@ -3849,6 +3996,7 @@
         );
       }
     }
+    __name(moveNodeDrag, "moveNodeDrag");
     function endNodeDrag() {
       if (_longPressTimer) {
         clearTimeout(_longPressTimer);
@@ -3886,6 +4034,7 @@
         dragNode = null;
       }
     }
+    __name(endNodeDrag, "endNodeDrag");
     document.querySelectorAll(".realm-node").forEach((node) => {
       node.addEventListener("mousedown", (e) => {
         if (e.button !== 0) return;
@@ -3936,6 +4085,7 @@
     }
     return v;
   }
+  __name(_getPath, "_getPath");
   async function loadArcaneConfig() {
     try {
       const r = await fetch("/config");
@@ -3952,6 +4102,7 @@
     } catch (e) {
     }
   }
+  __name(loadArcaneConfig, "loadArcaneConfig");
   function _saveArcaneConfig() {
     const update = { chat: {}, speech: {}, oracle: {} };
     for (const [id, spec] of Object.entries(_cfgFields)) {
@@ -3984,6 +4135,7 @@
       if (statusEl) statusEl.textContent = "Save failed";
     });
   }
+  __name(_saveArcaneConfig, "_saveArcaneConfig");
   var _cfgSaveBtn = document.getElementById("cfg-save-btn");
   if (_cfgSaveBtn) _cfgSaveBtn.addEventListener("click", _saveArcaneConfig);
   loadArcaneConfig();
@@ -4024,6 +4176,9 @@
     }, endDrag = function() {
       dragging2 = false;
     };
+    __name(startDrag, "startDrag");
+    __name(moveDrag, "moveDrag");
+    __name(endDrag, "endDrag");
     const hdr = document.getElementById("debug-header");
     let offX = 0, offY = 0, dragging2 = false;
     hdr?.addEventListener("mousedown", (e) => {
@@ -4048,13 +4203,16 @@
     <div class="dbg-section-title">${title}</div>
     <div class="dbg-section-body">${content}</div></div>`;
   }
+  __name(_dbgSection, "_dbgSection");
   function _dbgKV(k, v, cls = "") {
     const vc = typeof v === "number" ? v === 0 ? "dim" : "" : cls;
     return `<div class="dbg-kv"><span class="dbg-k">${k}</span><span class="dbg-v ${vc}">${_escH(String(v))}</span></div>`;
   }
+  __name(_dbgKV, "_dbgKV");
   function _escH(s) {
     return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
+  __name(_escH, "_escH");
   function _dbgTree(obj, depth = 0, filter = "") {
     if (obj === null || obj === void 0) return '<span class="dbg-v dim">null</span>';
     if (typeof obj !== "object") return `<span class="dbg-v">${_escH(String(obj))}</span>`;
@@ -4076,6 +4234,7 @@
       ([k, v]) => `<div class="dbg-kv"><span class="dbg-k">${_escH(k)}</span>${_dbgTree(v, depth + 1, filter)}</div>`
     ).join("")}</div>`;
   }
+  __name(_dbgTree, "_dbgTree");
   function _dbgRefresh() {
     if (!_dbgPanel || _dbgPanel.style.display === "none") return;
     const d = lastStatus;
@@ -4190,6 +4349,7 @@
       });
     }
   }
+  __name(_dbgRefresh, "_dbgRefresh");
   function _dbgFetchDb() {
     if (!_dbgPanel || _dbgPanel.style.display === "none") return;
     fetch("/debug").then((r) => r.json()).then((d) => {
@@ -4197,6 +4357,7 @@
     }).catch(() => {
     });
   }
+  __name(_dbgFetchDb, "_dbgFetchDb");
   new MutationObserver(() => {
     if (_dbgPanel && _dbgPanel.style.display !== "none") {
       _dbgFetchDb();
@@ -4205,3 +4366,4 @@
   }).observe(_dbgPanel, { attributes: true, attributeFilter: ["style"] });
   setInterval(_dbgFetchDb, 1e4);
 })();
+//# sourceMappingURL=realm-map.js.map

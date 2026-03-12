@@ -345,5 +345,35 @@ export function loadTopology() {
   }
 }
 
+// ── Refresh topology (async, preserves scroll) ──
+let _lastNodeCount = 0;
+export async function refreshTopology() {
+  try {
+    const r = await fetch('/topology');
+    if (!r.ok) return;
+    const topo = await r.json();
+    // Only re-render if node/connection count changed (avoids DOM thrash)
+    const nc = (topo.nodes || []).length;
+    const cc = (topo.connections || []).length;
+    if (nc === _lastNodeCount && cc === (_topology?.connections || []).length) return;
+    _lastNodeCount = nc;
+    // Save scroll position
+    const vp = document.getElementById('map-viewport');
+    const sx = vp?.scrollLeft, sy = vp?.scrollTop;
+    // Clear existing DOM
+    const world = document.getElementById('map-world');
+    world.querySelectorAll('.realm-node, .region-label, .vlan-label').forEach(el => el.remove());
+    const svg = document.querySelector('#connections');
+    svg.innerHTML = '';
+    _connPaths.length = 0;
+    _vlanLabels.length = 0;
+    // Re-render
+    renderTopology(topo);
+    // Restore scroll
+    if (vp && sx != null) { vp.scrollLeft = sx; vp.scrollTop = sy; }
+  } catch (e) { /* silent */ }
+}
+
 // Load topology synchronously at module init
 loadTopology();
+_lastNodeCount = (_topology?.nodes || []).length;

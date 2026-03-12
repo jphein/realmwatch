@@ -35,7 +35,7 @@ python3 oracle_daemon.py --no-voice  # AI oracle daemon
 | collectd_reader.py | RRD metrics | /var/lib/collectd (20 hosts) |
 | collectd_listener.py | Live metrics | Collectd intake |
 | ha_bridge.py | Home Assistant | REST bridge (2036 entities) |
-| ap_scanner.py | WiFi scanner | MAC-based identity, roaming detection |
+| ap_scanner.py | WiFi scanner | MAC + hostname identity, roaming, auto unknown nodes |
 | notion_sync.py | Notion sync | Todo → quest events |
 | codex_sync.py | Codex sync | Notion lore database |
 | realm-map.html | Frontend HTML | Spellbook, codex, quest log, panels |
@@ -43,7 +43,7 @@ python3 oracle_daemon.py --no-voice  # AI oracle daemon
 | src/main.js | Entry point | Import order: topology then app |
 | src/app.js | Frontend main | UI init, spellbook, panels, events |
 | src/config.js | Constants | World dimensions, perf tiers |
-| src/topology.js | Rendering | Node/connection rendering, tips |
+| src/topology.js | Rendering | Node/connection rendering, tips, 90s auto-refresh |
 | src/utils.js | Helpers | Format bytes, rates, percentages |
 | scripts/ | Setup scripts | Bedrock, Vertex, provider switcher |
 
@@ -78,7 +78,11 @@ gateway.run(transport="streamable-http", host="0.0.0.0", port=8001)
 - Browser tools get namespace prefixes: `realm_get_system_status`, `chat_chat`, etc.
 
 ## Todo: Frontend chat + speech
+Plain fetch + vanilla JS in existing src/ modules. No frameworks — keep it simple.
 ```
-src/chat.js    # Multi-model chat → gateway :8001 (namespace: chat_*)
-src/speech.js  # Web Speech API mic + Web Audio TTS → gateway :8001 (namespace: speech_*)
+src/chat.js    # fetch → gateway :8001 chat_* tools, append responses to DOM
+src/speech.js  # fetch → gateway :8001 speech_* tools, Web Audio for playback
 ```
+Considered Datastar (hypermedia/SSE) but overkill for 2-3 panels.
+Considered React but wrong fit — map is game-like (vanilla JS), panels are too simple.
+Considered Gun.js for sync but single-user/single-server, no peer conflict to solve.
