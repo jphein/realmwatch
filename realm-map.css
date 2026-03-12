@@ -2199,18 +2199,18 @@
 
   /* ── Debug / Arcane Mirror panel ── */
   #debug-panel {
-    position: fixed; bottom: 10px; right: 10px; width: 420px; max-height: 55vh;
+    position: fixed; bottom: 10px; right: 10px; width: 420px; height: 55vh;
     background: radial-gradient(ellipse at 30% 20%, rgba(20,15,35,0.97), rgba(10,8,20,0.98));
     border: 1px solid rgba(120,80,200,0.35); border-radius: 8px;
     font-family: 'Consolas','Fira Code',monospace; font-size: 11px; color: #c0b8d8;
-    display: flex; flex-direction: column; z-index: 900;
+    display: flex; flex-direction: column; z-index: 900; overflow: hidden;
     box-shadow: 0 0 20px rgba(100,60,180,0.25), inset 0 0 40px rgba(80,40,160,0.08);
   }
   #debug-header {
     display: flex; align-items: center; gap: 8px; padding: 6px 10px;
     font-family: 'Cinzel',serif; font-size: 13px; color: #d0b0ff;
     border-bottom: 1px solid rgba(120,80,200,0.2);
-    cursor: move; user-select: none;
+    cursor: move; user-select: none; flex-shrink: 0;
   }
   #debug-header span:first-child { flex: 1; }
   .debug-stat { font-family: monospace; font-size: 10px; color: #807098; }
@@ -2230,7 +2230,7 @@
   .debug-tab:hover { color: #b090d0; }
   .debug-tab.active { color: #d0b0ff; border-bottom-color: #9060c0; }
   #debug-filter {
-    padding: 4px 8px; border-bottom: 1px solid rgba(120,80,200,0.1);
+    padding: 4px 8px; border-bottom: 1px solid rgba(120,80,200,0.1); flex-shrink: 0;
   }
   #debug-search {
     width: 100%; background: rgba(40,30,60,0.6); border: 1px solid rgba(120,80,200,0.2);
@@ -2240,7 +2240,7 @@
   #debug-search:focus { border-color: rgba(160,100,255,0.4); }
   #debug-search::placeholder { color: #504068; }
   #debug-body {
-    overflow-y: auto; flex: 1; padding: 6px 8px; min-height: 100px;
+    overflow-y: auto; overflow-x: hidden; flex: 1 1 0; padding: 6px 8px; min-height: 0;
   }
   #debug-body::-webkit-scrollbar { width: 5px; }
   #debug-body::-webkit-scrollbar-thumb { background: rgba(120,80,200,0.3); border-radius: 3px; }
@@ -2259,7 +2259,7 @@
   .dbg-v.ok { color: #80d080; }
   .dbg-v.warn { color: #e0c060; }
   .dbg-v.dim { color: #605878; }
-  .dbg-tree { padding-left: 12px; border-left: 1px solid rgba(120,80,200,0.1); }
+  .dbg-tree { padding-left: 12px; border-left: 1px solid rgba(120,80,200,0.1); overflow: hidden; }
   .dbg-json {
     white-space: pre-wrap; font-size: 10px; color: #908878; padding: 3px 0;
     max-height: 200px; overflow-y: auto;
