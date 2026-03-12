@@ -4323,7 +4323,7 @@
     window.addEventListener("touchcancel", endNodeDrag, { passive: true });
   })();
   if (!restoreLayout()) {
-    ["spellbook", "quest-log", "realm-codex", "minimap", "node-list"].forEach((id) => {
+    ["realm-panel", "legend", "spellbook", "quest-log", "realm-codex", "minimap", "node-list"].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.classList.add("panel-minimized");
     });

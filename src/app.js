@@ -3934,9 +3934,9 @@ makeDraggable(document.getElementById('node-list'), '#node-list-header', [192,14
   window.addEventListener('touchcancel', endNodeDrag, { passive: true });
 })();
 
-// Restore saved layout on load, or apply defaults (only legend + vitals maximized)
+// Restore saved layout on load, or default all panels to minimized (icons only)
 if (!restoreLayout()) {
-  ['spellbook', 'quest-log', 'realm-codex', 'minimap', 'node-list'].forEach(id => {
+  ['realm-panel', 'legend', 'spellbook', 'quest-log', 'realm-codex', 'minimap', 'node-list'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.add('panel-minimized');
   });
