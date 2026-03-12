@@ -209,15 +209,15 @@
   <div class="legend-section collapsed" data-section="panels-vis">
     <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Panels</div>
     <div class="legend-section-body">
-      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-titlebar" checked><span class="topo-switch-track"></span></label><span>Title Bar</span></div>
-      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-search" checked><span class="topo-switch-track"></span></label><span>Search</span></div>
-      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-statuspanel" checked><span class="topo-switch-track"></span></label><span>Realm Vitals</span></div>
-      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-legend" checked><span class="topo-switch-track"></span></label><span>Legend</span></div>
-      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-codex" checked><span class="topo-switch-track"></span></label><span>Codex</span></div>
-      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-questlog" checked><span class="topo-switch-track"></span></label><span>Quest Log</span></div>
-      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-minimap" checked><span class="topo-switch-track"></span></label><span>Minimap</span></div>
-      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-nodelist" checked><span class="topo-switch-track"></span></label><span>Realm Census</span></div>
-      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-debug"><span class="topo-switch-track"></span></label><span>Arcane Mirror</span></div>
+      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-titlebar" checked><span class="topo-switch-track"></span></label><span class="layer-name">Title Bar</span><input type="range" class="layer-opacity" id="panel-titlebar-slider" min="0" max="1" step="0.05" value="1"></div>
+      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-search" checked><span class="topo-switch-track"></span></label><span class="layer-name">Search</span><input type="range" class="layer-opacity" id="panel-search-slider" min="0" max="1" step="0.05" value="1"></div>
+      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-statuspanel" checked><span class="topo-switch-track"></span></label><span class="layer-name">Realm Vitals</span><input type="range" class="layer-opacity" id="panel-vitals-slider" min="0" max="1" step="0.05" value="1"></div>
+      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-legend" checked><span class="topo-switch-track"></span></label><span class="layer-name">Legend</span><input type="range" class="layer-opacity" id="panel-legend-slider" min="0" max="1" step="0.05" value="1"></div>
+      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-codex" checked><span class="topo-switch-track"></span></label><span class="layer-name">Codex</span><input type="range" class="layer-opacity" id="panel-codex-slider" min="0" max="1" step="0.05" value="1"></div>
+      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-questlog" checked><span class="topo-switch-track"></span></label><span class="layer-name">Quest Log</span><input type="range" class="layer-opacity" id="panel-questlog-slider" min="0" max="1" step="0.05" value="1"></div>
+      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-minimap" checked><span class="topo-switch-track"></span></label><span class="layer-name">Minimap</span><input type="range" class="layer-opacity" id="panel-minimap-slider" min="0" max="1" step="0.05" value="1"></div>
+      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-nodelist" checked><span class="topo-switch-track"></span></label><span class="layer-name">Realm Census</span><input type="range" class="layer-opacity" id="panel-nodelist-slider" min="0" max="1" step="0.05" value="1"></div>
+      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-debug"><span class="topo-switch-track"></span></label><span class="layer-name">Arcane Mirror</span><input type="range" class="layer-opacity" id="panel-mirror-slider" min="0" max="1" step="0.05" value="1"></div>
     </div>
   </div>
   <div class="legend-section collapsed" data-section="layout">

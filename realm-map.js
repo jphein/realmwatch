@@ -3611,7 +3611,17 @@
       ["layer-labels-slider", null, true, ".node-label"],
       ["layer-sublabels-slider", null, true, ".node-sublabel"],
       ["layer-vlanlabels-slider", null, true, ".vlan-label"],
-      ["layer-bubbles-slider", null, true, ".speech-bubble"]
+      ["layer-bubbles-slider", null, true, ".speech-bubble"],
+      // Panel opacity sliders
+      ["panel-titlebar-slider", "#title-bar", false],
+      ["panel-search-slider", "#realm-search", false],
+      ["panel-vitals-slider", "#realm-panel", false],
+      ["panel-legend-slider", "#legend", false],
+      ["panel-codex-slider", "#realm-codex", false],
+      ["panel-questlog-slider", "#quest-log", false],
+      ["panel-minimap-slider", "#minimap", false],
+      ["panel-nodelist-slider", "#node-list", false],
+      ["panel-mirror-slider", "#debug-panel", false]
     ];
     for (const [sliderId, sel, isMulti, multiSel] of opacityLayers) {
       const sl = document.getElementById(sliderId);
@@ -3850,7 +3860,16 @@
     "layer-labels",
     "layer-sublabels",
     "layer-vlanlabels",
-    "layer-bubbles"
+    "layer-bubbles",
+    "panel-titlebar",
+    "panel-search",
+    "panel-vitals",
+    "panel-legend",
+    "panel-codex",
+    "panel-questlog",
+    "panel-minimap",
+    "panel-nodelist",
+    "panel-mirror"
   ];
   var _PERSIST_CHECKBOXES = [
     "topo-toggle-cb",
