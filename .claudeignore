@@ -1,12 +1,31 @@
+# Built output (edit src/*.js, then npm run build)
+realm-map.js
+realm-map.js.map
+realm-map.monolith.js
 dist/
-__pycache__/
-*.rrd
-.venv/
-venv/
-model-cache/
+
+# Data files (query via MCP tools, don't read directly)
+topology.json
+personas.json
+realm.db
 realm.db-shm
 realm.db-wal
+
+# Runtime
+__pycache__/
+*.rrd
+*.pyc
 monitor_3min.log
+
+# Dependencies
+.venv/
+venv/
 node_modules/
-realm-map.js
-realm-map.monolith.js
+model-cache/
+
+# Utilities (not core)
+monitor_3min.py
+test_mcp.py
+
+# Large files
+access-to-power.pdf

@@ -17,6 +17,7 @@ monitor_3min.log
 
 # Secrets
 .env
+.mcp.json
 
 # Large files
 access-to-power.pdf
