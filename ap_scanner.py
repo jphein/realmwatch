@@ -148,13 +148,17 @@ def scan_and_update():
 
     # --- Node identity resolution ---
     # Priority 1: MAC field in topology (stable, survives IP changes)
+    # Only trust MACs actually seen on APs — stale DHCP leases with old MACs are ignored
     mac_to_node = {}   # mac → node_id
     node_by_id = {}    # node_id → node dict ref
     for n in topo["nodes"]:
         node_by_id[n["id"]] = n
         node_mac = n.get("mac", "").lower()
         if node_mac:
-            mac_to_node[node_mac] = n["id"]
+            # If this MAC is visible on an AP, trust it. If not, skip it
+            # so hostname matching (Priority 3) can adopt the new MAC.
+            if node_mac in mac_to_ap:
+                mac_to_node[node_mac] = n["id"]
 
     # Priority 2: IP match via DHCP leases (fallback for nodes without mac field)
     ip_to_node = {}
