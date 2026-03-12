@@ -3460,7 +3460,15 @@ const _PERSIST_CHECKBOXES = [
 let _saveTimer = null;
 export function saveSettings() {
   if (_restoring) return;
-  const s = { sliders: {}, checkboxes: {}, quality: null, collapsed: [], spellPage: _spellPage };
+  const vp = document.getElementById('map-viewport');
+  const activePeTab = document.querySelector('.pe-tab.active');
+  const s = {
+    sliders: {}, checkboxes: {}, quality: null, collapsed: [], spellPage: _spellPage,
+    scroll: vp ? { x: vp.scrollLeft, y: vp.scrollTop } : null,
+    selectedNode: currentEditNode,
+    peTab: activePeTab?.dataset.peTab || 'stats',
+    mirrorTab: activeTab,
+  };
   _PERSIST_SLIDERS.forEach(id => {
     const sl = document.getElementById(id + '-slider');
     if (sl) s.sliders[id] = sl.value;
@@ -3514,6 +3522,21 @@ function _applySettings(s) {
     });
   }
   if (s.spellPage != null) _showSpellPage(s.spellPage);
+  // Restore map scroll position
+  if (s.scroll) {
+    const vp = document.getElementById('map-viewport');
+    if (vp) { vp.scrollLeft = s.scroll.x; vp.scrollTop = s.scroll.y; }
+  }
+  // Restore selected node + PE tab
+  if (s.selectedNode) {
+    openPersonaEditor(s.selectedNode);
+    if (s.peTab) _switchToTab(s.peTab);
+  }
+  // Restore mirror tab
+  if (s.mirrorTab) {
+    const tab = document.querySelector(`.log-tab[data-tab="${s.mirrorTab}"]`);
+    if (tab) tab.click();
+  }
   _restoring = false;
 }
 
@@ -3848,6 +3871,16 @@ if (!restoreLayout()) {
 }
 // Always restore settings (sliders, toggles, collapsed sections) independently
 restoreSettings();
+
+// Save scroll position on viewport scroll (debounced)
+let _scrollSaveTimer = null;
+const _mapVp = document.getElementById('map-viewport');
+if (_mapVp) {
+  _mapVp.addEventListener('scroll', () => {
+    clearTimeout(_scrollSaveTimer);
+    _scrollSaveTimer = setTimeout(saveSettings, 1000);
+  }, { passive: true });
+}
 
 // ── Arcane Config (MCP server settings) ──
 const _cfgFields = {
