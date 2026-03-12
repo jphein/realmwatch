@@ -2568,6 +2568,7 @@
       _minDx = cx - rect.left;
       _minDy = cy - rect.top;
       minIcon.style.cursor = "grabbing";
+      panel.style.transition = "none";
     }
     function minMoveDrag(cx, cy) {
       if (!_minDragging) return;
@@ -2584,6 +2585,7 @@
       if (_minDragging) {
         _minDragging = false;
         minIcon.style.cursor = "pointer";
+        panel.style.transition = "";
         if (_minMoved) {
           minIcon._wasDragged = true;
           scheduleSave();
@@ -2604,8 +2606,11 @@
       minStartDrag(e.touches[0].clientX, e.touches[0].clientY);
     }, { passive: false });
     window.addEventListener("touchmove", (e) => {
-      if (_minDragging && e.touches.length) minMoveDrag(e.touches[0].clientX, e.touches[0].clientY);
-    }, { passive: true });
+      if (_minDragging && e.touches.length) {
+        e.preventDefault();
+        minMoveDrag(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: false });
     window.addEventListener("touchend", minEndDrag, { passive: true });
     minIcon.addEventListener("touchend", (e) => {
       if (_minMoved) return;
@@ -3638,60 +3643,89 @@
     });
     saveSettings();
   }
+  function _applyLayout(layout) {
+    if (!layout) return false;
+    let applied = false;
+    if (layout.panels) {
+      Object.entries(layout.panels).forEach(([id, pos]) => {
+        const el = document.getElementById(id);
+        if (el && pos.left) {
+          el.style.left = pos.left;
+          el.style.top = pos.top;
+          el.style.right = "auto";
+          el.style.bottom = "auto";
+          el.style.transform = "none";
+        }
+      });
+      applied = true;
+    }
+    if (layout.minimized && layout.minimized.length) {
+      layout.minimized.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add("panel-minimized");
+      });
+      applied = true;
+    }
+    if (layout.nodes && Object.keys(layout.nodes).length) {
+      Object.entries(layout.nodes).forEach(([tip, pos]) => {
+        const el = document.querySelector(`[data-tip="${tip}"]`);
+        if (el && pos.left) {
+          el.style.left = pos.left;
+          el.style.top = pos.top;
+        }
+        if (_topology && _topology.nodes && pos.left) {
+          const tn = _topology.nodes.find((n) => n.id === tip);
+          if (tn) {
+            tn.x = parseInt(pos.left);
+            tn.y = parseInt(pos.top);
+          }
+        }
+      });
+      _topoNodeMap = null;
+      updateLinePositions();
+      applied = true;
+    }
+    return applied;
+  }
   function restoreLayout() {
     try {
       const raw = localStorage.getItem(LAYOUT_KEY);
-      if (!raw) return false;
-      const layout = JSON.parse(raw);
-      if (layout.panels) {
-        Object.entries(layout.panels).forEach(([id, pos]) => {
-          const el = document.getElementById(id);
-          if (el && pos.left) {
-            el.style.left = pos.left;
-            el.style.top = pos.top;
-            el.style.right = "auto";
-            el.style.bottom = "auto";
-            el.style.transform = "none";
-          }
-        });
+      if (raw) {
+        const layout = JSON.parse(raw);
+        if (_applyLayout(layout)) return true;
       }
-      if (layout.minimized) {
-        layout.minimized.forEach((id) => {
-          const el = document.getElementById(id);
-          if (el) el.classList.add("panel-minimized");
-        });
+    } catch (e) {
+    }
+    try {
+      const xhr = new XMLHttpRequest();
+      xhr.open("GET", "/settings", false);
+      xhr.send();
+      if (xhr.status === 200) {
+        const s = JSON.parse(xhr.responseText);
+        if (s._layout) {
+          localStorage.setItem(LAYOUT_KEY, JSON.stringify(s._layout));
+          if (_applyLayout(s._layout)) return true;
+        }
       }
-      if (layout.nodes) {
-        Object.entries(layout.nodes).forEach(([tip, pos]) => {
-          const el = document.querySelector(`[data-tip="${tip}"]`);
-          if (el && pos.left) {
-            el.style.left = pos.left;
-            el.style.top = pos.top;
-          }
-          if (_topology && _topology.nodes && pos.left) {
-            const tn = _topology.nodes.find((n) => n.id === tip);
-            if (tn) {
-              tn.x = parseInt(pos.left);
-              tn.y = parseInt(pos.top);
-            }
-          }
-        });
-        _topoNodeMap = null;
-        updateLinePositions();
-      }
-      return true;
     } catch (e) {
     }
     return false;
   }
   var _layoutSaveTimer = null;
   function scheduleSave() {
-    if (_layoutSaveTimer) return;
+    if (_restoring || _layoutSaveTimer) return;
     _layoutSaveTimer = setTimeout(() => {
       _layoutSaveTimer = null;
       saveLayout();
     }, 500);
   }
+  window.addEventListener("beforeunload", () => {
+    if (_layoutSaveTimer) {
+      clearTimeout(_layoutSaveTimer);
+      _layoutSaveTimer = null;
+      saveLayout();
+    }
+  });
   function makeDraggable(el, handleSelector, moteColor) {
     const handle = handleSelector ? el.querySelector(handleSelector) : el;
     if (!handle) return;
@@ -3976,29 +4010,38 @@
   });
   _dbgSearch?.addEventListener("input", () => _dbgRefresh());
   {
+    let startDrag = function(cx, cy) {
+      const r = _dbgPanel.getBoundingClientRect();
+      offX = cx - r.left;
+      offY = cy - r.top;
+      dragging2 = true;
+    }, moveDrag = function(cx, cy) {
+      if (!dragging2) return;
+      _dbgPanel.style.left = cx - offX + "px";
+      _dbgPanel.style.top = cy - offY + "px";
+      _dbgPanel.style.bottom = "auto";
+      _dbgPanel.style.right = "auto";
+    }, endDrag = function() {
+      dragging2 = false;
+    };
     const hdr = document.getElementById("debug-header");
-    let dx = 0, dy = 0, startX = 0, startY = 0;
+    let offX = 0, offY = 0, dragging2 = false;
     hdr?.addEventListener("mousedown", (e) => {
       if (e.target.tagName === "BUTTON") return;
-      startX = e.clientX;
-      startY = e.clientY;
-      const onMove = (ev) => {
-        dx = ev.clientX - startX;
-        dy = ev.clientY - startY;
-        startX = ev.clientX;
-        startY = ev.clientY;
-        _dbgPanel.style.top = _dbgPanel.offsetTop + dy + "px";
-        _dbgPanel.style.left = _dbgPanel.offsetLeft + dx + "px";
-        _dbgPanel.style.bottom = "auto";
-        _dbgPanel.style.right = "auto";
-      };
-      const onUp = () => {
-        document.removeEventListener("mousemove", onMove);
-        document.removeEventListener("mouseup", onUp);
-      };
-      document.addEventListener("mousemove", onMove);
-      document.addEventListener("mouseup", onUp);
+      e.preventDefault();
+      startDrag(e.clientX, e.clientY);
     });
+    document.addEventListener("mousemove", (e) => moveDrag(e.clientX, e.clientY));
+    document.addEventListener("mouseup", endDrag);
+    hdr?.addEventListener("touchstart", (e) => {
+      if (e.target.tagName === "BUTTON" || e.touches.length !== 1) return;
+      e.preventDefault();
+      startDrag(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: false });
+    document.addEventListener("touchmove", (e) => {
+      if (dragging2 && e.touches.length) moveDrag(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: true });
+    document.addEventListener("touchend", endDrag);
   }
   function _dbgSection(title, id, content, collapsed = false) {
     return `<div class="dbg-section${collapsed ? " collapsed" : ""}" data-dbg="${id}">

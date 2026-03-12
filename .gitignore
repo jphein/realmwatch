@@ -1,6 +1,22 @@
 venv/
+.venv/
 __pycache__/
 *.pyc
 node_modules/
 *.js.map
+*.rrd
+dist/
+model-cache/
 realm-map.monolith.js
+
+# Runtime data
+realm.db
+realm.db-shm
+realm.db-wal
+monitor_3min.log
+
+# Secrets
+.env
+
+# Large files
+access-to-power.pdf

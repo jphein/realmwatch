@@ -1,0 +1,12 @@
+dist/
+__pycache__/
+*.rrd
+.venv/
+venv/
+model-cache/
+realm.db-shm
+realm.db-wal
+monitor_3min.log
+node_modules/
+realm-map.js
+realm-map.monolith.js

@@ -950,9 +950,9 @@
     border-radius: 8px;
     padding: 14px 18px;
     min-width: 200px;
-    max-height: 90vh !important;
-    max-height: 90dvh !important;
-    overflow-y: auto !important;
+    max-height: 90vh;
+    max-height: 90dvh;
+    overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: #3a3020 transparent;
   }
@@ -2045,6 +2045,8 @@
     cursor: pointer;
     position: relative;
     user-select: none;
+    overflow: hidden;
+    touch-action: none;
   }
   .panel-minimized .panel-min-icon {
     display: flex;
@@ -2199,12 +2201,13 @@
 
   /* ── Debug / Arcane Mirror panel ── */
   #debug-panel {
-    position: fixed; bottom: 10px; right: 10px; width: 420px; height: 55vh;
+    position: fixed; bottom: 10px; right: 10px; width: min(420px, calc(100vw - 20px)); height: 55vh;
     background: radial-gradient(ellipse at 30% 20%, rgba(20,15,35,0.97), rgba(10,8,20,0.98));
     border: 1px solid rgba(120,80,200,0.35); border-radius: 8px;
     font-family: 'Consolas','Fira Code',monospace; font-size: 11px; color: #c0b8d8;
     display: flex; flex-direction: column; z-index: 900; overflow: hidden;
     box-shadow: 0 0 20px rgba(100,60,180,0.25), inset 0 0 40px rgba(80,40,160,0.08);
+    touch-action: none;
   }
   #debug-header {
     display: flex; align-items: center; gap: 8px; padding: 6px 10px;
@@ -2220,11 +2223,11 @@
   }
   .debug-close-btn:hover { color: #f66; }
   #debug-tabs {
-    display: flex; gap: 0; padding: 0 6px; border-bottom: 1px solid rgba(120,80,200,0.15);
-    overflow-x: auto; flex-shrink: 0;
+    display: flex; flex-wrap: wrap; gap: 0; padding: 0 6px; border-bottom: 1px solid rgba(120,80,200,0.15);
+    flex-shrink: 0;
   }
   .debug-tab {
-    padding: 4px 6px; font-size: 9px; cursor: pointer; color: #706088;
+    padding: 5px 7px; font-size: 9px; cursor: pointer; color: #706088;
     border-bottom: 2px solid transparent; white-space: nowrap; transition: color 0.2s;
   }
   .debug-tab:hover { color: #b090d0; }
@@ -2270,12 +2273,18 @@
   @media (pointer: coarse) {
     .speech-bubble .bubble-close { width: 28px; height: 28px; font-size: 20px; line-height: 26px; }
     .pe-close { min-width: 36px; min-height: 36px; }
+    .debug-tab { padding: 8px 8px; font-size: 10px; }
+    .debug-close-btn { padding: 4px 8px; font-size: 20px; }
+    .dbg-section-title { padding: 6px 0; font-size: 12px; }
   }
   @media (max-width: 768px) {
     #node-list { width: 220px; max-height: 400px; left: 10px; top: 70px; }
     .panel-min-icon { width: 40px; height: 40px; font-size: 18px; }
+    #debug-panel { width: calc(100vw - 20px); left: 10px; right: 10px; height: 50vh; }
   }
   @media (max-width: 480px) {
     #node-list { width: 180px; }
     .panel-min-icon { width: 36px; height: 36px; font-size: 16px; }
+    #debug-panel { height: 45vh; font-size: 10px; }
+    .dbg-k { min-width: 70px; }
   }

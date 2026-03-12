@@ -330,8 +330,8 @@
       "y": 280,
       "icon": "&#127984;",
       "label": "<REDACTED>",
-      "sublabel": "MR8300 \u2022 10.0.11.189",
-      "ip": "10.0.11.189",
+      "sublabel": "MR8300 \u2022 10.0.11.191",
+      "ip": "10.0.11.191",
       "collectd": "mr8300-host",
       "ssh": "glenn",
       "iconStyle": {
@@ -3114,13 +3114,13 @@
     },
     {
       "from": "flip3-5g",
-      "to": "eap225-outdoor",
+      "to": "wrt1900ac-family",
       "type": "active",
       "vlan": 6
     },
     {
       "from": "pixel-7",
-      "to": "ea6350-cl",
+      "to": "onhub-family",
       "type": "active",
       "vlan": 6
     },
@@ -3162,7 +3162,7 @@
     },
     {
       "from": "roku",
-      "to": "mr8300-host",
+      "to": "ea6350-cl",
       "type": "active",
       "vlan": 6
     },
