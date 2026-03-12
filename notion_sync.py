@@ -2,6 +2,7 @@
 import json
 import os
 import urllib.request
+import realm_db
 
 NOTION_API_VERSION = "2022-06-28"
 NOTION_BASE = "https://api.notion.com/v1"
@@ -19,8 +20,8 @@ def _strip_emoji_prefix(s):
     parts = s.split(" ", 1)
     return parts[1] if len(parts) > 1 and len(parts[0]) <= 2 else s
 
-# In-memory set of synced page IDs (resets on server restart)
-_synced_ids = set()
+# Synced page IDs persisted in DB (survives restarts)
+_synced_ids = None  # lazy-loaded
 
 
 def _headers():
@@ -120,17 +121,29 @@ def fetch_today():
     return {"quests": quests, "count": len(quests)}
 
 
+def _get_synced_ids():
+    global _synced_ids
+    if _synced_ids is None:
+        try:
+            _synced_ids = realm_db.get_notion_synced()
+        except Exception:
+            _synced_ids = set()
+    return _synced_ids
+
+
 def sync_to_events():
     """Fetch today's todos, return new ones as quest events (pushes to caller)."""
     data = fetch_today()
     if "error" in data:
         return data
+    synced = _get_synced_ids()
     events = []
     for q in data["quests"]:
         nid = q["notion_id"]
-        if nid in _synced_ids:
+        if nid in synced:
             continue
-        _synced_ids.add(nid)
+        synced.add(nid)
+        realm_db.add_notion_synced(nid)
         events.append(
             {
                 "type": "quest",
@@ -151,11 +164,15 @@ def complete(notion_id):
     _api("PATCH", f"/pages/{notion_id}", {
         "properties": {"Status": {"status": {"name": "Archive"}}}
     })
-    _synced_ids.discard(notion_id)
+    synced = _get_synced_ids()
+    synced.discard(notion_id)
+    realm_db.remove_notion_synced(notion_id)
     return {"ok": True, "id": notion_id}
 
 
 def force_resync():
     """Clear synced IDs so next sync fetches everything again."""
-    _synced_ids.clear()
+    global _synced_ids
+    _synced_ids = set()
+    realm_db.clear_notion_synced()
     return {"ok": True, "cleared": True}

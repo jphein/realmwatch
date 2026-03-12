@@ -13,13 +13,13 @@ import notion_sync
 import ap_scanner
 import codex_sync
 import ha_bridge
+import realm_db
 
 engine = LitRPGEngine()
 PORT = 8777
 MAP_DIR = os.path.dirname(os.path.abspath(__file__))
 PERSONAS_FILE = os.path.join(MAP_DIR, "personas.json")
 TOPOLOGY_FILE = os.path.join(MAP_DIR, "topology.json")
-_topo_cache = {"data": None, "mtime": 0}
 _CHAT_CONFIG = os.path.expanduser("~/.config/azure-chat-assistant/config.json")
 _SPEECH_CONFIG = os.path.expanduser("~/.config/speech-to-cli/config.json")
 
@@ -31,16 +31,8 @@ _SPEECH_SAFE_KEYS = {"silence_timeout", "talk_silence_timeout", "energy_multipli
                      "fast_voice", "max_record_seconds", "vu_meter", "chime_ready"}
 
 
-def _read_config_safe(path, safe_keys):
-    try:
-        with open(path) as f:
-            cfg = json.load(f)
-        return {k: v for k, v in cfg.items() if k in safe_keys}
-    except (OSError, json.JSONDecodeError):
-        return {}
-
-
-def _write_config_safe(path, updates, safe_keys):
+def _write_config_file(path, updates, safe_keys):
+    """Write-through to JSON config files (MCP servers still read these)."""
     try:
         with open(path) as f:
             cfg = json.load(f)
@@ -54,50 +46,28 @@ def _write_config_safe(path, updates, safe_keys):
 
 
 def _load_topology():
-    """Load topology.json with mtime-based cache."""
-    try:
-        mt = os.path.getmtime(TOPOLOGY_FILE)
-        if _topo_cache["data"] and mt == _topo_cache["mtime"]:
-            return _topo_cache["data"]
-        with open(TOPOLOGY_FILE) as f:
-            _topo_cache["data"] = json.load(f)
-            _topo_cache["mtime"] = mt
-            return _topo_cache["data"]
-    except (OSError, json.JSONDecodeError):
-        return {}
+    """Load topology from DB."""
+    return realm_db.get_topology()
 
 
 def _load_personas():
-    if os.path.exists(PERSONAS_FILE):
-        try:
-            with open(PERSONAS_FILE) as f:
-                return json.load(f)
-        except (json.JSONDecodeError, OSError):
-            pass
-    return {}
+    return realm_db.get_personas()
 
 
 def _save_personas(data):
+    for node_id, pdata in data.items():
+        realm_db.set_persona(node_id, pdata)
+    # Write-through to JSON for oracle_daemon and other readers
     with open(PERSONAS_FILE, "w") as f:
         json.dump(data, f, indent=2)
 
-# ── Event queue: agents push events, map polls them ──
-_events_lock = threading.Lock()
-_events = []       # list of {type, node, text, color, ts, ...}
-_MAX_EVENTS = 100  # ring buffer size
-
 
 def push_event(event):
-    event["ts"] = time.time()
-    with _events_lock:
-        _events.append(event)
-        if len(_events) > _MAX_EVENTS:
-            _events.pop(0)
+    return realm_db.push_event(event)
 
 
 def get_events_since(since_ts):
-    with _events_lock:
-        return [e for e in _events if e["ts"] > since_ts]
+    return realm_db.get_events_since(since_ts)
 
 
 class RealmHandler(SimpleHTTPRequestHandler):
@@ -157,8 +127,6 @@ class RealmHandler(SimpleHTTPRequestHandler):
 
         elif self.path == "/scan":
             result = ap_scanner.scan_and_update()
-            # Bust topo cache so next /status or /topology picks up changes
-            _topo_cache["mtime"] = 0
             self._json_response(result)
 
         elif self.path == "/scan/status":
@@ -169,10 +137,14 @@ class RealmHandler(SimpleHTTPRequestHandler):
 
         elif self.path == "/config":
             self._json_response({
-                "chat": _read_config_safe(_CHAT_CONFIG, _CHAT_SAFE_KEYS),
-                "speech": _read_config_safe(_SPEECH_CONFIG, _SPEECH_SAFE_KEYS),
-                "oracle": _load_personas().get("scrying-pool", {}),
+                "chat": realm_db.get_settings("chat"),
+                "speech": realm_db.get_settings("speech"),
+                "oracle": realm_db.get_persona("scrying-pool") or {},
             })
+
+        elif self.path == "/settings":
+            # UI settings (sliders, checkboxes, layout, spellbook page)
+            self._json_response(realm_db.get_settings("ui"))
 
         elif self.path.startswith("/codex-sync"):
             try:
@@ -210,16 +182,18 @@ class RealmHandler(SimpleHTTPRequestHandler):
                 if not node_key:
                     self._json_response({"error": "missing 'node' key"}, 400)
                     return
-                personas = _load_personas()
                 if update.get("_delete"):
-                    personas.pop(node_key, None)
+                    realm_db.delete_persona(node_key)
                 else:
-                    existing = personas.get(node_key, {})
+                    existing = realm_db.get_persona(node_key) or {}
                     for field in ("name", "title", "voice", "system_prompt", "hints"):
                         if field in update:
                             existing[field] = update[field]
-                    personas[node_key] = existing
-                _save_personas(personas)
+                    realm_db.set_persona(node_key, existing)
+                # Write-through to JSON
+                personas = realm_db.get_personas()
+                with open(PERSONAS_FILE, "w") as f:
+                    json.dump(personas, f, indent=2)
                 self._json_response({"ok": True, "personas": personas})
             except (json.JSONDecodeError, KeyError) as e:
                 self._json_response({"error": str(e)}, 400)
@@ -247,17 +221,31 @@ class RealmHandler(SimpleHTTPRequestHandler):
             try:
                 req = json.loads(body)
                 if "chat" in req:
-                    _write_config_safe(_CHAT_CONFIG, req["chat"], _CHAT_SAFE_KEYS)
+                    safe = {k: v for k, v in req["chat"].items() if k in _CHAT_SAFE_KEYS}
+                    realm_db.set_settings("chat", safe)
+                    _write_config_file(_CHAT_CONFIG, safe, _CHAT_SAFE_KEYS)
                 if "speech" in req:
-                    _write_config_safe(_SPEECH_CONFIG, req["speech"], _SPEECH_SAFE_KEYS)
+                    safe = {k: v for k, v in req["speech"].items() if k in _SPEECH_SAFE_KEYS}
+                    realm_db.set_settings("speech", safe)
+                    _write_config_file(_SPEECH_CONFIG, safe, _SPEECH_SAFE_KEYS)
                 if "oracle" in req:
-                    personas = _load_personas()
-                    oracle = personas.get("scrying-pool", {})
+                    oracle = realm_db.get_persona("scrying-pool") or {}
                     for k in ("model", "reasoning_effort", "voice", "system_prompt"):
                         if k in req["oracle"]:
                             oracle[k] = req["oracle"][k]
-                    personas["scrying-pool"] = oracle
-                    _save_personas(personas)
+                    realm_db.set_persona("scrying-pool", oracle)
+                    # Write-through to personas.json
+                    personas = realm_db.get_personas()
+                    with open(PERSONAS_FILE, "w") as f:
+                        json.dump(personas, f, indent=2)
+                self._json_response({"ok": True})
+            except Exception as e:
+                self._json_response({"error": str(e)}, 500)
+
+        elif self.path == "/settings":
+            try:
+                req = json.loads(body)
+                realm_db.set_settings("ui", req)
                 self._json_response({"ok": True})
             except Exception as e:
                 self._json_response({"error": str(e)}, 500)
@@ -269,13 +257,49 @@ class RealmHandler(SimpleHTTPRequestHandler):
                 if conns is None:
                     self._json_response({"error": "missing 'connections'"}, 400)
                     return
-                topo = _load_topology()
-                topo["connections"] = conns
-                with open(TOPOLOGY_FILE, "w") as f:
-                    json.dump(topo, f, indent=2)
-                _topo_cache["data"] = topo
-                _topo_cache["mtime"] = os.path.getmtime(TOPOLOGY_FILE)
+                realm_db.set_connections(conns)
+                realm_db.save_topology_json(TOPOLOGY_FILE)
                 self._json_response({"ok": True, "count": len(conns)})
+            except (json.JSONDecodeError, KeyError) as e:
+                self._json_response({"error": str(e)}, 400)
+
+        elif self.path == "/node":
+            try:
+                req = json.loads(body)
+                node_id = req.get("id", "").strip()
+                if not node_id:
+                    self._json_response({"error": "missing 'id'"}, 400)
+                    return
+                if req.get("_delete"):
+                    realm_db.delete_node(node_id)
+                elif "x" in req and "y" in req and len(req) <= 3:
+                    realm_db.update_node_position(node_id, req["x"], req["y"])
+                else:
+                    existing = realm_db.get_node(node_id)
+                    if existing:
+                        existing.update(req)
+                        realm_db.set_node(node_id, existing)
+                    else:
+                        realm_db.set_node(node_id, req)
+                realm_db.save_topology_json(TOPOLOGY_FILE)
+                self._json_response({"ok": True})
+            except (json.JSONDecodeError, KeyError) as e:
+                self._json_response({"error": str(e)}, 400)
+
+        elif self.path == "/topology":
+            try:
+                req = json.loads(body)
+                if "nodes" in req:
+                    for node in req["nodes"]:
+                        nid = node.get("id", "")
+                        if nid:
+                            realm_db.set_node(nid, node)
+                if "connections" in req:
+                    realm_db.set_connections(req["connections"])
+                if "regions" in req:
+                    realm_db.set_regions(req["regions"])
+                realm_db.save_topology_json(TOPOLOGY_FILE)
+                self._json_response({"ok": True})
             except (json.JSONDecodeError, KeyError) as e:
                 self._json_response({"error": str(e)}, 400)
 
@@ -323,6 +347,12 @@ class RealmHandler(SimpleHTTPRequestHandler):
 
 if __name__ == "__main__":
     print(f"Realm Map: http://localhost:{PORT}")
+    print(f"Initializing realm DB...")
+    realm_db.init()
+    realm_db.migrate_personas(PERSONAS_FILE)
+    realm_db.migrate_config("chat", _CHAT_CONFIG, _CHAT_SAFE_KEYS)
+    realm_db.migrate_config("speech", _SPEECH_CONFIG, _SPEECH_SAFE_KEYS)
+    realm_db.migrate_topology(TOPOLOGY_FILE)
     print(f"collectd RRD: /var/lib/collectd/rrd/")
     ap_scanner._event_callback = push_event
     ap_scanner.start_background_scanner()

@@ -3522,6 +3522,7 @@
     "vis-minimap",
     "vis-nodelist"
   ];
+  var _saveTimer = null;
   function saveSettings() {
     if (_restoring) return;
     const s = { sliders: {}, checkboxes: {}, quality: null, collapsed: [], spellPage: _spellPage };
@@ -3540,52 +3541,67 @@
       if (ds) s.collapsed.push(ds);
     });
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+    clearTimeout(_saveTimer);
+    _saveTimer = setTimeout(() => {
+      fetch("/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(s)
+      }).catch(() => {
+      });
+    }, 500);
   }
   var _restoring = false;
+  function _applySettings(s) {
+    _restoring = true;
+    if (s.sliders) {
+      for (const [id, val] of Object.entries(s.sliders)) {
+        const sl = document.getElementById(id + "-slider");
+        if (sl) {
+          sl.value = val;
+          sl.dispatchEvent(new Event("input"));
+        }
+      }
+    }
+    if (s.checkboxes) {
+      for (const [id, checked] of Object.entries(s.checkboxes)) {
+        const cb = document.getElementById(id);
+        if (cb && cb.checked !== checked) {
+          cb.checked = checked;
+          cb.dispatchEvent(new Event("change"));
+        }
+      }
+    }
+    if (s.quality) {
+      const qSel = document.getElementById("fx-quality-select");
+      if (qSel) {
+        qSel.value = s.quality;
+        qSel.dispatchEvent(new Event("change"));
+      }
+    }
+    if (s.collapsed) {
+      document.querySelectorAll(".legend-section").forEach((sec) => {
+        const ds = sec.dataset.section;
+        if (ds) sec.classList.toggle("collapsed", s.collapsed.includes(ds));
+      });
+    }
+    if (s.spellPage != null) _showSpellPage(s.spellPage);
+    _restoring = false;
+  }
   function restoreSettings() {
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
-      if (!raw) return false;
-      const s = JSON.parse(raw);
-      _restoring = true;
-      if (s.sliders) {
-        for (const [id, val] of Object.entries(s.sliders)) {
-          const sl = document.getElementById(id + "-slider");
-          if (sl) {
-            sl.value = val;
-            sl.dispatchEvent(new Event("input"));
-          }
-        }
-      }
-      if (s.checkboxes) {
-        for (const [id, checked] of Object.entries(s.checkboxes)) {
-          const cb = document.getElementById(id);
-          if (cb && cb.checked !== checked) {
-            cb.checked = checked;
-            cb.dispatchEvent(new Event("change"));
-          }
-        }
-      }
-      if (s.quality) {
-        const qSel = document.getElementById("fx-quality-select");
-        if (qSel) {
-          qSel.value = s.quality;
-          qSel.dispatchEvent(new Event("change"));
-        }
-      }
-      if (s.collapsed) {
-        document.querySelectorAll(".legend-section").forEach((sec) => {
-          const ds = sec.dataset.section;
-          if (ds) sec.classList.toggle("collapsed", s.collapsed.includes(ds));
-        });
-      }
-      if (s.spellPage != null) _showSpellPage(s.spellPage);
-      _restoring = false;
-      return true;
+      if (raw) _applySettings(JSON.parse(raw));
     } catch (e) {
-      _restoring = false;
     }
-    return false;
+    fetch("/settings").then((r) => r.ok ? r.json() : null).then((s) => {
+      if (s && Object.keys(s).length > 0) {
+        _applySettings(s);
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+      }
+    }).catch(() => {
+    });
+    return true;
   }
   function saveLayout() {
     const layout = { panels: {}, nodes: {}, minimized: [] };
@@ -3603,6 +3619,12 @@
       if (tip) layout.nodes[tip] = { left: n.style.left, top: n.style.top };
     });
     localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout));
+    fetch("/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ _layout: layout })
+    }).catch(() => {
+    });
     saveSettings();
   }
   function restoreLayout() {
@@ -3651,11 +3673,11 @@
     }
     return false;
   }
-  var _saveTimer = null;
+  var _layoutSaveTimer = null;
   function scheduleSave() {
-    if (_saveTimer) return;
-    _saveTimer = setTimeout(() => {
-      _saveTimer = null;
+    if (_layoutSaveTimer) return;
+    _layoutSaveTimer = setTimeout(() => {
+      _layoutSaveTimer = null;
       saveLayout();
     }, 500);
   }

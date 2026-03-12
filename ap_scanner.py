@@ -18,6 +18,7 @@ import subprocess
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import realm_db
 
 TOPOLOGY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "topology.json")
 SSH_OPTS = ["-o", "ConnectTimeout=4", "-o", "StrictHostKeyChecking=no"]
@@ -27,7 +28,7 @@ SCAN_INTERVAL = 90  # seconds
 # Connection types that represent WiFi links (eligible for roaming updates)
 WIFI_CONN_TYPES = {"active"}
 
-_last_scan = {"ts": 0, "ap_clients": {}, "leases": 0, "unknown": [], "wifi": {}}
+_last_scan = realm_db.get_wifi_scan() or {"ts": 0, "ap_clients": {}, "leases": 0, "unknown": [], "wifi": {}}
 _lock = threading.Lock()
 _event_callback = None  # set by map_server to push_event
 
@@ -98,13 +99,17 @@ def _get_ap_clients_with_signal(ap_ip):
 
 
 def _load_topo():
-    with open(TOPOLOGY_FILE) as f:
-        return json.load(f)
+    return realm_db.get_topology()
 
 
 def _save_topo(topo):
-    with open(TOPOLOGY_FILE, "w") as f:
-        json.dump(topo, f, indent=2)
+    # Write individual nodes/connections to DB + write-through to JSON
+    for node in topo.get("nodes", []):
+        nid = node.get("id", "")
+        if nid:
+            realm_db.set_node(nid, node)
+    realm_db.set_connections(topo.get("connections", []))
+    realm_db.save_topology_json(TOPOLOGY_FILE)
 
 
 def scan_and_update():
@@ -256,6 +261,8 @@ def scan_and_update():
         _last_scan["leases"] = len(leases)
         _last_scan["unknown"] = unknown
         _last_scan["wifi"] = wifi
+    # Persist to DB so data survives restarts
+    realm_db.save_wifi_scan(_last_scan)
 
     return {
         "scanned": len(ap_nodes),

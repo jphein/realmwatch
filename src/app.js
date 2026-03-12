@@ -3320,6 +3320,8 @@ const _PERSIST_CHECKBOXES = [
   'vis-codex', 'vis-questlog', 'vis-minimap', 'vis-nodelist',
 ];
 
+// Debounce server saves (avoid hammering on every slider move)
+let _saveTimer = null;
 export function saveSettings() {
   if (_restoring) return;
   const s = { sliders: {}, checkboxes: {}, quality: null, collapsed: [], spellPage: _spellPage };
@@ -3337,48 +3339,62 @@ export function saveSettings() {
     const ds = sec.dataset.section;
     if (ds) s.collapsed.push(ds);
   });
+  // Save to localStorage immediately (fast local fallback)
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+  // Debounced save to server DB (shared across sessions)
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => {
+    fetch('/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(s),
+    }).catch(() => {});
+  }, 500);
 }
 
 let _restoring = false;
+function _applySettings(s) {
+  _restoring = true;
+  if (s.sliders) {
+    for (const [id, val] of Object.entries(s.sliders)) {
+      const sl = document.getElementById(id + '-slider');
+      if (sl) { sl.value = val; sl.dispatchEvent(new Event('input')); }
+    }
+  }
+  if (s.checkboxes) {
+    for (const [id, checked] of Object.entries(s.checkboxes)) {
+      const cb = document.getElementById(id);
+      if (cb && cb.checked !== checked) { cb.checked = checked; cb.dispatchEvent(new Event('change')); }
+    }
+  }
+  if (s.quality) {
+    const qSel = document.getElementById('fx-quality-select');
+    if (qSel) { qSel.value = s.quality; qSel.dispatchEvent(new Event('change')); }
+  }
+  if (s.collapsed) {
+    document.querySelectorAll('.legend-section').forEach(sec => {
+      const ds = sec.dataset.section;
+      if (ds) sec.classList.toggle('collapsed', s.collapsed.includes(ds));
+    });
+  }
+  if (s.spellPage != null) _showSpellPage(s.spellPage);
+  _restoring = false;
+}
+
 export function restoreSettings() {
+  // Try localStorage first (instant), then async fetch from DB (authoritative)
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return false;
-    const s = JSON.parse(raw);
-    _restoring = true; // suppress saves during restore
-    // Restore sliders — set value then fire input event to apply
-    if (s.sliders) {
-      for (const [id, val] of Object.entries(s.sliders)) {
-        const sl = document.getElementById(id + '-slider');
-        if (sl) { sl.value = val; sl.dispatchEvent(new Event('input')); }
-      }
+    if (raw) _applySettings(JSON.parse(raw));
+  } catch (e) { /* ignore */ }
+  // Async: load from server DB (overrides localStorage if newer)
+  fetch('/settings').then(r => r.ok ? r.json() : null).then(s => {
+    if (s && Object.keys(s).length > 0) {
+      _applySettings(s);
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
     }
-    // Restore checkboxes — set checked then fire change event to apply
-    if (s.checkboxes) {
-      for (const [id, checked] of Object.entries(s.checkboxes)) {
-        const cb = document.getElementById(id);
-        if (cb && cb.checked !== checked) { cb.checked = checked; cb.dispatchEvent(new Event('change')); }
-      }
-    }
-    // Restore quality tier
-    if (s.quality) {
-      const qSel = document.getElementById('fx-quality-select');
-      if (qSel) { qSel.value = s.quality; qSel.dispatchEvent(new Event('change')); }
-    }
-    // Restore collapsed sections
-    if (s.collapsed) {
-      document.querySelectorAll('.legend-section').forEach(sec => {
-        const ds = sec.dataset.section;
-        if (ds) sec.classList.toggle('collapsed', s.collapsed.includes(ds));
-      });
-    }
-    // Restore spellbook page
-    if (s.spellPage != null) _showSpellPage(s.spellPage);
-    _restoring = false;
-    return true;
-  } catch (e) { _restoring = false; }
-  return false;
+  }).catch(() => {});
+  return true;
 }
 
 export function saveLayout() {
@@ -3399,6 +3415,12 @@ export function saveLayout() {
     if (tip) layout.nodes[tip] = { left: n.style.left, top: n.style.top };
   });
   localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout));
+  // Save layout to server DB too
+  fetch('/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ _layout: layout }),
+  }).catch(() => {});
   saveSettings();
 }
 
@@ -3450,10 +3472,10 @@ export function restoreLayout() {
 }
 
 // Debounced save — write at most every 500ms during drag
-let _saveTimer = null;
+let _layoutSaveTimer = null;
 export function scheduleSave() {
-  if (_saveTimer) return;
-  _saveTimer = setTimeout(() => { _saveTimer = null; saveLayout(); }, 500);
+  if (_layoutSaveTimer) return;
+  _layoutSaveTimer = setTimeout(() => { _layoutSaveTimer = null; saveLayout(); }, 500);
 }
 
 // ── Draggable UI Panels (mouse + touch) ──

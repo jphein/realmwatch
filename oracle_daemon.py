@@ -16,6 +16,7 @@ import json
 import os
 import time
 import urllib.request
+import realm_db
 
 MAP_URL = "http://localhost:8777"
 CHAT_CONFIG_PATH = os.path.expanduser("~/.config/azure-chat-assistant/config.json")
@@ -24,11 +25,9 @@ PERSONAS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "person
 
 
 def _load_persona():
-    """Load scrying-pool persona from personas.json."""
+    """Load scrying-pool persona from DB."""
     try:
-        with open(PERSONAS_FILE) as f:
-            personas = json.load(f)
-        return personas.get("scrying-pool", {})
+        return realm_db.get_persona("scrying-pool") or {}
     except Exception:
         return {}
 
@@ -42,7 +41,13 @@ def _get_system_prompt():
 
 
 def _load_chat_config():
-    """Load Azure AI config from azure-chat-assistant."""
+    """Load Azure AI config from DB, falling back to JSON file."""
+    try:
+        cfg = realm_db.get_settings("chat")
+        if cfg:
+            return cfg
+    except Exception:
+        pass
     if os.path.exists(CHAT_CONFIG_PATH):
         with open(CHAT_CONFIG_PATH) as f:
             return json.load(f)
@@ -134,9 +139,14 @@ def _speak(text, voice="en-US-BrianNeural"):
     """Speak text via Azure Speech TTS (direct API call)."""
     try:
         cfg = {}
-        if os.path.exists(SPEECH_CONFIG_PATH):
+        try:
+            cfg = realm_db.get_settings("speech") or {}
+        except Exception:
+            pass
+        # Secrets (speech_key, speech_region) may not be in DB — fall back to JSON
+        if not cfg.get("speech_key") and os.path.exists(SPEECH_CONFIG_PATH):
             with open(SPEECH_CONFIG_PATH) as f:
-                cfg = json.load(f)
+                cfg.update(json.load(f))
         key = cfg.get("speech_key", os.environ.get("AZURE_SPEECH_KEY", ""))
         region = cfg.get("speech_region", os.environ.get("AZURE_SPEECH_REGION", ""))
         if not key or not region:
@@ -226,6 +236,7 @@ def oracle_loop(poll_interval=10, use_voice=True, once=False):
 
 
 if __name__ == "__main__":
+    realm_db.init()
     parser = argparse.ArgumentParser(description="Oracle Daemon — auto-answer map queries")
     parser.add_argument("--interval", type=int, default=10, help="Poll interval in seconds")
     parser.add_argument("--no-voice", action="store_true", help="Disable TTS")

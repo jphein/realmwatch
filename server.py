@@ -10,6 +10,7 @@ import mcp.types as types
 import mcp.server.stdio
 from engine import LitRPGEngine
 from pydantic import AnyUrl
+import realm_db
 
 server = Server("lit-rpg-fantasy-voice")
 engine = LitRPGEngine()
@@ -77,15 +78,15 @@ def _service_status(name):
     return {"running": len(pids) > 0, "pids": pids}
 
 
-# ── Node personas — loaded from personas.json, with fallback defaults ──
+# ── Node personas — loaded from DB, with write-through to JSON ──
 def _load_personas():
-    """Load personas from JSON file, or return defaults."""
-    if os.path.exists(PERSONAS_FILE):
-        try:
-            with open(PERSONAS_FILE) as f:
-                return json.load(f)
-        except (json.JSONDecodeError, OSError):
-            pass
+    """Load personas from DB, or return defaults."""
+    try:
+        data = realm_db.get_personas()
+        if data:
+            return data
+    except Exception:
+        pass
     return {
         "katana": {"name": "Katana", "title": "The Citadel", "voice": "en-US-GuyNeural",
                     "system_prompt": "You are Katana, the primary server.", "hints": []},
@@ -96,7 +97,9 @@ def _load_personas():
 
 
 def _save_personas(personas):
-    """Persist personas to JSON file."""
+    """Persist personas to DB + write-through to JSON."""
+    for node_id, pdata in personas.items():
+        realm_db.set_persona(node_id, pdata)
     with open(PERSONAS_FILE, "w") as f:
         json.dump(personas, f, indent=2)
 
@@ -823,12 +826,10 @@ async def handle_call_tool(
         return [types.TextContent(type="text", text=result)]
 
     elif name == "get_topology":
-        topo_path = os.path.join(PROJECT_DIR, "topology.json")
         try:
-            with open(topo_path) as f:
-                topo = json.load(f)
+            topo = realm_db.get_topology()
             return [types.TextContent(type="text", text=json.dumps(topo, indent=2))]
-        except (OSError, json.JSONDecodeError) as e:
+        except Exception as e:
             return [types.TextContent(type="text", text=f"Error reading topology: {e}")]
 
     elif name == "get_map_events":
@@ -856,30 +857,15 @@ async def handle_call_tool(
         node_id = args.get("id", "").strip()
         if not node_id:
             return [types.TextContent(type="text", text="Error: 'id' is required.")]
-        topo_path = os.path.join(PROJECT_DIR, "topology.json")
-        try:
-            with open(topo_path) as f:
-                topo = json.load(f)
-        except (OSError, json.JSONDecodeError):
-            topo = {"nodes": [], "connections": [], "regions": []}
-        # Find existing node or create new
-        existing = None
-        for node in topo.get("nodes", []):
-            if node.get("id") == node_id:
-                existing = node
-                break
-        if existing is None:
-            existing = {"id": node_id}
-            topo.setdefault("nodes", []).append(existing)
-        # Update fields
+        existing = realm_db.get_node(node_id) or {"id": node_id}
         for field in ("type", "x", "y", "icon", "label", "sublabel", "ip", "pulse",
                        "iconStyle", "labelStyle", "scaleBar", "badge", "tip", "collectd", "online",
-                       "tsHost", "tailscale", "ssh"):
+                       "tsHost", "tailscale", "ssh", "mac"):
             if field in args:
                 existing[field] = args[field]
-        with open(topo_path, "w") as f:
-            json.dump(topo, f, indent=2)
-        return [types.TextContent(type="text", text=f"Node '{node_id}' saved to topology.json: {json.dumps(existing, indent=2)}")]
+        realm_db.set_node(node_id, existing)
+        realm_db.save_topology_json(os.path.join(PROJECT_DIR, "topology.json"))
+        return [types.TextContent(type="text", text=f"Node '{node_id}' saved to DB: {json.dumps(existing, indent=2)}")]
 
     elif name == "sync_notion_quests":
         args = arguments or {}
@@ -923,7 +909,7 @@ async def handle_call_tool(
             lines.append(f"\nRoaming changes detected ({len(result['changes'])}):")
             for ch in result["changes"]:
                 lines.append(f"  {ch['node']}: {ch['from_ap']} → {ch['to_ap']}")
-            lines.append("\ntopology.json updated.")
+            lines.append("\nTopology updated in DB.")
         else:
             lines.append("All nodes correctly linked — no roaming changes.")
         # Include per-AP client counts
@@ -1003,4 +989,5 @@ async def main():
 
 
 if __name__ == "__main__":
+    realm_db.init()
     asyncio.run(main())
