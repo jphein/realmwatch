@@ -2093,25 +2093,34 @@
     applyTransform();
   }, { passive: false });
   var tooltip = document.getElementById("tooltip");
-  document.querySelectorAll(".realm-node").forEach((node) => {
-    node.addEventListener("mouseenter", (e) => {
-      const key = node.dataset.tip;
-      const data = tips[key];
-      if (!data) return;
-      let html = `<h3>${data.title}</h3>`;
-      data.stats.forEach(([k, v]) => {
-        html += `<div class="stat-line"><span>${k}</span><span class="stat-val">${v}</span></div>`;
-      });
-      tooltip.innerHTML = html;
-      tooltip.style.display = "block";
+  var _tipNode = null;
+  document.getElementById("map-world").addEventListener("mouseover", (e) => {
+    const node = e.target.closest(".realm-node");
+    if (!node || node === _tipNode) return;
+    _tipNode = node;
+    const key = node.dataset.tip;
+    const data = tips[key];
+    if (!data) return;
+    let html = `<h3>${data.title}</h3>`;
+    data.stats.forEach(([k, v]) => {
+      html += `<div class="stat-line"><span>${k}</span><span class="stat-val">${v}</span></div>`;
     });
-    node.addEventListener("mousemove", (e) => {
+    tooltip.innerHTML = html;
+    tooltip.style.display = "block";
+  });
+  document.getElementById("map-world").addEventListener("mousemove", (e) => {
+    if (_tipNode) {
       tooltip.style.left = e.clientX + 16 + "px";
       tooltip.style.top = e.clientY + 16 + "px";
-    });
-    node.addEventListener("mouseleave", () => {
-      tooltip.style.display = "none";
-    });
+    }
+  });
+  document.getElementById("map-world").addEventListener("mouseout", (e) => {
+    const node = e.target.closest(".realm-node");
+    if (!node) return;
+    const related = e.relatedTarget?.closest?.(".realm-node");
+    if (related === node) return;
+    if (_tipNode === node) _tipNode = null;
+    tooltip.style.display = "none";
   });
   var minimap = document.getElementById("minimap");
   var viewport = document.getElementById("minimap-viewport");
@@ -2716,12 +2725,12 @@
       _runShellCmd(currentEditNode, cmd);
     }
   });
-  document.querySelectorAll(".realm-node").forEach((node) => {
-    node.addEventListener("dblclick", (e) => {
-      e.stopPropagation();
-      const key = node.dataset.tip;
-      if (key) openPersonaEditor(key);
-    });
+  document.getElementById("map-world").addEventListener("dblclick", (e) => {
+    const node = e.target.closest(".realm-node");
+    if (!node) return;
+    e.stopPropagation();
+    const key = node.dataset.tip;
+    if (key) openPersonaEditor(key);
   });
   var PANEL_ICONS = {
     "realm-panel": { icon: "\u2694", tooltip: "Realm Vitals", color: "#f0d890", rgb: [240, 216, 144] },
@@ -4290,19 +4299,19 @@
       }
     }
     __name(endNodeDrag, "endNodeDrag");
-    document.querySelectorAll(".realm-node").forEach((node) => {
-      node.addEventListener("mousedown", (e) => {
-        if (e.button !== 0) return;
-        e.stopPropagation();
-        startNodeDrag(node, e.clientX, e.clientY);
-      });
-      node.addEventListener("touchstart", (e) => {
-        if (e.touches.length !== 1) return;
-        e.stopPropagation();
-        e.preventDefault();
-        startNodeDrag(node, e.touches[0].clientX, e.touches[0].clientY);
-      }, { passive: false });
+    mapWorld.addEventListener("mousedown", (e) => {
+      const node = e.target.closest(".realm-node");
+      if (!node || e.button !== 0) return;
+      e.stopPropagation();
+      startNodeDrag(node, e.clientX, e.clientY);
     });
+    mapWorld.addEventListener("touchstart", (e) => {
+      const node = e.target.closest(".realm-node");
+      if (!node || e.touches.length !== 1) return;
+      e.stopPropagation();
+      e.preventDefault();
+      startNodeDrag(node, e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: false });
     window.addEventListener("mousemove", (e) => moveNodeDrag(e.clientX, e.clientY));
     window.addEventListener("mouseup", endNodeDrag);
     window.addEventListener("touchmove", (e) => {

@@ -1730,27 +1730,36 @@ canvas.addEventListener('wheel', e => {
   applyTransform();
 }, { passive: false });
 
-// ── Tooltips ──
+// ── Tooltips (delegated — survives topology refresh) ──
 const tooltip = document.getElementById('tooltip');
-document.querySelectorAll('.realm-node').forEach(node => {
-  node.addEventListener('mouseenter', e => {
-    const key = node.dataset.tip;
-    const data = tips[key];
-    if (!data) return;
-    let html = `<h3>${data.title}</h3>`;
-    data.stats.forEach(([k, v]) => {
-      html += `<div class="stat-line"><span>${k}</span><span class="stat-val">${v}</span></div>`;
-    });
-    tooltip.innerHTML = html;
-    tooltip.style.display = 'block';
+let _tipNode = null;
+document.getElementById('map-world').addEventListener('mouseover', e => {
+  const node = e.target.closest('.realm-node');
+  if (!node || node === _tipNode) return;
+  _tipNode = node;
+  const key = node.dataset.tip;
+  const data = tips[key];
+  if (!data) return;
+  let html = `<h3>${data.title}</h3>`;
+  data.stats.forEach(([k, v]) => {
+    html += `<div class="stat-line"><span>${k}</span><span class="stat-val">${v}</span></div>`;
   });
-  node.addEventListener('mousemove', e => {
+  tooltip.innerHTML = html;
+  tooltip.style.display = 'block';
+});
+document.getElementById('map-world').addEventListener('mousemove', e => {
+  if (_tipNode) {
     tooltip.style.left = (e.clientX + 16) + 'px';
     tooltip.style.top = (e.clientY + 16) + 'px';
-  });
-  node.addEventListener('mouseleave', () => {
-    tooltip.style.display = 'none';
-  });
+  }
+});
+document.getElementById('map-world').addEventListener('mouseout', e => {
+  const node = e.target.closest('.realm-node');
+  if (!node) return;
+  const related = e.relatedTarget?.closest?.('.realm-node');
+  if (related === node) return;
+  if (_tipNode === node) _tipNode = null;
+  tooltip.style.display = 'none';
 });
 
 // ── Minimap ──
@@ -2408,13 +2417,13 @@ _shellInput.addEventListener('keydown', e => {
   }
 });
 
-// Double-click a node to open persona editor
-document.querySelectorAll('.realm-node').forEach(node => {
-  node.addEventListener('dblclick', e => {
-    e.stopPropagation();
-    const key = node.dataset.tip;
-    if (key) openPersonaEditor(key);
-  });
+// Double-click a node to open persona editor (delegated — survives topology refresh)
+document.getElementById('map-world').addEventListener('dblclick', e => {
+  const node = e.target.closest('.realm-node');
+  if (!node) return;
+  e.stopPropagation();
+  const key = node.dataset.tip;
+  if (key) openPersonaEditor(key);
 });
 
 // ── Panel Minimize System (double-click header → fantasy icon) ──
@@ -3895,22 +3904,21 @@ makeDraggable(document.getElementById('node-list'), '#node-list-header', [192,14
     }
   }
 
-  document.querySelectorAll('.realm-node').forEach(node => {
-    // Mouse
-    node.addEventListener('mousedown', e => {
-      if (e.button !== 0) return;
-      e.stopPropagation();
-      startNodeDrag(node, e.clientX, e.clientY);
-    });
-
-    // Touch — drag immediately on single touch (consistent with mouse)
-    node.addEventListener('touchstart', e => {
-      if (e.touches.length !== 1) return;
-      e.stopPropagation();
-      e.preventDefault();
-      startNodeDrag(node, e.touches[0].clientX, e.touches[0].clientY);
-    }, { passive: false });
+  // Delegated handlers on map-world (survives topology refresh)
+  mapWorld.addEventListener('mousedown', e => {
+    const node = e.target.closest('.realm-node');
+    if (!node || e.button !== 0) return;
+    e.stopPropagation();
+    startNodeDrag(node, e.clientX, e.clientY);
   });
+
+  mapWorld.addEventListener('touchstart', e => {
+    const node = e.target.closest('.realm-node');
+    if (!node || e.touches.length !== 1) return;
+    e.stopPropagation();
+    e.preventDefault();
+    startNodeDrag(node, e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: false });
 
   // Mouse move/up
   window.addEventListener('mousemove', e => moveNodeDrag(e.clientX, e.clientY));
