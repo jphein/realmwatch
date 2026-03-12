@@ -4173,9 +4173,9 @@
     window.addEventListener("touchend", endDrag, { passive: true });
   }
   __name(makeDraggable, "makeDraggable");
-  makeDraggable(document.getElementById("realm-panel"), "h3", [240, 216, 144]);
-  makeDraggable(document.getElementById("legend"), "h3", [100, 180, 255]);
-  makeDraggable(document.getElementById("spellbook"), "h3", [192, 160, 255]);
+  makeDraggable(document.getElementById("realm-panel"), ".panel-header", [240, 216, 144]);
+  makeDraggable(document.getElementById("legend"), ".panel-header", [100, 180, 255]);
+  makeDraggable(document.getElementById("spellbook"), ".panel-header", [192, 160, 255]);
   makeDraggable(document.getElementById("quest-log"), "#quest-log-header", [160, 255, 96]);
   makeDraggable(document.getElementById("realm-codex"), "#codex-header", [144, 96, 192]);
   makeDraggable(document.getElementById("minimap"), null, [96, 160, 192]);
