@@ -1,0 +1,12 @@
+{
+  "name": "lit-rpg-fantasy-voice",
+  "version": "0.1.0",
+  "description": "LitRPG Fantasy Voice MCP Server - System monitoring through a fantasy lens.",
+  "mcpServers": {
+    "lit-rpg-fantasy-voice": {
+      "command": "/home/jp/Projects/lit-rpg-fantasy-voice/venv/bin/python3",
+      "args": ["/home/jp/Projects/lit-rpg-fantasy-voice/server.py"],
+      "cwd": "/home/jp/Projects/lit-rpg-fantasy-voice"
+    }
+  }
+}

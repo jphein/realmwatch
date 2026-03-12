@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "litrpg": {
+      "command": "/home/jp/Projects/lit-rpg-fantasy-voice/venv/bin/python3"
+    }
+  },
+  "imports": []
+}
