@@ -575,6 +575,7 @@
   </div>
   <div class="pe-tabs">
     <div class="pe-tab active" data-pe-tab="persona">Persona</div>
+    <div class="pe-tab" data-pe-tab="node">Node</div>
     <div class="pe-tab" data-pe-tab="stats">Stats</div>
     <div class="pe-tab" data-pe-tab="links">Links</div>
     <div class="pe-tab" data-pe-tab="shell">Shell</div>
@@ -626,6 +627,42 @@
     <button class="pe-btn pe-btn-save" id="pe-save">Save Persona</button>
   </div>
   </div><!-- /pe-pane-persona -->
+  <div class="pe-pane" id="pe-pane-node" style="display:none">
+    <div class="pe-body">
+      <div class="pe-field"><label>Label</label><input type="text" id="pe-node-label" placeholder="Display name"></div>
+      <div class="pe-field"><label>Sublabel</label><input type="text" id="pe-node-sublabel" placeholder="e.g. Pixel 7 • 10.0.6.146"></div>
+      <div class="pe-field"><label>Icon (HTML entity)</label><input type="text" id="pe-node-icon" placeholder="&#128241;"></div>
+      <div class="pe-field-row">
+        <div class="pe-field"><label>Type</label>
+          <select id="pe-node-type">
+            <option value="device">device</option>
+            <option value="core">core</option>
+            <option value="tower">tower</option>
+            <option value="bridge">bridge</option>
+            <option value="infra">infra</option>
+            <option value="cluster">cluster</option>
+            <option value="tailscale">tailscale</option>
+            <option value="portal">portal</option>
+          </select>
+        </div>
+        <div class="pe-field"><label>IP</label><input type="text" id="pe-node-ip" placeholder="10.0.x.x"></div>
+      </div>
+      <div class="pe-field-row">
+        <div class="pe-field"><label>MAC</label><input type="text" id="pe-node-mac" placeholder="aa:bb:cc:dd:ee:ff"></div>
+        <div class="pe-field"><label>Collectd Host</label><input type="text" id="pe-node-collectd" placeholder="hostname"></div>
+      </div>
+      <div class="pe-field-row">
+        <div class="pe-field"><label>X</label><input type="number" id="pe-node-x" step="1"></div>
+        <div class="pe-field"><label>Y</label><input type="number" id="pe-node-y" step="1"></div>
+      </div>
+      <div class="pe-field"><label>SSH Host</label><input type="text" id="pe-node-ssh" placeholder="root@10.0.x.x"></div>
+      <div class="pe-field"><label>Tailscale Host</label><input type="text" id="pe-node-tshost" placeholder="hostname"></div>
+    </div>
+    <div class="pe-actions">
+      <button class="pe-btn pe-btn-cancel" id="pe-node-delete">Delete Node</button>
+      <button class="pe-btn pe-btn-save" id="pe-node-save">Save Node</button>
+    </div>
+  </div><!-- /pe-pane-node -->
   <div class="pe-pane" id="pe-pane-stats" style="display:none">
     <div class="pe-stats-header">
       <span id="pe-stats-title">Node Scrying</span>

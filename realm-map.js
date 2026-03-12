@@ -1801,12 +1801,6 @@
       bubble.style.translate = `0px 0px ${bz}px`;
       bubble.style.rotate = `x ${-_mapTilt}deg`;
     }
-    if (!isQuest) {
-      const dur = (evt.duration || 15) * 1e3;
-      setTimeout(() => {
-        if (bubble.isConnected) _dismissBubble(bubble);
-      }, dur);
-    }
   }
   __name(showSpeechBubble, "showSpeechBubble");
   function showHighlight(nodeEl, evt) {
@@ -2245,6 +2239,7 @@
       document.getElementById("pe-pane-" + target).style.display = "";
       if (target === "stats") startStatsRefresh();
       else stopStatsRefresh();
+      if (target === "node") renderNodePane(currentEditNode);
       if (target === "shell") {
         renderShellPane(currentEditNode);
         _shellInput.focus();
@@ -2258,6 +2253,7 @@
     document.getElementById("pe-pane-" + name).style.display = "";
     if (name === "stats") startStatsRefresh();
     else stopStatsRefresh();
+    if (name === "node") renderNodePane(currentEditNode);
     if (name === "shell") renderShellPane(currentEditNode);
     if (name === "links") renderConnectionsPane(currentEditNode);
   }
@@ -2275,6 +2271,83 @@
     }
   }
   __name(stopStatsRefresh, "stopStatsRefresh");
+  function renderNodePane(nodeKey) {
+    if (!nodeKey || !_topology) return;
+    const node = _topology.nodes.find((n) => n.id === nodeKey);
+    if (!node) return;
+    const el = /* @__PURE__ */ __name((id) => document.getElementById("pe-node-" + id), "el");
+    el("label").value = node.label || "";
+    el("sublabel").value = node.sublabel || "";
+    el("icon").value = node.icon || "";
+    el("type").value = node.type || "device";
+    el("ip").value = node.ip || "";
+    el("mac").value = node.mac || "";
+    el("collectd").value = node.collectd || "";
+    el("x").value = Math.round((node.x || 0) / (WORLD_SCALE || 1));
+    el("y").value = Math.round((node.y || 0) / (WORLD_SCALE || 1));
+    el("ssh").value = node.ssh || "";
+    el("tshost").value = node.tsHost || "";
+  }
+  __name(renderNodePane, "renderNodePane");
+  document.getElementById("pe-node-save")?.addEventListener("click", () => {
+    if (!currentEditNode || !_topology) return;
+    const node = _topology.nodes.find((n) => n.id === currentEditNode);
+    if (!node) return;
+    const el = /* @__PURE__ */ __name((id) => document.getElementById("pe-node-" + id), "el");
+    node.label = el("label").value;
+    node.sublabel = el("sublabel").value;
+    node.icon = el("icon").value;
+    node.type = el("type").value;
+    node.ip = el("ip").value;
+    node.mac = el("mac").value || void 0;
+    node.collectd = el("collectd").value || void 0;
+    node.ssh = el("ssh").value || void 0;
+    node.tsHost = el("tshost").value || void 0;
+    const nx = parseInt(el("x").value) || 0;
+    const ny = parseInt(el("y").value) || 0;
+    const payload = { ...node, x: nx, y: ny };
+    delete payload._auto;
+    fetch("/node", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }).then((r) => r.json()).then((d) => {
+      if (d.ok) {
+        const scale2 = WORLD_SCALE || 1;
+        node.x = Math.round(nx * scale2);
+        node.y = Math.round(ny * scale2);
+        const domNode = document.querySelector(`[data-tip="${currentEditNode}"]`);
+        if (domNode) {
+          domNode.style.left = node.x + "px";
+          domNode.style.top = node.y + "px";
+          const lbl = domNode.querySelector(".node-label");
+          if (lbl) lbl.textContent = node.label;
+          const sub = domNode.querySelector(".node-sublabel");
+          if (sub) sub.innerHTML = node.sublabel;
+          const ico = domNode.querySelector(".node-icon");
+          if (ico) {
+            const txt = ico.childNodes;
+            if (txt.length) txt[txt.length - 1].textContent = node.icon;
+          }
+        }
+        addLogEntry({ type: "system", node: currentEditNode, text: `Node "${node.label}" updated.`, ts: Date.now() / 1e3 });
+      }
+    });
+  });
+  document.getElementById("pe-node-delete")?.addEventListener("click", () => {
+    if (!currentEditNode) return;
+    if (!confirm(`Delete node "${currentEditNode}"? This cannot be undone.`)) return;
+    fetch("/node", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: currentEditNode, _delete: true })
+    }).then((r) => r.json()).then((d) => {
+      if (d.ok) {
+        closePersonaEditor();
+        location.reload();
+      }
+    });
+  });
   function _barClass(pct) {
     return pct > 85 ? "bar-crit" : pct > 60 ? "bar-warn" : "bar-ok";
   }
@@ -2293,7 +2366,10 @@
     const cd = lastStatus.collectd ? findCollectd(lastStatus.collectd, nodeKey, null) : null;
     const tsHost = info && info.tsHost;
     const tsPeer = tsHost && lastStatus.tailscale && lastStatus.tailscale.peers ? lastStatus.tailscale.peers[tsHost] : null;
-    if (!cd && !tsPeer) {
+    const wifiInfo = lastStatus.wifi ? lastStatus.wifi[nodeKey] : null;
+    const haInfo = lastStatus.ha ? lastStatus.ha[nodeKey] : null;
+    const topoNode = _topology ? _topology.nodes.find((n) => n.id === nodeKey) : null;
+    if (!cd && !tsPeer && !wifiInfo && !haInfo && !topoNode) {
       body.innerHTML = '<div class="pe-stats-empty">No sigils bound to this node.</div>';
       return;
     }
@@ -2386,6 +2462,39 @@
         const pingColor = ms < 10 ? "#60a040" : ms < 50 ? "#c0a030" : "#c04040";
         html += `<div class="pe-stat-row"><span class="pe-stat-label">${target}</span><span class="pe-stat-val" style="color:${pingColor}">${ms} ms</span></div>`;
       });
+      html += "</div>";
+    }
+    if (wifiInfo) {
+      html += '<div class="pe-stats-section"><div class="pe-stats-section-title">WiFi</div>';
+      const apLabel = _topology?.nodes.find((n) => n.id === wifiInfo.ap)?.label || wifiInfo.ap;
+      html += `<div class="pe-stat-row"><span class="pe-stat-label">Access Point</span><span class="pe-stat-val">${apLabel}</span></div>`;
+      if (wifiInfo.signal != null) {
+        const sigColor = wifiInfo.signal > -50 ? "#60a040" : wifiInfo.signal > -70 ? "#c0a030" : "#c04040";
+        html += `<div class="pe-stat-row"><span class="pe-stat-label">Signal</span><span class="pe-stat-val" style="color:${sigColor}">${wifiInfo.signal} dBm</span></div>`;
+      }
+      if (wifiInfo.snr != null) {
+        const snrColor = wifiInfo.snr > 40 ? "#60a040" : wifiInfo.snr > 20 ? "#c0a030" : "#c04040";
+        html += `<div class="pe-stat-row"><span class="pe-stat-label">SNR</span><span class="pe-stat-val" style="color:${snrColor}">${wifiInfo.snr} dB</span></div>`;
+      }
+      if (wifiInfo.tx_rate) html += `<div class="pe-stat-row"><span class="pe-stat-label">TX Rate</span><span class="pe-stat-val">${wifiInfo.tx_rate} Mbit/s</span></div>`;
+      if (wifiInfo.rx_rate) html += `<div class="pe-stat-row"><span class="pe-stat-label">RX Rate</span><span class="pe-stat-val">${wifiInfo.rx_rate} Mbit/s</span></div>`;
+      if (wifiInfo.tx_pkts) html += `<div class="pe-stat-row"><span class="pe-stat-label">TX Packets</span><span class="pe-stat-val">${wifiInfo.tx_pkts.toLocaleString()}</span></div>`;
+      if (wifiInfo.rx_pkts) html += `<div class="pe-stat-row"><span class="pe-stat-label">RX Packets</span><span class="pe-stat-val">${wifiInfo.rx_pkts.toLocaleString()}</span></div>`;
+      html += "</div>";
+    }
+    if (haInfo) {
+      html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Home Assistant</div>';
+      html += `<div class="pe-stat-row"><span class="pe-stat-label">Status</span><span class="pe-stat-val">${haInfo.sublabel || "connected"}</span></div>`;
+      if (haInfo.entities) html += `<div class="pe-stat-row"><span class="pe-stat-label">Entities</span><span class="pe-stat-val">${haInfo.entities}</span></div>`;
+      html += "</div>";
+    }
+    if (!cd && !tsPeer && topoNode) {
+      html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Node</div>';
+      if (topoNode.type) html += `<div class="pe-stat-row"><span class="pe-stat-label">Type</span><span class="pe-stat-val">${topoNode.type}</span></div>`;
+      if (topoNode.ip) html += `<div class="pe-stat-row"><span class="pe-stat-label">IP</span><span class="pe-stat-val">${topoNode.ip}</span></div>`;
+      if (topoNode.mac) html += `<div class="pe-stat-row"><span class="pe-stat-label">MAC</span><span class="pe-stat-val">${topoNode.mac}</span></div>`;
+      if (topoNode.collectd) html += `<div class="pe-stat-row"><span class="pe-stat-label">Collectd</span><span class="pe-stat-val">${topoNode.collectd}</span></div>`;
+      if (topoNode._auto) html += `<div class="pe-stat-row"><span class="pe-stat-label">Source</span><span class="pe-stat-val" style="color:#a070c0">Auto-discovered</span></div>`;
       html += "</div>";
     }
     body.innerHTML = html;

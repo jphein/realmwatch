@@ -1421,6 +1421,10 @@
     scrollbar-width: thin;
     scrollbar-color: #3a3020 transparent;
   }
+  .pe-field-row {
+    display: flex; gap: 10px;
+  }
+  .pe-field-row .pe-field { flex: 1; }
   .pe-field {
     margin-bottom: 12px;
   }
