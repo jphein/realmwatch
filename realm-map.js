@@ -2617,6 +2617,40 @@
   setupPanelMinimize("realm-panel", "h3");
   setupPanelMinimize("legend", "h3");
   setupPanelMinimize("spellbook", "h3");
+  var _spellPages = document.querySelectorAll("#spellbook .spell-page");
+  var _spellPageNames = ["I \xB7 Enchantments", "II \xB7 Cartography", "III \xB7 Terrain", "IV \xB7 Arcane Config"];
+  var _spellDots = document.querySelectorAll(".spell-page-dot");
+  var _spellPage = 0;
+  function _showSpellPage(idx) {
+    _spellPage = Math.max(0, Math.min(idx, _spellPages.length - 1));
+    _spellPages.forEach((p, i) => {
+      p.style.display = i === _spellPage ? "" : "none";
+    });
+    const label = document.getElementById("spell-page-label");
+    if (label) label.textContent = _spellPageNames[_spellPage] || `Page ${_spellPage + 1}`;
+    const prev = document.getElementById("spell-prev");
+    const next = document.getElementById("spell-next");
+    if (prev) prev.disabled = _spellPage === 0;
+    if (next) next.disabled = _spellPage === _spellPages.length - 1;
+    _spellDots.forEach((d, i) => d.classList.toggle("active", i === _spellPage));
+    saveSettings();
+  }
+  document.getElementById("spell-prev")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    _showSpellPage(_spellPage - 1);
+  });
+  document.getElementById("spell-next")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    _showSpellPage(_spellPage + 1);
+  });
+  document.getElementById("spell-page-nav")?.addEventListener("click", (e) => {
+    if (e.target.closest(".spell-page-btn")) return;
+    _showSpellPage((_spellPage + 1) % _spellPages.length);
+  });
+  document.getElementById("spell-page-nav")?.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    _showSpellPage((_spellPage - 1 + _spellPages.length) % _spellPages.length);
+  });
   document.querySelectorAll(".legend-section-header").forEach((header) => {
     header.addEventListener("click", () => {
       header.parentElement.classList.toggle("collapsed");
@@ -3490,7 +3524,7 @@
   ];
   function saveSettings() {
     if (_restoring) return;
-    const s = { sliders: {}, checkboxes: {}, quality: null, collapsed: [] };
+    const s = { sliders: {}, checkboxes: {}, quality: null, collapsed: [], spellPage: _spellPage };
     _PERSIST_SLIDERS.forEach((id) => {
       const sl = document.getElementById(id + "-slider");
       if (sl) s.sliders[id] = sl.value;
@@ -3545,6 +3579,7 @@
           if (ds) sec.classList.toggle("collapsed", s.collapsed.includes(ds));
         });
       }
+      if (s.spellPage != null) _showSpellPage(s.spellPage);
       _restoring = false;
       return true;
     } catch (e) {
@@ -3814,4 +3849,75 @@
     });
   }
   restoreSettings();
+  var _cfgFields = {
+    "cfg-chat-model": { path: "chat.deployment", also: "chat.model" },
+    "cfg-reasoning": { path: "chat.reasoning_effort" },
+    "cfg-max-tokens": { path: "chat.max_completion_tokens", type: "number" },
+    "cfg-multi-timeout": { path: "chat.multi_chat_timeout", type: "number" },
+    "cfg-voice": { path: "speech.voice" },
+    "cfg-silence": { path: "speech.silence_timeout", type: "number" },
+    "cfg-subtitles": { path: "speech.live_subtitles", type: "checkbox" },
+    "cfg-oracle-model": { path: "oracle.model" },
+    "cfg-oracle-reasoning": { path: "oracle.reasoning_effort" },
+    "cfg-oracle-voice": { path: "oracle.voice" }
+  };
+  function _getPath(obj, path) {
+    const parts = path.split(".");
+    let v = obj;
+    for (const p of parts) {
+      v = v?.[p];
+    }
+    return v;
+  }
+  async function loadArcaneConfig() {
+    try {
+      const r = await fetch("/config");
+      if (!r.ok) return;
+      const cfg = await r.json();
+      for (const [id, spec] of Object.entries(_cfgFields)) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        const val = _getPath(cfg, spec.path);
+        if (val == null) continue;
+        if (spec.type === "checkbox") el.checked = !!val;
+        else el.value = val;
+      }
+    } catch (e) {
+    }
+  }
+  function _saveArcaneConfig() {
+    const update = { chat: {}, speech: {}, oracle: {} };
+    for (const [id, spec] of Object.entries(_cfgFields)) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      const [section, key] = spec.path.split(".");
+      let val;
+      if (spec.type === "checkbox") val = el.checked;
+      else if (spec.type === "number") val = parseFloat(el.value);
+      else val = el.value;
+      update[section][key] = val;
+      if (spec.also) {
+        const [s2, k2] = spec.also.split(".");
+        update[s2][k2] = val;
+      }
+    }
+    const statusEl = document.getElementById("cfg-status");
+    fetch("/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(update)
+    }).then((r) => {
+      if (statusEl) {
+        statusEl.textContent = r.ok ? "Config saved \u2714" : "Save failed";
+        setTimeout(() => {
+          statusEl.textContent = "";
+        }, 3e3);
+      }
+    }).catch(() => {
+      if (statusEl) statusEl.textContent = "Save failed";
+    });
+  }
+  var _cfgSaveBtn = document.getElementById("cfg-save-btn");
+  if (_cfgSaveBtn) _cfgSaveBtn.addEventListener("click", _saveArcaneConfig);
+  loadArcaneConfig();
 })();

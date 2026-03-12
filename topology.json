@@ -330,8 +330,8 @@
       "y": 280,
       "icon": "&#127984;",
       "label": "<REDACTED>",
-      "sublabel": "MR8300 \u2022 10.0.6.100",
-      "ip": "10.0.6.100",
+      "sublabel": "MR8300 \u2022 10.0.11.189",
+      "ip": "10.0.11.189",
       "collectd": "mr8300-host",
       "ssh": "glenn",
       "iconStyle": {
@@ -2808,15 +2808,39 @@
         "stats": [
           [
             "Role",
-            "AI Oracle"
+            "AI Oracle \u2014 Voice of the Aether"
           ],
           [
             "Interface",
-            "Search bar (? prefix)"
+            "Search bar (? prefix) \u2192 Enter"
+          ],
+          [
+            "Model",
+            "Azure o1 (reasoning)"
+          ],
+          [
+            "Reasoning",
+            "High"
+          ],
+          [
+            "Daemon",
+            "oracle_daemon.py (10s poll)"
+          ],
+          [
+            "Voice",
+            "en-US-BrianNeural"
+          ],
+          [
+            "Response Node",
+            "scrying-pool"
+          ],
+          [
+            "Event Type",
+            "oracle_query \u2192 oracle_response"
           ],
           [
             "Source",
-            "Claude Code + MCP"
+            "Azure AI + MCP + map_server events"
           ]
         ]
       }
@@ -3084,19 +3108,19 @@
     },
     {
       "from": "flip3",
-      "to": "onhub-office",
+      "to": "onhub-closet",
       "type": "active",
       "vlan": 6
     },
     {
       "from": "flip3-5g",
-      "to": "wndr4300sw-shed",
+      "to": "eap225-outdoor",
       "type": "active",
       "vlan": 6
     },
     {
       "from": "pixel-7",
-      "to": "wndr4300sw-shed",
+      "to": "ea6350-cl",
       "type": "active",
       "vlan": 6
     },
@@ -3270,7 +3294,7 @@
     },
     {
       "from": "kindle",
-      "to": "ea6350v3-family",
+      "to": "onhub-closet",
       "type": "active",
       "vlan": 6
     },

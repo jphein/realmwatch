@@ -20,6 +20,37 @@ MAP_DIR = os.path.dirname(os.path.abspath(__file__))
 PERSONAS_FILE = os.path.join(MAP_DIR, "personas.json")
 TOPOLOGY_FILE = os.path.join(MAP_DIR, "topology.json")
 _topo_cache = {"data": None, "mtime": 0}
+_CHAT_CONFIG = os.path.expanduser("~/.config/azure-chat-assistant/config.json")
+_SPEECH_CONFIG = os.path.expanduser("~/.config/speech-to-cli/config.json")
+
+# Settings exposed to UI (keys safe to read/write — no secrets)
+_CHAT_SAFE_KEYS = {"deployment", "model", "model_type", "max_completion_tokens", "temperature",
+                   "reasoning_effort", "default_models", "multi_chat_timeout", "voice"}
+_SPEECH_SAFE_KEYS = {"silence_timeout", "talk_silence_timeout", "energy_multiplier", "end_word",
+                     "subtitle_color_user", "subtitle_color_tts", "live_subtitles", "voice",
+                     "fast_voice", "max_record_seconds", "vu_meter", "chime_ready"}
+
+
+def _read_config_safe(path, safe_keys):
+    try:
+        with open(path) as f:
+            cfg = json.load(f)
+        return {k: v for k, v in cfg.items() if k in safe_keys}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _write_config_safe(path, updates, safe_keys):
+    try:
+        with open(path) as f:
+            cfg = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        cfg = {}
+    for k, v in updates.items():
+        if k in safe_keys:
+            cfg[k] = v
+    with open(path, "w") as f:
+        json.dump(cfg, f, indent=4)
 
 
 def _load_topology():
@@ -136,6 +167,13 @@ class RealmHandler(SimpleHTTPRequestHandler):
         elif self.path == "/scan/wifi":
             self._json_response(ap_scanner.get_wifi_signal())
 
+        elif self.path == "/config":
+            self._json_response({
+                "chat": _read_config_safe(_CHAT_CONFIG, _CHAT_SAFE_KEYS),
+                "speech": _read_config_safe(_SPEECH_CONFIG, _SPEECH_SAFE_KEYS),
+                "oracle": _load_personas().get("scrying-pool", {}),
+            })
+
         elif self.path.startswith("/codex-sync"):
             try:
                 force = "force=1" in self.path
@@ -202,6 +240,25 @@ class RealmHandler(SimpleHTTPRequestHandler):
                     "text": "A quest has been sealed in the archives.",
                 })
                 self._json_response(result)
+            except Exception as e:
+                self._json_response({"error": str(e)}, 500)
+
+        elif self.path == "/config":
+            try:
+                req = json.loads(body)
+                if "chat" in req:
+                    _write_config_safe(_CHAT_CONFIG, req["chat"], _CHAT_SAFE_KEYS)
+                if "speech" in req:
+                    _write_config_safe(_SPEECH_CONFIG, req["speech"], _SPEECH_SAFE_KEYS)
+                if "oracle" in req:
+                    personas = _load_personas()
+                    oracle = personas.get("scrying-pool", {})
+                    for k in ("model", "reasoning_effort", "voice", "system_prompt"):
+                        if k in req["oracle"]:
+                            oracle[k] = req["oracle"][k]
+                    personas["scrying-pool"] = oracle
+                    _save_personas(personas)
+                self._json_response({"ok": True})
             except Exception as e:
                 self._json_response({"error": str(e)}, 500)
 

@@ -610,6 +610,19 @@
       text-shadow: 0 0 8px rgba(192,128,255,0.4);
   }
 
+  /* Arcane Config panel */
+  .cfg-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 5px; gap: 8px;
+  }
+  .cfg-row label { font-size: 11px; color: #a08860; white-space: nowrap; min-width: 90px; }
+  .cfg-select, .cfg-input {
+    flex: 1; background: #1a1810; color: #d4c5a0; border: 1px solid #30281880;
+    border-radius: 4px; padding: 3px 6px; font-size: 11px; font-family: inherit;
+  }
+  .cfg-select:focus, .cfg-input:focus { border-color: #c080ff; outline: none; box-shadow: 0 0 4px rgba(192,128,255,0.3); }
+  .cfg-input { width: 70px; flex: 0 0 70px; text-align: right; }
+
   #search-icon {
     position: absolute;
     left: 11px;
@@ -694,32 +707,103 @@
     bottom: 20px;
     left: 240px;
     z-index: 50;
-    background: rgba(10,10,25,0.85);
-    border: 1px solid #3a3020;
-    border-radius: 8px;
-    padding: 12px 16px;
+    width: 260px;
+    background:
+      radial-gradient(ellipse at 30% 20%, rgba(60,45,20,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 80%, rgba(40,30,15,0.10) 0%, transparent 50%),
+      linear-gradient(170deg, rgba(18,14,10,0.95) 0%, rgba(12,10,22,0.92) 100%);
+    border: 1px solid #4a3828;
+    border-radius: 10px;
+    padding: 0;
     font-size: 12px;
     max-height: 70vh;
     overflow-y: auto;
+    box-shadow:
+      0 0 20px rgba(0,0,0,0.5),
+      inset 0 1px 0 rgba(212,197,160,0.06),
+      0 0 40px rgba(120,80,30,0.08);
   }
   #spellbook h3 {
     font-family: 'Cinzel', serif;
     font-size: 13px;
     color: #f0d890;
-    margin-bottom: 8px;
+    margin: 0;
+    padding: 10px 16px 0;
+    text-shadow: 0 0 12px rgba(240,216,144,0.2);
   }
   #spellbook { scrollbar-width: thin; scrollbar-color: #3a3020 transparent; }
   #spellbook::-webkit-scrollbar { width: 5px; }
   #spellbook::-webkit-scrollbar-thumb { background: #3a3020; border-radius: 3px; }
+  .spell-page-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 6px 12px 8px;
+    border-bottom: 1px solid rgba(212,197,160,0.08);
+    background: linear-gradient(180deg, rgba(30,24,14,0.4) 0%, transparent 100%);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    cursor: pointer;
+    user-select: none;
+    gap: 12px;
+  }
+  .spell-page-nav:hover { background: linear-gradient(180deg, rgba(40,32,18,0.5) 0%, transparent 100%); }
+  .spell-page-btn {
+    background: none;
+    border: none;
+    color: #706040;
+    font-size: 9px;
+    padding: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    line-height: 1;
+  }
+  .spell-page-btn:hover { color: #f0d890; }
+  .spell-page-btn:disabled { opacity: 0.15; cursor: default; }
+  .spell-page-label {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    color: #c0a870;
+    letter-spacing: 1.5px;
+    text-shadow: 0 0 8px rgba(192,168,112,0.15);
+  }
+  .spell-page-dots {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+  }
+  .spell-page-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: #3a3020;
+    transition: all 0.3s ease;
+  }
+  .spell-page-dot.active {
+    background: #c0a870;
+    box-shadow: 0 0 6px rgba(192,168,112,0.4);
+  }
+  .spell-page {
+    padding: 4px 16px 12px;
+    animation: spellPageIn 0.2s ease-out;
+  }
+  @keyframes spellPageIn {
+    from { opacity: 0; transform: translateX(8px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  #spellbook .legend-section:first-of-type {
+    border-top: none; margin-top: 0; padding-top: 0;
+  }
   .legend-item {
     display: flex;
     align-items: center;
     margin: 4px 0;
   }
   .legend-section {
-    border-top: 1px solid rgba(212,197,160,0.1);
-    padding-top: 4px;
-    margin-top: 4px;
+    border-top: 1px solid rgba(212,197,160,0.06);
+    padding-top: 6px;
+    margin-top: 6px;
   }
   .legend-section:first-of-type {
     border-top: none;
@@ -727,20 +811,25 @@
     padding-top: 0;
   }
   .legend-section-header {
+    font-family: 'Cinzel', serif;
     font-size: 10px;
-    color: #a89870;
-    letter-spacing: 1px;
+    color: #b09868;
+    letter-spacing: 1.5px;
     text-transform: uppercase;
     cursor: pointer;
     user-select: none;
-    padding: 3px 0;
+    padding: 4px 6px;
+    margin: 0 -6px;
+    border-radius: 4px;
     display: flex;
     align-items: center;
-    gap: 4px;
-    transition: color 0.2s;
+    gap: 5px;
+    transition: all 0.2s ease;
+    background: transparent;
   }
   .legend-section-header:hover {
     color: #f0d890;
+    background: rgba(212,197,160,0.04);
   }
   .legend-chevron {
     font-size: 8px;
@@ -795,10 +884,11 @@
 
   /* Traffic scale slider */
   .traffic-control {
-    margin-top: 10px;
-    padding-top: 8px;
-    border-top: 1px solid rgba(212,197,160,0.15);
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(212,197,160,0.06);
   }
+  .traffic-control:first-child { border-top: none; margin-top: 0; padding-top: 0; }
   .traffic-control label {
     display: flex;
     align-items: center;
@@ -1897,7 +1987,7 @@
     #realm-panel h3 { font-size: 12px; }
     .realm-gauge .gauge-label { width: 70px; font-size: 11px; }
     #legend { padding: 8px 12px; left: 10px; bottom: 10px; }
-    #spellbook { padding: 8px 12px; left: 10px; bottom: 10px; max-height: 60vh; }
+    #spellbook { left: 10px; bottom: 10px; max-height: 60vh; }
     #minimap { width: 140px; height: 97px; right: 10px; bottom: 10px; }
     .speech-bubble { max-width: 200px; font-size: 11px; padding: 8px 26px 8px 10px; }
     .speech-bubble .bubble-close { width: 24px; height: 24px; font-size: 18px; line-height: 22px; top: 4px; right: 4px; }

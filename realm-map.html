@@ -88,6 +88,18 @@
 
 <div id="spellbook">
   <h3>&#128214; Spellbook</h3>
+  <div class="spell-page-nav" id="spell-page-nav">
+    <button class="spell-page-btn" id="spell-prev">&#9664;</button>
+    <span class="spell-page-label" id="spell-page-label">I &middot; Enchantments</span>
+    <button class="spell-page-btn" id="spell-next">&#9654;</button>
+    <div class="spell-page-dots" id="spell-page-dots">
+      <div class="spell-page-dot active"></div>
+      <div class="spell-page-dot"></div>
+      <div class="spell-page-dot"></div>
+      <div class="spell-page-dot"></div>
+    </div>
+  </div>
+  <div class="spell-page" data-spell-page="0">
   <div class="legend-section" data-section="effects">
     <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Magical Effects</div>
     <div class="legend-section-body">
@@ -126,6 +138,8 @@
       </div>
     </div>
   </div>
+  </div><!-- /spell-page 0 -->
+  <div class="spell-page" data-spell-page="1" style="display:none">
   <div class="legend-section" data-section="layers">
     <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Layers &amp; Panels</div>
     <div class="legend-section-body">
@@ -224,6 +238,8 @@
       </div>
     </div>
   </div>
+  </div><!-- /spell-page 1 -->
+  <div class="spell-page" data-spell-page="2" style="display:none">
   <div class="legend-section" data-section="biomes">
     <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Biomes</div>
     <div class="legend-section-body">
@@ -321,6 +337,95 @@
       </div>
     </div>
   </div>
+  </div><!-- /spell-page 2 -->
+  <div class="spell-page" data-spell-page="3" style="display:none">
+  <div class="legend-section" data-section="arcane-config">
+    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> &#128302; Arcane Config</div>
+    <div class="legend-section-body" id="arcane-config-body">
+      <div class="vis-group-label">Oracle (Azure AI)</div>
+      <div class="cfg-row">
+        <label>Model</label>
+        <select id="cfg-chat-model" class="cfg-select">
+          <option value="o4-mini">o4-mini (Reasoning)</option>
+          <option value="gpt-5.3-chat">GPT-5.3</option>
+          <option value="DeepSeek-R1">DeepSeek-R1</option>
+          <option value="grok-3">Grok-3</option>
+          <option value="Meta-Llama-3.1-405B-Instruct">Llama 405B</option>
+          <option value="Phi-4">Phi-4</option>
+          <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option>
+        </select>
+      </div>
+      <div class="cfg-row">
+        <label>Reasoning</label>
+        <select id="cfg-reasoning" class="cfg-select">
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+      </div>
+      <div class="cfg-row">
+        <label>Max Tokens</label>
+        <input type="number" id="cfg-max-tokens" class="cfg-input" min="128" max="16384" step="128" value="2048">
+      </div>
+      <div class="cfg-row">
+        <label>Multi-Chat Timeout</label>
+        <input type="number" id="cfg-multi-timeout" class="cfg-input" min="5" max="120" step="5" value="30">
+      </div>
+      <div class="vis-group-label">Voice (Speech)</div>
+      <div class="cfg-row">
+        <label>TTS Voice</label>
+        <select id="cfg-voice" class="cfg-select">
+          <option value="en-US-Ava:DragonHDLatestNeural">Ava HD</option>
+          <option value="en-US-AvaNeural">Ava (Fast)</option>
+          <option value="en-US-BrianNeural">Brian</option>
+          <option value="en-US-DavisNeural">Davis</option>
+          <option value="en-US-AndrewNeural">Andrew</option>
+          <option value="en-US-JennyNeural">Jenny</option>
+          <option value="en-US-AriaNeural">Aria</option>
+          <option value="en-US-RogerNeural">Roger</option>
+        </select>
+      </div>
+      <div class="cfg-row">
+        <label>Silence Timeout</label>
+        <input type="number" id="cfg-silence" class="cfg-input" min="0.5" max="15" step="0.5" value="3">
+      </div>
+      <div class="cfg-row">
+        <label>Subtitles</label>
+        <label class="topo-switch"><input type="checkbox" id="cfg-subtitles" checked><span class="topo-switch-track"></span></label>
+      </div>
+      <div class="vis-group-label">Scrying Pool (Oracle Daemon)</div>
+      <div class="cfg-row">
+        <label>Oracle Model</label>
+        <select id="cfg-oracle-model" class="cfg-select">
+          <option value="o4-mini">o4-mini (Reasoning)</option>
+          <option value="gpt-5.3-chat">GPT-5.3</option>
+          <option value="DeepSeek-R1">DeepSeek-R1</option>
+        </select>
+      </div>
+      <div class="cfg-row">
+        <label>Oracle Reasoning</label>
+        <select id="cfg-oracle-reasoning" class="cfg-select">
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+      </div>
+      <div class="cfg-row">
+        <label>Oracle Voice</label>
+        <select id="cfg-oracle-voice" class="cfg-select">
+          <option value="en-US-BrianNeural">Brian</option>
+          <option value="en-US-DavisNeural">Davis</option>
+          <option value="en-US-AvaNeural">Ava</option>
+          <option value="en-US-RogerNeural">Roger</option>
+        </select>
+      </div>
+      <div class="cfg-row" style="margin-top:8px">
+        <button id="cfg-save-btn" class="layout-btn" style="width:100%">&#10024; Apply Config</button>
+      </div>
+      <div id="cfg-status" style="font-size:10px;color:#706050;margin-top:4px;text-align:center"></div>
+    </div>
+  </div>
+  </div><!-- /spell-page 3 -->
 </div>
 
 <div id="realm-codex">
