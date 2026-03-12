@@ -146,10 +146,9 @@
   </div>
   </div><!-- /spell-page 0 -->
   <div class="spell-page" data-spell-page="1" style="display:none">
-  <div class="legend-section" data-section="layers">
-    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Layers &amp; Panels <button class="section-reset" data-reset="layers" title="Reset to defaults">&#8634;</button></div>
+  <div class="legend-section" data-section="terrain-layers">
+    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Terrain Layers</div>
     <div class="legend-section-body">
-      <div class="vis-group-label">Terrain</div>
       <div class="layer-row">
         <label class="topo-switch"><input type="checkbox" id="vis-terrain" checked><span class="topo-switch-track"></span></label>
         <span class="layer-name">Biome Terrain</span>
@@ -165,7 +164,11 @@
         <span class="layer-name">Topographic</span>
         <input type="range" class="layer-opacity" id="layer-topo-slider" min="0" max="1" step="0.05" value="1">
       </div>
-      <div class="vis-group-label">Map Elements</div>
+    </div>
+  </div>
+  <div class="legend-section" data-section="map-elements">
+    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Map Elements</div>
+    <div class="legend-section-body">
       <div class="layer-row">
         <label class="topo-switch"><input type="checkbox" id="vis-nodes" checked><span class="topo-switch-track"></span></label>
         <span class="layer-name">Nodes</span>
@@ -201,7 +204,11 @@
         <span class="layer-name">Speech Bubbles</span>
         <input type="range" class="layer-opacity" id="layer-bubbles-slider" min="0" max="1" step="0.05" value="1">
       </div>
-      <div class="vis-group-label">Panels</div>
+    </div>
+  </div>
+  <div class="legend-section collapsed" data-section="panels-vis">
+    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Panels</div>
+    <div class="legend-section-body">
       <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-titlebar" checked><span class="topo-switch-track"></span></label><span>Title Bar</span></div>
       <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-search" checked><span class="topo-switch-track"></span></label><span>Search</span></div>
       <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-statuspanel" checked><span class="topo-switch-track"></span></label><span>Realm Vitals</span></div>

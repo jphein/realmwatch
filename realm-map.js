@@ -386,6 +386,12 @@
       const cc = (topo.connections || []).length;
       if (nc === _lastNodeCount && cc === (_topology?.connections || []).length) return;
       _lastNodeCount = nc;
+      const savedPos = {};
+      if (_topology) {
+        _topology.nodes.forEach((n) => {
+          savedPos[n.id] = { x: n.x, y: n.y };
+        });
+      }
       const vp = document.getElementById("map-viewport");
       const sx = vp?.scrollLeft, sy = vp?.scrollTop;
       const world2 = document.getElementById("map-world");
@@ -394,7 +400,24 @@
       svg.innerHTML = "";
       _connPaths.length = 0;
       _vlanLabels.length = 0;
+      Object.keys(_nodeDOM).forEach((k) => delete _nodeDOM[k]);
       renderTopology(topo);
+      if (Object.keys(savedPos).length > 0) {
+        let restored = false;
+        _topology.nodes.forEach((n) => {
+          if (savedPos[n.id]) {
+            n.x = savedPos[n.id].x;
+            n.y = savedPos[n.id].y;
+            const el = document.querySelector(`[data-tip="${n.id}"]`);
+            if (el) {
+              el.style.left = n.x + "px";
+              el.style.top = n.y + "px";
+            }
+            restored = true;
+          }
+        });
+        if (restored) updateLinePositions();
+      }
       if (vp && sx != null) {
         vp.scrollLeft = sx;
         vp.scrollTop = sy;
@@ -2856,39 +2879,108 @@
   setupPanelMinimize("legend", "h3");
   setupPanelMinimize("spellbook", "h3");
   var _spellPages = document.querySelectorAll("#spellbook .spell-page");
-  var _spellPageNames = ["I \xB7 Enchantments", "II \xB7 Cartography", "III \xB7 Terrain", "IV \xB7 Arcane Config"];
-  var _spellDots = document.querySelectorAll(".spell-page-dot");
+  var _spellTabs = document.querySelectorAll(".spell-tab");
   var _spellPage = 0;
   function _showSpellPage(idx) {
     _spellPage = Math.max(0, Math.min(idx, _spellPages.length - 1));
     _spellPages.forEach((p, i) => {
       p.style.display = i === _spellPage ? "" : "none";
     });
-    const label = document.getElementById("spell-page-label");
-    if (label) label.textContent = _spellPageNames[_spellPage] || `Page ${_spellPage + 1}`;
-    const prev = document.getElementById("spell-prev");
-    const next = document.getElementById("spell-next");
-    if (prev) prev.disabled = _spellPage === 0;
-    if (next) next.disabled = _spellPage === _spellPages.length - 1;
-    _spellDots.forEach((d, i) => d.classList.toggle("active", i === _spellPage));
+    _spellTabs.forEach((t, i) => t.classList.toggle("active", i === _spellPage));
     saveSettings();
   }
   __name(_showSpellPage, "_showSpellPage");
-  document.getElementById("spell-prev")?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    _showSpellPage(_spellPage - 1);
+  _spellTabs.forEach((tab) => {
+    tab.addEventListener("click", (e) => {
+      e.stopPropagation();
+      _showSpellPage(parseInt(tab.dataset.spell));
+    });
   });
-  document.getElementById("spell-next")?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    _showSpellPage(_spellPage + 1);
+  var _PRESETS = {
+    minimal: { "fx-ambient": 0.05, "fx-nodes": 0.1, "fx-leylines": 0.05, "fx-glow": 0.3, "fx-pulse": 0.5, "fx-leyglow": 0.2 },
+    cinematic: { "fx-ambient": 0.6, "fx-nodes": 0.8, "fx-leylines": 0.7, "fx-glow": 2, "fx-pulse": 0.8, "fx-leyglow": 1.5 },
+    performance: { "fx-ambient": 0, "fx-nodes": 0.2, "fx-leylines": 0.1, "fx-glow": 0.5, "fx-pulse": 1, "fx-leyglow": 0.5 },
+    full: { "fx-ambient": 0.5, "fx-nodes": 0.7, "fx-leylines": 0.6, "fx-glow": 1.5, "fx-pulse": 1.2, "fx-leyglow": 1.2 }
+  };
+  document.querySelectorAll(".preset-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const preset = _PRESETS[btn.dataset.preset];
+      if (!preset) return;
+      for (const [id, val] of Object.entries(preset)) {
+        const sl = document.getElementById(id + "-slider");
+        if (sl) {
+          sl.value = val;
+          sl.dispatchEvent(new Event("input"));
+        }
+      }
+      if (btn.dataset.preset === "performance") {
+        const q = document.getElementById("fx-quality-select");
+        if (q) {
+          q.value = "low";
+          q.dispatchEvent(new Event("change"));
+        }
+      }
+      saveSettings();
+    });
   });
-  document.getElementById("spell-page-nav")?.addEventListener("click", (e) => {
-    if (e.target.closest(".spell-page-btn")) return;
-    _showSpellPage((_spellPage + 1) % _spellPages.length);
-  });
-  document.getElementById("spell-page-nav")?.addEventListener("contextmenu", (e) => {
-    e.preventDefault();
-    _showSpellPage((_spellPage - 1 + _spellPages.length) % _spellPages.length);
+  var _SECTION_DEFAULTS = {
+    effects: { "fx-ambient": 0.3, "fx-nodes": 0.5, "fx-leylines": 0.4, "fx-glow": 1, "fx-pulse": 1, "fx-leyglow": 1 },
+    biomes: { "biome-land": 1, "biome-glow": 1, "biome-roads": 0.5, "biome-peaks": 0.5, "biome-grid": 0.03 },
+    scale: { "master-scale": 1, "node-scale": 1, "text-scale": 1, "bubble-scale": 1 },
+    traffic: { "traffic-scale": 1, "update-speed": 5 },
+    topographic: { "topo-opacity": 0.6, "topo-spread": 120, "topo-contour": 12, "topo-rw": 0.4, "topo-rd": 0.6 },
+    layout: { "layout-attract": 4, "layout-repulse": 80, "layout-edge": 80, "layout-spacing": 8, "layout-tilt": 0 }
+  };
+  document.querySelectorAll(".section-reset").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (btn.dataset.reset === "layers") {
+        [
+          "vis-terrain",
+          "vis-topo",
+          "vis-nodes",
+          "vis-connections",
+          "vis-labels",
+          "vis-sublabels",
+          "vis-regions",
+          "vis-vlanlabels",
+          "vis-bubbles",
+          "vis-titlebar",
+          "vis-search",
+          "vis-statuspanel",
+          "vis-legend",
+          "vis-codex",
+          "vis-questlog",
+          "vis-minimap",
+          "vis-nodelist"
+        ].forEach((id) => {
+          const cb = document.getElementById(id);
+          if (cb && !cb.checked) {
+            cb.checked = true;
+            cb.dispatchEvent(new Event("change"));
+          }
+        });
+        ["layer-terrain", "layer-terrain-orig", "layer-topo", "layer-nodes", "layer-connections", "layer-labels", "layer-sublabels", "layer-regions", "layer-vlanlabels", "layer-bubbles"].forEach((id) => {
+          const sl = document.getElementById(id + "-slider");
+          if (sl) {
+            sl.value = 1;
+            sl.dispatchEvent(new Event("input"));
+          }
+        });
+        saveSettings();
+        return;
+      }
+      const defaults = _SECTION_DEFAULTS[btn.dataset.reset];
+      if (!defaults) return;
+      for (const [id, val] of Object.entries(defaults)) {
+        const sl = document.getElementById(id + "-slider");
+        if (sl) {
+          sl.value = val;
+          sl.dispatchEvent(new Event("input"));
+        }
+      }
+      saveSettings();
+    });
   });
   document.querySelectorAll(".legend-section-header").forEach((header) => {
     header.addEventListener("click", () => {
@@ -3785,7 +3877,20 @@
   var _saveTimer = null;
   function saveSettings() {
     if (_restoring) return;
-    const s = { sliders: {}, checkboxes: {}, quality: null, collapsed: [], spellPage: _spellPage };
+    _initialRestoreDone = true;
+    const vp = document.getElementById("map-viewport");
+    const activePeTab = document.querySelector(".pe-tab.active");
+    const s = {
+      sliders: {},
+      checkboxes: {},
+      quality: null,
+      collapsed: [],
+      spellPage: _spellPage,
+      scroll: vp ? { x: vp.scrollLeft, y: vp.scrollTop } : null,
+      selectedNode: currentEditNode,
+      peTab: activePeTab?.dataset.peTab || "stats",
+      mirrorTab: activeTab
+    };
     _PERSIST_SLIDERS.forEach((id) => {
       const sl = document.getElementById(id + "-slider");
       if (sl) s.sliders[id] = sl.value;
@@ -3847,9 +3952,25 @@
       });
     }
     if (s.spellPage != null) _showSpellPage(s.spellPage);
+    if (s.scroll) {
+      const vp = document.getElementById("map-viewport");
+      if (vp) {
+        vp.scrollLeft = s.scroll.x;
+        vp.scrollTop = s.scroll.y;
+      }
+    }
+    if (s.selectedNode) {
+      openPersonaEditor(s.selectedNode);
+      if (s.peTab) _switchToTab(s.peTab);
+    }
+    if (s.mirrorTab) {
+      const tab = document.querySelector(`.log-tab[data-tab="${s.mirrorTab}"]`);
+      if (tab) tab.click();
+    }
     _restoring = false;
   }
   __name(_applySettings, "_applySettings");
+  var _initialRestoreDone = false;
   function restoreSettings() {
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
@@ -3857,11 +3978,13 @@
     } catch (e) {
     }
     fetch("/settings").then((r) => r.ok ? r.json() : null).then((s) => {
-      if (s && Object.keys(s).length > 0) {
+      if (s && Object.keys(s).length > 0 && !_initialRestoreDone) {
         _applySettings(s);
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
       }
+      _initialRestoreDone = true;
     }).catch(() => {
+      _initialRestoreDone = true;
     });
     return true;
   }
@@ -4174,6 +4297,14 @@
     });
   }
   restoreSettings();
+  var _scrollSaveTimer = null;
+  var _mapVp = document.getElementById("map-viewport");
+  if (_mapVp) {
+    _mapVp.addEventListener("scroll", () => {
+      clearTimeout(_scrollSaveTimer);
+      _scrollSaveTimer = setTimeout(saveSettings, 1e3);
+    }, { passive: true });
+  }
   var _cfgFields = {
     "cfg-chat-model": { path: "chat.deployment", also: "chat.model" },
     "cfg-reasoning": { path: "chat.reasoning_effort" },

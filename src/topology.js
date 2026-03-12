@@ -357,6 +357,11 @@ export async function refreshTopology() {
     const cc = (topo.connections || []).length;
     if (nc === _lastNodeCount && cc === (_topology?.connections || []).length) return;
     _lastNodeCount = nc;
+    // Save current node positions (preserves auto-arrange / user drag)
+    const savedPos = {};
+    if (_topology) {
+      _topology.nodes.forEach(n => { savedPos[n.id] = { x: n.x, y: n.y }; });
+    }
     // Save scroll position
     const vp = document.getElementById('map-viewport');
     const sx = vp?.scrollLeft, sy = vp?.scrollTop;
@@ -368,8 +373,22 @@ export async function refreshTopology() {
     _connPaths.length = 0;
     _vlanLabels.length = 0;
     Object.keys(_nodeDOM).forEach(k => delete _nodeDOM[k]);
-    // Re-render
+    // Re-render with server data
     renderTopology(topo);
+    // Restore saved positions for existing nodes (auto-arrange / drag)
+    if (Object.keys(savedPos).length > 0) {
+      let restored = false;
+      _topology.nodes.forEach(n => {
+        if (savedPos[n.id]) {
+          n.x = savedPos[n.id].x;
+          n.y = savedPos[n.id].y;
+          const el = document.querySelector(`[data-tip="${n.id}"]`);
+          if (el) { el.style.left = n.x + 'px'; el.style.top = n.y + 'px'; }
+          restored = true;
+        }
+      });
+      if (restored) updateLinePositions();
+    }
     // Restore scroll
     if (vp && sx != null) { vp.scrollLeft = sx; vp.scrollTop = sy; }
   } catch (e) { /* silent */ }
