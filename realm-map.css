@@ -2197,6 +2197,75 @@
     text-overflow: ellipsis;
   }
 
+  /* ── Debug / Arcane Mirror panel ── */
+  #debug-panel {
+    position: fixed; bottom: 10px; right: 10px; width: 420px; max-height: 55vh;
+    background: radial-gradient(ellipse at 30% 20%, rgba(20,15,35,0.97), rgba(10,8,20,0.98));
+    border: 1px solid rgba(120,80,200,0.35); border-radius: 8px;
+    font-family: 'Consolas','Fira Code',monospace; font-size: 11px; color: #c0b8d8;
+    display: flex; flex-direction: column; z-index: 900;
+    box-shadow: 0 0 20px rgba(100,60,180,0.25), inset 0 0 40px rgba(80,40,160,0.08);
+  }
+  #debug-header {
+    display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+    font-family: 'Cinzel',serif; font-size: 13px; color: #d0b0ff;
+    border-bottom: 1px solid rgba(120,80,200,0.2);
+    cursor: move; user-select: none;
+  }
+  #debug-header span:first-child { flex: 1; }
+  .debug-stat { font-family: monospace; font-size: 10px; color: #807098; }
+  .debug-close-btn {
+    background: none; border: none; color: #908; font-size: 16px; cursor: pointer;
+    padding: 0 4px; line-height: 1;
+  }
+  .debug-close-btn:hover { color: #f66; }
+  #debug-tabs {
+    display: flex; gap: 0; padding: 0 6px; border-bottom: 1px solid rgba(120,80,200,0.15);
+    overflow-x: auto; flex-shrink: 0;
+  }
+  .debug-tab {
+    padding: 4px 8px; font-size: 10px; cursor: pointer; color: #706088;
+    border-bottom: 2px solid transparent; white-space: nowrap; transition: color 0.2s;
+  }
+  .debug-tab:hover { color: #b090d0; }
+  .debug-tab.active { color: #d0b0ff; border-bottom-color: #9060c0; }
+  #debug-filter {
+    padding: 4px 8px; border-bottom: 1px solid rgba(120,80,200,0.1);
+  }
+  #debug-search {
+    width: 100%; background: rgba(40,30,60,0.6); border: 1px solid rgba(120,80,200,0.2);
+    border-radius: 4px; padding: 3px 6px; color: #c0b0e0; font-size: 11px;
+    font-family: monospace; outline: none;
+  }
+  #debug-search:focus { border-color: rgba(160,100,255,0.4); }
+  #debug-search::placeholder { color: #504068; }
+  #debug-body {
+    overflow-y: auto; flex: 1; padding: 6px 8px; min-height: 100px;
+  }
+  #debug-body::-webkit-scrollbar { width: 5px; }
+  #debug-body::-webkit-scrollbar-thumb { background: rgba(120,80,200,0.3); border-radius: 3px; }
+  .dbg-section { margin-bottom: 8px; }
+  .dbg-section-title {
+    font-family: 'Cinzel',serif; font-size: 11px; color: #a080d0; cursor: pointer;
+    padding: 2px 0; border-bottom: 1px solid rgba(120,80,200,0.1); margin-bottom: 3px;
+    user-select: none;
+  }
+  .dbg-section-title:hover { color: #c0a0f0; }
+  .dbg-section.collapsed .dbg-section-body { display: none; }
+  .dbg-kv { display: flex; gap: 6px; padding: 1px 0; line-height: 1.4; }
+  .dbg-k { color: #8070a0; min-width: 90px; flex-shrink: 0; }
+  .dbg-v { color: #c0d8c0; word-break: break-all; }
+  .dbg-v.err { color: #ff8080; }
+  .dbg-v.ok { color: #80d080; }
+  .dbg-v.warn { color: #e0c060; }
+  .dbg-v.dim { color: #605878; }
+  .dbg-tree { padding-left: 12px; border-left: 1px solid rgba(120,80,200,0.1); }
+  .dbg-json {
+    white-space: pre-wrap; font-size: 10px; color: #908878; padding: 3px 0;
+    max-height: 200px; overflow-y: auto;
+  }
+  .dbg-highlight { background: rgba(200,160,60,0.2); border-radius: 2px; }
+
   /* Bigger touch targets for close buttons everywhere */
   @media (pointer: coarse) {
     .speech-bubble .bubble-close { width: 28px; height: 28px; font-size: 20px; line-height: 26px; }

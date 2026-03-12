@@ -157,6 +157,25 @@ class RealmHandler(SimpleHTTPRequestHandler):
             except Exception as e:
                 self._json_response({"error": str(e)}, 500)
 
+        elif self.path == "/debug":
+            c = realm_db._conn()
+            counts = {}
+            for table in ("settings", "events", "personas", "nodes", "connections",
+                          "regions", "notion_synced", "wifi_scans"):
+                try:
+                    counts[table] = c.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                except Exception:
+                    counts[table] = -1
+            scan = realm_db.get_wifi_scan()
+            self._json_response({
+                "tables": counts,
+                "db_path": realm_db.DB_PATH,
+                "db_size": os.path.getsize(realm_db.DB_PATH) if os.path.exists(realm_db.DB_PATH) else 0,
+                "wifi_scan_ts": scan.get("ts", 0),
+                "notion_synced": len(realm_db.get_notion_synced()),
+                "settings_ns": list(realm_db.get_settings().keys()),
+            })
+
         elif self.path == "/" or self.path == "":
             self.path = "/realm-map.html"
             super().do_GET()

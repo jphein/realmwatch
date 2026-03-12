@@ -204,6 +204,7 @@
       <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-questlog" checked><span class="topo-switch-track"></span></label><span>Quest Log</span></div>
       <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-minimap" checked><span class="topo-switch-track"></span></label><span>Minimap</span></div>
       <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-nodelist" checked><span class="topo-switch-track"></span></label><span>Realm Census</span></div>
+      <div class="vis-toggle-row"><label class="topo-switch"><input type="checkbox" id="vis-debug"><span class="topo-switch-track"></span></label><span>Arcane Mirror</span></div>
     </div>
   </div>
   <div class="legend-section collapsed" data-section="layout">
@@ -540,6 +541,29 @@
     <div class="log-tab" data-tab="notion">Notion</div>
   </div>
   <div id="quest-log-body"></div>
+</div>
+
+<div id="debug-panel" style="display:none">
+  <div id="debug-header">
+    <span>&#128302; Arcane Mirror</span>
+    <span id="debug-poll-count" class="debug-stat"></span>
+    <button id="debug-close" class="debug-close-btn">&times;</button>
+  </div>
+  <div id="debug-tabs">
+    <div class="debug-tab active" data-dtab="all">All</div>
+    <div class="debug-tab" data-dtab="status">Status</div>
+    <div class="debug-tab" data-dtab="collectd">Collectd</div>
+    <div class="debug-tab" data-dtab="wifi">WiFi</div>
+    <div class="debug-tab" data-dtab="ha">HA</div>
+    <div class="debug-tab" data-dtab="tailscale">Tailscale</div>
+    <div class="debug-tab" data-dtab="topology">Topology</div>
+    <div class="debug-tab" data-dtab="events">Events</div>
+    <div class="debug-tab" data-dtab="db">DB</div>
+  </div>
+  <div id="debug-filter">
+    <input type="text" id="debug-search" placeholder="Filter..." autocomplete="off" spellcheck="false">
+  </div>
+  <div id="debug-body"></div>
 </div>
 
 <!-- Persona Editor Modal -->
