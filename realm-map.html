@@ -164,6 +164,11 @@
         <span class="layer-name">Topographic</span>
         <input type="range" class="layer-opacity" id="layer-topo-slider" min="0" max="1" step="0.05" value="1">
       </div>
+      <div class="layer-row">
+        <label class="topo-switch"><input type="checkbox" id="vis-grid"><span class="topo-switch-track"></span></label>
+        <span class="layer-name">Arcane Grid</span>
+        <input type="range" class="layer-opacity" id="layer-grid-slider" min="0" max="1" step="0.05" value="0.4">
+      </div>
     </div>
   </div>
   <div class="legend-section" data-section="map-elements">
@@ -293,6 +298,34 @@
       <div class="traffic-control">
         <label>Update Speed <span class="tc-val" id="update-speed-val">5s</span></label>
         <input type="range" class="traffic-slider" id="update-speed-slider" min="1" max="30" step="1" value="5">
+      </div>
+    </div>
+  </div>
+  <div class="legend-section" data-section="arcane-grid">
+    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Arcane Grid <button class="section-reset" data-reset="arcane-grid" title="Reset to defaults">&#8634;</button></div>
+    <div class="legend-section-body">
+      <div class="traffic-control" style="margin-bottom:6px;display:flex;align-items:center;gap:8px">
+        <label style="margin:0">Overlay</label>
+        <label class="topo-switch"><input type="checkbox" id="grid-toggle-cb"><span class="topo-switch-track"></span></label>
+      </div>
+      <div class="traffic-control">
+        <label>Opacity <span class="tc-val" id="grid-opacity-val">0.40</span></label>
+        <input type="range" class="traffic-slider" id="grid-opacity-slider" min="0.05" max="1" step="0.05" value="0.4">
+      </div>
+      <div class="traffic-control">
+        <label>Scale <span class="tc-val" id="grid-scale-val">1.0</span></label>
+        <input type="range" class="traffic-slider" id="grid-scale-slider" min="0.3" max="3" step="0.1" value="1">
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:#706050;margin-top:2px">
+          <span>Fine</span><span>Normal</span><span>Grand</span>
+        </div>
+      </div>
+      <div class="traffic-control">
+        <label>Pulse <span class="tc-val" id="grid-pulse-val">on</span></label>
+        <label class="topo-switch"><input type="checkbox" id="grid-pulse-cb" checked><span class="topo-switch-track"></span></label>
+      </div>
+      <div class="traffic-control">
+        <label>Hue Shift <span class="tc-val" id="grid-hue-val">0&deg;</span></label>
+        <input type="range" class="traffic-slider" id="grid-hue-slider" min="0" max="360" step="10" value="0">
       </div>
     </div>
   </div>
@@ -940,6 +973,51 @@
 
       <!-- Dynamic terrain generated from topology data -->
       <g id="terrain-dynamic"></g>
+    </svg>
+
+    <!-- Arcane Grid overlay (magical coordinate grid) -->
+    <svg id="arcane-grid" viewBox="0 0 4800 3300" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="grid-glow" x="-10%" y="-10%" width="120%" height="120%">
+          <feGaussianBlur stdDeviation="1.5" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <pattern id="hex-pattern" width="100" height="86.6" patternUnits="userSpaceOnUse" patternTransform="scale(1)">
+          <path d="M50,0 L100,25 L100,75 L50,100 L0,75 L0,25 Z" fill="none" stroke="rgba(120,100,180,0.15)" stroke-width="0.5"/>
+          <path d="M50,0 L50,-12" fill="none" stroke="rgba(120,100,180,0.08)" stroke-width="0.3"/>
+          <circle cx="50" cy="0" r="2" fill="rgba(180,140,255,0.2)"/>
+          <circle cx="100" cy="25" r="1.5" fill="rgba(140,180,255,0.15)"/>
+          <circle cx="100" cy="75" r="1.5" fill="rgba(140,180,255,0.15)"/>
+          <circle cx="50" cy="100" r="2" fill="rgba(180,140,255,0.2)"/>
+          <circle cx="0" cy="75" r="1.5" fill="rgba(140,180,255,0.15)"/>
+          <circle cx="0" cy="25" r="1.5" fill="rgba(140,180,255,0.15)"/>
+        </pattern>
+        <pattern id="runic-grid" width="200" height="200" patternUnits="userSpaceOnUse">
+          <rect width="200" height="200" fill="url(#hex-pattern)"/>
+          <circle cx="100" cy="100" r="40" fill="none" stroke="rgba(160,120,220,0.1)" stroke-width="0.5"/>
+          <circle cx="100" cy="100" r="3" fill="rgba(200,160,255,0.25)"/>
+          <path d="M100,60 L100,140 M60,100 L140,100" stroke="rgba(140,100,200,0.08)" stroke-width="0.3"/>
+        </pattern>
+        <linearGradient id="grid-fade-h" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="white" stop-opacity="0"/>
+          <stop offset="10%" stop-color="white" stop-opacity="1"/>
+          <stop offset="90%" stop-color="white" stop-opacity="1"/>
+          <stop offset="100%" stop-color="white" stop-opacity="0"/>
+        </linearGradient>
+        <linearGradient id="grid-fade-v" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="white" stop-opacity="0"/>
+          <stop offset="10%" stop-color="white" stop-opacity="1"/>
+          <stop offset="90%" stop-color="white" stop-opacity="1"/>
+          <stop offset="100%" stop-color="white" stop-opacity="0"/>
+        </linearGradient>
+        <mask id="grid-fade-mask">
+          <rect width="4800" height="3300" fill="url(#grid-fade-h)"/>
+          <rect width="4800" height="3300" fill="url(#grid-fade-v)" style="mix-blend-mode:multiply"/>
+        </mask>
+      </defs>
+      <g id="arcane-grid-content" mask="url(#grid-fade-mask)" filter="url(#grid-glow)">
+        <rect width="4800" height="3300" fill="url(#runic-grid)"/>
+      </g>
     </svg>
 
     <!-- Topographic contour overlay (SVG — crisp vector lines) -->

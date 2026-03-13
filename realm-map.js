@@ -1518,6 +1518,108 @@
     });
     if (_topoEnabled && _topology.nodes) renderTopoLayer(null);
   }), "initTopoControls"))();
+  var _gridSvg = document.getElementById("arcane-grid");
+  var _gridContent = document.getElementById("arcane-grid-content");
+  var _gridEnabled = false;
+  var _gridOpacity = 0.4;
+  var _gridScale = 1;
+  var _gridPulse = true;
+  var _gridHue = 0;
+  (/* @__PURE__ */ __name((function initGridControls() {
+    const toggle = document.getElementById("grid-toggle-cb");
+    const visToggle = document.getElementById("vis-grid");
+    const opSlider = document.getElementById("grid-opacity-slider");
+    const opVal = document.getElementById("grid-opacity-val");
+    const scSlider = document.getElementById("grid-scale-slider");
+    const scVal = document.getElementById("grid-scale-val");
+    const pulseToggle = document.getElementById("grid-pulse-cb");
+    const pulseVal = document.getElementById("grid-pulse-val");
+    const hueSlider = document.getElementById("grid-hue-slider");
+    const hueVal = document.getElementById("grid-hue-val");
+    const layerSlider = document.getElementById("layer-grid-slider");
+    if (!_gridSvg) return;
+    function applyGridStyle() {
+      _gridSvg.style.setProperty("--grid-opacity", _gridOpacity);
+      _gridSvg.style.setProperty("--grid-scale", _gridScale);
+      _gridSvg.style.filter = _gridHue ? `hue-rotate(${_gridHue}deg)` : "";
+      _gridSvg.style.animationPlayState = _gridPulse ? "running" : "paused";
+      _gridSvg.classList.toggle("active", _gridEnabled);
+    }
+    __name(applyGridStyle, "applyGridStyle");
+    function syncToggles() {
+      if (toggle) toggle.checked = _gridEnabled;
+      if (visToggle) visToggle.checked = _gridEnabled;
+    }
+    __name(syncToggles, "syncToggles");
+    if (toggle) toggle.addEventListener("change", () => {
+      _gridEnabled = toggle.checked;
+      syncToggles();
+      applyGridStyle();
+      saveSettings();
+    });
+    if (visToggle) visToggle.addEventListener("change", () => {
+      _gridEnabled = visToggle.checked;
+      syncToggles();
+      applyGridStyle();
+      saveSettings();
+    });
+    if (opSlider) opSlider.addEventListener("input", () => {
+      _gridOpacity = parseFloat(opSlider.value);
+      if (opVal) opVal.textContent = _gridOpacity.toFixed(2);
+      if (layerSlider) layerSlider.value = _gridOpacity;
+      applyGridStyle();
+      scheduleSave();
+    });
+    if (layerSlider) layerSlider.addEventListener("input", () => {
+      _gridOpacity = parseFloat(layerSlider.value);
+      if (opVal) opVal.textContent = _gridOpacity.toFixed(2);
+      if (opSlider) opSlider.value = _gridOpacity;
+      applyGridStyle();
+      scheduleSave();
+    });
+    if (scSlider) scSlider.addEventListener("input", () => {
+      _gridScale = parseFloat(scSlider.value);
+      if (scVal) scVal.textContent = _gridScale.toFixed(1);
+      applyGridStyle();
+      scheduleSave();
+    });
+    if (pulseToggle) pulseToggle.addEventListener("change", () => {
+      _gridPulse = pulseToggle.checked;
+      if (pulseVal) pulseVal.textContent = _gridPulse ? "on" : "off";
+      applyGridStyle();
+      scheduleSave();
+    });
+    if (hueSlider) hueSlider.addEventListener("input", () => {
+      _gridHue = parseInt(hueSlider.value);
+      if (hueVal) hueVal.textContent = _gridHue + "\xB0";
+      applyGridStyle();
+      scheduleSave();
+    });
+    window._gridControls = {
+      applyGridStyle,
+      syncToggles,
+      getState: /* @__PURE__ */ __name(() => ({ enabled: _gridEnabled, opacity: _gridOpacity, scale: _gridScale, pulse: _gridPulse, hue: _gridHue }), "getState"),
+      setState: /* @__PURE__ */ __name((s) => {
+        if (s.enabled !== void 0) _gridEnabled = s.enabled;
+        if (s.opacity !== void 0) _gridOpacity = s.opacity;
+        if (s.scale !== void 0) _gridScale = s.scale;
+        if (s.pulse !== void 0) _gridPulse = s.pulse;
+        if (s.hue !== void 0) _gridHue = s.hue;
+        if (opSlider) opSlider.value = _gridOpacity;
+        if (opVal) opVal.textContent = _gridOpacity.toFixed(2);
+        if (layerSlider) layerSlider.value = _gridOpacity;
+        if (scSlider) scSlider.value = _gridScale;
+        if (scVal) scVal.textContent = _gridScale.toFixed(1);
+        if (pulseToggle) pulseToggle.checked = _gridPulse;
+        if (pulseVal) pulseVal.textContent = _gridPulse ? "on" : "off";
+        if (hueSlider) hueSlider.value = _gridHue;
+        if (hueVal) hueVal.textContent = _gridHue + "\xB0";
+        syncToggles();
+        applyGridStyle();
+      }, "setState")
+    };
+    applyGridStyle();
+  }), "initGridControls"))();
   var lastEventTs = 0;
   var EVENTS_POLL_MS = 3e3;
   var _isFirstPoll = true;
@@ -3465,6 +3567,7 @@
     biomes: { "biome-land": 1, "biome-glow": 1, "biome-roads": 0.5, "biome-peaks": 0.5, "biome-grid": 0.03 },
     scale: { "master-scale": 1, "node-scale": 1, "text-scale": 1, "bubble-scale": 1 },
     traffic: { "traffic-scale": 1, "update-speed": 5 },
+    "arcane-grid": { "grid-opacity": 0.4, "grid-scale": 1, "grid-hue": 0 },
     topographic: { "topo-opacity": 0.6, "topo-spread": 120, "topo-contour": 12, "topo-rw": 0.4, "topo-rd": 0.6 },
     layout: { "layout-attract": 4, "layout-repulse": 80, "layout-edge": 80, "layout-spacing": 8, "layout-tilt": 0 }
   };
@@ -3499,15 +3602,32 @@
             cb.dispatchEvent(new Event("change"));
           }
         });
-        ["layer-terrain", "layer-terrain-orig", "layer-topo", "layer-nodes", "layer-connections", "layer-labels", "layer-sublabels", "layer-regions", "layer-vlanlabels", "layer-bubbles"].forEach((id) => {
+        const gridCb = document.getElementById("vis-grid");
+        if (gridCb && gridCb.checked) {
+          gridCb.checked = false;
+          gridCb.dispatchEvent(new Event("change"));
+        }
+        ["layer-terrain", "layer-terrain-orig", "layer-topo", "layer-grid", "layer-nodes", "layer-connections", "layer-labels", "layer-sublabels", "layer-regions", "layer-vlanlabels", "layer-bubbles"].forEach((id) => {
           const sl = document.getElementById(id + "-slider");
           if (sl) {
-            sl.value = 1;
+            sl.value = id === "layer-grid" ? 0.4 : 1;
             sl.dispatchEvent(new Event("input"));
           }
         });
         saveSettings();
         return;
+      }
+      if (btn.dataset.reset === "arcane-grid") {
+        const toggleCb = document.getElementById("grid-toggle-cb");
+        const pulseCb = document.getElementById("grid-pulse-cb");
+        if (toggleCb && toggleCb.checked) {
+          toggleCb.checked = false;
+          toggleCb.dispatchEvent(new Event("change"));
+        }
+        if (pulseCb && !pulseCb.checked) {
+          pulseCb.checked = true;
+          pulseCb.dispatchEvent(new Event("change"));
+        }
       }
       const defaults = _SECTION_DEFAULTS[btn.dataset.reset];
       if (!defaults) return;
@@ -4517,6 +4637,10 @@
     "topo-contour",
     "topo-rw",
     "topo-rd",
+    "grid-opacity",
+    "grid-scale",
+    "grid-hue",
+    "layer-grid",
     "layout-attract",
     "layout-repulse",
     "layout-edge",
@@ -4552,9 +4676,12 @@
   ];
   var _PERSIST_CHECKBOXES = [
     "topo-toggle-cb",
+    "grid-toggle-cb",
+    "grid-pulse-cb",
     "vis-terrain",
     "vis-terrain-orig",
     "vis-topo",
+    "vis-grid",
     "vis-connections",
     "vis-nodes",
     "vis-labels",

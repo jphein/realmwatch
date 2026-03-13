@@ -1101,6 +1101,117 @@ export function renderTopoLayer(collectd) {
   if (_topoEnabled && _topology.nodes) renderTopoLayer(null);
 })();
 
+// ── Arcane Grid Controls ──
+const _gridSvg = document.getElementById('arcane-grid');
+const _gridContent = document.getElementById('arcane-grid-content');
+let _gridEnabled = false;
+let _gridOpacity = 0.4;
+let _gridScale = 1.0;
+let _gridPulse = true;
+let _gridHue = 0;
+
+(function initGridControls() {
+  const toggle = document.getElementById('grid-toggle-cb');
+  const visToggle = document.getElementById('vis-grid');
+  const opSlider = document.getElementById('grid-opacity-slider');
+  const opVal = document.getElementById('grid-opacity-val');
+  const scSlider = document.getElementById('grid-scale-slider');
+  const scVal = document.getElementById('grid-scale-val');
+  const pulseToggle = document.getElementById('grid-pulse-cb');
+  const pulseVal = document.getElementById('grid-pulse-val');
+  const hueSlider = document.getElementById('grid-hue-slider');
+  const hueVal = document.getElementById('grid-hue-val');
+  const layerSlider = document.getElementById('layer-grid-slider');
+
+  if (!_gridSvg) return;
+
+  function applyGridStyle() {
+    _gridSvg.style.setProperty('--grid-opacity', _gridOpacity);
+    _gridSvg.style.setProperty('--grid-scale', _gridScale);
+    _gridSvg.style.filter = _gridHue ? `hue-rotate(${_gridHue}deg)` : '';
+    _gridSvg.style.animationPlayState = _gridPulse ? 'running' : 'paused';
+    _gridSvg.classList.toggle('active', _gridEnabled);
+  }
+
+  function syncToggles() {
+    if (toggle) toggle.checked = _gridEnabled;
+    if (visToggle) visToggle.checked = _gridEnabled;
+  }
+
+  if (toggle) toggle.addEventListener('change', () => {
+    _gridEnabled = toggle.checked;
+    syncToggles();
+    applyGridStyle();
+    saveSettings();
+  });
+  if (visToggle) visToggle.addEventListener('change', () => {
+    _gridEnabled = visToggle.checked;
+    syncToggles();
+    applyGridStyle();
+    saveSettings();
+  });
+  if (opSlider) opSlider.addEventListener('input', () => {
+    _gridOpacity = parseFloat(opSlider.value);
+    if (opVal) opVal.textContent = _gridOpacity.toFixed(2);
+    if (layerSlider) layerSlider.value = _gridOpacity;
+    applyGridStyle();
+    scheduleSave();
+  });
+  if (layerSlider) layerSlider.addEventListener('input', () => {
+    _gridOpacity = parseFloat(layerSlider.value);
+    if (opVal) opVal.textContent = _gridOpacity.toFixed(2);
+    if (opSlider) opSlider.value = _gridOpacity;
+    applyGridStyle();
+    scheduleSave();
+  });
+  if (scSlider) scSlider.addEventListener('input', () => {
+    _gridScale = parseFloat(scSlider.value);
+    if (scVal) scVal.textContent = _gridScale.toFixed(1);
+    applyGridStyle();
+    scheduleSave();
+  });
+  if (pulseToggle) pulseToggle.addEventListener('change', () => {
+    _gridPulse = pulseToggle.checked;
+    if (pulseVal) pulseVal.textContent = _gridPulse ? 'on' : 'off';
+    applyGridStyle();
+    scheduleSave();
+  });
+  if (hueSlider) hueSlider.addEventListener('input', () => {
+    _gridHue = parseInt(hueSlider.value);
+    if (hueVal) hueVal.textContent = _gridHue + '°';
+    applyGridStyle();
+    scheduleSave();
+  });
+
+  // Export for save/restore
+  window._gridControls = {
+    applyGridStyle,
+    syncToggles,
+    getState: () => ({ enabled: _gridEnabled, opacity: _gridOpacity, scale: _gridScale, pulse: _gridPulse, hue: _gridHue }),
+    setState: (s) => {
+      if (s.enabled !== undefined) _gridEnabled = s.enabled;
+      if (s.opacity !== undefined) _gridOpacity = s.opacity;
+      if (s.scale !== undefined) _gridScale = s.scale;
+      if (s.pulse !== undefined) _gridPulse = s.pulse;
+      if (s.hue !== undefined) _gridHue = s.hue;
+      // Update UI
+      if (opSlider) opSlider.value = _gridOpacity;
+      if (opVal) opVal.textContent = _gridOpacity.toFixed(2);
+      if (layerSlider) layerSlider.value = _gridOpacity;
+      if (scSlider) scSlider.value = _gridScale;
+      if (scVal) scVal.textContent = _gridScale.toFixed(1);
+      if (pulseToggle) pulseToggle.checked = _gridPulse;
+      if (pulseVal) pulseVal.textContent = _gridPulse ? 'on' : 'off';
+      if (hueSlider) hueSlider.value = _gridHue;
+      if (hueVal) hueVal.textContent = _gridHue + '°';
+      syncToggles();
+      applyGridStyle();
+    }
+  };
+
+  applyGridStyle();
+})();
+
 
 // ── Event rendering ──
 let lastEventTs = 0;
@@ -3171,29 +3282,40 @@ document.querySelectorAll('.preset-btn').forEach(btn => {
 
 // ── Section Reset Buttons ──
 const _SECTION_DEFAULTS = {
-  effects:     { 'fx-ambient': 0.3, 'fx-nodes': 0.5, 'fx-leylines': 0.4, 'fx-glow': 1.0, 'fx-pulse': 1.0, 'fx-leyglow': 1.0 },
-  biomes:      { 'biome-land': 1.0, 'biome-glow': 1.0, 'biome-roads': 0.5, 'biome-peaks': 0.5, 'biome-grid': 0.03 },
-  scale:       { 'master-scale': 1.0, 'node-scale': 1.0, 'text-scale': 1.0, 'bubble-scale': 1.0 },
-  traffic:     { 'traffic-scale': 1.0, 'update-speed': 5 },
-  topographic: { 'topo-opacity': 0.6, 'topo-spread': 120, 'topo-contour': 12, 'topo-rw': 0.4, 'topo-rd': 0.6 },
-  layout:      { 'layout-attract': 4.0, 'layout-repulse': 80, 'layout-edge': 80, 'layout-spacing': 8, 'layout-tilt': 0 },
+  effects:       { 'fx-ambient': 0.3, 'fx-nodes': 0.5, 'fx-leylines': 0.4, 'fx-glow': 1.0, 'fx-pulse': 1.0, 'fx-leyglow': 1.0 },
+  biomes:        { 'biome-land': 1.0, 'biome-glow': 1.0, 'biome-roads': 0.5, 'biome-peaks': 0.5, 'biome-grid': 0.03 },
+  scale:         { 'master-scale': 1.0, 'node-scale': 1.0, 'text-scale': 1.0, 'bubble-scale': 1.0 },
+  traffic:       { 'traffic-scale': 1.0, 'update-speed': 5 },
+  'arcane-grid': { 'grid-opacity': 0.4, 'grid-scale': 1.0, 'grid-hue': 0 },
+  topographic:   { 'topo-opacity': 0.6, 'topo-spread': 120, 'topo-contour': 12, 'topo-rw': 0.4, 'topo-rd': 0.6 },
+  layout:        { 'layout-attract': 4.0, 'layout-repulse': 80, 'layout-edge': 80, 'layout-spacing': 8, 'layout-tilt': 0 },
 };
 document.querySelectorAll('.section-reset').forEach(btn => {
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
     if (btn.dataset.reset === 'layers') {
-      // Reset all layer checkboxes to checked, opacities to 1
+      // Reset all layer checkboxes to checked (except grid which defaults off), opacities to 1
       ['vis-terrain','vis-topo','vis-nodes','vis-connections','vis-labels','vis-sublabels','vis-regions','vis-vlanlabels','vis-bubbles',
        'vis-titlebar','vis-search','vis-statuspanel','vis-legend','vis-codex','vis-questlog','vis-minimap','vis-cartographer','vis-energy','vis-nodelist'].forEach(id => {
         const cb = document.getElementById(id);
         if (cb && !cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change')); }
       });
-      ['layer-terrain','layer-terrain-orig','layer-topo','layer-nodes','layer-connections','layer-labels','layer-sublabels','layer-regions','layer-vlanlabels','layer-bubbles'].forEach(id => {
+      // Grid defaults to off
+      const gridCb = document.getElementById('vis-grid');
+      if (gridCb && gridCb.checked) { gridCb.checked = false; gridCb.dispatchEvent(new Event('change')); }
+      ['layer-terrain','layer-terrain-orig','layer-topo','layer-grid','layer-nodes','layer-connections','layer-labels','layer-sublabels','layer-regions','layer-vlanlabels','layer-bubbles'].forEach(id => {
         const sl = document.getElementById(id + '-slider');
-        if (sl) { sl.value = 1; sl.dispatchEvent(new Event('input')); }
+        if (sl) { sl.value = id === 'layer-grid' ? 0.4 : 1; sl.dispatchEvent(new Event('input')); }
       });
       saveSettings();
       return;
+    }
+    if (btn.dataset.reset === 'arcane-grid') {
+      // Reset grid checkboxes too
+      const toggleCb = document.getElementById('grid-toggle-cb');
+      const pulseCb = document.getElementById('grid-pulse-cb');
+      if (toggleCb && toggleCb.checked) { toggleCb.checked = false; toggleCb.dispatchEvent(new Event('change')); }
+      if (pulseCb && !pulseCb.checked) { pulseCb.checked = true; pulseCb.dispatchEvent(new Event('change')); }
     }
     const defaults = _SECTION_DEFAULTS[btn.dataset.reset];
     if (!defaults) return;
@@ -4231,6 +4353,7 @@ const _PERSIST_SLIDERS = [
   'master-scale', 'traffic-scale', 'node-scale', 'text-scale', 'bubble-scale', 'update-speed',
   'fx-ambient', 'fx-nodes', 'fx-leylines', 'fx-glow', 'fx-pulse', 'fx-leyglow',
   'topo-opacity', 'topo-spread', 'topo-contour', 'topo-rw', 'topo-rd',
+  'grid-opacity', 'grid-scale', 'grid-hue', 'layer-grid',
   'layout-attract', 'layout-repulse', 'layout-edge', 'layout-spacing', 'layout-tilt',
   'biome-land', 'biome-glow', 'biome-roads', 'biome-peaks', 'biome-grid',
   'layer-terrain-orig', 'layer-terrain', 'layer-topo', 'layer-connections',
@@ -4240,8 +4363,8 @@ const _PERSIST_SLIDERS = [
   'panel-codex', 'panel-spellbook', 'panel-questlog', 'panel-minimap', 'panel-cartographer', 'panel-energy', 'panel-nodelist', 'panel-mirror',
 ];
 const _PERSIST_CHECKBOXES = [
-  'topo-toggle-cb',
-  'vis-terrain', 'vis-terrain-orig', 'vis-topo', 'vis-connections', 'vis-nodes', 'vis-labels',
+  'topo-toggle-cb', 'grid-toggle-cb', 'grid-pulse-cb',
+  'vis-terrain', 'vis-terrain-orig', 'vis-topo', 'vis-grid', 'vis-connections', 'vis-nodes', 'vis-labels',
   'vis-sublabels', 'vis-regions', 'vis-vlanlabels', 'vis-bubbles',
   'vis-titlebar', 'vis-search', 'vis-statuspanel', 'vis-legend', 'vis-spellbook',
   'vis-codex', 'vis-questlog', 'vis-minimap', 'vis-cartographer', 'vis-energy', 'vis-nodelist', 'vis-debug',

@@ -61,6 +61,30 @@
     overflow: visible;
   }
   #topo-svg.active { opacity: var(--topo-opacity, 0.6); }
+
+  /* Arcane Grid overlay */
+  #arcane-grid {
+    position: absolute;
+    left: 0; top: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+  }
+  #arcane-grid.active {
+    opacity: var(--grid-opacity, 0.4);
+    animation: grid-pulse 8s ease-in-out infinite;
+  }
+  @keyframes grid-pulse {
+    0%, 100% { filter: brightness(1) hue-rotate(0deg); }
+    50% { filter: brightness(1.15) hue-rotate(10deg); }
+  }
+  #arcane-grid-content {
+    transform-origin: center center;
+    transform: scale(var(--grid-scale, 1));
+  }
+
   .topo-band {
     position: absolute;
     left: 0; top: 0;
