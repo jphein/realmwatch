@@ -1062,7 +1062,7 @@
     document.documentElement.style.setProperty("--bubble-scale", bubbleScale);
     scheduleSave();
   });
-  var updateSpeedMs = 5e3;
+  var updateSpeedMs = 1e4;
   var updateSpeedSlider = document.getElementById("update-speed-slider");
   var updateSpeedVal = document.getElementById("update-speed-val");
   updateSpeedSlider.addEventListener("input", () => {
@@ -1469,7 +1469,7 @@
     if (_topoEnabled && _topology.nodes) renderTopoLayer(null);
   }), "initTopoControls"))();
   var lastEventTs = 0;
-  var EVENTS_POLL_MS = 1e3;
+  var EVENTS_POLL_MS = 3e3;
   var _isFirstPoll = true;
   async function pollEvents() {
     try {
@@ -5026,19 +5026,23 @@
     return dialog;
   }
   __name(_createChatDialog, "_createChatDialog");
-  function openNodeChat(nodeId, contextText) {
+  async function openNodeChat(nodeId, contextText, autoChat = true) {
     const dialog = _createChatDialog();
     _chatNodeId = nodeId;
     const node = document.querySelector(`[data-tip="${nodeId}"]`);
     const nodeName = node?.querySelector(".node-label")?.textContent || nodeId;
     dialog.querySelector("#chat-dialog-title").textContent = `Commune: ${nodeName}`;
-    _loadChatHistory(nodeId);
-    if (contextText) {
-      const input = dialog.querySelector("#chat-input");
-      input.placeholder = `Ask about: "${contextText.slice(0, 50)}..."`;
-    }
     dialog.style.display = "block";
-    dialog.querySelector("#chat-input").focus();
+    await _loadChatHistory(nodeId);
+    if (contextText && autoChat) {
+      _chatHistory.push({ role: "system", content: `[Event] ${contextText}` });
+      _renderChatHistory();
+      const input = dialog.querySelector("#chat-input");
+      input.value = `Tell me more about this: "${contextText}"`;
+      sendChatMessage();
+    } else {
+      dialog.querySelector("#chat-input").focus();
+    }
   }
   __name(openNodeChat, "openNodeChat");
   async function _loadChatHistory(nodeId) {
@@ -5064,11 +5068,23 @@
     }
     messagesEl.innerHTML = _chatHistory.map((m) => {
       const isUser = m.role === "user";
-      const bg = isUser ? "rgba(100,140,200,0.2)" : "rgba(160,128,255,0.2)";
-      const align = isUser ? "right" : "left";
-      const label = isUser ? "You" : "Oracle";
+      const isSystem = m.role === "system";
+      let bg, align, label;
+      if (isSystem) {
+        bg = "rgba(255,200,100,0.15)";
+        align = "center";
+        label = "Context";
+      } else if (isUser) {
+        bg = "rgba(100,140,200,0.2)";
+        align = "right";
+        label = "You";
+      } else {
+        bg = "rgba(160,128,255,0.2)";
+        align = "left";
+        label = "Oracle";
+      }
       return `<div style="text-align:${align};margin:6px 0;">
-      <div style="display:inline-block;max-width:85%;padding:6px 10px;background:${bg};border-radius:8px;text-align:left;">
+      <div style="display:inline-block;max-width:${isSystem ? "95%" : "85%"};padding:6px 10px;background:${bg};border-radius:8px;text-align:left;${isSystem ? "font-style:italic;" : ""}">
         <div style="font-size:10px;color:#a0a0a0;margin-bottom:2px;">${label}</div>
         <div>${m.content}</div>
       </div>
@@ -5437,6 +5453,8 @@
       _dbgRefresh();
     }
   }).observe(_dbgPanel, { attributes: true, attributeFilter: ["style"] });
-  setInterval(_dbgFetchDb, 1e4);
+  setInterval(() => {
+    if (_dbgPanel && _dbgPanel.style.display !== "none") _dbgFetchDb();
+  }, 3e4);
 })();
 //# sourceMappingURL=realm-map.js.map

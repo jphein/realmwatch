@@ -644,7 +644,7 @@ bubbleScaleSlider.addEventListener('input', () => {
 });
 
 // ── Update speed slider ──
-let updateSpeedMs = 5000;
+let updateSpeedMs = 10000;  // Default 10s (was 5s) for better performance
 const updateSpeedSlider = document.getElementById('update-speed-slider');
 const updateSpeedVal = document.getElementById('update-speed-val');
 updateSpeedSlider.addEventListener('input', () => {
@@ -1072,7 +1072,7 @@ export function renderTopoLayer(collectd) {
 
 // ── Event rendering ──
 let lastEventTs = 0;
-const EVENTS_POLL_MS = 1000;
+const EVENTS_POLL_MS = 3000;  // Poll events every 3s (was 1s)
 
 let _isFirstPoll = true;
 
@@ -4725,7 +4725,7 @@ function _createChatDialog() {
   return dialog;
 }
 
-function openNodeChat(nodeId, contextText) {
+async function openNodeChat(nodeId, contextText, autoChat = true) {
   const dialog = _createChatDialog();
   _chatNodeId = nodeId;
 
@@ -4734,17 +4734,24 @@ function openNodeChat(nodeId, contextText) {
   const nodeName = node?.querySelector('.node-label')?.textContent || nodeId;
   dialog.querySelector('#chat-dialog-title').textContent = `Commune: ${nodeName}`;
 
-  // Load history for this node's session
-  _loadChatHistory(nodeId);
-
-  // Pre-fill context if provided
-  if (contextText) {
-    const input = dialog.querySelector('#chat-input');
-    input.placeholder = `Ask about: "${contextText.slice(0, 50)}..."`;
-  }
-
   dialog.style.display = 'block';
-  dialog.querySelector('#chat-input').focus();
+
+  // Load history for this node's session
+  await _loadChatHistory(nodeId);
+
+  // If we have context from a bubble, show it and auto-chat about it
+  if (contextText && autoChat) {
+    // Add the bubble message as context in the chat
+    _chatHistory.push({ role: 'system', content: `[Event] ${contextText}` });
+    _renderChatHistory();
+
+    // Auto-send a follow-up question
+    const input = dialog.querySelector('#chat-input');
+    input.value = `Tell me more about this: "${contextText}"`;
+    sendChatMessage();
+  } else {
+    dialog.querySelector('#chat-input').focus();
+  }
 }
 
 async function _loadChatHistory(nodeId) {
@@ -4771,11 +4778,23 @@ function _renderChatHistory() {
   }
   messagesEl.innerHTML = _chatHistory.map(m => {
     const isUser = m.role === 'user';
-    const bg = isUser ? 'rgba(100,140,200,0.2)' : 'rgba(160,128,255,0.2)';
-    const align = isUser ? 'right' : 'left';
-    const label = isUser ? 'You' : 'Oracle';
+    const isSystem = m.role === 'system';
+    let bg, align, label;
+    if (isSystem) {
+      bg = 'rgba(255,200,100,0.15)';
+      align = 'center';
+      label = 'Context';
+    } else if (isUser) {
+      bg = 'rgba(100,140,200,0.2)';
+      align = 'right';
+      label = 'You';
+    } else {
+      bg = 'rgba(160,128,255,0.2)';
+      align = 'left';
+      label = 'Oracle';
+    }
     return `<div style="text-align:${align};margin:6px 0;">
-      <div style="display:inline-block;max-width:85%;padding:6px 10px;background:${bg};border-radius:8px;text-align:left;">
+      <div style="display:inline-block;max-width:${isSystem ? '95%' : '85%'};padding:6px 10px;background:${bg};border-radius:8px;text-align:left;${isSystem ? 'font-style:italic;' : ''}">
         <div style="font-size:10px;color:#a0a0a0;margin-bottom:2px;">${label}</div>
         <div>${m.content}</div>
       </div>
@@ -5167,6 +5186,8 @@ function _dbgFetchDb() {
 new MutationObserver(() => {
   if (_dbgPanel && _dbgPanel.style.display !== 'none') { _dbgFetchDb(); _dbgRefresh(); }
 }).observe(_dbgPanel, { attributes: true, attributeFilter: ['style'] });
-// Refresh DB stats every 10s while visible
-setInterval(_dbgFetchDb, 10000);
+// Refresh DB stats every 30s while visible (only when panel is shown)
+setInterval(() => {
+  if (_dbgPanel && _dbgPanel.style.display !== 'none') _dbgFetchDb();
+}, 30000);
 

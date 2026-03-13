@@ -20,8 +20,8 @@ THRESHOLDS = {
     "load": {"warn": 4.0, "crit": 8.0},
 }
 
-# Check interval in seconds
-CHECK_INTERVAL = 60
+# Check interval in seconds (balance between responsiveness and CPU usage)
+CHECK_INTERVAL = 120
 
 # Track previous states to detect changes
 _prev_states = {}  # node_id → {metric: value, ...}
