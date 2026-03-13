@@ -314,17 +314,19 @@ class RealmHandler(SimpleHTTPRequestHandler):
                 if result.get("error"):
                     self._json_response(result, 500)
                 else:
+                    response_text = result.get("response") or ""
                     # Fire event for chat interaction
                     push_event({
                         "type": "oracle_query",
                         "node": node_id or "scrying-pool",
                         "text": message[:100] + ("..." if len(message) > 100 else ""),
                     })
-                    push_event({
-                        "type": "oracle_response",
-                        "node": node_id or "scrying-pool",
-                        "text": result["response"][:200] + ("..." if len(result.get("response", "")) > 200 else ""),
-                    })
+                    if response_text:
+                        push_event({
+                            "type": "oracle_response",
+                            "node": node_id or "scrying-pool",
+                            "text": response_text[:200] + ("..." if len(response_text) > 200 else ""),
+                        })
                     self._json_response(result)
             except (json.JSONDecodeError, KeyError) as e:
                 self._json_response({"error": str(e)}, 400)

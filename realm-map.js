@@ -5107,8 +5107,10 @@
       loadingEl.remove();
       if (data.error) {
         _chatHistory.push({ role: "assistant", content: `Error: ${data.error}` });
-      } else {
+      } else if (data.response) {
         _chatHistory.push({ role: "assistant", content: data.response });
+      } else {
+        _chatHistory.push({ role: "assistant", content: "(Empty response from oracle)" });
       }
       _renderChatHistory();
     } catch (e) {
