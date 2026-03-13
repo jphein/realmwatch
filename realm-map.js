@@ -54,6 +54,11 @@
   var _tsHostMap = {};
   var _vlanLabels = [];
   var _connPaths = [];
+  var _onTopologyRefresh = null;
+  function setTopologyRefreshHook(fn) {
+    _onTopologyRefresh = fn;
+  }
+  __name(setTopologyRefreshHook, "setTopologyRefreshHook");
   var _nodeDOM = {};
   function getNodeDOM(tipKey) {
     if (_nodeDOM[tipKey]) return _nodeDOM[tipKey];
@@ -422,6 +427,7 @@
         vp.scrollLeft = sx;
         vp.scrollTop = sy;
       }
+      if (_onTopologyRefresh) _onTopologyRefresh();
     } catch (e) {
     }
   }
@@ -1777,7 +1783,13 @@
   }, 800);
   var _activeBubbles = /* @__PURE__ */ new Set();
   function _positionBubble(bubble) {
-    const nodeEl = bubble._nodeEl;
+    let nodeEl = bubble._nodeEl;
+    if (!nodeEl || !nodeEl.isConnected) {
+      if (bubble._nodeId) {
+        nodeEl = document.querySelector(`[data-tip="${bubble._nodeId}"]`);
+        if (nodeEl) bubble._nodeEl = nodeEl;
+      }
+    }
     if (!nodeEl || !nodeEl.isConnected) return;
     const nodeLeft = parseInt(nodeEl.style.left) || 0;
     const nodeTop = parseInt(nodeEl.style.top) || 0;
@@ -1797,6 +1809,7 @@
     });
   }
   __name(updateBubblePositions, "updateBubblePositions");
+  setTopologyRefreshHook(updateBubblePositions);
   function _dismissBubble(bubble) {
     bubble.style.animation = "bubbleOut 0.3s ease-in forwards";
     setTimeout(() => {
@@ -1821,6 +1834,7 @@
     if (isNotion) cls += " notion-bubble";
     bubble.className = cls;
     bubble._nodeEl = nodeEl;
+    bubble._nodeId = evt.node;
     const name = nodeEl.querySelector(".node-label")?.textContent || evt.node;
     const closeBtn = document.createElement("button");
     closeBtn.className = "bubble-close";

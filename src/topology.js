@@ -15,6 +15,10 @@ export const _tsHostMap = {};
 export const _vlanLabels = [];
 export const _connPaths = [];
 
+// Hook for app.js to register bubble position updater (avoids circular import)
+export let _onTopologyRefresh = null;
+export function setTopologyRefreshHook(fn) { _onTopologyRefresh = fn; }
+
 // ── Per-node DOM cache ──
 export const _nodeDOM = {};
 export function getNodeDOM(tipKey) {
@@ -391,6 +395,8 @@ export async function refreshTopology() {
     }
     // Restore scroll
     if (vp && sx != null) { vp.scrollLeft = sx; vp.scrollTop = sy; }
+    // Notify app.js to update bubble positions
+    if (_onTopologyRefresh) _onTopologyRefresh();
   } catch (e) { /* silent */ }
 }
 

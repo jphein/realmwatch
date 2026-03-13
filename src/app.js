@@ -2,7 +2,7 @@
 // Imports from extracted modules
 import { WORLD_W, WORLD_H, WORLD_SCALE, _isMobile, _cpuCores, _perfTier, setPerfTier, _PERF, _mapTilt, setMapTilt } from './config.js';
 import { scaleLabel, scaleColor, fmtBytes, fmtRate, scalePct } from './utils.js';
-import { tips, _topology, infraNodes, isTS, CONN_TYPE_TO_CLASS, _tsHostMap, _vlanLabels, _connPaths, _nodeDOM, getNodeDOM, getNodeCenter, updateLinePositions, _getNodePos, _computePathD, refreshTopology } from './topology.js';
+import { tips, _topology, infraNodes, isTS, CONN_TYPE_TO_CLASS, _tsHostMap, _vlanLabels, _connPaths, _nodeDOM, getNodeDOM, getNodeCenter, updateLinePositions, _getNodePos, _computePathD, refreshTopology, setTopologyRefreshHook } from './topology.js';
 
 // ── Dynamic Biome Terrain (generated from topology VLANs/zones) ──
 let _biomeLandScale = 1.0, _biomeGlow = 1.0, _biomeRoads = 0.5, _biomePeaks = 0.5, _biomeGrid = 0.03;
@@ -1425,7 +1425,14 @@ setTimeout(() => {
 const _activeBubbles = new Set();
 
 function _positionBubble(bubble) {
-  const nodeEl = bubble._nodeEl;
+  let nodeEl = bubble._nodeEl;
+  // Re-find node if reference is stale (happens after topology refresh)
+  if (!nodeEl || !nodeEl.isConnected) {
+    if (bubble._nodeId) {
+      nodeEl = document.querySelector(`[data-tip="${bubble._nodeId}"]`);
+      if (nodeEl) bubble._nodeEl = nodeEl;
+    }
+  }
   if (!nodeEl || !nodeEl.isConnected) return;
   const nodeLeft = parseInt(nodeEl.style.left) || 0;
   const nodeTop = parseInt(nodeEl.style.top) || 0;
@@ -1441,6 +1448,9 @@ export function updateBubblePositions() {
     _positionBubble(b);
   });
 }
+
+// Register hook so topology refresh updates bubble positions
+setTopologyRefreshHook(updateBubblePositions);
 
 function _dismissBubble(bubble) {
   bubble.style.animation = 'bubbleOut 0.3s ease-in forwards';
@@ -1462,6 +1472,7 @@ export function showSpeechBubble(nodeEl, evt, isAlert) {
   if (isNotion) cls += ' notion-bubble';
   bubble.className = cls;
   bubble._nodeEl = nodeEl;
+  bubble._nodeId = evt.node;  // Store node ID for re-finding after topology refresh
   const name = nodeEl.querySelector('.node-label')?.textContent || evt.node;
 
   // Close button
