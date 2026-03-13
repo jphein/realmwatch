@@ -2,7 +2,9 @@ import asyncio
 import json
 import os
 import signal
+import ssl
 import subprocess
+import time
 import urllib.request
 from mcp.server import Server, NotificationOptions
 from mcp.server.models import InitializationOptions
@@ -20,6 +22,66 @@ MAP_URL = f"http://localhost:{MAP_PORT}"
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 PERSONAS_FILE = os.path.join(PROJECT_DIR, "personas.json")
 VENV_PYTHON = os.path.join(PROJECT_DIR, "venv", "bin", "python3")
+
+# Load .env for HA_TOKEN
+_env_path = os.path.join(PROJECT_DIR, ".env")
+if os.path.exists(_env_path):
+    with open(_env_path) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                os.environ.setdefault(k, v)
+
+
+def _get_energy_data():
+    """Fetch energy data from Home Assistant."""
+    ha_url = os.environ.get("HA_URL", "https://10.0.6.108:8123")
+    ha_token = os.environ.get("HA_TOKEN", "")
+    if not ha_token:
+        return {"error": "No HA_TOKEN configured"}
+
+    ssl_ctx = ssl.create_default_context()
+    ssl_ctx.check_hostname = False
+    ssl_ctx.verify_mode = ssl.CERT_NONE
+
+    try:
+        req = urllib.request.Request(
+            f"{ha_url}/api/states",
+            headers={"Authorization": f"Bearer {ha_token}"},
+        )
+        resp = urllib.request.urlopen(req, context=ssl_ctx, timeout=10)
+        states = {s["entity_id"]: s for s in json.loads(resp.read())}
+    except Exception as e:
+        return {"error": str(e)}
+
+    def num(eid):
+        s = states.get(eid, {}).get("state")
+        if s in (None, "unavailable", "unknown"):
+            return None
+        try:
+            return float(s)
+        except (ValueError, TypeError):
+            return None
+
+    return {
+        "solar_w": num("sensor.pv_power"),
+        "solar_today_kwh": num("sensor.today_s_pv_generation"),
+        "solar_total_kwh": num("sensor.total_pv_generation"),
+        "battery_soc": num("sensor.battery_state_of_charge"),
+        "battery_power_w": num("sensor.battery_power"),
+        "battery_voltage": num("sensor.battery_voltage"),
+        "grid_power_kw": num("sensor.grid_power"),
+        "grid_import_kwh": num("sensor.total_energy_import"),
+        "grid_export_kwh": num("sensor.total_energy_export"),
+        "house_load_w": num("sensor.house_consumption"),
+        "today_load_kwh": num("sensor.today_load"),
+        "goodwe_kw": num("sensor.goodwe_kw"),
+        "yurt_kw": num("sensor.yurt_consumption"),
+        "inverter_temp_f": num("sensor.inverter_temperature_module"),
+        "ts": time.time(),
+    }
+
 
 # ── Process management for map_server and herald ──
 _managed_procs = {}  # name → subprocess.Popen
@@ -43,6 +105,7 @@ def _start_service(name, args, cwd=None):
         args, cwd=cwd or PROJECT_DIR,
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         start_new_session=True,
+        env=os.environ.copy(),  # Pass current env (includes .env vars)
     )
     _managed_procs[name] = proc
     return proc.pid
@@ -133,6 +196,15 @@ async def handle_list_tools() -> list[types.Tool]:
                 "Returns CPU, GPU, RAM, battery, and network readings translated into "
                 "fantasy terms with Access to Power depletion/repletion scales. "
                 "This is silent (no voice) — use it when you need raw data."
+            ),
+            inputSchema={"type": "object", "properties": {}},
+        ),
+        types.Tool(
+            name="get_energy_status",
+            description=(
+                "Get energy data from Home Assistant: solar generation, battery state, "
+                "grid import/export, and house consumption. Returns real-time power readings "
+                "and daily/total energy statistics."
             ),
             inputSchema={"type": "object", "properties": {}},
         ),
@@ -680,6 +752,10 @@ async def handle_call_tool(
 ) -> list[types.TextContent | types.ImageContent | types.EmbeddedResource]:
     if name == "get_system_status":
         return [types.TextContent(type="text", text=json.dumps(engine.get_status(), indent=2))]
+
+    elif name == "get_energy_status":
+        energy = _get_energy_data()
+        return [types.TextContent(type="text", text=json.dumps(energy, indent=2))]
 
     elif name == "trigger_system_observation":
         observation = engine.get_observation()

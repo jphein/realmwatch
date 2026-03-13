@@ -10,8 +10,12 @@ import time
 import urllib.request
 
 HA_URL = os.environ.get("HA_URL", "https://10.0.6.108:8123")
-HA_TOKEN = os.environ.get("HA_TOKEN", "")
 POLL_INTERVAL = 30
+
+
+def _get_token():
+    """Get HA token dynamically (allows .env to load after import)."""
+    return os.environ.get("HA_TOKEN", "")
 
 _cache = {"ts": 0, "nodes": {}, "entity_count": 0}
 _lock = threading.Lock()
@@ -24,11 +28,12 @@ _ssl_ctx.verify_mode = ssl.CERT_NONE
 
 def _fetch_states():
     """GET /api/states → list of entity state dicts."""
-    if not HA_TOKEN:
+    token = _get_token()
+    if not token:
         return []
     req = urllib.request.Request(
         f"{HA_URL}/api/states",
-        headers={"Authorization": f"Bearer {HA_TOKEN}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     try:
         resp = urllib.request.urlopen(req, context=_ssl_ctx, timeout=10)
@@ -40,6 +45,7 @@ def _fetch_states():
 
 def _call_service(domain, service, entity_id, data=None):
     """POST /api/services/{domain}/{service}."""
+    token = _get_token()
     payload = {"entity_id": entity_id}
     if data:
         payload.update(data)
@@ -47,7 +53,7 @@ def _call_service(domain, service, entity_id, data=None):
         f"{HA_URL}/api/services/{domain}/{service}",
         data=json.dumps(payload).encode(),
         headers={
-            "Authorization": f"Bearer {HA_TOKEN}",
+            "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
         },
     )
@@ -237,7 +243,86 @@ KASA_SWITCHES = [
     "switch.christmas_tree_socket_1",    # left railing lights
     "switch.christmas_tree_socket_1_2",  # shed fan
     "switch.color_christmas_lights_switch_1",  # upper yurt
+    "switch.treelink_socket",
+    "switch.bathroom_night_light_socket",
+    "switch.shed_light_socket_1",
+    "switch.shed_light_socket_1_2",
+    "switch.outside_fan_socket_1",       # right railing lights
 ]
+
+
+def _vacuum_label(states, eid):
+    """Vacuum/Roomba status."""
+    s = _st(states, eid)
+    if not s or s == "unavailable":
+        return "Offline"
+    batt = _num(states, f"{eid.replace('vacuum.', 'sensor.')}_battery")
+    batt_str = f" • {batt:.0f}%" if batt else ""
+    return f"{s.title()}{batt_str}"
+
+
+def _ups_label(states, prefix):
+    """UPS status."""
+    status = _st(states, f"sensor.{prefix}_status")
+    load = _num(states, f"sensor.{prefix}_load")
+    batt = _num(states, f"sensor.{prefix}_battery_charge")
+    if not status or status == "unavailable":
+        return None
+    parts = [status]
+    if batt is not None:
+        parts.append(f"{batt:.0f}%")
+    if load is not None:
+        parts.append(f"Load {load:.0f}%")
+    return " • ".join(parts)
+
+
+def _dehumidifier_label(states, eid):
+    """Dehumidifier/humidifier status."""
+    s = _st(states, eid)
+    if not s or s == "unavailable":
+        return None
+    return "Running" if s == "on" else "Idle"
+
+
+def _radar_label(states, prefix):
+    """ESP radar presence sensor."""
+    presence = _st(states, f"binary_sensor.{prefix}_presence")
+    if presence is None or presence == "unavailable":
+        return None
+    moving = _st(states, f"binary_sensor.{prefix}_moving_target") == "on"
+    still = _st(states, f"binary_sensor.{prefix}_still_target") == "on"
+    if presence == "on":
+        if moving:
+            return "Motion detected"
+        elif still:
+            return "Presence (still)"
+        return "Presence"
+    return "Clear"
+
+
+def _lg_appliance_label(states, sensor_prefix, name):
+    """LG washer/dryer status."""
+    # Try to find state sensor
+    for suffix in ["_state", "_status", ""]:
+        s = _st(states, f"sensor.{sensor_prefix}{suffix}")
+        if s and s not in ("unavailable", "unknown"):
+            return s.replace("_", " ").title()
+    return None
+
+
+def _humidifier_label(states, eid):
+    """Humidifier status with humidity level."""
+    s = _st(states, eid)
+    if not s or s == "unavailable":
+        return None
+    humidity = _attr(states, eid, "current_humidity")
+    target = _attr(states, eid, "humidity")
+    parts = ["On" if s == "on" else "Off"]
+    if humidity is not None:
+        parts.append(f"{humidity:.0f}%")
+    if target is not None and s == "on":
+        parts.append(f"→{target:.0f}%")
+    return " ".join(parts)
 
 
 def _build_node_states(all_states, entity_count):
@@ -247,12 +332,12 @@ def _build_node_states(all_states, entity_count):
 
     nodes = {}
 
-    # Thermostats
+    # Thermostats (cluster)
     label = _climate_label(states)
     if label:
         nodes["nest-circle"] = {"sublabel": label, "source": "ha"}
 
-    # Solar
+    # Solar/Inverter
     label = _solar_label(states)
     if label:
         nodes["goodwe"] = {"sublabel": label, "source": "ha"}
@@ -263,13 +348,13 @@ def _build_node_states(all_states, entity_count):
         nodes["watchers"] = {"sublabel": label, "source": "ha"}
         nodes["hikcams"] = {"sublabel": label, "source": "ha"}
 
-    # Speakers
+    # Speakers (cluster)
     label = _speaker_label(states)
     if label:
         nodes["voice-stones"] = {"sublabel": label, "source": "ha"}
         nodes["google-home"] = {"sublabel": label, "source": "ha"}
 
-    # WLED
+    # WLED strips
     label = _wled_label(states, "light.mamastrip", "sensor.mamastrip_ip")
     if label:
         nodes["wled-main"] = {"sublabel": label, "source": "ha"}
@@ -277,27 +362,111 @@ def _build_node_states(all_states, entity_count):
     if label:
         nodes["wled-aqi"] = {"sublabel": label, "source": "ha"}
 
-    # Smart plugs
+    # Smart plugs (cluster)
     label = _switch_cluster_label(states, KASA_SWITCHES)
     if label:
         nodes["kasa-spirits"] = {"sublabel": label, "source": "ha"}
         nodes["smart-plugs"] = {"sublabel": label, "source": "ha"}
 
-    # Fans
-    for node_id, eid in [("bed-air", "fan.air_purifier")]:
-        label = _fan_label(states, eid)
-        if label:
-            nodes[node_id] = {"sublabel": f"Purifier {label}", "source": "ha"}
+    # Air purifier
+    label = _fan_label(states, "fan.air_purifier")
+    if label:
+        nodes["bed-air"] = {"sublabel": f"Purifier {label}", "source": "ha"}
+
+    # Roomba
+    label = _vacuum_label(states, "vacuum.roomba")
+    if label:
+        nodes["roomba"] = {"sublabel": label, "source": "ha"}
+        nodes["irobot"] = {"sublabel": label, "source": "ha"}
+
+    # UPS units
+    label = _ups_label(states, "apcupsmini1")
+    if label:
+        nodes["apcupsmini1"] = {"sublabel": label, "source": "ha"}
+    label = _ups_label(states, "mobileups")
+    if label:
+        nodes["mobileups"] = {"sublabel": label, "source": "ha"}
+
+    # Dehumidifiers
+    label = _dehumidifier_label(states, "fan.bathroom_dehumidifier")
+    if label:
+        nodes["iot-closet"] = {"sublabel": f"Dehumidifier {label}", "source": "ha"}
+    label = _dehumidifier_label(states, "fan.laundry_dehumidifier")
+    if label:
+        nodes["iot-pumphouse"] = {"sublabel": f"Dehumidifier {label}", "source": "ha"}
 
     # Phone battery
     label = _phone_label(states, "flipz3")
     if label:
         nodes["flip3"] = {"sublabel": label, "source": "ha"}
 
+    # Roku
+    s = _st(states, "media_player.roku")
+    if s and s not in ("unavailable", "unknown"):
+        nodes["roku"] = {"sublabel": s.title(), "source": "ha"}
+
+    # Echo (Atom Echo)
+    s = _st(states, "select.m5stack_atom_echo_a14320_wake_word")
+    if s and s != "unavailable":
+        nodes["echo"] = {"sublabel": "Voice Ready", "source": "ha"}
+    elif s == "unavailable":
+        nodes["echo"] = {"sublabel": "Offline", "source": "ha"}
+
     # HA itself
     label = _ha_self_label(states, entity_count)
     if label:
         nodes["ha"] = {"sublabel": label, "source": "ha"}
+
+    # ── Additional mappings ──
+
+    # Pumphouse radar (ESP presence sensor)
+    label = _radar_label(states, "pumphouse_radar")
+    if label:
+        nodes["_unknown_f0f5bdfd3504"] = {"sublabel": f"Radar: {label}", "source": "ha"}
+
+    # LG Dryer
+    label = _lg_appliance_label(states, "dryer", "Dryer")
+    if label:
+        nodes["lg-dryer"] = {"sublabel": label, "source": "ha"}
+
+    # LG Washer
+    label = _lg_appliance_label(states, "washer", "Washer")
+    if label:
+        nodes["lg-washer"] = {"sublabel": label, "source": "ha"}
+
+    # Humidifier
+    label = _humidifier_label(states, "humidifier.humidifier")
+    if label:
+        nodes["_unknown_b43a31d1771e"] = {"sublabel": f"Humidifier {label}", "source": "ha"}
+
+    # RGB LED controller (bl606a0)
+    s = _st(states, "light.controller_rgb_ir_12e7ac")
+    if s and s != "unavailable":
+        effect = _attr(states, "light.controller_rgb_ir_12e7ac", "effect", "")
+        lbl = "On" if s == "on" else "Off"
+        if effect and s == "on":
+            lbl += f" • {effect}"
+        nodes["_unknown_b4e84212e7ac"] = {"sublabel": f"RGB {lbl}", "source": "ha"}
+
+    # Smart bulb (WSD-bulb)
+    s = _st(states, "light.smart_bulb_2")
+    if s and s != "unavailable":
+        nodes["_unknown_fc584a862e9e"] = {"sublabel": "On" if s == "on" else "Off", "source": "ha"}
+
+    # Nest thermostats (individual mappings for unknown nodes)
+    thermo_map = {
+        "_unknown_14c14e61276c": "climate.kitchen_thermostat",
+        "_unknown_14c14e6d333f": "climate.bedroom_thermostat",
+        "_unknown_ac678428b56d": "climate.bathroom_thermostat",
+        "_unknown_d8eb466182d1": "climate.laundry_thermostat_2",
+        "_unknown_14c14e2616b5": "climate.pumphouse_thermostat",
+    }
+    for node_id, eid in thermo_map.items():
+        t = _attr(states, eid, "current_temperature")
+        s = _st(states, eid)
+        if t is not None:
+            status = "heating" if s not in ("off", "unavailable", "unknown") else "idle"
+            nodes[node_id] = {"sublabel": f"{t:.0f}°F • {status}", "source": "ha"}
 
     return nodes
 
@@ -342,9 +511,12 @@ def _poll_loop():
 
 def start_ha_bridge():
     """Start the HA bridge as a daemon thread."""
-    if not HA_TOKEN:
+    token = _get_token()
+    if not token:
         print("[HA Bridge] No HA_TOKEN set, skipping")
         return None
+    # Do an initial poll immediately so data is available right away
+    poll_once()
     t = threading.Thread(target=_poll_loop, daemon=True)
     t.start()
     print(f"[HA Bridge] Started (interval={POLL_INTERVAL}s, url={HA_URL})")

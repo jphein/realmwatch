@@ -217,34 +217,16 @@
       <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-codex" checked><span class="topo-switch-track"></span></label><span class="layer-name">Codex</span><input type="range" class="layer-opacity" id="panel-codex-slider" min="0" max="1" step="0.05" value="1"></div>
       <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-questlog" checked><span class="topo-switch-track"></span></label><span class="layer-name">Quest Log</span><input type="range" class="layer-opacity" id="panel-questlog-slider" min="0" max="1" step="0.05" value="1"></div>
       <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-minimap" checked><span class="topo-switch-track"></span></label><span class="layer-name">Minimap</span><input type="range" class="layer-opacity" id="panel-minimap-slider" min="0" max="1" step="0.05" value="1"></div>
+      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-cartographer" checked><span class="topo-switch-track"></span></label><span class="layer-name">Cartographer</span><input type="range" class="layer-opacity" id="panel-cartographer-slider" min="0" max="1" step="0.05" value="1"></div>
+      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-energy" checked><span class="topo-switch-track"></span></label><span class="layer-name">Realm Energy</span><input type="range" class="layer-opacity" id="panel-energy-slider" min="0" max="1" step="0.05" value="1"></div>
       <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-nodelist" checked><span class="topo-switch-track"></span></label><span class="layer-name">Realm Census</span><input type="range" class="layer-opacity" id="panel-nodelist-slider" min="0" max="1" step="0.05" value="1"></div>
       <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-debug"><span class="topo-switch-track"></span></label><span class="layer-name">Arcane Mirror</span><input type="range" class="layer-opacity" id="panel-mirror-slider" min="0" max="1" step="0.05" value="1"></div>
     </div>
   </div>
-  <div class="legend-section collapsed" data-section="layout">
-    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Layout <button class="section-reset" data-reset="layout" title="Reset to defaults">&#8634;</button></div>
+  <div class="legend-section" data-section="globe">
+    <div class="legend-section-header"><span class="legend-chevron">&#9662;</span> Globe Projection</div>
     <div class="legend-section-body">
-      <div style="display:flex;gap:6px;margin-bottom:8px">
-        <button class="layout-btn" id="layout-auto-btn" style="flex:1">&#10024; Auto-Arrange</button>
-        <button class="layout-btn layout-btn-dim" id="layout-reset-btn" style="flex:1">&#9881; Original</button>
-      </div>
       <div class="traffic-control">
-        <label>Attraction <span class="tc-val" id="layout-attract-val">4.0</span></label>
-        <input type="range" class="traffic-slider" id="layout-attract-slider" min="0.5" max="12" step="0.5" value="4">
-      </div>
-      <div class="traffic-control">
-        <label>Repulsion <span class="tc-val" id="layout-repulse-val">80</span></label>
-        <input type="range" class="traffic-slider" id="layout-repulse-slider" min="10" max="300" step="10" value="80">
-      </div>
-      <div class="traffic-control">
-        <label>Edge Length <span class="tc-val" id="layout-edge-val">80</span></label>
-        <input type="range" class="traffic-slider" id="layout-edge-slider" min="30" max="200" step="5" value="80">
-      </div>
-      <div class="traffic-control">
-        <label>Spacing <span class="tc-val" id="layout-spacing-val">8</span></label>
-        <input type="range" class="traffic-slider" id="layout-spacing-slider" min="0" max="30" step="1" value="8">
-      </div>
-      <div class="traffic-control" style="margin-top:8px;border-top:1px solid #30281880;padding-top:6px">
         <label>Globe Tilt <span class="tc-val" id="layout-tilt-val">0&deg;</span></label>
         <input type="range" class="traffic-slider" id="layout-tilt-slider" min="0" max="45" step="1" value="0">
         <div style="display:flex;justify-content:space-between;font-size:9px;color:#706050;margin-top:2px">
@@ -594,6 +576,7 @@
     <div class="pe-tab active" data-pe-tab="persona">Persona</div>
     <div class="pe-tab" data-pe-tab="node">Node</div>
     <div class="pe-tab" data-pe-tab="stats">Stats</div>
+    <div class="pe-tab" data-pe-tab="control">Control</div>
     <div class="pe-tab" data-pe-tab="links">Links</div>
     <div class="pe-tab" data-pe-tab="shell">Shell</div>
   </div>
@@ -687,6 +670,13 @@
     </div>
     <div id="pe-stats-body" class="pe-stats-body"></div>
   </div>
+  <div class="pe-pane" id="pe-pane-control" style="display:none">
+    <div class="pe-stats-header">
+      <span id="pe-control-title">Node Control</span>
+      <span id="pe-control-status" class="pe-control-status"></span>
+    </div>
+    <div id="pe-control-body" class="pe-control-body"></div>
+  </div>
   <div class="pe-pane" id="pe-pane-links" style="display:none">
     <div class="pe-stats-header">
       <span>Connections</span>
@@ -742,6 +732,112 @@
 
 <div id="minimap" class="panel" style="--panel-accent:rgba(96,160,192,0.5)">
   <div id="minimap-viewport"></div>
+</div>
+
+<div id="cartographer" class="panel" style="--panel-accent:rgba(192,144,96,0.5)">
+  <div class="panel-header">
+    <span class="panel-hdr-icon">&#128506;</span>
+    <span class="panel-hdr-title">Cartographer</span>
+  </div>
+  <div class="carto-body">
+    <div class="carto-modes">
+      <button class="carto-mode active" data-layout="world-tree">
+        <span class="carto-icon">&#127795;</span>
+        <span class="carto-name">World Tree</span>
+      </button>
+      <button class="carto-mode" data-layout="realm-domains">
+        <span class="carto-icon">&#127984;</span>
+        <span class="carto-name">Domains</span>
+      </button>
+      <button class="carto-mode" data-layout="great-hierarchy">
+        <span class="carto-icon">&#9876;</span>
+        <span class="carto-name">Hierarchy</span>
+      </button>
+      <button class="carto-mode" data-layout="ring-of-power">
+        <span class="carto-icon">&#128141;</span>
+        <span class="carto-name">Rings</span>
+      </button>
+      <button class="carto-mode" data-layout="constellation">
+        <span class="carto-icon">&#10022;</span>
+        <span class="carto-name">Stars</span>
+      </button>
+      <button class="carto-mode" data-layout="serpents-spine">
+        <span class="carto-icon">&#128013;</span>
+        <span class="carto-name">Serpent</span>
+      </button>
+    </div>
+    <div class="carto-actions">
+      <button class="carto-btn" id="layout-auto-btn">
+        <span class="carto-btn-icon">&#10024;</span>
+        <span class="carto-btn-text">Cast</span>
+      </button>
+      <button class="carto-btn" id="layout-reset-btn">
+        <span class="carto-btn-icon">&#8634;</span>
+        <span class="carto-btn-text">Reset</span>
+      </button>
+    </div>
+    <details class="carto-tuning">
+      <summary>Tuning</summary>
+      <div class="carto-sliders">
+        <div class="carto-slider">
+          <label>Attraction <span id="layout-attract-val">4.0</span></label>
+          <input type="range" id="layout-attract-slider" min="0.5" max="12" step="0.5" value="4">
+        </div>
+        <div class="carto-slider">
+          <label>Repulsion <span id="layout-repulse-val">80</span></label>
+          <input type="range" id="layout-repulse-slider" min="10" max="300" step="10" value="80">
+        </div>
+        <div class="carto-slider">
+          <label>Edge Length <span id="layout-edge-val">80</span></label>
+          <input type="range" id="layout-edge-slider" min="30" max="200" step="5" value="80">
+        </div>
+        <div class="carto-slider">
+          <label>Spacing <span id="layout-spacing-val">8</span></label>
+          <input type="range" id="layout-spacing-slider" min="0" max="30" step="1" value="8">
+        </div>
+      </div>
+    </details>
+  </div>
+</div>
+
+<div id="energy-panel" class="panel" style="--panel-accent:rgba(96,192,96,0.5)">
+  <div class="panel-header">
+    <span class="panel-hdr-icon">&#9889;</span>
+    <span class="panel-hdr-title">Realm Energy</span>
+  </div>
+  <div class="energy-body">
+    <div class="energy-row energy-solar">
+      <span class="energy-icon">&#9728;</span>
+      <span class="energy-label">Solar</span>
+      <span class="energy-val" id="energy-solar">--</span>
+    </div>
+    <div class="energy-row energy-battery">
+      <span class="energy-icon">&#128267;</span>
+      <span class="energy-label">Battery</span>
+      <span class="energy-val" id="energy-battery">--</span>
+    </div>
+    <div class="energy-row energy-grid">
+      <span class="energy-icon">&#9863;</span>
+      <span class="energy-label">Grid</span>
+      <span class="energy-val" id="energy-grid">--</span>
+    </div>
+    <div class="energy-row energy-house">
+      <span class="energy-icon">&#127968;</span>
+      <span class="energy-label">House</span>
+      <span class="energy-val" id="energy-house">--</span>
+    </div>
+    <div class="energy-divider"></div>
+    <div class="energy-stats">
+      <div class="energy-stat">
+        <span class="energy-stat-label">Today</span>
+        <span class="energy-stat-val" id="energy-today">--</span>
+      </div>
+      <div class="energy-stat">
+        <span class="energy-stat-label">Exported</span>
+        <span class="energy-stat-val" id="energy-export">--</span>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div id="map-canvas">

@@ -2272,6 +2272,7 @@
       if (target === "stats") startStatsRefresh();
       else stopStatsRefresh();
       if (target === "node") renderNodePane(currentEditNode);
+      if (target === "control") renderControlPane(currentEditNode);
       if (target === "shell") {
         renderShellPane(currentEditNode);
         _shellInput.focus();
@@ -2286,6 +2287,7 @@
     if (name === "stats") startStatsRefresh();
     else stopStatsRefresh();
     if (name === "node") renderNodePane(currentEditNode);
+    if (name === "control") renderControlPane(currentEditNode);
     if (name === "shell") renderShellPane(currentEditNode);
     if (name === "links") renderConnectionsPane(currentEditNode);
   }
@@ -2400,12 +2402,73 @@
     const tsPeer = tsHost && lastStatus.tailscale && lastStatus.tailscale.peers ? lastStatus.tailscale.peers[tsHost] : null;
     const wifiInfo = lastStatus.wifi ? lastStatus.wifi[nodeKey] : null;
     const haInfo = lastStatus.ha ? lastStatus.ha[nodeKey] : null;
+    const wledInfo = lastStatus.wled ? lastStatus.wled[nodeKey] : null;
+    const nodeRole = lastStatus.roles ? lastStatus.roles[nodeKey] : null;
     const topoNode = _topology ? _topology.nodes.find((n) => n.id === nodeKey) : null;
-    if (!cd && !tsPeer && !wifiInfo && !haInfo && !topoNode) {
+    if (!cd && !tsPeer && !wifiInfo && !haInfo && !wledInfo && !topoNode) {
       body.innerHTML = '<div class="pe-stats-empty">No sigils bound to this node.</div>';
       return;
     }
     let html = "";
+    const roleIcons = {
+      router: "\u{1F310}",
+      ap: "\u{1F4E1}",
+      switch: "\u{1F500}",
+      bridge: "\u{1F309}",
+      server: "\u{1F5A5}\uFE0F",
+      nas: "\u{1F4BE}",
+      vm: "\u{1F4E6}",
+      wled: "\u{1F308}",
+      thermostat: "\u{1F321}\uFE0F",
+      camera: "\u{1F4F9}",
+      speaker: "\u{1F50A}",
+      plug: "\u{1F50C}",
+      sensor: "\u{1F4CA}",
+      appliance: "\u{1F3E0}",
+      vacuum: "\u{1F916}",
+      inverter: "\u2600\uFE0F",
+      ups: "\u{1F50B}",
+      ev_charger: "\u26A1",
+      phone: "\u{1F4F1}",
+      tablet: "\u{1F4DF}",
+      laptop: "\u{1F4BB}",
+      desktop: "\u{1F5A5}\uFE0F",
+      tv: "\u{1F4FA}",
+      tailscale: "\u{1F517}",
+      unknown: "\u2753"
+    };
+    const roleNames = {
+      router: "Router",
+      ap: "Access Point",
+      switch: "Switch",
+      bridge: "Bridge",
+      server: "Server",
+      nas: "NAS",
+      vm: "VM",
+      wled: "LED Controller",
+      thermostat: "Thermostat",
+      camera: "Camera",
+      speaker: "Speaker",
+      plug: "Smart Plug",
+      sensor: "Sensor",
+      appliance: "Appliance",
+      vacuum: "Vacuum",
+      inverter: "Inverter",
+      ups: "UPS",
+      ev_charger: "EV Charger",
+      phone: "Phone",
+      tablet: "Tablet",
+      laptop: "Laptop",
+      desktop: "Desktop",
+      tv: "TV",
+      tailscale: "Tailscale",
+      unknown: "Unknown"
+    };
+    if (nodeRole) {
+      const icon = roleIcons[nodeRole] || "\u2753";
+      const name = roleNames[nodeRole] || nodeRole;
+      html += `<div class="pe-role-badge"><span class="pe-role-icon">${icon}</span><span class="pe-role-name">${name}</span></div>`;
+    }
     if (tsPeer) {
       html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Tailscale</div>';
       html += `<div class="pe-stat-row"><span class="pe-stat-label">Status</span><span class="pe-stat-val" style="color:${tsPeer.online ? "#60c060" : "#c04040"}">${tsPeer.online ? tsPeer.active ? "Active" : "Online" : "Offline"}</span></div>`;
@@ -2427,74 +2490,94 @@
       }
       html += "</div>";
     }
-    if (!cd) {
-      body.innerHTML = html;
-      return;
-    }
-    const sysRows = [];
-    if (cd.hostname) sysRows.push(["Hostname", cd.hostname]);
-    if (cd.cpu_cores) sysRows.push(["CPU Cores", cd.cpu_cores]);
-    if (cd.uptime != null) {
-      const d = Math.floor(cd.uptime / 86400), h = Math.floor(cd.uptime % 86400 / 3600);
-      sysRows.push(["Uptime", d > 0 ? `${d}d ${h}h` : `${h}h`]);
-    }
-    if (cd.procs_running) sysRows.push(["Processes", cd.procs_running + " running"]);
-    if (cd.fork_rate) sysRows.push(["Fork Rate", cd.fork_rate.toLocaleString()]);
-    if (sysRows.length) {
-      html += '<div class="pe-stats-section"><div class="pe-stats-section-title">System</div>';
-      sysRows.forEach(([l, v]) => html += `<div class="pe-stat-row"><span class="pe-stat-label">${l}</span><span class="pe-stat-val">${v}</span></div>`);
-      html += "</div>";
-    }
-    if (cd.load_1 != null) {
-      const cores = cd.cpu_cores || 1;
-      const loadPct = Math.min(100, cd.load_1 / cores * 100);
-      html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Load</div>';
-      html += `<div class="pe-stat-row"><span class="pe-stat-label">1 / 5 / 15 min</span><span class="pe-stat-val">${cd.load_1.toFixed(2)} / ${(cd.load_5 || 0).toFixed(2)} / ${(cd.load_15 || 0).toFixed(2)}</span></div>`;
-      html += `<div class="pe-stat-bar"><div class="pe-stat-bar-fill ${_barClass(loadPct)}" style="width:${loadPct}%"></div></div>`;
-      html += "</div>";
-    }
-    if (cd.mem_pct != null) {
-      html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Memory</div>';
-      html += `<div class="pe-stat-row"><span class="pe-stat-label">Usage</span><span class="pe-stat-val">${cd.mem_pct}% of ${cd.mem_total_mb || "?"} MB</span></div>`;
-      html += `<div class="pe-stat-bar"><div class="pe-stat-bar-fill ${_barClass(cd.mem_pct)}" style="width:${cd.mem_pct}%"></div></div>`;
-      if (cd.swap_used != null && cd.swap_used > 0) {
-        html += `<div class="pe-stat-row"><span class="pe-stat-label">Swap</span><span class="pe-stat-val">${(cd.swap_used / 1048576).toFixed(0)} MB</span></div>`;
+    if (wledInfo) {
+      html += '<div class="pe-stats-section"><div class="pe-stats-section-title">WLED</div>';
+      const onColor = wledInfo.on ? "#60c060" : "#808080";
+      html += `<div class="pe-stat-row"><span class="pe-stat-label">State</span><span class="pe-stat-val" style="color:${onColor}">${wledInfo.on ? "On" : "Off"}</span></div>`;
+      if (wledInfo.on) {
+        html += `<div class="pe-stat-row"><span class="pe-stat-label">Brightness</span><span class="pe-stat-val">${wledInfo.brightness_pct}%</span></div>`;
+        html += `<div class="pe-stat-bar"><div class="pe-stat-bar-fill pe-bar-good" style="width:${wledInfo.brightness_pct}%;background:linear-gradient(90deg,#ff6090,#60c0ff)"></div></div>`;
+        if (wledInfo.effect) html += `<div class="pe-stat-row"><span class="pe-stat-label">Effect</span><span class="pe-stat-val">${wledInfo.effect}</span></div>`;
       }
+      if (wledInfo.led_count) html += `<div class="pe-stat-row"><span class="pe-stat-label">LEDs</span><span class="pe-stat-val">${wledInfo.led_count}</span></div>`;
+      if (wledInfo.led_power_mw) {
+        const powerW = (wledInfo.led_power_mw / 1e3).toFixed(1);
+        html += `<div class="pe-stat-row"><span class="pe-stat-label">Power</span><span class="pe-stat-val">${powerW}W</span></div>`;
+      }
+      if (wledInfo.wifi_rssi != null) {
+        const rssiColor = wledInfo.wifi_rssi > -50 ? "#60a040" : wledInfo.wifi_rssi > -70 ? "#c0a030" : "#c04040";
+        html += `<div class="pe-stat-row"><span class="pe-stat-label">WiFi RSSI</span><span class="pe-stat-val" style="color:${rssiColor}">${wledInfo.wifi_rssi} dBm</span></div>`;
+      }
+      if (wledInfo.uptime_str) html += `<div class="pe-stat-row"><span class="pe-stat-label">Uptime</span><span class="pe-stat-val">${wledInfo.uptime_str}</span></div>`;
+      if (wledInfo.version) html += `<div class="pe-stat-row"><span class="pe-stat-label">Version</span><span class="pe-stat-val">${wledInfo.version}</span></div>`;
       html += "</div>";
     }
-    if (cd.disk_pct != null) {
-      html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Disk</div>';
-      html += `<div class="pe-stat-row"><span class="pe-stat-label">Usage</span><span class="pe-stat-val">${cd.disk_pct}% of ${cd.disk_total_gb} GB</span></div>`;
-      html += `<div class="pe-stat-bar"><div class="pe-stat-bar-fill ${_barClass(cd.disk_pct)}" style="width:${cd.disk_pct}%"></div></div>`;
-      html += "</div>";
-    }
-    if (cd.temp != null) {
-      const tempPct = Math.min(100, cd.temp / 100 * 100);
-      html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Thermal</div>';
-      html += `<div class="pe-stat-row"><span class="pe-stat-label">Temperature</span><span class="pe-stat-val">${cd.temp}\xB0C</span></div>`;
-      html += `<div class="pe-stat-bar"><div class="pe-stat-bar-fill ${_barClass(tempPct)}" style="width:${tempPct}%"></div></div>`;
-      html += "</div>";
-    }
-    if (cd.interfaces && Object.keys(cd.interfaces).length) {
-      html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Network</div>';
-      Object.entries(cd.interfaces).sort(([, a], [, b]) => (b.rx_bps || 0) + (b.tx_bps || 0) - ((a.rx_bps || 0) + (a.tx_bps || 0))).forEach(([name, v]) => {
-        html += `<div class="pe-iface-row"><span class="pe-iface-name">${name}</span><span class="pe-iface-traffic">\u2193${fmtRate(v.rx_bps || 0)} \u2191${fmtRate(v.tx_bps || 0)}</span></div>`;
-      });
-      html += "</div>";
-    }
-    if (cd.conntrack || cd.dhcp_leases) {
-      html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Connections</div>';
-      if (cd.conntrack) html += `<div class="pe-stat-row"><span class="pe-stat-label">Conntrack</span><span class="pe-stat-val">${cd.conntrack.toLocaleString()}</span></div>`;
-      if (cd.dhcp_leases) html += `<div class="pe-stat-row"><span class="pe-stat-label">DHCP Leases</span><span class="pe-stat-val">${cd.dhcp_leases}</span></div>`;
-      html += "</div>";
-    }
-    if (cd.ping && Object.keys(cd.ping).length) {
-      html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Ping</div>';
-      Object.entries(cd.ping).forEach(([target, ms]) => {
-        const pingColor = ms < 10 ? "#60a040" : ms < 50 ? "#c0a030" : "#c04040";
-        html += `<div class="pe-stat-row"><span class="pe-stat-label">${target}</span><span class="pe-stat-val" style="color:${pingColor}">${ms} ms</span></div>`;
-      });
-      html += "</div>";
+    if (cd) {
+      const sysRows = [];
+      if (cd.hostname) sysRows.push(["Hostname", cd.hostname]);
+      if (cd.cpu_cores) sysRows.push(["CPU Cores", cd.cpu_cores]);
+      if (cd.uptime != null) {
+        const d = Math.floor(cd.uptime / 86400), h = Math.floor(cd.uptime % 86400 / 3600);
+        sysRows.push(["Uptime", d > 0 ? `${d}d ${h}h` : `${h}h`]);
+      }
+      if (cd.procs_running) sysRows.push(["Processes", cd.procs_running + " running"]);
+      if (cd.fork_rate) sysRows.push(["Fork Rate", cd.fork_rate.toLocaleString()]);
+      if (sysRows.length) {
+        html += '<div class="pe-stats-section"><div class="pe-stats-section-title">System</div>';
+        sysRows.forEach(([l, v]) => html += `<div class="pe-stat-row"><span class="pe-stat-label">${l}</span><span class="pe-stat-val">${v}</span></div>`);
+        html += "</div>";
+      }
+      if (cd.load_1 != null) {
+        const cores = cd.cpu_cores || 1;
+        const loadPct = Math.min(100, cd.load_1 / cores * 100);
+        html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Load</div>';
+        html += `<div class="pe-stat-row"><span class="pe-stat-label">1 / 5 / 15 min</span><span class="pe-stat-val">${cd.load_1.toFixed(2)} / ${(cd.load_5 || 0).toFixed(2)} / ${(cd.load_15 || 0).toFixed(2)}</span></div>`;
+        html += `<div class="pe-stat-bar"><div class="pe-stat-bar-fill ${_barClass(loadPct)}" style="width:${loadPct}%"></div></div>`;
+        html += "</div>";
+      }
+      if (cd.mem_pct != null) {
+        html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Memory</div>';
+        html += `<div class="pe-stat-row"><span class="pe-stat-label">Usage</span><span class="pe-stat-val">${cd.mem_pct}% of ${cd.mem_total_mb || "?"} MB</span></div>`;
+        html += `<div class="pe-stat-bar"><div class="pe-stat-bar-fill ${_barClass(cd.mem_pct)}" style="width:${cd.mem_pct}%"></div></div>`;
+        if (cd.swap_used != null && cd.swap_used > 0) {
+          html += `<div class="pe-stat-row"><span class="pe-stat-label">Swap</span><span class="pe-stat-val">${(cd.swap_used / 1048576).toFixed(0)} MB</span></div>`;
+        }
+        html += "</div>";
+      }
+      if (cd.disk_pct != null) {
+        html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Disk</div>';
+        html += `<div class="pe-stat-row"><span class="pe-stat-label">Usage</span><span class="pe-stat-val">${cd.disk_pct}% of ${cd.disk_total_gb} GB</span></div>`;
+        html += `<div class="pe-stat-bar"><div class="pe-stat-bar-fill ${_barClass(cd.disk_pct)}" style="width:${cd.disk_pct}%"></div></div>`;
+        html += "</div>";
+      }
+      if (cd.temp != null) {
+        const tempPct = Math.min(100, cd.temp / 100 * 100);
+        html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Thermal</div>';
+        html += `<div class="pe-stat-row"><span class="pe-stat-label">Temperature</span><span class="pe-stat-val">${cd.temp}\xB0C</span></div>`;
+        html += `<div class="pe-stat-bar"><div class="pe-stat-bar-fill ${_barClass(tempPct)}" style="width:${tempPct}%"></div></div>`;
+        html += "</div>";
+      }
+      if (cd.interfaces && Object.keys(cd.interfaces).length) {
+        html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Network</div>';
+        Object.entries(cd.interfaces).sort(([, a], [, b]) => (b.rx_bps || 0) + (b.tx_bps || 0) - ((a.rx_bps || 0) + (a.tx_bps || 0))).forEach(([name, v]) => {
+          html += `<div class="pe-iface-row"><span class="pe-iface-name">${name}</span><span class="pe-iface-traffic">\u2193${fmtRate(v.rx_bps || 0)} \u2191${fmtRate(v.tx_bps || 0)}</span></div>`;
+        });
+        html += "</div>";
+      }
+      if (cd.conntrack || cd.dhcp_leases) {
+        html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Connections</div>';
+        if (cd.conntrack) html += `<div class="pe-stat-row"><span class="pe-stat-label">Conntrack</span><span class="pe-stat-val">${cd.conntrack.toLocaleString()}</span></div>`;
+        if (cd.dhcp_leases) html += `<div class="pe-stat-row"><span class="pe-stat-label">DHCP Leases</span><span class="pe-stat-val">${cd.dhcp_leases}</span></div>`;
+        html += "</div>";
+      }
+      if (cd.ping && Object.keys(cd.ping).length) {
+        html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Ping</div>';
+        Object.entries(cd.ping).forEach(([target, ms]) => {
+          const pingColor = ms < 10 ? "#60a040" : ms < 50 ? "#c0a030" : "#c04040";
+          html += `<div class="pe-stat-row"><span class="pe-stat-label">${target}</span><span class="pe-stat-val" style="color:${pingColor}">${ms} ms</span></div>`;
+        });
+        html += "</div>";
+      }
     }
     if (wifiInfo) {
       html += '<div class="pe-stats-section"><div class="pe-stats-section-title">WiFi</div>';
@@ -2516,22 +2599,286 @@
     }
     if (haInfo) {
       html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Home Assistant</div>';
-      html += `<div class="pe-stat-row"><span class="pe-stat-label">Status</span><span class="pe-stat-val">${haInfo.sublabel || "connected"}</span></div>`;
+      const sublabel = haInfo.sublabel || "";
+      if (sublabel.includes("\xB0F")) {
+        const parts = sublabel.split(" \u2022 ");
+        html += `<div class="pe-stat-row"><span class="pe-stat-label">Temperature</span><span class="pe-stat-val">${parts[0]}</span></div>`;
+        if (parts[1]) html += `<div class="pe-stat-row"><span class="pe-stat-label">State</span><span class="pe-stat-val">${parts[1]}</span></div>`;
+      } else if (sublabel.includes("kW") || sublabel.includes("Batt")) {
+        const parts = sublabel.split(" \u2022 ");
+        parts.forEach((p) => {
+          if (p.includes("kW")) html += `<div class="pe-stat-row"><span class="pe-stat-label">Power</span><span class="pe-stat-val">${p}</span></div>`;
+          else if (p.includes("Batt")) html += `<div class="pe-stat-row"><span class="pe-stat-label">Battery</span><span class="pe-stat-val">${p}</span></div>`;
+        });
+      } else if (sublabel.includes("%") && !sublabel.includes("on")) {
+        html += `<div class="pe-stat-row"><span class="pe-stat-label">Battery</span><span class="pe-stat-val">${sublabel}</span></div>`;
+      } else if (sublabel.includes("/") && sublabel.includes("on")) {
+        const [on, total] = sublabel.match(/(\d+)\/(\d+)/)?.slice(1) || [];
+        html += `<div class="pe-stat-row"><span class="pe-stat-label">Active</span><span class="pe-stat-val">${on} of ${total}</span></div>`;
+      } else if (sublabel.includes("Radar:")) {
+        html += `<div class="pe-stat-row"><span class="pe-stat-label">Presence</span><span class="pe-stat-val">${sublabel.replace("Radar: ", "")}</span></div>`;
+      } else {
+        html += `<div class="pe-stat-row"><span class="pe-stat-label">Status</span><span class="pe-stat-val">${sublabel || "connected"}</span></div>`;
+      }
       if (haInfo.entities) html += `<div class="pe-stat-row"><span class="pe-stat-label">Entities</span><span class="pe-stat-val">${haInfo.entities}</span></div>`;
       html += "</div>";
     }
-    if (!cd && !tsPeer && topoNode) {
-      html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Node</div>';
-      if (topoNode.type) html += `<div class="pe-stat-row"><span class="pe-stat-label">Type</span><span class="pe-stat-val">${topoNode.type}</span></div>`;
-      if (topoNode.ip) html += `<div class="pe-stat-row"><span class="pe-stat-label">IP</span><span class="pe-stat-val">${topoNode.ip}</span></div>`;
-      if (topoNode.mac) html += `<div class="pe-stat-row"><span class="pe-stat-label">MAC</span><span class="pe-stat-val">${topoNode.mac}</span></div>`;
-      if (topoNode.collectd) html += `<div class="pe-stat-row"><span class="pe-stat-label">Collectd</span><span class="pe-stat-val">${topoNode.collectd}</span></div>`;
-      if (topoNode._auto) html += `<div class="pe-stat-row"><span class="pe-stat-label">Source</span><span class="pe-stat-val" style="color:#a070c0">Auto-discovered</span></div>`;
-      html += "</div>";
+    if (topoNode) {
+      const nodeRows = [];
+      if (topoNode.type) nodeRows.push(["Type", topoNode.type]);
+      if (topoNode.ip) nodeRows.push(["IP", topoNode.ip]);
+      if (topoNode.mac) nodeRows.push(["MAC", topoNode.mac]);
+      if (topoNode.collectd) nodeRows.push(["Collectd", topoNode.collectd]);
+      if (topoNode.tsHost) nodeRows.push(["Tailscale", topoNode.tsHost]);
+      if (topoNode._auto) nodeRows.push(["Source", '<span style="color:#a070c0">Auto-discovered</span>']);
+      if (nodeRows.length && !cd) {
+        html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Node Info</div>';
+        nodeRows.forEach(([l, v]) => html += `<div class="pe-stat-row"><span class="pe-stat-label">${l}</span><span class="pe-stat-val">${v}</span></div>`);
+        html += "</div>";
+      }
     }
     body.innerHTML = html;
   }
   __name(renderStatsPane, "renderStatsPane");
+  function renderControlPane(nodeKey) {
+    const body = document.getElementById("pe-control-body");
+    const titleEl = document.getElementById("pe-control-title");
+    const statusEl = document.getElementById("pe-control-status");
+    if (!body) return;
+    const info = infraNodes[nodeKey];
+    const nodeName = info ? info.name : nodeKey;
+    titleEl.textContent = nodeName + " \u2014 Controls";
+    statusEl.textContent = "";
+    if (!lastStatus) {
+      body.innerHTML = '<div class="pe-control-empty">No connection to realm.</div>';
+      return;
+    }
+    const nodeRole = lastStatus.roles ? lastStatus.roles[nodeKey] : null;
+    const wledInfo = lastStatus.wled ? lastStatus.wled[nodeKey] : null;
+    const haInfo = lastStatus.ha ? lastStatus.ha[nodeKey] : null;
+    const topoNode = _topology ? _topology.nodes.find((n) => n.id === nodeKey) : null;
+    let html = "";
+    let hasControls = false;
+    if (wledInfo && wledInfo.online) {
+      hasControls = true;
+      html += '<div class="pe-control-section"><div class="pe-control-section-title">LED Strip</div>';
+      html += `<div class="pe-control-row">
+      <span class="pe-control-label">Power</span>
+      <div class="pe-control-toggle ${wledInfo.on ? "active" : ""}" data-action="wled-power" data-node="${nodeKey}" data-state="${wledInfo.on ? "off" : "on"}"></div>
+    </div>`;
+      html += `<div class="pe-control-row">
+      <span class="pe-control-label">Brightness</span>
+      <input type="range" class="pe-control-slider" min="0" max="255" value="${wledInfo.brightness || 128}" data-action="wled-brightness" data-node="${nodeKey}">
+      <span style="width:30px;text-align:right;color:#a89870;font-size:11px">${wledInfo.brightness_pct || 50}%</span>
+    </div>`;
+      const quickEffects = [
+        { id: 0, name: "Solid" },
+        { id: 38, name: "Aurora" },
+        { id: 9, name: "Rainbow" },
+        { id: 12, name: "Theater" },
+        { id: 44, name: "Fire" },
+        { id: 108, name: "Noise" }
+      ];
+      html += '<div class="pe-control-row" style="flex-wrap:wrap;gap:6px;justify-content:flex-start">';
+      quickEffects.forEach((fx) => {
+        const active = wledInfo.effect_id === fx.id ? 'style="border-color:#60c060;color:#90ff90"' : "";
+        html += `<button class="pe-control-btn" data-action="wled-effect" data-node="${nodeKey}" data-effect="${fx.id}" ${active}>${fx.name}</button>`;
+      });
+      html += "</div>";
+      html += "</div>";
+    }
+    if (nodeRole === "plug" && haInfo) {
+      hasControls = true;
+      const isOn = haInfo.sublabel && (haInfo.sublabel.toLowerCase().includes("on") || haInfo.sublabel.includes("/"));
+      html += '<div class="pe-control-section"><div class="pe-control-section-title">Smart Plug</div>';
+      html += `<div class="pe-control-row">
+      <span class="pe-control-label">Power</span>
+      <div class="pe-control-toggle ${isOn ? "active" : ""}" data-action="ha-switch" data-node="${nodeKey}"></div>
+    </div>`;
+      html += "</div>";
+    }
+    if (nodeRole === "thermostat" && haInfo) {
+      hasControls = true;
+      html += '<div class="pe-control-section"><div class="pe-control-section-title">Climate</div>';
+      const tempMatch = haInfo.sublabel?.match(/(\d+)/);
+      const currentTemp = tempMatch ? parseInt(tempMatch[1]) : 70;
+      html += `<div class="pe-control-row">
+      <span class="pe-control-label">Target</span>
+      <button class="pe-control-btn" data-action="ha-climate" data-node="${nodeKey}" data-delta="-1">-</button>
+      <span style="color:#d4c5a0;font-size:14px;min-width:40px;text-align:center">${currentTemp}\xB0F</span>
+      <button class="pe-control-btn" data-action="ha-climate" data-node="${nodeKey}" data-delta="1">+</button>
+    </div>`;
+      html += '<div class="pe-control-row" style="gap:6px;justify-content:flex-start">';
+      ["off", "heat", "cool", "auto"].forEach((mode) => {
+        html += `<button class="pe-control-btn" data-action="ha-hvac-mode" data-node="${nodeKey}" data-mode="${mode}">${mode}</button>`;
+      });
+      html += "</div></div>";
+    }
+    if (nodeRole === "speaker" && haInfo) {
+      hasControls = true;
+      html += '<div class="pe-control-section"><div class="pe-control-section-title">Media</div>';
+      html += '<div class="pe-control-row" style="gap:8px;justify-content:center">';
+      html += `<button class="pe-control-btn" data-action="ha-media" data-node="${nodeKey}" data-cmd="previous">&#9198;</button>`;
+      html += `<button class="pe-control-btn" data-action="ha-media" data-node="${nodeKey}" data-cmd="play_pause">&#9199;</button>`;
+      html += `<button class="pe-control-btn" data-action="ha-media" data-node="${nodeKey}" data-cmd="next">&#9197;</button>`;
+      html += "</div>";
+      html += `<div class="pe-control-row">
+      <span class="pe-control-label">Volume</span>
+      <input type="range" class="pe-control-slider" min="0" max="100" value="50" data-action="ha-volume" data-node="${nodeKey}">
+    </div>`;
+      html += "</div>";
+    }
+    if (nodeRole === "vacuum" && haInfo) {
+      hasControls = true;
+      html += '<div class="pe-control-section"><div class="pe-control-section-title">Vacuum</div>';
+      html += '<div class="pe-control-row" style="gap:8px;justify-content:center">';
+      html += `<button class="pe-control-btn" data-action="ha-vacuum" data-node="${nodeKey}" data-cmd="start">Start</button>`;
+      html += `<button class="pe-control-btn" data-action="ha-vacuum" data-node="${nodeKey}" data-cmd="pause">Pause</button>`;
+      html += `<button class="pe-control-btn" data-action="ha-vacuum" data-node="${nodeKey}" data-cmd="return_to_base">Dock</button>`;
+      html += "</div></div>";
+    }
+    if (nodeRole === "appliance" && haInfo) {
+      hasControls = true;
+      const isOn = haInfo.sublabel && haInfo.sublabel.toLowerCase().includes("running");
+      html += '<div class="pe-control-section"><div class="pe-control-section-title">Appliance</div>';
+      html += `<div class="pe-control-row">
+      <span class="pe-control-label">Status</span>
+      <span style="color:${isOn ? "#60c060" : "#a89870"}">${haInfo.sublabel || "Unknown"}</span>
+    </div>`;
+      html += "</div>";
+    }
+    if (nodeRole === "tv" && haInfo) {
+      hasControls = true;
+      html += '<div class="pe-control-section"><div class="pe-control-section-title">Media Player</div>';
+      html += '<div class="pe-control-row" style="gap:8px;justify-content:center">';
+      html += `<button class="pe-control-btn" data-action="ha-media" data-node="${nodeKey}" data-cmd="turn_on">On</button>`;
+      html += `<button class="pe-control-btn" data-action="ha-media" data-node="${nodeKey}" data-cmd="turn_off">Off</button>`;
+      html += "</div></div>";
+    }
+    const ethernetRoles = ["server", "desktop", "laptop", "nas", "vm", "router", "ap", "switch", "bridge"];
+    if (topoNode?.ip) {
+      hasControls = true;
+      html += '<div class="pe-control-section"><div class="pe-control-section-title">Network</div>';
+      html += `<div class="pe-control-row">
+      <span class="pe-control-label">Ping</span>
+      <button class="pe-control-btn" data-action="ping" data-ip="${topoNode.ip}">Test Connection</button>
+    </div>`;
+      if (topoNode.mac && ethernetRoles.includes(nodeRole)) {
+        html += `<div class="pe-control-row">
+        <span class="pe-control-label">Wake-on-LAN</span>
+        <button class="pe-control-btn" data-action="wol" data-mac="${topoNode.mac}" data-ip="${topoNode.ip}">Send Magic Packet</button>
+      </div>`;
+      }
+      if (nodeRole === "router" || nodeRole === "ap" || nodeRole === "server" || nodeRole === "nas") {
+        html += `<div class="pe-control-row">
+        <span class="pe-control-label">SSH</span>
+        <button class="pe-control-btn" data-action="ssh" data-ip="${topoNode.ip}">Connect</button>
+      </div>`;
+      }
+      if (nodeRole === "router" || nodeRole === "ap") {
+        html += `<div class="pe-control-row">
+        <span class="pe-control-label">Reboot</span>
+        <button class="pe-control-btn danger" data-action="reboot" data-ip="${topoNode.ip}">Restart Device</button>
+      </div>`;
+      }
+      html += "</div>";
+    }
+    if (!hasControls) {
+      html = `<div class="pe-control-empty">No controls available for this ${nodeRole || "node"}.</div>`;
+    }
+    body.innerHTML = html;
+    body.querySelectorAll("[data-action]").forEach((el) => {
+      el.addEventListener("click", handleControlAction);
+      el.addEventListener("input", handleControlAction);
+    });
+  }
+  __name(renderControlPane, "renderControlPane");
+  async function handleControlAction(e) {
+    const el = e.target.closest("[data-action]");
+    if (!el) return;
+    const action = el.dataset.action;
+    const nodeKey = el.dataset.node;
+    const statusEl = document.getElementById("pe-control-status");
+    try {
+      statusEl.textContent = "Sending...";
+      statusEl.style.color = "#c0a030";
+      let endpoint, body;
+      switch (action) {
+        case "wled-power": {
+          const newState = el.dataset.state === "on";
+          endpoint = `/wled/${nodeKey}/state`;
+          body = { on: newState };
+          break;
+        }
+        case "wled-brightness": {
+          endpoint = `/wled/${nodeKey}/state`;
+          body = { bri: parseInt(el.value) };
+          const pctSpan = el.nextElementSibling;
+          if (pctSpan) pctSpan.textContent = Math.round(el.value / 255 * 100) + "%";
+          break;
+        }
+        case "wled-effect": {
+          endpoint = `/wled/${nodeKey}/state`;
+          body = { fx: parseInt(el.dataset.effect) };
+          break;
+        }
+        case "ha-switch": {
+          const isOn = el.classList.contains("active");
+          endpoint = `/ha/switch/${isOn ? "off" : "on"}`;
+          body = { node: nodeKey };
+          break;
+        }
+        case "ping": {
+          endpoint = `/ping/${el.dataset.ip}`;
+          break;
+        }
+        case "wol": {
+          endpoint = `/wol`;
+          body = { mac: el.dataset.mac, ip: el.dataset.ip };
+          break;
+        }
+        case "reboot": {
+          if (!confirm(`Reboot ${nodeKey}? This will disconnect the device temporarily.`)) {
+            statusEl.textContent = "Cancelled";
+            statusEl.style.color = "#a89870";
+            return;
+          }
+          endpoint = `/ssh/${el.dataset.ip}/reboot`;
+          break;
+        }
+        case "ssh": {
+          statusEl.textContent = "Opening terminal...";
+          window.open(`ssh://${el.dataset.ip}`, "_blank");
+          return;
+        }
+        default:
+          statusEl.textContent = "Unknown action";
+          statusEl.style.color = "#c04040";
+          return;
+      }
+      const resp = await fetch(endpoint, {
+        method: body ? "POST" : "GET",
+        headers: body ? { "Content-Type": "application/json" } : {},
+        body: body ? JSON.stringify(body) : void 0
+      });
+      if (resp.ok) {
+        statusEl.textContent = "Done";
+        statusEl.style.color = "#60a040";
+        if (action === "wled-power" || action === "ha-switch") {
+          el.classList.toggle("active");
+        }
+        setTimeout(() => pollStatus(), 1e3);
+      } else {
+        statusEl.textContent = "Failed";
+        statusEl.style.color = "#c04040";
+      }
+    } catch (err) {
+      statusEl.textContent = "Error";
+      statusEl.style.color = "#c04040";
+      console.error("Control action error:", err);
+    }
+  }
+  __name(handleControlAction, "handleControlAction");
   var _linksBody = document.getElementById("pe-links-body");
   var _linksTarget = document.getElementById("pe-links-target");
   var _linksType = document.getElementById("pe-links-type");
@@ -2739,6 +3086,8 @@
     "quest-log": { icon: "\u2619", tooltip: "Quest Log", color: "#a0ff60", rgb: [160, 255, 96] },
     "realm-codex": { icon: "\u2630", tooltip: "Realm Codex", color: "#9060c0", rgb: [144, 96, 192] },
     "minimap": { icon: "\u25CE", tooltip: "Minimap", color: "#60a0c0", rgb: [96, 160, 192] },
+    "cartographer": { icon: "\u{1F5FA}", tooltip: "Cartographer", color: "#c09060", rgb: [192, 144, 96] },
+    "energy-panel": { icon: "\u26A1", tooltip: "Realm Energy", color: "#60c060", rgb: [96, 192, 96] },
     "node-list": { icon: "\u2691", tooltip: "Realm Census", color: "#c09060", rgb: [192, 144, 96] },
     "debug-panel": { icon: "\u{1F52E}", tooltip: "Arcane Mirror", color: "#a070d0", rgb: [160, 112, 208] }
   };
@@ -2961,6 +3310,8 @@
           "vis-codex",
           "vis-questlog",
           "vis-minimap",
+          "vis-cartographer",
+          "vis-energy",
           "vis-nodelist"
         ].forEach((id) => {
           const cb = document.getElementById(id);
@@ -3061,6 +3412,8 @@
   setupPanelMinimize("quest-log", "#quest-log-header");
   setupPanelMinimize("realm-codex", "#codex-header");
   setupPanelMinimize("minimap", null);
+  setupPanelMinimize("cartographer", ".panel-header");
+  setupPanelMinimize("energy-panel", ".panel-header");
   setupPanelMinimize("node-list", "#node-list-header");
   setupPanelMinimize("debug-panel", "#debug-header");
   var _realmSearch = document.getElementById("realm-search");
@@ -3370,6 +3723,63 @@
   }
   __name(updateNodeListStatus, "updateNodeListStatus");
   buildNodeList();
+  function updateEnergyPanel(data) {
+    if (!data || data.error) return;
+    const fmt = /* @__PURE__ */ __name((v, unit, decimals = 1) => v != null ? `${v.toFixed(decimals)}${unit}` : "--", "fmt");
+    const fmtW = /* @__PURE__ */ __name((w) => {
+      if (w == null) return "--";
+      if (Math.abs(w) >= 1e3) return `${(w / 1e3).toFixed(1)}kW`;
+      return `${Math.round(w)}W`;
+    }, "fmtW");
+    const solarEl = document.getElementById("energy-solar");
+    if (solarEl) {
+      const pv = data.solar_kw;
+      solarEl.textContent = pv != null ? fmtW(pv) : "--";
+    }
+    const battEl = document.getElementById("energy-battery");
+    if (battEl) {
+      const soc = data.battery_soc;
+      const power = data.battery_power;
+      if (soc != null) {
+        const dir = power < -10 ? " +" : power > 10 ? " -" : "";
+        battEl.textContent = `${Math.round(soc)}%${dir}`;
+      } else {
+        battEl.textContent = "--";
+      }
+    }
+    const gridEl = document.getElementById("energy-grid");
+    if (gridEl) {
+      const gp = data.grid_power;
+      if (gp != null) {
+        gridEl.textContent = `${gp.toFixed(2)}kW`;
+      } else {
+        gridEl.textContent = "--";
+      }
+    }
+    const houseEl = document.getElementById("energy-house");
+    if (houseEl) {
+      const load = data.house_load;
+      houseEl.textContent = load != null ? fmtW(load) : "--";
+    }
+    const todayEl = document.getElementById("energy-today");
+    if (todayEl) {
+      const today = data.today_load_kwh;
+      todayEl.textContent = today != null ? `${today.toFixed(1)}kWh` : "--";
+    }
+    const exportEl = document.getElementById("energy-export");
+    if (exportEl) {
+      const exp = data.grid_export_kwh;
+      exportEl.textContent = exp != null ? `${exp.toFixed(0)}kWh` : "--";
+    }
+  }
+  __name(updateEnergyPanel, "updateEnergyPanel");
+  function fetchEnergy() {
+    fetch("/energy").then((r) => r.json()).then(updateEnergyPanel).catch(() => {
+    });
+  }
+  __name(fetchEnergy, "fetchEnergy");
+  fetchEnergy();
+  setInterval(fetchEnergy, 3e4);
   var _originalPositions = {};
   if (_topology) _topology.nodes.forEach((n) => {
     _originalPositions[n.id] = { x: n.x, y: n.y };
@@ -3385,19 +3795,51 @@
       if (a !== void 0 && b !== void 0) _connIdx.push([a, b, c.from, c.to]);
     });
   }
+  var _nodeVlans = [];
+  if (_topology) {
+    const vlanCounts = {};
+    _topology.connections.forEach((c) => {
+      if (!c.vlan) return;
+      [c.from, c.to].forEach((id) => {
+        if (!vlanCounts[id]) vlanCounts[id] = {};
+        vlanCounts[id][c.vlan] = (vlanCounts[id][c.vlan] || 0) + 1;
+      });
+    });
+    _topology.nodes.forEach((n, i) => {
+      if (vlanCounts[n.id]) {
+        let best = 6, max = 0;
+        for (const [v, c] of Object.entries(vlanCounts[n.id])) {
+          if (c > max) {
+            max = c;
+            best = +v;
+          }
+        }
+        _nodeVlans[i] = best;
+      } else {
+        _nodeVlans[i] = n.tailscale || n.type === "tailscale" ? 0 : 6;
+      }
+    });
+  }
   var _layoutRunning = false;
   var _layoutWorker = null;
+  var _layoutMode = "world-tree";
   var _layoutAttract = 4;
   var _layoutRepulse = 80;
   var _layoutEdgeLen = 80;
   var _layoutSpacing = 8;
-  function autoArrangeLayout() {
+  function autoArrangeLayout(mode) {
     if (!_topology || _layoutRunning) return;
+    if (mode) _layoutMode = mode;
     _layoutRunning = true;
-    const btn = document.getElementById("layout-auto-btn");
-    if (btn) {
-      btn.classList.add("running");
-      btn.textContent = "\u2728 Arranging\u2026";
+    document.querySelectorAll(".carto-mode").forEach((b) => {
+      b.classList.toggle("active", b.dataset.layout === _layoutMode);
+    });
+    const activeBtn = document.querySelector(`.carto-mode[data-layout="${_layoutMode}"]`);
+    if (activeBtn) activeBtn.classList.add("running");
+    const castBtn = document.getElementById("layout-auto-btn");
+    if (castBtn) {
+      castBtn.classList.add("running");
+      castBtn.textContent = "\u2728 Casting\u2026";
     }
     if (_layoutWorker) {
       _layoutWorker.terminate();
@@ -3409,7 +3851,7 @@
     _layoutWorker.onmessage = function(e) {
       const msg = e.data;
       if (msg.type === "progress") {
-        if (btn) btn.textContent = `\u2728 ${Math.round(msg.step / msg.total * 100)}%`;
+        if (castBtn) castBtn.textContent = `\u2728 ${Math.round(msg.step / msg.total * 100)}%`;
         return;
       }
       if (msg.type === "done") {
@@ -3421,9 +3863,10 @@
           _layoutRunning = false;
           generateTerrain();
           updateRegionLabels();
-          if (btn) {
-            btn.classList.remove("running");
-            btn.textContent = "\u2728 Auto-Arrange";
+          if (activeBtn) activeBtn.classList.remove("running");
+          if (castBtn) {
+            castBtn.classList.remove("running");
+            castBtn.textContent = "\u2728 Cast Arrangement";
           }
         });
         _layoutWorker.terminate();
@@ -3433,9 +3876,10 @@
     _layoutWorker.onerror = function(err) {
       console.error("Layout worker error:", err);
       _layoutRunning = false;
-      if (btn) {
-        btn.classList.remove("running");
-        btn.textContent = "\u2728 Auto-Arrange";
+      if (activeBtn) activeBtn.classList.remove("running");
+      if (castBtn) {
+        castBtn.classList.remove("running");
+        castBtn.textContent = "\u2728 Cast Arrangement";
       }
       _layoutWorker = null;
     };
@@ -3444,7 +3888,9 @@
       connIdx: connData,
       params: { attract: _layoutAttract, repulse: _layoutRepulse, edgeLen: _layoutEdgeLen, spacing: _layoutSpacing },
       worldW: WORLD_W,
-      worldH: WORLD_H
+      worldH: WORLD_H,
+      mode: _layoutMode,
+      nodeVlans: _nodeVlans
     });
   }
   __name(autoArrangeLayout, "autoArrangeLayout");
@@ -3499,7 +3945,10 @@
     requestAnimationFrame(step);
   }
   __name(_animateToPositions, "_animateToPositions");
-  document.getElementById("layout-auto-btn")?.addEventListener("click", autoArrangeLayout);
+  document.querySelectorAll(".carto-mode").forEach((btn) => {
+    btn.addEventListener("click", () => autoArrangeLayout(btn.dataset.layout));
+  });
+  document.getElementById("layout-auto-btn")?.addEventListener("click", () => autoArrangeLayout());
   document.getElementById("layout-reset-btn")?.addEventListener("click", resetToOriginalPositions);
   (/* @__PURE__ */ __name((function wireLayoutSliders() {
     const sliders = [
@@ -3590,6 +4039,8 @@
       ["vis-codex", "#realm-codex"],
       ["vis-questlog", "#quest-log"],
       ["vis-minimap", "#minimap"],
+      ["vis-cartographer", "#cartographer"],
+      ["vis-energy", "#energy-panel"],
       ["vis-nodelist", "#node-list"],
       ["vis-debug", "#debug-panel"]
     ];
@@ -3631,6 +4082,8 @@
       ["panel-codex-slider", "#realm-codex", false],
       ["panel-questlog-slider", "#quest-log", false],
       ["panel-minimap-slider", "#minimap", false],
+      ["panel-cartographer-slider", "#cartographer", false],
+      ["panel-energy-slider", "#energy-panel", false],
       ["panel-nodelist-slider", "#node-list", false],
       ["panel-mirror-slider", "#debug-panel", false]
     ];
@@ -3880,6 +4333,8 @@
     "panel-spellbook",
     "panel-questlog",
     "panel-minimap",
+    "panel-cartographer",
+    "panel-energy",
     "panel-nodelist",
     "panel-mirror"
   ];
@@ -3903,6 +4358,8 @@
     "vis-codex",
     "vis-questlog",
     "vis-minimap",
+    "vis-cartographer",
+    "vis-energy",
     "vis-nodelist",
     "vis-debug"
   ];
@@ -4166,15 +4623,16 @@
       }
     }
     __name(endDrag, "endDrag");
+    const _skipDrag = /* @__PURE__ */ __name((t) => t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.tagName === "BUTTON" || t.closest("button"), "_skipDrag");
     handle.addEventListener("mousedown", (e) => {
-      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return;
+      if (_skipDrag(e.target)) return;
       e.preventDefault();
       startDrag(e.clientX, e.clientY);
     });
     window.addEventListener("mousemove", (e) => moveDrag(e.clientX, e.clientY));
     window.addEventListener("mouseup", endDrag);
     handle.addEventListener("touchstart", (e) => {
-      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return;
+      if (_skipDrag(e.target)) return;
       if (e.touches.length !== 1) return;
       e.preventDefault();
       startDrag(e.touches[0].clientX, e.touches[0].clientY);
@@ -4192,6 +4650,8 @@
   makeDraggable(document.getElementById("quest-log"), "#quest-log-header", [160, 255, 96]);
   makeDraggable(document.getElementById("realm-codex"), "#codex-header", [144, 96, 192]);
   makeDraggable(document.getElementById("minimap"), null, [96, 160, 192]);
+  makeDraggable(document.getElementById("cartographer"), ".panel-header", [192, 144, 96]);
+  makeDraggable(document.getElementById("energy-panel"), ".panel-header", [96, 192, 96]);
   makeDraggable(document.getElementById("persona-editor"), ".pe-header", [240, 200, 100]);
   makeDraggable(document.getElementById("node-list"), "#node-list-header", [192, 144, 96]);
   (function() {

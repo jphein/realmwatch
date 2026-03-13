@@ -17,10 +17,14 @@
     user-select: none;
     -webkit-tap-highlight-color: transparent;
   }
-  input, textarea, select {
+  input, textarea, select, button {
     -webkit-user-select: text;
     user-select: text;
     touch-action: auto;
+  }
+  button {
+    -webkit-user-select: none;
+    user-select: none;
   }
 
   #map-canvas {
@@ -108,6 +112,198 @@
   @keyframes layoutPulse {
     0%, 100% { box-shadow: 0 0 8px rgba(160,255,96,0.15); }
     50% { box-shadow: 0 0 20px rgba(160,255,96,0.3); }
+  }
+
+  /* ── Cartographer Panel ── */
+  #cartographer {
+    position: fixed;
+    right: 20px;
+    top: 80px;
+    width: 200px;
+    z-index: 50;
+    touch-action: auto;
+  }
+  #cartographer * {
+    touch-action: auto;
+  }
+  .carto-body {
+    padding: 10px 12px 12px;
+  }
+  .carto-modes {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+  .carto-mode {
+    background: rgba(20,18,16,0.6);
+    border: 1px solid rgba(80,64,48,0.3);
+    border-radius: 6px;
+    padding: 8px 2px 6px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    transition: all 0.2s ease;
+  }
+  .carto-mode:hover {
+    border-color: rgba(192,144,96,0.4);
+    background: rgba(30,24,20,0.8);
+  }
+  .carto-mode.active {
+    border-color: rgba(192,144,96,0.6);
+    background: rgba(40,32,24,0.8);
+    box-shadow: 0 0 12px rgba(192,144,96,0.15);
+  }
+  .carto-mode.running {
+    border-color: rgba(144,192,96,0.6);
+    box-shadow: 0 0 12px rgba(144,192,96,0.2);
+  }
+  .carto-icon {
+    font-size: 18px;
+    line-height: 1;
+  }
+  .carto-name {
+    font-family: 'Cinzel', serif;
+    font-size: 7px;
+    color: #908070;
+    text-align: center;
+    line-height: 1.1;
+  }
+  .carto-mode.active .carto-name { color: #d4c5a0; }
+  .carto-actions {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+  .carto-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px 4px;
+    border-radius: 5px;
+    border: 1px solid rgba(80,64,48,0.4);
+    background: rgba(20,18,16,0.6);
+    cursor: pointer;
+    font-family: 'MedievalSharp', cursive;
+    color: #a09080;
+    transition: all 0.2s ease;
+  }
+  .carto-btn:hover {
+    border-color: rgba(192,144,96,0.5);
+    color: #d4c5a0;
+  }
+  .carto-btn.running {
+    border-color: rgba(144,192,96,0.6);
+    color: #c0e090;
+  }
+  .carto-btn-icon { font-size: 12px; }
+  .carto-btn-text { font-size: 9px; }
+  .carto-tuning {
+    border-top: 1px solid rgba(80,64,48,0.2);
+    padding-top: 4px;
+  }
+  .carto-tuning summary {
+    font-size: 9px;
+    color: #605040;
+    cursor: pointer;
+    padding: 2px 0;
+    list-style: none;
+  }
+  .carto-tuning summary::before { content: '+ '; }
+  .carto-tuning[open] summary::before { content: '- '; }
+  .carto-sliders { padding-top: 4px; }
+  .carto-slider { margin-bottom: 4px; }
+  .carto-slider label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    color: #706050;
+    margin-bottom: 1px;
+  }
+  .carto-slider label span { color: #908070; }
+  .carto-slider input[type="range"] {
+    width: 100%;
+    height: 3px;
+    -webkit-appearance: none;
+    background: rgba(40,32,24,0.6);
+    border-radius: 2px;
+  }
+  .carto-slider input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #906840;
+    border: 1px solid #604030;
+    cursor: pointer;
+  }
+
+  /* ── Energy Panel ── */
+  #energy-panel {
+    position: fixed;
+    left: 20px;
+    top: 80px;
+    width: 160px;
+    z-index: 50;
+    touch-action: auto;
+  }
+  #energy-panel * { touch-action: auto; }
+  .energy-body {
+    padding: 8px 12px 10px;
+  }
+  .energy-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(80,64,48,0.15);
+  }
+  .energy-row:last-of-type { border-bottom: none; }
+  .energy-icon {
+    font-size: 14px;
+    width: 20px;
+    text-align: center;
+  }
+  .energy-label {
+    font-size: 10px;
+    color: #908070;
+    flex: 1;
+  }
+  .energy-val {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: #d4c5a0;
+    text-align: right;
+  }
+  .energy-solar .energy-icon { color: #f0c040; }
+  .energy-battery .energy-icon { color: #60c060; }
+  .energy-grid .energy-icon { color: #6080c0; }
+  .energy-house .energy-icon { color: #c09060; }
+  .energy-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(96,192,96,0.3), transparent);
+    margin: 6px 0;
+  }
+  .energy-stats {
+    display: flex;
+    justify-content: space-between;
+  }
+  .energy-stat {
+    text-align: center;
+  }
+  .energy-stat-label {
+    font-size: 8px;
+    color: #605040;
+    display: block;
+  }
+  .energy-stat-val {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    color: #a09080;
   }
 
   /* Index contour shimmer — slow magical pulse */
@@ -1664,6 +1860,162 @@
     scrollbar-width: thin;
     scrollbar-color: #3a3020 transparent;
   }
+  /* Control Panel */
+  .pe-control-body {
+    padding: 12px 18px 14px;
+    overflow-y: auto;
+    max-height: 55vh;
+  }
+  .pe-control-status {
+    font-size: 10px;
+    color: #60a040;
+  }
+  .pe-control-section {
+    margin-bottom: 16px;
+    padding: 12px;
+    background: rgba(40,35,25,0.5);
+    border: 1px solid rgba(212,197,160,0.15);
+    border-radius: 6px;
+  }
+  .pe-control-section-title {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: #a89870;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .pe-control-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .pe-control-row:last-child { margin-bottom: 0; }
+  .pe-control-label {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: #d4c5a0;
+  }
+  .pe-control-toggle {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    background: rgba(60,50,40,0.8);
+    border: 1px solid rgba(212,197,160,0.3);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .pe-control-toggle.active {
+    background: rgba(80,160,80,0.6);
+    border-color: rgba(100,200,100,0.5);
+  }
+  .pe-control-toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    background: #d4c5a0;
+    border-radius: 50%;
+    transition: transform 0.2s;
+  }
+  .pe-control-toggle.active::after {
+    transform: translateX(20px);
+    background: #90ff90;
+  }
+  .pe-control-slider {
+    -webkit-appearance: none;
+    width: 120px;
+    height: 6px;
+    background: rgba(60,50,40,0.8);
+    border-radius: 3px;
+    outline: none;
+  }
+  .pe-control-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    background: linear-gradient(135deg, #d4c5a0, #a89870);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 4px rgba(0,0,0,0.4);
+  }
+  .pe-control-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: linear-gradient(135deg, #d4c5a0, #a89870);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+  }
+  .pe-control-select {
+    background: rgba(40,35,25,0.9);
+    border: 1px solid rgba(212,197,160,0.3);
+    color: #d4c5a0;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    min-width: 100px;
+  }
+  .pe-control-btn {
+    background: linear-gradient(135deg, rgba(80,70,50,0.9), rgba(60,50,35,0.9));
+    border: 1px solid rgba(212,197,160,0.3);
+    color: #d4c5a0;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .pe-control-btn:hover {
+    background: linear-gradient(135deg, rgba(100,90,60,0.9), rgba(80,70,45,0.9));
+    border-color: rgba(212,197,160,0.5);
+  }
+  .pe-control-btn.danger {
+    border-color: rgba(200,100,100,0.4);
+  }
+  .pe-control-btn.danger:hover {
+    background: rgba(150,60,60,0.4);
+  }
+  .pe-control-empty {
+    text-align: center;
+    color: #80704a;
+    font-style: italic;
+    padding: 20px;
+  }
+  .pe-control-color {
+    width: 30px;
+    height: 24px;
+    border: 1px solid rgba(212,197,160,0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    padding: 0;
+  }
+  .pe-role-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, rgba(60,50,35,0.8), rgba(40,35,25,0.9));
+    border: 1px solid rgba(212,197,160,0.2);
+    border-radius: 6px;
+  }
+  .pe-role-icon {
+    font-size: 20px;
+    filter: drop-shadow(0 0 4px rgba(212,197,160,0.3));
+  }
+  .pe-role-name {
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    color: #d4c5a0;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
   .pe-stats-section {
     margin-bottom: 10px;
   }
@@ -2072,6 +2424,8 @@
     #legend { padding: 8px 12px; left: 10px; bottom: 10px; }
     #spellbook { left: 10px; bottom: 10px; max-height: 60vh; }
     #minimap { width: 140px; height: 97px; right: 10px; bottom: 10px; }
+    #cartographer { width: 170px; right: 10px; top: 70px; }
+    .carto-modes { grid-template-columns: repeat(2, 1fr); }
     .speech-bubble { max-width: 200px; font-size: 11px; padding: 8px 26px 8px 10px; }
     .speech-bubble .bubble-close { width: 24px; height: 24px; font-size: 18px; line-height: 22px; top: 4px; right: 4px; }
     .speech-bubble .bubble-name { font-size: 10px; }
@@ -2096,6 +2450,8 @@
     #legend { font-size: 10px; }
     #spellbook { font-size: 10px; }
     #minimap { width: 110px; height: 76px; }
+    #cartographer { width: 150px; }
+    .carto-body { padding: 6px 8px; }
     #persona-editor { width: calc(100vw - 10px); max-height: 85vh; }
     .pe-body { padding: 8px 10px; }
     .pe-field label { font-size: 10px; }

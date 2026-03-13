@@ -3,6 +3,18 @@
 
 import json
 import os
+
+# Load .env file (always override for critical vars like HA_TOKEN)
+_env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+if os.path.exists(_env_path):
+    with open(_env_path) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                k, v = k.strip(), v.strip()
+                if v:  # Always set if .env has a value
+                    os.environ[k] = v
 import subprocess
 import threading
 import time
@@ -13,6 +25,8 @@ import notion_sync
 import ap_scanner
 import codex_sync
 import ha_bridge
+import wled_bridge
+import node_roles
 import realm_db
 
 engine = LitRPGEngine()
@@ -48,6 +62,58 @@ def _write_config_file(path, updates, safe_keys):
 def _load_topology():
     """Load topology from DB."""
     return realm_db.get_topology()
+
+
+def _get_energy_data():
+    """Fetch energy-related data from HA via ha_bridge."""
+    import ssl
+    import urllib.request
+
+    ha_url = os.environ.get("HA_URL", "https://10.0.6.108:8123")
+    ha_token = os.environ.get("HA_TOKEN", "")
+    if not ha_token:
+        return {"error": "No HA_TOKEN"}
+
+    ssl_ctx = ssl.create_default_context()
+    ssl_ctx.check_hostname = False
+    ssl_ctx.verify_mode = ssl.CERT_NONE
+
+    try:
+        req = urllib.request.Request(
+            f"{ha_url}/api/states",
+            headers={"Authorization": f"Bearer {ha_token}"},
+        )
+        resp = urllib.request.urlopen(req, context=ssl_ctx, timeout=10)
+        states = {s["entity_id"]: s for s in json.loads(resp.read())}
+    except Exception as e:
+        return {"error": str(e)}
+
+    def num(eid):
+        s = states.get(eid, {}).get("state")
+        if s in (None, "unavailable", "unknown"):
+            return None
+        try:
+            return float(s)
+        except (ValueError, TypeError):
+            return None
+
+    return {
+        "solar_kw": num("sensor.pv_power"),  # W
+        "solar_today_kwh": num("sensor.today_s_pv_generation"),
+        "solar_total_kwh": num("sensor.total_pv_generation"),
+        "battery_soc": num("sensor.battery_state_of_charge"),
+        "battery_power": num("sensor.battery_power"),  # W, negative=charging
+        "battery_voltage": num("sensor.battery_voltage"),
+        "grid_power": num("sensor.grid_power"),  # kW
+        "grid_import_kwh": num("sensor.total_energy_import"),
+        "grid_export_kwh": num("sensor.total_energy_export"),
+        "house_load": num("sensor.house_consumption"),  # W
+        "today_load_kwh": num("sensor.today_load"),
+        "goodwe_kw": num("sensor.goodwe_kw"),
+        "yurt_kw": num("sensor.yurt_consumption"),
+        "inverter_temp_f": num("sensor.inverter_temperature_module"),
+        "ts": time.time(),
+    }
 
 
 def _load_personas():
@@ -92,6 +158,9 @@ class RealmHandler(SimpleHTTPRequestHandler):
             status["collectd"] = get_all_summaries()
             status["wifi"] = ap_scanner.get_wifi_signal()
             status["ha"] = ha_bridge.get_ha_states()
+            status["wled"] = wled_bridge.get_wled_states()
+            topo_nodes = _load_topology().get("nodes", [])
+            status["roles"] = {n["id"]: node_roles.get_role(n["id"], n) for n in topo_nodes}
             self._json_response(status)
 
         elif self.path.startswith("/events"):
@@ -135,6 +204,28 @@ class RealmHandler(SimpleHTTPRequestHandler):
         elif self.path == "/scan/wifi":
             self._json_response(ap_scanner.get_wifi_signal())
 
+        elif self.path.startswith("/ping/"):
+            ip = self.path.split("/ping/", 1)[1].split("?")[0]
+            try:
+                import subprocess
+                result = subprocess.run(
+                    ["ping", "-c", "3", "-W", "2", ip],
+                    capture_output=True, text=True, timeout=10
+                )
+                if result.returncode == 0:
+                    # Parse average RTT
+                    for line in result.stdout.split("\n"):
+                        if "avg" in line.lower() or "rtt" in line.lower():
+                            parts = line.split("=")[-1].split("/")
+                            if len(parts) >= 2:
+                                self._json_response({"ok": True, "ip": ip, "rtt_ms": float(parts[1])})
+                                return
+                    self._json_response({"ok": True, "ip": ip, "rtt_ms": None})
+                else:
+                    self._json_response({"ok": False, "ip": ip, "error": "Host unreachable"})
+            except Exception as e:
+                self._json_response({"ok": False, "ip": ip, "error": str(e)})
+
         elif self.path == "/config":
             self._json_response({
                 "chat": realm_db.get_settings("chat"),
@@ -156,6 +247,11 @@ class RealmHandler(SimpleHTTPRequestHandler):
                 self._json_response(data)
             except Exception as e:
                 self._json_response({"error": str(e)}, 500)
+
+        elif self.path == "/energy":
+            # Fetch energy data from HA
+            energy = _get_energy_data()
+            self._json_response(energy)
 
         elif self.path == "/debug":
             c = realm_db._conn()
@@ -269,6 +365,50 @@ class RealmHandler(SimpleHTTPRequestHandler):
             except Exception as e:
                 self._json_response({"error": str(e)}, 500)
 
+        elif self.path.startswith("/wled/") and self.path.endswith("/state"):
+            # WLED control: POST /wled/{node_id}/state
+            try:
+                parts = self.path.split("/")
+                node_id = parts[2]
+                req = json.loads(body)
+                result = wled_bridge.set_wled_state(
+                    node_id,
+                    on=req.get("on"),
+                    brightness=req.get("bri"),
+                    effect=req.get("fx")
+                )
+                self._json_response(result)
+            except Exception as e:
+                self._json_response({"error": str(e)}, 500)
+
+        elif self.path == "/wol":
+            # Wake-on-LAN: POST /wol with {mac, ip}
+            try:
+                req = json.loads(body)
+                mac = req.get("mac", "").replace(":", "").replace("-", "").lower()
+                if len(mac) != 12:
+                    self._json_response({"error": "Invalid MAC address"}, 400)
+                    return
+                # Build magic packet: 6 x 0xFF + 16 x MAC
+                mac_bytes = bytes.fromhex(mac)
+                magic = b'\xff' * 6 + mac_bytes * 16
+                # Send via UDP broadcast
+                import socket
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+                # Send to broadcast on port 9
+                sock.sendto(magic, ("255.255.255.255", 9))
+                # Also send to subnet broadcast if IP provided
+                if req.get("ip"):
+                    ip_parts = req["ip"].rsplit(".", 1)
+                    if len(ip_parts) == 2:
+                        subnet_broadcast = ip_parts[0] + ".255"
+                        sock.sendto(magic, (subnet_broadcast, 9))
+                sock.close()
+                self._json_response({"ok": True, "mac": mac, "sent": True})
+            except Exception as e:
+                self._json_response({"error": str(e)}, 500)
+
         elif self.path == "/connections":
             try:
                 req = json.loads(body)
@@ -376,4 +516,5 @@ if __name__ == "__main__":
     ap_scanner._event_callback = push_event
     ap_scanner.start_background_scanner()
     ha_bridge.start_ha_bridge()
+    wled_bridge.start_wled_bridge()
     HTTPServer(("", PORT), RealmHandler).serve_forever()
