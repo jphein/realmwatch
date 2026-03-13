@@ -29,6 +29,8 @@ import wled_bridge
 import node_roles
 import realm_db
 import event_generator
+import chat_bridge
+import asyncio
 
 engine = LitRPGEngine()
 PORT = 8777
@@ -274,6 +276,19 @@ class RealmHandler(SimpleHTTPRequestHandler):
                 "settings_ns": list(realm_db.get_settings().keys()),
             })
 
+        elif self.path == "/chat/sessions":
+            sessions = chat_bridge.list_sessions()
+            self._json_response({"sessions": sessions, "current": chat_bridge.DEFAULT_SESSION})
+
+        elif self.path.startswith("/chat/history"):
+            session = None
+            if "?" in self.path:
+                for param in self.path.split("?", 1)[1].split("&"):
+                    if param.startswith("session="):
+                        session = param.split("=", 1)[1]
+            history = chat_bridge.get_session_history(session)
+            self._json_response({"history": history, "session": session or chat_bridge.DEFAULT_SESSION})
+
         elif self.path == "/" or self.path == "":
             self.path = "/realm-map.html"
             super().do_GET()
@@ -284,7 +299,46 @@ class RealmHandler(SimpleHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(length)
 
-        if self.path == "/event":
+        if self.path == "/chat":
+            try:
+                req = json.loads(body)
+                message = req.get("message", "").strip()
+                if not message:
+                    self._json_response({"error": "Missing 'message'"}, 400)
+                    return
+                node_id = req.get("node")
+                session = req.get("session")
+                extra_context = req.get("context")
+                # Run async chat in event loop
+                result = asyncio.run(chat_bridge.chat(message, node_id, session, extra_context))
+                if result.get("error"):
+                    self._json_response(result, 500)
+                else:
+                    # Fire event for chat interaction
+                    push_event({
+                        "type": "oracle_query",
+                        "node": node_id or "scrying-pool",
+                        "text": message[:100] + ("..." if len(message) > 100 else ""),
+                    })
+                    push_event({
+                        "type": "oracle_response",
+                        "node": node_id or "scrying-pool",
+                        "text": result["response"][:200] + ("..." if len(result.get("response", "")) > 200 else ""),
+                    })
+                    self._json_response(result)
+            except (json.JSONDecodeError, KeyError) as e:
+                self._json_response({"error": str(e)}, 400)
+
+        elif self.path == "/chat/clear":
+            try:
+                req = json.loads(body)
+                session = req.get("session")
+                chat_bridge.clear_session(session)
+                self._json_response({"ok": True})
+            except (json.JSONDecodeError, KeyError) as e:
+                self._json_response({"error": str(e)}, 400)
+
+        elif self.path == "/event":
             try:
                 event = json.loads(body)
                 push_event(event)

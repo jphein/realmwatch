@@ -1489,6 +1489,13 @@ export function showSpeechBubble(nodeEl, evt, isAlert) {
   bubble.appendChild(closeBtn);
   if (evt.color) bubble.style.borderColor = evt.color;
 
+  // Click bubble to open chat with this node's context
+  bubble.addEventListener('click', (e) => {
+    if (e.target === closeBtn) return;
+    openNodeChat(evt.node, evt.text);
+  });
+  bubble.style.cursor = 'pointer';
+
   const world = document.getElementById('map-world');
   world.appendChild(bubble);
   _positionBubble(bubble);
@@ -4638,6 +4645,213 @@ if (_mapVp) {
     clearTimeout(_scrollSaveTimer);
     _scrollSaveTimer = setTimeout(saveSettings, 1000);
   }, { passive: true });
+}
+
+// ── Node Chat Dialog ──
+let _chatDialog = null;
+let _chatNodeId = null;
+let _chatHistory = [];
+
+function _createChatDialog() {
+  if (_chatDialog) return _chatDialog;
+
+  const dialog = document.createElement('div');
+  dialog.id = 'node-chat-dialog';
+  dialog.className = 'panel';
+  dialog.style.cssText = 'position:fixed;right:20px;top:100px;width:360px;max-height:500px;z-index:1000;display:none;--panel-accent:rgba(192,128,255,0.5);';
+  dialog.innerHTML = `
+    <div class="panel-header" style="cursor:move">
+      <span class="panel-hdr-icon">&#128172;</span>
+      <span class="panel-hdr-title" id="chat-dialog-title">Oracle Commune</span>
+      <button class="bubble-close" id="chat-close">&times;</button>
+    </div>
+    <div id="chat-messages" style="max-height:300px;overflow-y:auto;padding:8px;font-size:13px;"></div>
+    <div style="padding:8px;border-top:1px solid rgba(255,255,255,0.1);">
+      <textarea id="chat-input" placeholder="Ask the oracle..." style="width:100%;height:50px;resize:none;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);border-radius:4px;color:#e0e0e0;padding:6px;font-size:13px;"></textarea>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <button id="chat-send" style="flex:1;padding:6px;background:rgba(160,128,255,0.3);border:1px solid rgba(160,128,255,0.5);border-radius:4px;color:#e0e0e0;cursor:pointer;">Send</button>
+        <button id="chat-clear" style="padding:6px 12px;background:rgba(100,100,100,0.3);border:1px solid rgba(100,100,100,0.5);border-radius:4px;color:#a0a0a0;cursor:pointer;">Clear</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(dialog);
+
+  // Close button
+  dialog.querySelector('#chat-close').addEventListener('click', () => {
+    dialog.style.display = 'none';
+  });
+
+  // Send button
+  dialog.querySelector('#chat-send').addEventListener('click', sendChatMessage);
+
+  // Enter to send (shift+enter for newline)
+  dialog.querySelector('#chat-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendChatMessage();
+    }
+  });
+
+  // Clear button
+  dialog.querySelector('#chat-clear').addEventListener('click', async () => {
+    try {
+      await fetch('/chat/clear', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session: _chatNodeId ? `node-${_chatNodeId}` : null })
+      });
+      _chatHistory = [];
+      dialog.querySelector('#chat-messages').innerHTML = '<div style="color:#808080;font-style:italic;">Session cleared.</div>';
+    } catch (e) { /* silent */ }
+  });
+
+  // Make draggable
+  let dragging = false, dx = 0, dy = 0;
+  const header = dialog.querySelector('.panel-header');
+  header.addEventListener('mousedown', (e) => {
+    dragging = true;
+    dx = e.clientX - dialog.offsetLeft;
+    dy = e.clientY - dialog.offsetTop;
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    dialog.style.left = (e.clientX - dx) + 'px';
+    dialog.style.top = (e.clientY - dy) + 'px';
+    dialog.style.right = 'auto';
+  });
+  window.addEventListener('mouseup', () => { dragging = false; });
+
+  _chatDialog = dialog;
+  return dialog;
+}
+
+function openNodeChat(nodeId, contextText) {
+  const dialog = _createChatDialog();
+  _chatNodeId = nodeId;
+
+  // Update title
+  const node = document.querySelector(`[data-tip="${nodeId}"]`);
+  const nodeName = node?.querySelector('.node-label')?.textContent || nodeId;
+  dialog.querySelector('#chat-dialog-title').textContent = `Commune: ${nodeName}`;
+
+  // Load history for this node's session
+  _loadChatHistory(nodeId);
+
+  // Pre-fill context if provided
+  if (contextText) {
+    const input = dialog.querySelector('#chat-input');
+    input.placeholder = `Ask about: "${contextText.slice(0, 50)}..."`;
+  }
+
+  dialog.style.display = 'block';
+  dialog.querySelector('#chat-input').focus();
+}
+
+async function _loadChatHistory(nodeId) {
+  const dialog = _chatDialog;
+  const messagesEl = dialog.querySelector('#chat-messages');
+  messagesEl.innerHTML = '<div style="color:#808080;">Loading...</div>';
+
+  try {
+    const session = nodeId ? `node-${nodeId}` : null;
+    const r = await fetch(`/chat/history${session ? `?session=${session}` : ''}`);
+    const data = await r.json();
+    _chatHistory = data.history || [];
+    _renderChatHistory();
+  } catch (e) {
+    messagesEl.innerHTML = '<div style="color:#ff8080;">Failed to load history</div>';
+  }
+}
+
+function _renderChatHistory() {
+  const messagesEl = _chatDialog.querySelector('#chat-messages');
+  if (_chatHistory.length === 0) {
+    messagesEl.innerHTML = '<div style="color:#808080;font-style:italic;">No messages yet. Click a bubble or ask a question to begin.</div>';
+    return;
+  }
+  messagesEl.innerHTML = _chatHistory.map(m => {
+    const isUser = m.role === 'user';
+    const bg = isUser ? 'rgba(100,140,200,0.2)' : 'rgba(160,128,255,0.2)';
+    const align = isUser ? 'right' : 'left';
+    const label = isUser ? 'You' : 'Oracle';
+    return `<div style="text-align:${align};margin:6px 0;">
+      <div style="display:inline-block;max-width:85%;padding:6px 10px;background:${bg};border-radius:8px;text-align:left;">
+        <div style="font-size:10px;color:#a0a0a0;margin-bottom:2px;">${label}</div>
+        <div>${m.content}</div>
+      </div>
+    </div>`;
+  }).join('');
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+async function sendChatMessage() {
+  const input = _chatDialog.querySelector('#chat-input');
+  const message = input.value.trim();
+  if (!message) return;
+
+  input.value = '';
+  input.disabled = true;
+  _chatDialog.querySelector('#chat-send').disabled = true;
+
+  // Add user message to UI immediately
+  _chatHistory.push({ role: 'user', content: message });
+  _renderChatHistory();
+
+  // Add loading indicator
+  const messagesEl = _chatDialog.querySelector('#chat-messages');
+  const loadingEl = document.createElement('div');
+  loadingEl.style.cssText = 'text-align:left;margin:6px 0;color:#a0a0a0;font-style:italic;';
+  loadingEl.textContent = 'Oracle is contemplating...';
+  messagesEl.appendChild(loadingEl);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+
+  try {
+    const session = _chatNodeId ? `node-${_chatNodeId}` : null;
+    const r = await fetch('/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message,
+        node: _chatNodeId,
+        session
+      })
+    });
+    const data = await r.json();
+
+    loadingEl.remove();
+
+    if (data.error) {
+      _chatHistory.push({ role: 'assistant', content: `Error: ${data.error}` });
+    } else {
+      _chatHistory.push({ role: 'assistant', content: data.response });
+    }
+    _renderChatHistory();
+  } catch (e) {
+    loadingEl.remove();
+    _chatHistory.push({ role: 'assistant', content: `Error: ${e.message}` });
+    _renderChatHistory();
+  } finally {
+    input.disabled = false;
+    _chatDialog.querySelector('#chat-send').disabled = false;
+    input.focus();
+  }
+}
+
+// Also wire up magical search to open chat
+const _magicalSearchInput = document.getElementById('magical-search');
+if (_magicalSearchInput) {
+  _magicalSearchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.ctrlKey) {
+      // Ctrl+Enter: send search text to oracle
+      const query = _magicalSearchInput.value.trim();
+      if (query) {
+        openNodeChat(null, null);
+        _chatDialog.querySelector('#chat-input').value = query;
+        sendChatMessage();
+        _magicalSearchInput.value = '';
+      }
+    }
+  });
 }
 
 // ── Arcane Config (MCP server settings) ──
