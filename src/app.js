@@ -1074,12 +1074,24 @@ export function renderTopoLayer(collectd) {
 let lastEventTs = 0;
 const EVENTS_POLL_MS = 1000;
 
+let _isFirstPoll = true;
+
 async function pollEvents() {
   try {
     const r = await fetch(`/events?since=${lastEventTs}`);
     if (!r.ok) throw new Error(r.status);
     const events = await r.json();
-    events.forEach(renderEvent);
+
+    if (_isFirstPoll && events.length > 0) {
+      // On first poll, restore bubbles from recent events (process newest first per node)
+      // Sort by timestamp descending so we only restore the most recent per node
+      const sorted = [...events].sort((a, b) => (b.ts || 0) - (a.ts || 0));
+      sorted.forEach(evt => renderEvent(evt, true));
+      _isFirstPoll = false;
+    } else {
+      // Normal polling: render live events
+      events.forEach(evt => renderEvent(evt, false));
+    }
   } catch (e) { /* silent */ }
   setTimeout(pollEvents, EVENTS_POLL_MS);
 }
@@ -1089,36 +1101,55 @@ pollEvents();
 setInterval(refreshTopology, 90000);
 
 const _pageLoadTs = Date.now() / 1000;
+const BUBBLE_RESTORE_AGE = 600;  // Restore bubbles for events up to 10 min old
+const _restoredBubbleNodes = new Set();  // Track which nodes got a restored bubble
 
-function renderEvent(evt) {
+function renderEvent(evt, isRestore = false) {
   lastEventTs = Math.max(lastEventTs, evt.ts || 0);
   const nodeEl = document.querySelector(`[data-tip="${evt.node}"]`);
 
   // Always log to quest log
   addLogEntry(evt, nodeEl);
 
-  // Skip visual effects for stale server events (older than 30s before page load)
+  // For restored events, only show bubble (no highlight flash)
+  // For live events, show both bubble and highlight
   const evtAge = _pageLoadTs - (evt.ts || 0);
-  if (evtAge > 30 && !evt._local) { return; }
+  const isStale = evtAge > 30 && !evt._local;
 
   if (!nodeEl) return;
 
+  // Determine if we should show a bubble
+  let showBubble = false;
+  if (isRestore) {
+    // On restore: show bubble only for recent events, one per node (most recent wins)
+    if (evtAge < BUBBLE_RESTORE_AGE && !_restoredBubbleNodes.has(evt.node)) {
+      showBubble = true;
+      _restoredBubbleNodes.add(evt.node);
+    }
+  } else if (!isStale) {
+    // Live event: always show bubble
+    showBubble = true;
+  }
+
+  if (!showBubble) return;
+
   if (evt.type === 'speech') {
     showSpeechBubble(nodeEl, evt);
+    if (!isRestore) showHighlight(nodeEl, { color: evt.color || 'rgba(160,200,255,0.4)' });
   } else if (evt.type === 'highlight') {
-    showHighlight(nodeEl, evt);
+    if (!isRestore) showHighlight(nodeEl, evt);
   } else if (evt.type === 'alert') {
     showSpeechBubble(nodeEl, evt, true);
-    showHighlight(nodeEl, { color: 'rgba(255,80,60,0.6)' });
+    if (!isRestore) showHighlight(nodeEl, { color: 'rgba(255,80,60,0.6)' });
   } else if (evt.type === 'quest') {
     showSpeechBubble(nodeEl, evt);
-    showHighlight(nodeEl, { color: 'rgba(192,144,255,0.5)' });
+    if (!isRestore) showHighlight(nodeEl, { color: 'rgba(192,144,255,0.5)' });
   } else if (evt.type === 'oracle_query') {
     showSpeechBubble(nodeEl, { ...evt, text: '\u2728 ' + evt.text, color: '#c080ff' });
-    showHighlight(nodeEl, { color: 'rgba(192,128,255,0.6)' });
+    if (!isRestore) showHighlight(nodeEl, { color: 'rgba(192,128,255,0.6)' });
   } else if (evt.type === 'oracle_response') {
     showSpeechBubble(nodeEl, { ...evt, color: evt.color || '#e0b0ff' });
-    showHighlight(nodeEl, { color: 'rgba(192,128,255,0.4)' });
+    if (!isRestore) showHighlight(nodeEl, { color: 'rgba(192,128,255,0.4)' });
   }
 }
 

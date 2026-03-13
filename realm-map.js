@@ -1464,12 +1464,19 @@
   }), "initTopoControls"))();
   var lastEventTs = 0;
   var EVENTS_POLL_MS = 1e3;
+  var _isFirstPoll = true;
   async function pollEvents() {
     try {
       const r = await fetch(`/events?since=${lastEventTs}`);
       if (!r.ok) throw new Error(r.status);
       const events = await r.json();
-      events.forEach(renderEvent);
+      if (_isFirstPoll && events.length > 0) {
+        const sorted = [...events].sort((a, b) => (b.ts || 0) - (a.ts || 0));
+        sorted.forEach((evt) => renderEvent(evt, true));
+        _isFirstPoll = false;
+      } else {
+        events.forEach((evt) => renderEvent(evt, false));
+      }
     } catch (e) {
     }
     setTimeout(pollEvents, EVENTS_POLL_MS);
@@ -1478,31 +1485,42 @@
   pollEvents();
   setInterval(refreshTopology, 9e4);
   var _pageLoadTs = Date.now() / 1e3;
-  function renderEvent(evt) {
+  var BUBBLE_RESTORE_AGE = 600;
+  var _restoredBubbleNodes = /* @__PURE__ */ new Set();
+  function renderEvent(evt, isRestore = false) {
     lastEventTs = Math.max(lastEventTs, evt.ts || 0);
     const nodeEl = document.querySelector(`[data-tip="${evt.node}"]`);
     addLogEntry(evt, nodeEl);
     const evtAge = _pageLoadTs - (evt.ts || 0);
-    if (evtAge > 30 && !evt._local) {
-      return;
-    }
+    const isStale = evtAge > 30 && !evt._local;
     if (!nodeEl) return;
+    let showBubble = false;
+    if (isRestore) {
+      if (evtAge < BUBBLE_RESTORE_AGE && !_restoredBubbleNodes.has(evt.node)) {
+        showBubble = true;
+        _restoredBubbleNodes.add(evt.node);
+      }
+    } else if (!isStale) {
+      showBubble = true;
+    }
+    if (!showBubble) return;
     if (evt.type === "speech") {
       showSpeechBubble(nodeEl, evt);
+      if (!isRestore) showHighlight(nodeEl, { color: evt.color || "rgba(160,200,255,0.4)" });
     } else if (evt.type === "highlight") {
-      showHighlight(nodeEl, evt);
+      if (!isRestore) showHighlight(nodeEl, evt);
     } else if (evt.type === "alert") {
       showSpeechBubble(nodeEl, evt, true);
-      showHighlight(nodeEl, { color: "rgba(255,80,60,0.6)" });
+      if (!isRestore) showHighlight(nodeEl, { color: "rgba(255,80,60,0.6)" });
     } else if (evt.type === "quest") {
       showSpeechBubble(nodeEl, evt);
-      showHighlight(nodeEl, { color: "rgba(192,144,255,0.5)" });
+      if (!isRestore) showHighlight(nodeEl, { color: "rgba(192,144,255,0.5)" });
     } else if (evt.type === "oracle_query") {
       showSpeechBubble(nodeEl, { ...evt, text: "\u2728 " + evt.text, color: "#c080ff" });
-      showHighlight(nodeEl, { color: "rgba(192,128,255,0.6)" });
+      if (!isRestore) showHighlight(nodeEl, { color: "rgba(192,128,255,0.6)" });
     } else if (evt.type === "oracle_response") {
       showSpeechBubble(nodeEl, { ...evt, color: evt.color || "#e0b0ff" });
-      showHighlight(nodeEl, { color: "rgba(192,128,255,0.4)" });
+      if (!isRestore) showHighlight(nodeEl, { color: "rgba(192,128,255,0.4)" });
     }
   }
   __name(renderEvent, "renderEvent");

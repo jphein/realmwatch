@@ -28,6 +28,7 @@ import ha_bridge
 import wled_bridge
 import node_roles
 import realm_db
+import event_generator
 
 engine = LitRPGEngine()
 PORT = 8777
@@ -519,4 +520,5 @@ if __name__ == "__main__":
     ap_scanner.start_background_scanner()
     ha_bridge.start_ha_bridge()
     wled_bridge.start_wled_bridge()
+    event_generator.start_event_generator(push_event)
     HTTPServer(("", PORT), RealmHandler).serve_forever()

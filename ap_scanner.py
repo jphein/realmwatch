@@ -33,6 +33,10 @@ _last_scan = realm_db.get_wifi_scan() or {"ts": 0, "ap_clients": {}, "leases": 0
 _lock = threading.Lock()
 _event_callback = None  # set by map_server to push_event
 
+# Track node online/offline state across scans
+_node_online_state = {}  # node_id → {"online": bool, "last_seen": ts, "ap": ap_id}
+OFFLINE_THRESHOLD = 300  # 5 minutes without seeing = offline
+
 # Regex for parsing iwinfo assoclist output
 _MAC_RE = re.compile(r'^([0-9A-Fa-f:]{17})\s+(-?\d+)\s+dBm\s*/\s*(-?\d+)\s+dBm\s+\(SNR\s+(\d+)\)', re.MULTILINE)
 _RX_RE = re.compile(r'RX:\s+([\d.]+)\s+MBit/s.*?(\d+)\s+Pkts')
@@ -97,6 +101,17 @@ def _get_ap_clients_with_signal(ap_ip):
             info["tx_pkts"] = int(tx_m.group(2))
         clients[mac] = info
     return clients
+
+
+def _fire_event(event_type, node_id, text, color=None, **extra):
+    """Helper to fire an event via callback."""
+    if not _event_callback:
+        return
+    evt = {"type": event_type, "node": node_id, "text": text}
+    if color:
+        evt["color"] = color
+    evt.update(extra)
+    _event_callback(evt)
 
 
 def _load_topo():
@@ -237,6 +252,14 @@ def scan_and_update():
             if current_ip in node.get("sublabel", ""):
                 node["sublabel"] = node["sublabel"].replace(current_ip, lease_ip)
             ip_updates.append({"node": node_id, "old_ip": current_ip, "new_ip": lease_ip})
+            # Fire event for IP change
+            node_label = node.get("label", node_id)
+            _fire_event(
+                "speech", node_id,
+                f"{node_label} received new address: {lease_ip}",
+                color="#c0c0ff",
+                old_ip=current_ip, new_ip=lease_ip
+            )
 
     # --- Find current AP connections per node ---
     node_ap_conn = {}  # node_id → (connection_index, current_ap_node_id)
@@ -266,16 +289,21 @@ def scan_and_update():
                     conn["from"] = ap_id
                 changes.append({"node": node_id, "from_ap": old_ap, "to_ap": ap_id})
 
-                # Fire speech event on the receiving AP
-                if _event_callback:
-                    node_label = node_by_id.get(node_id, {}).get("label", node_id)
-                    ap_label = node_by_id.get(ap_id, {}).get("label", ap_id)
-                    _event_callback({
-                        "type": "speech",
-                        "node": ap_id,
-                        "text": f"{node_label} has arrived at {ap_label}.",
-                        "color": "#a0d0ff",
-                    })
+                # Fire speech event on the receiving AP with signal info
+                node_label = node_by_id.get(node_id, {}).get("label", node_id)
+                ap_label = node_by_id.get(ap_id, {}).get("label", ap_id)
+                old_ap_label = node_by_id.get(old_ap, {}).get("label", old_ap)
+                # Get signal strength if available
+                mac = node_by_id.get(node_id, {}).get("mac", "").lower()
+                sig_info = ap_clients.get(ap_id, {}).get(mac, {})
+                signal = sig_info.get("signal")
+                signal_str = f" (signal: {signal} dBm)" if signal else ""
+                _fire_event(
+                    "speech", ap_id,
+                    f"{node_label} roamed from {old_ap_label} to {ap_label}.{signal_str}",
+                    color="#a0d0ff",
+                    from_ap=old_ap, to_ap=ap_id, signal=signal
+                )
 
     # --- Track unknown MACs (on WiFi but not in topology) ---
     unknown = []
@@ -336,6 +364,23 @@ def scan_and_update():
     if auto_added:
         print(f"[AP Scanner] Added {auto_added} new auto-nodes")
 
+    # --- Fire events for newly discovered nodes ---
+    for i, u in enumerate(unknown):
+        mac = u["mac"]
+        node_id = f"_unknown_{mac.replace(':', '')}"
+        if node_id not in existing_auto:
+            # This is a brand new device!
+            ap_label = node_by_id.get(u["ap"], {}).get("label", u["ap"])
+            hostname = u.get("hostname") or "Unknown Traveler"
+            if hostname == "*":
+                hostname = "Unknown Traveler"
+            _fire_event(
+                "alert", u["ap"],
+                f"A new presence emerges: {hostname} ({u.get('ip', 'no IP')})",
+                color="#ffcc00",
+                mac=mac, hostname=hostname, ip=u.get("ip")
+            )
+
     # --- Enrich existing auto-nodes that lack role/icon data ---
     enriched_count = 0
     for n in topo["nodes"]:
@@ -361,13 +406,65 @@ def scan_and_update():
 
     # --- Build per-node WiFi signal data ---
     wifi = {}  # node_id → {ap, signal, snr, tx_rate, rx_rate}
+    now = time.time()
+    nodes_seen_this_scan = set()
+
     for mac, ap_id in mac_to_ap.items():
         node_id = mac_to_node.get(mac)
         if not node_id:
             continue
+        nodes_seen_this_scan.add(node_id)
         info = ap_clients.get(ap_id, {}).get(mac, {})
         if info:
             wifi[node_id] = {"ap": ap_id, **info}
+
+    # --- Track online/offline state changes ---
+    online_events = []
+    offline_events = []
+
+    for node_id in nodes_seen_this_scan:
+        prev = _node_online_state.get(node_id)
+        node = node_by_id.get(node_id, {})
+        node_label = node.get("label", node_id)
+        ap_id = mac_to_ap.get(node.get("mac", "").lower())
+        ap_label = node_by_id.get(ap_id, {}).get("label", ap_id) if ap_id else "the realm"
+
+        if prev is None or not prev.get("online"):
+            # Node just came online (first seen or was offline)
+            if prev is not None:
+                # Was offline, now back
+                offline_duration = now - prev.get("last_seen", now)
+                if offline_duration > 60:  # Only announce if was offline > 1 min
+                    mins = int(offline_duration / 60)
+                    _fire_event(
+                        "speech", ap_id or node_id,
+                        f"{node_label} has returned after {mins}m away.",
+                        color="#80ff80"
+                    )
+                    online_events.append(node_id)
+
+        _node_online_state[node_id] = {"online": True, "last_seen": now, "ap": ap_id}
+
+    # Check for nodes that went offline
+    for node_id, state in list(_node_online_state.items()):
+        if node_id in nodes_seen_this_scan:
+            continue
+        if not state.get("online"):
+            continue
+        # Node was online but not seen this scan
+        time_since = now - state.get("last_seen", now)
+        if time_since > OFFLINE_THRESHOLD:
+            node = node_by_id.get(node_id, {})
+            node_label = node.get("label", node_id)
+            last_ap = state.get("ap")
+            ap_label = node_by_id.get(last_ap, {}).get("label", "unknown") if last_ap else "the realm"
+            _fire_event(
+                "speech", last_ap or "gatekeeper",
+                f"{node_label} has departed from {ap_label}.",
+                color="#ffa080"
+            )
+            _node_online_state[node_id]["online"] = False
+            offline_events.append(node_id)
 
     if changes or ip_updates or auto_added or enriched_count:
         _save_topo(topo)
