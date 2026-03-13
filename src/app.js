@@ -3259,10 +3259,10 @@ _spellTabs.forEach(tab => {
 
 // ── Spellbook Presets ──
 const _PRESETS = {
-  minimal:     { 'fx-ambient': 0.05, 'fx-nodes': 0.1, 'fx-leylines': 0.05, 'fx-glow': 0.3, 'fx-pulse': 0.5, 'fx-leyglow': 0.2 },
-  cinematic:   { 'fx-ambient': 0.6,  'fx-nodes': 0.8, 'fx-leylines': 0.7,  'fx-glow': 2.0, 'fx-pulse': 0.8, 'fx-leyglow': 1.5 },
-  performance: { 'fx-ambient': 0,    'fx-nodes': 0.2, 'fx-leylines': 0.1,  'fx-glow': 0.5, 'fx-pulse': 1.0, 'fx-leyglow': 0.5 },
-  full:        { 'fx-ambient': 0.5,  'fx-nodes': 0.7, 'fx-leylines': 0.6,  'fx-glow': 1.5, 'fx-pulse': 1.2, 'fx-leyglow': 1.2 },
+  minimal:     { 'fx-ambient': 0.05, 'fx-nodes': 0.1, 'fx-leylines': 0.05, 'fx-glow': 0.3, 'fx-pulse': 0.5, 'fx-leyglow': 0.2, 'traffic-scale': 0.5 },
+  cinematic:   { 'fx-ambient': 0.6,  'fx-nodes': 0.8, 'fx-leylines': 0.7,  'fx-glow': 2.0, 'fx-pulse': 0.8, 'fx-leyglow': 1.5, 'traffic-scale': 1.5 },
+  performance: { 'fx-ambient': 0,    'fx-nodes': 0.2, 'fx-leylines': 0.1,  'fx-glow': 0.5, 'fx-pulse': 1.0, 'fx-leyglow': 0.5, 'traffic-scale': 0.5 },
+  full:        { 'fx-ambient': 0.5,  'fx-nodes': 0.7, 'fx-leylines': 0.6,  'fx-glow': 1.5, 'fx-pulse': 1.2, 'fx-leyglow': 1.2, 'traffic-scale': 1.2 },
 };
 document.querySelectorAll('.preset-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -3282,10 +3282,10 @@ document.querySelectorAll('.preset-btn').forEach(btn => {
 
 // ── Section Reset Buttons ──
 const _SECTION_DEFAULTS = {
-  effects:       { 'fx-ambient': 0.3, 'fx-nodes': 0.5, 'fx-leylines': 0.4, 'fx-glow': 1.0, 'fx-pulse': 1.0, 'fx-leyglow': 1.0 },
+  effects:       { 'fx-ambient': 0.3, 'fx-nodes': 0.5, 'fx-glow': 1.0, 'fx-pulse': 1.0 },
   biomes:        { 'biome-land': 1.0, 'biome-glow': 1.0, 'biome-roads': 0.5, 'biome-peaks': 0.5, 'biome-grid': 0.03 },
   scale:         { 'master-scale': 1.0, 'node-scale': 1.0, 'text-scale': 1.0, 'bubble-scale': 1.0 },
-  traffic:       { 'traffic-scale': 1.0, 'update-speed': 5 },
+  'ley-lines':   { 'traffic-scale': 1.0, 'fx-leylines': 0.4, 'fx-leyglow': 1.0 },
   'arcane-grid': { 'grid-opacity': 0.4, 'grid-scale': 1.0, 'grid-hue': 0 },
   topographic:   { 'topo-opacity': 0.6, 'topo-spread': 120, 'topo-contour': 12, 'topo-rw': 0.4, 'topo-rd': 0.6 },
   layout:        { 'layout-attract': 4.0, 'layout-repulse': 80, 'layout-edge': 80, 'layout-spacing': 8, 'layout-tilt': 0 },

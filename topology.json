@@ -4598,7 +4598,7 @@
     },
     {
       "from": "users-air",
-      "to": "onhub-family",
+      "to": "onhub-closet",
       "type": "active",
       "vlan": 6
     },
