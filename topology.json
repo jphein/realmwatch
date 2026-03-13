@@ -839,8 +839,8 @@
       "y": 420,
       "icon": "&#127752;",
       "label": "The AQI Crystal",
-      "sublabel": "WLED AQI \u2022 10.0.6.152",
-      "ip": "10.0.6.152",
+      "sublabel": "WLED AQI \u2022 10.0.6.123",
+      "ip": "10.0.6.123",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a0a1a,#10050f)",
         "borderColor": "rgba(200,100,255,0.4)",
@@ -1801,9 +1801,9 @@
       "y": 240,
       "icon": "&#128241;",
       "label": "The Messenger",
-      "sublabel": "Flip3 \u2022 10.0.6.122",
-      "ip": "10.0.6.122",
-      "mac": "6a:47:05:86:5f:e3",
+      "sublabel": "Flip3 \u2022 10.0.6.133",
+      "ip": "10.0.6.133",
+      "mac": "3e:75:92:ac:0b:69",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1520,#0f0a15)",
         "borderColor": "rgba(120,160,200,0.4)",
@@ -1962,7 +1962,7 @@
         "height": "38px",
         "fontSize": "16px"
       },
-      "mac": "ee:0e:15:13:15:58",
+      "mac": "da:22:5c:dc:bc:80",
       "tip": {
         "title": "Pixel 4",
         "stats": [
@@ -1998,7 +1998,7 @@
         "height": "40px",
         "fontSize": "18px"
       },
-      "mac": "0a:bb:37:e9:b9:be",
+      "mac": "42:20:07:ca:66:6d",
       "tip": {
         "title": "iPhone",
         "stats": [
@@ -2059,7 +2059,7 @@
           ]
         ]
       },
-      "mac": "aa:36:98:2b:b3:e3",
+      "mac": "0e:0f:98:6d:ea:5f",
       "_role": "tablet"
     },
     {
@@ -2892,96 +2892,58 @@
       "_role": "server"
     },
     {
-      "id": "_unknown_f24a37407ca1",
-      "type": "device",
-      "_auto": true,
-      "x": 2300,
-      "y": 750,
-      "icon": "&#128123;",
-      "label": "Galaxy-Tab-A7-Lite",
-      "sublabel": "10.0.6.157 \u2022 f2:4a:37...",
-      "ip": "10.0.6.157",
-      "mac": "f2:4a:37:40:7c:a1",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      }
-    },
-    {
-      "id": "_unknown_d8eb466182d1",
-      "type": "device",
-      "_auto": true,
-      "x": 2440,
-      "y": 750,
-      "icon": "&#128123;",
-      "label": "Nest-Thermostat-82D1",
-      "sublabel": "10.0.10.119 \u2022 d8:eb:46...",
-      "ip": "10.0.10.119",
-      "mac": "d8:eb:46:61:82:d1",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      }
-    },
-    {
-      "id": "_unknown_fc584a862e9e",
-      "type": "device",
-      "_auto": true,
-      "x": 2510,
-      "y": 750,
-      "icon": "&#128123;",
-      "label": "WSD-bulb-m0",
-      "sublabel": "10.0.10.129 \u2022 fc:58:4a...",
-      "ip": "10.0.10.129",
-      "mac": "fc:58:4a:86:2e:9e",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      }
-    },
-    {
-      "id": "_unknown_e868e7d50978",
-      "type": "device",
-      "_auto": true,
-      "x": 2300,
-      "y": 800,
-      "icon": "&#128123;",
-      "label": "ESP_D50978",
-      "sublabel": "10.0.10.101 \u2022 e8:68:e7...",
-      "ip": "10.0.10.101",
-      "mac": "e8:68:e7:d5:09:78",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      }
-    },
-    {
-      "id": "_unknown_ca2c4fac00a1",
+      "id": "_unknown_7cf666a8c8e9",
       "type": "device",
       "_auto": true,
       "x": 2370,
-      "y": 800,
+      "y": 1300,
+      "icon": "&#128268;",
+      "label": "wlan0",
+      "sublabel": "10.0.10.113 \u2022 Tuya",
+      "ip": "10.0.10.113",
+      "mac": "7c:f6:66:a8:c8:e9",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "Tuya"
+    },
+    {
+      "id": "_unknown_6032b17282e1",
+      "type": "device",
+      "_auto": true,
+      "x": 2370,
+      "y": 1450,
+      "icon": "&#128268;",
+      "label": "HS103",
+      "sublabel": "10.0.10.173 \u2022 TP-Link",
+      "ip": "10.0.10.173",
+      "mac": "60:32:b1:72:82:e1",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "TP-Link"
+    },
+    {
+      "id": "_unknown_14c14e61276c",
+      "type": "device",
+      "_auto": true,
+      "x": 2440,
+      "y": 1100,
       "icon": "&#128123;",
-      "label": "HiSmart-01-ca2c4fac0",
-      "sublabel": "10.0.10.139 \u2022 ca:2c:4f...",
-      "ip": "10.0.10.139",
-      "mac": "ca:2c:4f:ac:00:a1",
+      "label": "Nest-Thermostat-276C",
+      "sublabel": "10.0.10.123 \u2022 14:c1:4e...",
+      "ip": "10.0.10.123",
+      "mac": "14:c1:4e:61:27:6c",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a0a20,#0a0510)",
         "borderColor": "rgba(160,100,200,0.3)",
@@ -2989,7 +2951,29 @@
         "height": "32px",
         "fontSize": "14px",
         "opacity": "0.7"
-      }
+      },
+      "_role": "thermostat"
+    },
+    {
+      "id": "_unknown_14c14e6d333f",
+      "type": "device",
+      "_auto": true,
+      "x": 2440,
+      "y": 1150,
+      "icon": "&#128123;",
+      "label": "Nest-Thermostat-333F",
+      "sublabel": "10.0.10.80 \u2022 14:c1:4e...",
+      "ip": "10.0.10.80",
+      "mac": "14:c1:4e:6d:33:3f",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      },
+      "_role": "thermostat"
     },
     {
       "id": "_unknown_ac678428b56d",
@@ -3009,13 +2993,98 @@
         "height": "32px",
         "fontSize": "14px",
         "opacity": "0.7"
-      }
+      },
+      "_role": "thermostat"
+    },
+    {
+      "id": "_unknown_d8eb466182d1",
+      "type": "device",
+      "_auto": true,
+      "x": 2440,
+      "y": 750,
+      "icon": "&#128123;",
+      "label": "Nest-Thermostat-82D1",
+      "sublabel": "10.0.10.119 \u2022 d8:eb:46...",
+      "ip": "10.0.10.119",
+      "mac": "d8:eb:46:61:82:d1",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      },
+      "_role": "thermostat"
+    },
+    {
+      "id": "_unknown_f0f5bdfd3504",
+      "type": "device",
+      "_auto": true,
+      "x": 2370,
+      "y": 1250,
+      "icon": "&#128123;",
+      "label": "pumphouse-radar",
+      "sublabel": "10.0.10.128 \u2022 f0:f5:bd...",
+      "ip": "10.0.10.128",
+      "mac": "f0:f5:bd:fd:35:04",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      },
+      "_role": "sensor"
+    },
+    {
+      "id": "_unknown_b4e84212e7ac",
+      "type": "device",
+      "_auto": true,
+      "x": 2370,
+      "y": 1350,
+      "icon": "&#128123;",
+      "label": "bl606a0",
+      "sublabel": "10.0.10.96 \u2022 b4:e8:42...",
+      "ip": "10.0.10.96",
+      "mac": "b4:e8:42:12:e7:ac",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      },
+      "_role": "sensor"
+    },
+    {
+      "id": "_unknown_f24a37407ca1",
+      "type": "device",
+      "_auto": true,
+      "x": 2300,
+      "y": 750,
+      "icon": "&#128123;",
+      "label": "Galaxy-Tab-A7-Lite",
+      "sublabel": "10.0.6.157 \u2022 f2:4a:37...",
+      "ip": "10.0.6.157",
+      "mac": "f2:4a:37:40:7c:a1",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      },
+      "_role": "tablet"
     },
     {
       "id": "_unknown_e848b8aa3933",
       "type": "device",
       "_auto": true,
-      "x": 2370,
+      "x": 2510,
       "y": 950,
       "icon": "&#128123;",
       "label": "HS200",
@@ -3029,19 +3098,20 @@
         "height": "32px",
         "fontSize": "14px",
         "opacity": "0.7"
-      }
+      },
+      "_role": "plug"
     },
     {
-      "id": "_unknown_6c5ab0ee29bf",
+      "id": "_unknown_b0a7b9933d17",
       "type": "device",
       "_auto": true,
-      "x": 2440,
-      "y": 950,
+      "x": 2370,
+      "y": 1050,
       "icon": "&#128123;",
-      "label": "HS103",
-      "sublabel": "10.0.10.90 \u2022 6c:5a:b0...",
-      "ip": "10.0.10.90",
-      "mac": "6c:5a:b0:ee:29:bf",
+      "label": "KL420",
+      "sublabel": "10.0.10.134 \u2022 b0:a7:b9...",
+      "ip": "10.0.10.134",
+      "mac": "b0:a7:b9:93:3d:17",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a0a20,#0a0510)",
         "borderColor": "rgba(160,100,200,0.3)",
@@ -3049,14 +3119,57 @@
         "height": "32px",
         "fontSize": "14px",
         "opacity": "0.7"
-      }
+      },
+      "_role": "plug"
+    },
+    {
+      "id": "_unknown_68c63ad2b03d",
+      "type": "device",
+      "_auto": true,
+      "x": 2370,
+      "y": 1100,
+      "icon": "&#128123;",
+      "label": "SwitchBot-HubMini-D2",
+      "sublabel": "10.0.10.143 \u2022 68:c6:3a...",
+      "ip": "10.0.10.143",
+      "mac": "68:c6:3a:d2:b0:3d",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      },
+      "_role": "plug"
+    },
+    {
+      "id": "_unknown_ca2c4fac00a1",
+      "type": "device",
+      "_auto": true,
+      "x": 2370,
+      "y": 800,
+      "icon": "&#128123;",
+      "label": "HiSmart-01-ca2c4fac0",
+      "sublabel": "10.0.10.139 \u2022 ca:2c:4f...",
+      "ip": "10.0.10.139",
+      "mac": "ca:2c:4f:ac:00:a1",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      },
+      "_role": "plug"
     },
     {
       "id": "_unknown_ca2c4fad7ef5",
       "type": "device",
       "_auto": true,
-      "x": 2510,
-      "y": 950,
+      "x": 2370,
+      "y": 1000,
       "icon": "&#128123;",
       "label": "HiSmart-01-ca2c4fad7",
       "sublabel": "10.0.10.138 \u2022 ca:2c:4f...",
@@ -3069,13 +3182,98 @@
         "height": "32px",
         "fontSize": "14px",
         "opacity": "0.7"
-      }
+      },
+      "_role": "plug"
+    },
+    {
+      "id": "_unknown_fc584a862e9e",
+      "type": "device",
+      "_auto": true,
+      "x": 2510,
+      "y": 750,
+      "icon": "&#128123;",
+      "label": "WSD-bulb-m0",
+      "sublabel": "10.0.10.129 \u2022 fc:58:4a...",
+      "ip": "10.0.10.129",
+      "mac": "fc:58:4a:86:2e:9e",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      },
+      "_role": "plug"
+    },
+    {
+      "id": "_unknown_c006c3f658f5",
+      "type": "device",
+      "_auto": true,
+      "x": 2300,
+      "y": 1050,
+      "icon": "&#128123;",
+      "label": "KL125",
+      "sublabel": "10.0.10.187 \u2022 c0:06:c3...",
+      "ip": "10.0.10.187",
+      "mac": "c0:06:c3:f6:58:f5",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      },
+      "_role": "plug"
+    },
+    {
+      "id": "_unknown_e868e7d50978",
+      "type": "device",
+      "_auto": true,
+      "x": 2300,
+      "y": 800,
+      "icon": "&#128123;",
+      "label": "ESP_D50978",
+      "sublabel": "10.0.10.101 \u2022 e8:68:e7...",
+      "ip": "10.0.10.101",
+      "mac": "e8:68:e7:d5:09:78",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      },
+      "_role": "sensor"
+    },
+    {
+      "id": "_unknown_600194a441c1",
+      "type": "device",
+      "_auto": true,
+      "x": 2300,
+      "y": 1150,
+      "icon": "&#128123;",
+      "label": "ESP_A441C1",
+      "sublabel": "10.0.10.110 \u2022 60:01:94...",
+      "ip": "10.0.10.110",
+      "mac": "60:01:94:a4:41:c1",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
+        "borderColor": "rgba(160,100,200,0.3)",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px",
+        "opacity": "0.7"
+      },
+      "_role": "sensor"
     },
     {
       "id": "_unknown_bcddc282ed19",
       "type": "device",
       "_auto": true,
-      "x": 2370,
+      "x": 2510,
       "y": 1000,
       "icon": "&#128123;",
       "label": "ESP_82ED19",
@@ -3089,134 +3287,15 @@
         "height": "32px",
         "fontSize": "14px",
         "opacity": "0.7"
-      }
-    },
-    {
-      "id": "_unknown_c006c3f658f5",
-      "type": "device",
-      "_auto": true,
-      "x": 2440,
-      "y": 1000,
-      "icon": "&#128123;",
-      "label": "KL125",
-      "sublabel": "10.0.10.187 \u2022 c0:06:c3...",
-      "ip": "10.0.10.187",
-      "mac": "c0:06:c3:f6:58:f5",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      }
-    },
-    {
-      "id": "_unknown_b0a7b9933d17",
-      "type": "device",
-      "_auto": true,
-      "x": 2510,
-      "y": 1000,
-      "icon": "&#128123;",
-      "label": "KL420",
-      "sublabel": "10.0.10.134 \u2022 b0:a7:b9...",
-      "ip": "10.0.10.134",
-      "mac": "b0:a7:b9:93:3d:17",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      }
-    },
-    {
-      "id": "_unknown_68c63ad2b03d",
-      "type": "device",
-      "_auto": true,
-      "x": 2440,
-      "y": 1050,
-      "icon": "&#128123;",
-      "label": "SwitchBot-HubMini-D2",
-      "sublabel": "10.0.10.143 \u2022 68:c6:3a...",
-      "ip": "10.0.10.143",
-      "mac": "68:c6:3a:d2:b0:3d",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      }
-    },
-    {
-      "id": "_unknown_14c14e61276c",
-      "type": "device",
-      "_auto": true,
-      "x": 2510,
-      "y": 1050,
-      "icon": "&#128123;",
-      "label": "Nest-Thermostat-276C",
-      "sublabel": "10.0.10.123 \u2022 14:c1:4e...",
-      "ip": "10.0.10.123",
-      "mac": "14:c1:4e:61:27:6c",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      }
-    },
-    {
-      "id": "_unknown_600194a441c1",
-      "type": "device",
-      "_auto": true,
-      "x": 2440,
-      "y": 1100,
-      "icon": "&#128123;",
-      "label": "ESP_A441C1",
-      "sublabel": "10.0.10.110 \u2022 60:01:94...",
-      "ip": "10.0.10.110",
-      "mac": "60:01:94:a4:41:c1",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      }
-    },
-    {
-      "id": "_unknown_14c14e6d333f",
-      "type": "device",
-      "_auto": true,
-      "x": 2510,
-      "y": 1100,
-      "icon": "&#128123;",
-      "label": "Nest-Thermostat-333F",
-      "sublabel": "10.0.10.80 \u2022 14:c1:4e...",
-      "ip": "10.0.10.80",
-      "mac": "14:c1:4e:6d:33:3f",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      }
+      },
+      "_role": "sensor"
     },
     {
       "id": "_unknown_bcddc282eff7",
       "type": "device",
       "_auto": true,
-      "x": 2440,
-      "y": 1150,
+      "x": 2300,
+      "y": 1200,
       "icon": "&#128123;",
       "label": "ESP_82EFF7",
       "sublabel": "10.0.10.82 \u2022 bc:dd:c2...",
@@ -3229,14 +3308,15 @@
         "height": "32px",
         "fontSize": "14px",
         "opacity": "0.7"
-      }
+      },
+      "_role": "sensor"
     },
     {
       "id": "_unknown_e868e7cfaa92",
       "type": "device",
       "_auto": true,
-      "x": 2510,
-      "y": 1150,
+      "x": 2370,
+      "y": 1200,
       "icon": "&#128123;",
       "label": "ESP_CFAA92",
       "sublabel": "10.0.10.107 \u2022 e8:68:e7...",
@@ -3249,13 +3329,14 @@
         "height": "32px",
         "fontSize": "14px",
         "opacity": "0.7"
-      }
+      },
+      "_role": "sensor"
     },
     {
       "id": "_unknown_24a160393fb0",
       "type": "device",
       "_auto": true,
-      "x": 2300,
+      "x": 2440,
       "y": 1200,
       "icon": "&#128123;",
       "label": "ESP_393FB0",
@@ -3269,13 +3350,14 @@
         "height": "32px",
         "fontSize": "14px",
         "opacity": "0.7"
-      }
+      },
+      "_role": "sensor"
     },
     {
       "id": "_unknown_ac67b2d1f2e4",
       "type": "device",
       "_auto": true,
-      "x": 2370,
+      "x": 2510,
       "y": 1200,
       "icon": "&#128123;",
       "label": "espressif",
@@ -3289,14 +3371,15 @@
         "height": "32px",
         "fontSize": "14px",
         "opacity": "0.7"
-      }
+      },
+      "_role": "sensor"
     },
     {
       "id": "_unknown_483fda6a0ea8",
       "type": "device",
       "_auto": true,
-      "x": 2440,
-      "y": 1200,
+      "x": 2300,
+      "y": 1250,
       "icon": "&#128123;",
       "label": "ESP_6A0EA8",
       "sublabel": "10.0.10.88 \u2022 48:3f:da...",
@@ -3309,53 +3392,14 @@
         "height": "32px",
         "fontSize": "14px",
         "opacity": "0.7"
-      }
-    },
-    {
-      "id": "_unknown_f0f5bdfd3504",
-      "type": "device",
-      "_auto": true,
-      "x": 2510,
-      "y": 1200,
-      "icon": "&#128123;",
-      "label": "pumphouse-radar",
-      "sublabel": "10.0.10.128 \u2022 f0:f5:bd...",
-      "ip": "10.0.10.128",
-      "mac": "f0:f5:bd:fd:35:04",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      }
-    },
-    {
-      "id": "_unknown_b4e84212e7ac",
-      "type": "device",
-      "_auto": true,
-      "x": 2510,
-      "y": 1300,
-      "icon": "&#128123;",
-      "label": "bl606a0",
-      "sublabel": "10.0.10.96 \u2022 b4:e8:42...",
-      "ip": "10.0.10.96",
-      "mac": "b4:e8:42:12:e7:ac",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      }
+      },
+      "_role": "sensor"
     },
     {
       "id": "_unknown_2cf43208cff0",
       "type": "device",
       "_auto": true,
-      "x": 2370,
+      "x": 2510,
       "y": 1400,
       "icon": "&#128123;",
       "label": "ESP_08CFF0",
@@ -3369,14 +3413,15 @@
         "height": "32px",
         "fontSize": "14px",
         "opacity": "0.7"
-      }
+      },
+      "_role": "sensor"
     },
     {
       "id": "_unknown_b4e62d79b610",
       "type": "device",
       "_auto": true,
-      "x": 2440,
-      "y": 1400,
+      "x": 2300,
+      "y": 1450,
       "icon": "&#128123;",
       "label": "ESP_79B610",
       "sublabel": "10.0.10.100 \u2022 b4:e6:2d...",
@@ -3389,7 +3434,888 @@
         "height": "32px",
         "fontSize": "14px",
         "opacity": "0.7"
-      }
+      },
+      "_role": "sensor"
+    },
+    {
+      "id": "_unknown_18de50775aff",
+      "type": "device",
+      "_auto": true,
+      "x": 2300,
+      "y": 750,
+      "ip": "10.0.10.117",
+      "mac": "18:de:50:77:5a:ff",
+      "_last_seen": 1773438838.5462613,
+      "label": "lwip0",
+      "icon": "&#128202;",
+      "sublabel": "10.0.10.117 \u2022 Espressif",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#60c06020,#0a0510)",
+        "borderColor": "#60c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "sensor",
+      "_vendor": "Espressif"
+    },
+    {
+      "id": "_unknown_e626b4346803",
+      "type": "device",
+      "_auto": true,
+      "x": 2370,
+      "y": 750,
+      "ip": "10.0.6.145",
+      "mac": "e6:26:b4:34:68:03",
+      "_last_seen": 1773438838.5486033,
+      "label": "Admin Device 6803",
+      "icon": "&#128123;",
+      "sublabel": "10.0.6.145 \u2022 Randomized MAC",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#80808020,#0a0510)",
+        "borderColor": "#80808080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "unknown",
+      "_vendor": null
+    },
+    {
+      "id": "_unknown_508bb9f31b25",
+      "type": "device",
+      "_auto": true,
+      "x": 2440,
+      "y": 750,
+      "ip": "10.0.10.84",
+      "mac": "50:8b:b9:f3:1b:25",
+      "_last_seen": 1773438838.554094,
+      "label": "Tuya 1b25",
+      "icon": "&#128268;",
+      "sublabel": "10.0.10.84 \u2022 Tuya",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "Tuya"
+    },
+    {
+      "id": "_unknown_7cf666a9efe8",
+      "type": "device",
+      "_auto": true,
+      "x": 2510,
+      "y": 750,
+      "ip": "10.0.10.157",
+      "mac": "7c:f6:66:a9:ef:e8",
+      "_last_seen": 1773438838.5563667,
+      "label": "Tuya efe8",
+      "icon": "&#128268;",
+      "sublabel": "10.0.10.157 \u2022 Tuya",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "Tuya"
+    },
+    {
+      "id": "_unknown_b8060d2b2e26",
+      "type": "device",
+      "_auto": true,
+      "x": 2580,
+      "y": 750,
+      "ip": "10.0.10.155",
+      "mac": "b8:06:0d:2b:2e:26",
+      "_last_seen": 1773438838.5585876,
+      "label": "Espressif 2e26",
+      "icon": "&#128202;",
+      "sublabel": "10.0.10.155 \u2022 Espressif",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#60c06020,#0a0510)",
+        "borderColor": "#60c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "sensor",
+      "_vendor": "Espressif"
+    },
+    {
+      "id": "_unknown_24e50fd7011d",
+      "type": "device",
+      "_auto": true,
+      "x": 2650,
+      "y": 750,
+      "ip": "10.0.6.124",
+      "mac": "24:e5:0f:d7:01:1d",
+      "_last_seen": 1773438838.5607936,
+      "label": "Google 011d",
+      "icon": "&#128266;",
+      "sublabel": "10.0.6.124 \u2022 Google",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#6090c020,#0a0510)",
+        "borderColor": "#6090c080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "speaker",
+      "_vendor": "Google"
+    },
+    {
+      "id": "_unknown_60f6775f363d",
+      "type": "device",
+      "_auto": true,
+      "x": 2300,
+      "y": 800,
+      "ip": "10.0.6.126",
+      "mac": "60:f6:77:5f:36:3d",
+      "_last_seen": 1773438838.5630076,
+      "label": "Device 363d",
+      "icon": "&#128123;",
+      "sublabel": "10.0.6.126",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#80808020,#0a0510)",
+        "borderColor": "#80808080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "unknown",
+      "_vendor": null
+    },
+    {
+      "id": "_unknown_dce55b876747",
+      "type": "device",
+      "_auto": true,
+      "x": 2370,
+      "y": 800,
+      "ip": "10.0.10.92",
+      "mac": "dc:e5:5b:87:67:47",
+      "_last_seen": 1773438838.5653157,
+      "label": "Google 6747",
+      "icon": "&#128266;",
+      "sublabel": "10.0.10.92 \u2022 Google",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#6090c020,#0a0510)",
+        "borderColor": "#6090c080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "speaker",
+      "_vendor": "Google"
+    },
+    {
+      "id": "_unknown_508bb9995cca",
+      "type": "device",
+      "_auto": true,
+      "x": 2440,
+      "y": 800,
+      "ip": "10.0.10.99",
+      "mac": "50:8b:b9:99:5c:ca",
+      "_last_seen": 1773438838.5675495,
+      "label": "Tuya 5cca",
+      "icon": "&#128268;",
+      "sublabel": "10.0.10.99 \u2022 Tuya",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "Tuya"
+    },
+    {
+      "id": "_unknown_f8172dde19f6",
+      "type": "device",
+      "_auto": true,
+      "x": 2510,
+      "y": 800,
+      "ip": "10.0.6.115",
+      "mac": "f8:17:2d:de:19:f6",
+      "_last_seen": 1773438838.5697076,
+      "label": "Tuya 19f6",
+      "icon": "&#128268;",
+      "sublabel": "10.0.6.115 \u2022 Tuya",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "Tuya"
+    },
+    {
+      "id": "_unknown_b8060d2b4a5d",
+      "type": "device",
+      "_auto": true,
+      "x": 2580,
+      "y": 800,
+      "ip": "10.0.10.104",
+      "mac": "b8:06:0d:2b:4a:5d",
+      "_last_seen": 1773438838.5722227,
+      "label": "Espressif 4a5d",
+      "icon": "&#128202;",
+      "sublabel": "10.0.10.104 \u2022 Espressif",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#60c06020,#0a0510)",
+        "borderColor": "#60c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "sensor",
+      "_vendor": "Espressif"
+    },
+    {
+      "id": "_unknown_6032b1728d22",
+      "type": "device",
+      "_auto": true,
+      "x": 2650,
+      "y": 800,
+      "ip": "10.0.10.81",
+      "mac": "60:32:b1:72:8d:22",
+      "_last_seen": 1773438838.5744336,
+      "label": "TP-Link 8d22",
+      "icon": "&#128268;",
+      "sublabel": "10.0.10.81 \u2022 TP-Link",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "TP-Link"
+    },
+    {
+      "id": "_unknown_6032b17294da",
+      "type": "device",
+      "_auto": true,
+      "x": 2300,
+      "y": 850,
+      "ip": "10.0.10.103",
+      "mac": "60:32:b1:72:94:da",
+      "_last_seen": 1773438838.5765793,
+      "label": "TP-Link 94da",
+      "icon": "&#128268;",
+      "sublabel": "10.0.10.103 \u2022 TP-Link",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "TP-Link"
+    },
+    {
+      "id": "_unknown_6032b17279c0",
+      "type": "device",
+      "_auto": true,
+      "x": 2370,
+      "y": 850,
+      "ip": "10.0.10.159",
+      "mac": "60:32:b1:72:79:c0",
+      "_last_seen": 1773438838.578831,
+      "label": "TP-Link 79c0",
+      "icon": "&#128268;",
+      "sublabel": "10.0.10.159 \u2022 TP-Link",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "TP-Link"
+    },
+    {
+      "id": "_unknown_6c5ab0ee29bf",
+      "type": "device",
+      "_auto": true,
+      "x": 2440,
+      "y": 850,
+      "ip": "10.0.10.90",
+      "mac": "6c:5a:b0:ee:29:bf",
+      "_last_seen": 1773438838.5811534,
+      "label": "TP-Link 29bf",
+      "icon": "&#128268;",
+      "sublabel": "10.0.10.90 \u2022 TP-Link",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "TP-Link"
+    },
+    {
+      "id": "_unknown_381f8d9ca309",
+      "type": "device",
+      "_auto": true,
+      "x": 2510,
+      "y": 850,
+      "ip": "10.0.10.94",
+      "mac": "38:1f:8d:9c:a3:09",
+      "_last_seen": 1773438838.5834355,
+      "label": "Tuya a309",
+      "icon": "&#128268;",
+      "sublabel": "10.0.10.94 \u2022 Tuya",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "Tuya"
+    },
+    {
+      "id": "_unknown_a88055d547f0",
+      "type": "device",
+      "_auto": true,
+      "x": 2580,
+      "y": 850,
+      "ip": "10.0.10.147",
+      "mac": "a8:80:55:d5:47:f0",
+      "_last_seen": 1773438838.5857623,
+      "label": "Tuya 47f0",
+      "icon": "&#128268;",
+      "sublabel": "10.0.10.147 \u2022 Tuya",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "Tuya"
+    },
+    {
+      "id": "_unknown_c482e188b558",
+      "type": "device",
+      "_auto": true,
+      "x": 2650,
+      "y": 850,
+      "ip": "10.0.10.105",
+      "mac": "c4:82:e1:88:b5:58",
+      "_last_seen": 1773438838.5880377,
+      "label": "Tuya b558",
+      "icon": "&#128268;",
+      "sublabel": "10.0.10.105 \u2022 Tuya",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "Tuya"
+    },
+    {
+      "id": "_unknown_c482e188adeb",
+      "type": "device",
+      "_auto": true,
+      "x": 2300,
+      "y": 900,
+      "ip": "10.0.10.97",
+      "mac": "c4:82:e1:88:ad:eb",
+      "_last_seen": 1773438838.5903814,
+      "label": "Tuya adeb",
+      "icon": "&#128268;",
+      "sublabel": "10.0.10.97 \u2022 Tuya",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "Tuya"
+    },
+    {
+      "id": "_unknown_7cf6668d92fc",
+      "type": "device",
+      "_auto": true,
+      "x": 2370,
+      "y": 900,
+      "ip": "10.0.10.106",
+      "mac": "7c:f6:66:8d:92:fc",
+      "_last_seen": 1773438838.5926335,
+      "label": "Tuya 92fc",
+      "icon": "&#128268;",
+      "sublabel": "10.0.10.106 \u2022 Tuya",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "Tuya"
+    },
+    {
+      "id": "_unknown_d4f547644abc",
+      "type": "device",
+      "_auto": true,
+      "x": 2440,
+      "y": 900,
+      "ip": "10.0.10.137",
+      "mac": "d4:f5:47:64:4a:bc",
+      "_last_seen": 1773438838.594849,
+      "label": "Google 4abc",
+      "icon": "&#128266;",
+      "sublabel": "10.0.10.137 \u2022 Google",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#6090c020,#0a0510)",
+        "borderColor": "#6090c080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "speaker",
+      "_vendor": "Google"
+    },
+    {
+      "id": "_unknown_14c14e2616b5",
+      "type": "device",
+      "_auto": true,
+      "x": 2510,
+      "y": 900,
+      "ip": "10.0.10.246",
+      "mac": "14:c1:4e:26:16:b5",
+      "_last_seen": 1773438838.5970523,
+      "label": "Nest-Thermostat-16B5",
+      "icon": "&#127777;",
+      "sublabel": "10.0.10.246 \u2022 Nest",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#60c0c020,#0a0510)",
+        "borderColor": "#60c0c080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "thermostat",
+      "_vendor": "Nest"
+    },
+    {
+      "id": "_unknown_c482e13f8e26",
+      "type": "device",
+      "_auto": true,
+      "x": 2580,
+      "y": 900,
+      "ip": "10.0.10.95",
+      "mac": "c4:82:e1:3f:8e:26",
+      "_last_seen": 1773438838.5992727,
+      "label": "Tuya 8e26",
+      "icon": "&#128268;",
+      "sublabel": "10.0.10.95 \u2022 Tuya",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "Tuya"
+    },
+    {
+      "id": "_unknown_6c5ab0ee112e",
+      "type": "device",
+      "_auto": true,
+      "x": 2650,
+      "y": 900,
+      "ip": "10.0.10.237",
+      "mac": "6c:5a:b0:ee:11:2e",
+      "_last_seen": 1773438838.60149,
+      "label": "TP-Link 112e",
+      "icon": "&#128268;",
+      "sublabel": "10.0.10.237 \u2022 TP-Link",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "TP-Link"
+    },
+    {
+      "id": "_unknown_a88055ab3651",
+      "type": "device",
+      "_auto": true,
+      "x": 2300,
+      "y": 950,
+      "ip": "10.0.10.115",
+      "mac": "a8:80:55:ab:36:51",
+      "_last_seen": 1773438838.6036623,
+      "label": "Tuya 3651",
+      "icon": "&#128268;",
+      "sublabel": "10.0.10.115 \u2022 Tuya",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "Tuya"
+    },
+    {
+      "id": "_unknown_c006c3f652f8",
+      "type": "device",
+      "_auto": true,
+      "x": 2370,
+      "y": 950,
+      "ip": "10.0.10.190",
+      "mac": "c0:06:c3:f6:52:f8",
+      "_last_seen": 1773438838.6058612,
+      "label": "Kasa 52f8",
+      "icon": "&#128268;",
+      "sublabel": "10.0.10.190 \u2022 Kasa",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "Kasa"
+    },
+    {
+      "id": "_unknown_c006c3f65895",
+      "type": "device",
+      "_auto": true,
+      "x": 2440,
+      "y": 950,
+      "ip": "10.0.10.121",
+      "mac": "c0:06:c3:f6:58:95",
+      "_last_seen": 1773438838.6082342,
+      "label": "Kasa 5895",
+      "icon": "&#128268;",
+      "sublabel": "10.0.10.121 \u2022 Kasa",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "Kasa"
+    },
+    {
+      "id": "_unknown_909a4a4755bf",
+      "type": "device",
+      "_auto": true,
+      "x": 2510,
+      "y": 950,
+      "ip": "10.0.10.229",
+      "mac": "90:9a:4a:47:55:bf",
+      "_last_seen": 1773438838.6104696,
+      "label": "Kasa 55bf",
+      "icon": "&#128268;",
+      "sublabel": "10.0.10.229 \u2022 Kasa",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "Kasa"
+    },
+    {
+      "id": "_unknown_48e1e96f3cb8",
+      "type": "device",
+      "_auto": true,
+      "x": 2580,
+      "y": 950,
+      "ip": "10.0.10.231",
+      "mac": "48:e1:e9:6f:3c:b8",
+      "_last_seen": 1773438838.6127436,
+      "label": "Meross 3cb8",
+      "icon": "&#128268;",
+      "sublabel": "10.0.10.231 \u2022 Meross",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "Meross"
+    },
+    {
+      "id": "_unknown_f0ef86158ca1",
+      "type": "device",
+      "_auto": true,
+      "x": 2650,
+      "y": 950,
+      "ip": "10.0.10.111",
+      "mac": "f0:ef:86:15:8c:a1",
+      "_last_seen": 1773438838.6150923,
+      "label": "Google 8ca1",
+      "icon": "&#128266;",
+      "sublabel": "10.0.10.111 \u2022 Google",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#6090c020,#0a0510)",
+        "borderColor": "#6090c080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "speaker",
+      "_vendor": "Google"
+    },
+    {
+      "id": "_unknown_3c8d204806fd",
+      "type": "device",
+      "_auto": true,
+      "x": 2300,
+      "y": 1000,
+      "ip": "10.0.10.144",
+      "mac": "3c:8d:20:48:06:fd",
+      "_last_seen": 1773438838.6173606,
+      "label": "Google 06fd",
+      "icon": "&#128266;",
+      "sublabel": "10.0.10.144 \u2022 Google",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#6090c020,#0a0510)",
+        "borderColor": "#6090c080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "speaker",
+      "_vendor": "Google"
+    },
+    {
+      "id": "_unknown_c482e13f8c56",
+      "type": "device",
+      "_auto": true,
+      "x": 2370,
+      "y": 1000,
+      "ip": "10.0.10.109",
+      "mac": "c4:82:e1:3f:8c:56",
+      "_last_seen": 1773438838.6195931,
+      "label": "Tuya 8c56",
+      "icon": "&#128268;",
+      "sublabel": "10.0.10.109 \u2022 Tuya",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "Tuya"
+    },
+    {
+      "id": "_unknown_909a4a474ca9",
+      "type": "device",
+      "_auto": true,
+      "x": 2440,
+      "y": 1000,
+      "ip": "10.0.10.161",
+      "mac": "90:9a:4a:47:4c:a9",
+      "_last_seen": 1773438838.6217976,
+      "label": "Kasa 4ca9",
+      "icon": "&#128268;",
+      "sublabel": "10.0.10.161 \u2022 Kasa",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "Kasa"
+    },
+    {
+      "id": "_unknown_909a4a4753ab",
+      "type": "device",
+      "_auto": true,
+      "x": 2510,
+      "y": 1000,
+      "ip": "10.0.10.194",
+      "mac": "90:9a:4a:47:53:ab",
+      "_last_seen": 1773438838.6240604,
+      "label": "Kasa 53ab",
+      "icon": "&#128268;",
+      "sublabel": "10.0.10.194 \u2022 Kasa",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "Kasa"
+    },
+    {
+      "id": "_unknown_d81f12d36dba",
+      "type": "device",
+      "_auto": true,
+      "x": 2580,
+      "y": 1000,
+      "ip": "10.0.10.167",
+      "mac": "d8:1f:12:d3:6d:ba",
+      "_last_seen": 1773438838.6264818,
+      "label": "Tuya 6dba",
+      "icon": "&#128268;",
+      "sublabel": "10.0.10.167 \u2022 Tuya",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "Tuya"
+    },
+    {
+      "id": "_unknown_d81f12d39678",
+      "type": "device",
+      "_auto": true,
+      "x": 2650,
+      "y": 1000,
+      "ip": "10.0.10.114",
+      "mac": "d8:1f:12:d3:96:78",
+      "_last_seen": 1773438838.6287773,
+      "label": "Tuya 9678",
+      "icon": "&#128268;",
+      "sublabel": "10.0.10.114 \u2022 Tuya",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
+        "borderColor": "#c0c06080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "plug",
+      "_vendor": "Tuya"
+    },
+    {
+      "id": "_unknown_b43a31d1771e",
+      "type": "device",
+      "_auto": true,
+      "x": 2300,
+      "y": 1050,
+      "ip": "10.0.10.243",
+      "mac": "b4:3a:31:d1:77:1e",
+      "_last_seen": 1773438838.6310036,
+      "label": "gecko_os-71E",
+      "icon": "&#128123;",
+      "sublabel": "10.0.10.243",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#80808020,#0a0510)",
+        "borderColor": "#80808080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "unknown",
+      "_vendor": null
+    },
+    {
+      "id": "_unknown_c8bd699f1417",
+      "type": "device",
+      "_auto": true,
+      "x": 2300,
+      "y": 750,
+      "ip": "10.0.6.137",
+      "mac": "c8:bd:69:9f:14:17",
+      "_last_seen": 1773439643.621053,
+      "label": "Device 1417",
+      "icon": "&#128123;",
+      "sublabel": "10.0.6.137",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#80808020,#0a0510)",
+        "borderColor": "#80808080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "unknown",
+      "_vendor": null
+    },
+    {
+      "id": "_unknown_d4f54743e5d3",
+      "type": "device",
+      "_auto": true,
+      "x": 2300,
+      "y": 750,
+      "ip": "10.0.10.120",
+      "mac": "d4:f5:47:43:e5:d3",
+      "_last_seen": 1773439917.129956,
+      "label": "Google e5d3",
+      "icon": "&#128266;",
+      "sublabel": "10.0.10.120 \u2022 Google",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#6090c020,#0a0510)",
+        "borderColor": "#6090c080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "speaker",
+      "_vendor": "Google"
+    },
+    {
+      "id": "_unknown_30d53eee3926",
+      "type": "device",
+      "_auto": true,
+      "x": 2300,
+      "y": 750,
+      "ip": null,
+      "mac": "30:d5:3e:ee:39:26",
+      "_last_seen": 1773440373.0167844,
+      "label": "Device 3926",
+      "icon": "&#128123;",
+      "sublabel": "30:d5:3e...",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#80808020,#0a0510)",
+        "borderColor": "#80808080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "unknown",
+      "_vendor": null
     }
   ],
   "connections": [
@@ -3521,7 +4447,7 @@
     },
     {
       "from": "tab-s5e",
-      "to": "onhub-closet",
+      "to": "wndr4300sw-shed",
       "type": "active",
       "vlan": 6
     },
@@ -3654,7 +4580,7 @@
     },
     {
       "from": "flip3",
-      "to": "onhub-office",
+      "to": "onhub-bed",
       "type": "active",
       "vlan": 6
     },
@@ -3726,7 +4652,7 @@
     },
     {
       "from": "wled-aqi",
-      "to": "eap225-outdoor",
+      "to": "onhub-closet",
       "type": "active",
       "vlan": 6
     },
@@ -3834,7 +4760,7 @@
     },
     {
       "from": "iphone",
-      "to": "onhub-office",
+      "to": "onhub-closet",
       "type": "active",
       "vlan": 6
     },
@@ -3852,7 +4778,7 @@
     },
     {
       "from": "s24-ultra",
-      "to": "wrt1900ac-family",
+      "to": "wndr4300sw-shed",
       "type": "active",
       "vlan": 6
     },
@@ -3912,11 +4838,6 @@
     },
     {
       "from": "_unknown_e848b8aa3933",
-      "to": "onhub-office",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_6c5ab0ee29bf",
       "to": "onhub-office",
       "type": "active"
     },
@@ -3991,6 +4912,11 @@
       "type": "active"
     },
     {
+      "from": "_unknown_7cf666a8c8e9",
+      "to": "eap225-outdoor",
+      "type": "active"
+    },
+    {
       "from": "_unknown_b4e84212e7ac",
       "to": "eap225-outdoor",
       "type": "active"
@@ -4003,6 +4929,211 @@
     {
       "from": "_unknown_b4e62d79b610",
       "to": "wndr4300sw-shed",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_6032b17282e1",
+      "to": "wndr4300sw-shed",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_18de50775aff",
+      "to": "onhub-pumphouse",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_e626b4346803",
+      "to": "onhub-family",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_508bb9f31b25",
+      "to": "onhub-closet",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_7cf666a9efe8",
+      "to": "onhub-closet",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_b8060d2b2e26",
+      "to": "onhub-closet",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_24e50fd7011d",
+      "to": "onhub-closet",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_60f6775f363d",
+      "to": "onhub-closet",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_dce55b876747",
+      "to": "onhub-closet",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_508bb9995cca",
+      "to": "onhub-office",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_f8172dde19f6",
+      "to": "onhub-office",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_b8060d2b4a5d",
+      "to": "onhub-office",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_6032b1728d22",
+      "to": "onhub-office",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_6032b17294da",
+      "to": "onhub-office",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_6032b17279c0",
+      "to": "onhub-office",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_6c5ab0ee29bf",
+      "to": "onhub-office",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_381f8d9ca309",
+      "to": "onhub-office",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_a88055d547f0",
+      "to": "onhub-office",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_c482e188b558",
+      "to": "onhub-office",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_c482e188adeb",
+      "to": "onhub-office",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_7cf6668d92fc",
+      "to": "onhub-office",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_d4f547644abc",
+      "to": "onhub-office",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_14c14e2616b5",
+      "to": "onhub-office",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_c482e13f8e26",
+      "to": "eap225-outdoor",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_6c5ab0ee112e",
+      "to": "eap225-outdoor",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_a88055ab3651",
+      "to": "eap225-outdoor",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_c006c3f652f8",
+      "to": "eap225-outdoor",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_c006c3f65895",
+      "to": "eap225-outdoor",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_909a4a4755bf",
+      "to": "eap225-outdoor",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_48e1e96f3cb8",
+      "to": "eap225-outdoor",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_f0ef86158ca1",
+      "to": "eap225-outdoor",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_3c8d204806fd",
+      "to": "eap225-outdoor",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_c482e13f8c56",
+      "to": "wndr4300sw-shed",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_909a4a474ca9",
+      "to": "wndr4300sw-shed",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_909a4a4753ab",
+      "to": "wndr4300sw-shed",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_d81f12d36dba",
+      "to": "wndr4300sw-shed",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_d81f12d39678",
+      "to": "wndr4300sw-shed",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_b43a31d1771e",
+      "to": "wndr4300sw-shed",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_c8bd699f1417",
+      "to": "onhub-closet",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_d4f54743e5d3",
+      "to": "onhub-office",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_30d53eee3926",
+      "to": "eap225-outdoor",
       "type": "active"
     }
   ],

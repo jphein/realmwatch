@@ -609,9 +609,12 @@
   .conn-line {
     fill: none;
     stroke-dasharray: var(--dash, 8 4);
-    animation: dashFlow var(--speed, 20s) linear infinite var(--dir, normal);
     stroke-width: var(--sw, 1.5);
     transition: stroke-width 1.5s ease, stroke-opacity 1.5s ease, stroke 1.5s ease;
+  }
+  /* Only animate when traffic is active (class added by JS) */
+  .conn-line.conn-animated {
+    animation: dashFlow var(--speed, 20s) linear infinite var(--dir, normal);
   }
   .conn-active {
     stroke: rgba(100,180,255,0.4);
@@ -689,10 +692,11 @@
     z-index: 6;
   }
 
-  /* Traffic-active glow classes */
-  .conn-traffic-low    { filter: url(#conn-glow-low); }
-  .conn-traffic-med    { filter: url(#conn-glow-med); }
-  .conn-traffic-high   { filter: url(#conn-glow-high); }
+  /* Traffic-active glow classes (SVG filters only on top lines for perf) */
+  .conn-traffic-low    { stroke-opacity: 0.7; }
+  .conn-traffic-med    { stroke-opacity: 0.85; }
+  .conn-traffic-high   { stroke-opacity: 1; }
+  .conn-glow           { filter: url(#conn-glow-high); }  /* Only top N get actual glow */
 
   @keyframes dashFlow {
     to { stroke-dashoffset: -240; }

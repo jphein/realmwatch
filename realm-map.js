@@ -1110,14 +1110,20 @@
   __name(getNodeTraffic, "getNodeTraffic");
   var _connLinesWithData = _connPaths.filter((p) => p && p.dataset.to);
   var _connBaseWidths = /* @__PURE__ */ new Map();
+  var _connCache = /* @__PURE__ */ new WeakMap();
   _connPaths.forEach((path) => {
     if (!path) return;
     const cs = getComputedStyle(path);
     _connBaseWidths.set(path, parseFloat(cs.getPropertyValue("--sw")) || 1.5);
+    const connType = Array.from(path.classList).find((c) => connColors[c]);
+    _connCache.set(path, { connType, sw: 0, speed: 0, dir: "", tier: "", stroke: "", animated: false });
   });
+  var TOP_GLOW_COUNT = 5;
   function updateConnectionTraffic(collectd) {
     if (!collectd) return;
+    const trafficData = [];
     _connLinesWithData.forEach((line) => {
+      const cache = _connCache.get(line) || { connType: null, sw: 0, speed: 0, dir: "", tier: "", stroke: "", animated: false, glow: false };
       const toNode = line.dataset.to;
       const fromNode = line.dataset.from;
       const toTraffic = getNodeTraffic(collectd, toNode);
@@ -1125,32 +1131,76 @@
       const traffic = toTraffic && fromTraffic ? toTraffic.total > fromTraffic.total ? toTraffic : fromTraffic : toTraffic || fromTraffic;
       const baseW = _connBaseWidths.get(line) || 1.5;
       if (!traffic || traffic.total === 0) {
-        line.style.setProperty("--sw", baseW);
-        line.style.removeProperty("--speed");
-        line.style.removeProperty("--dir");
-        line.removeAttribute("stroke");
-        line.classList.remove("conn-traffic-low", "conn-traffic-med", "conn-traffic-high");
+        if (cache.tier || cache.sw !== baseW || cache.animated || cache.glow) {
+          line.style.setProperty("--sw", baseW);
+          line.style.removeProperty("--speed");
+          line.style.removeProperty("--dir");
+          line.removeAttribute("stroke");
+          if (cache.tier) line.classList.remove(cache.tier);
+          if (cache.animated) {
+            line.classList.remove("conn-animated");
+            cache.animated = false;
+          }
+          if (cache.glow) {
+            line.classList.remove("conn-glow");
+            cache.glow = false;
+          }
+          cache.sw = baseW;
+          cache.speed = 0;
+          cache.dir = "";
+          cache.tier = "";
+          cache.stroke = "";
+        }
         return;
+      }
+      if (!cache.animated) {
+        line.classList.add("conn-animated");
+        cache.animated = true;
       }
       const rawIntensity = Math.max(0, Math.min(1, (Math.log10(traffic.total + 1) - 3) / 4));
       const intensity = Math.min(1, rawIntensity * trafficScale);
-      const sw = baseW + intensity * 8 * trafficScale;
-      line.style.setProperty("--sw", sw.toFixed(1));
-      const speed = Math.max(2, 20 - intensity * 18);
-      line.style.setProperty("--speed", speed.toFixed(1) + "s");
-      const rxDominant = traffic.rx > traffic.tx;
-      line.style.setProperty("--dir", rxDominant ? "reverse" : "normal");
-      const connType = Array.from(line.classList).find((c) => connColors[c]);
-      if (connType) {
-        const [r, g, b] = connColors[connType];
-        const alpha = 0.15 + intensity * 0.5;
-        const bright = 1 + intensity * 0.3;
-        line.setAttribute("stroke", `rgba(${Math.min(255, r * bright) | 0},${Math.min(255, g * bright) | 0},${Math.min(255, b * bright) | 0},${alpha.toFixed(2)})`);
+      const sw = +(baseW + intensity * 8 * trafficScale).toFixed(1);
+      const speed = +Math.max(2, 20 - intensity * 18).toFixed(1);
+      const dir = traffic.rx > traffic.tx ? "reverse" : "normal";
+      const tier = intensity > 0.65 ? "conn-traffic-high" : intensity > 0.35 ? "conn-traffic-med" : intensity > 0.15 ? "conn-traffic-low" : "";
+      if (sw !== cache.sw) {
+        line.style.setProperty("--sw", sw);
+        cache.sw = sw;
       }
-      line.classList.remove("conn-traffic-low", "conn-traffic-med", "conn-traffic-high");
-      if (intensity > 0.65) line.classList.add("conn-traffic-high");
-      else if (intensity > 0.35) line.classList.add("conn-traffic-med");
-      else if (intensity > 0.15) line.classList.add("conn-traffic-low");
+      if (speed !== cache.speed) {
+        line.style.setProperty("--speed", speed + "s");
+        cache.speed = speed;
+      }
+      if (dir !== cache.dir) {
+        line.style.setProperty("--dir", dir);
+        cache.dir = dir;
+      }
+      if (cache.connType) {
+        const [r, g, b] = connColors[cache.connType];
+        const alpha = +(0.15 + intensity * 0.5).toFixed(2);
+        const bright = 1 + intensity * 0.3;
+        const stroke = `rgba(${Math.min(255, r * bright) | 0},${Math.min(255, g * bright) | 0},${Math.min(255, b * bright) | 0},${alpha})`;
+        if (stroke !== cache.stroke) {
+          line.setAttribute("stroke", stroke);
+          cache.stroke = stroke;
+        }
+      }
+      if (tier !== cache.tier) {
+        if (cache.tier) line.classList.remove(cache.tier);
+        if (tier) line.classList.add(tier);
+        cache.tier = tier;
+      }
+      if (intensity > 0.3) trafficData.push({ line, cache, intensity });
+    });
+    trafficData.sort((a, b) => b.intensity - a.intensity);
+    const topLines = new Set(trafficData.slice(0, TOP_GLOW_COUNT).map((d) => d.line));
+    trafficData.forEach(({ line, cache }) => {
+      const shouldGlow = topLines.has(line);
+      if (shouldGlow !== cache.glow) {
+        if (shouldGlow) line.classList.add("conn-glow");
+        else line.classList.remove("conn-glow");
+        cache.glow = shouldGlow;
+      }
     });
     for (const tipKey of Object.keys(_nodeDOM)) {
       const n = _nodeDOM[tipKey];

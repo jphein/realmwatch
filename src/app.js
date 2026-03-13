@@ -693,20 +693,24 @@ export function getNodeTraffic(collectd, nodeKey) {
 // Snapshot connection paths for traffic updates (uses _connPaths from renderTopology)
 const _connLinesWithData = _connPaths.filter(p => p && p.dataset.to);
 const _connBaseWidths = new Map();
-const _connCache = new WeakMap();  // Cache per-line: {connType, sw, speed, dir, tier, stroke}
+const _connCache = new WeakMap();  // Cache per-line: {connType, sw, speed, dir, tier, stroke, animated}
 _connPaths.forEach(path => {
   if (!path) return;
   const cs = getComputedStyle(path);
   _connBaseWidths.set(path, parseFloat(cs.getPropertyValue('--sw')) || 1.5);
   // Pre-cache connType (doesn't change)
   const connType = Array.from(path.classList).find(c => connColors[c]);
-  _connCache.set(path, { connType, sw: 0, speed: 0, dir: '', tier: '', stroke: '' });
+  _connCache.set(path, { connType, sw: 0, speed: 0, dir: '', tier: '', stroke: '', animated: false });
 });
+
+const TOP_GLOW_COUNT = 5;  // Only apply expensive SVG glow to top N traffic lines
 
 export function updateConnectionTraffic(collectd) {
   if (!collectd) return;
+  const trafficData = [];  // Collect {line, intensity} for top-N glow selection
+
   _connLinesWithData.forEach(line => {
-    const cache = _connCache.get(line) || { connType: null, sw: 0, speed: 0, dir: '', tier: '', stroke: '' };
+    const cache = _connCache.get(line) || { connType: null, sw: 0, speed: 0, dir: '', tier: '', stroke: '', animated: false, glow: false };
     const toNode = line.dataset.to;
     const fromNode = line.dataset.from;
     const toTraffic = getNodeTraffic(collectd, toNode);
@@ -717,16 +721,20 @@ export function updateConnectionTraffic(collectd) {
     const baseW = _connBaseWidths.get(line) || 1.5;
     if (!traffic || traffic.total === 0) {
       // Only update if was previously active
-      if (cache.tier || cache.sw !== baseW) {
+      if (cache.tier || cache.sw !== baseW || cache.animated || cache.glow) {
         line.style.setProperty('--sw', baseW);
         line.style.removeProperty('--speed');
         line.style.removeProperty('--dir');
         line.removeAttribute('stroke');
         if (cache.tier) line.classList.remove(cache.tier);
+        if (cache.animated) { line.classList.remove('conn-animated'); cache.animated = false; }
+        if (cache.glow) { line.classList.remove('conn-glow'); cache.glow = false; }
         cache.sw = baseW; cache.speed = 0; cache.dir = ''; cache.tier = ''; cache.stroke = '';
       }
       return;
     }
+    // Enable animation only when there's traffic
+    if (!cache.animated) { line.classList.add('conn-animated'); cache.animated = true; }
     // Realistic bandwidth scale: 0→1 mapped over 1 KB/s → 10 MB/s (log scale)
     const rawIntensity = Math.max(0, Math.min(1, (Math.log10(traffic.total + 1) - 3) / 4));
     const intensity = Math.min(1, rawIntensity * trafficScale);
@@ -747,11 +755,25 @@ export function updateConnectionTraffic(collectd) {
       const stroke = `rgba(${Math.min(255,r*bright)|0},${Math.min(255,g*bright)|0},${Math.min(255,b*bright)|0},${alpha})`;
       if (stroke !== cache.stroke) { line.setAttribute('stroke', stroke); cache.stroke = stroke; }
     }
-    // Glow tier - only change if different
+    // Tier class (opacity only, no filter)
     if (tier !== cache.tier) {
       if (cache.tier) line.classList.remove(cache.tier);
       if (tier) line.classList.add(tier);
       cache.tier = tier;
+    }
+    // Track for top-N glow selection
+    if (intensity > 0.3) trafficData.push({ line, cache, intensity });
+  });
+
+  // Apply expensive SVG glow filter only to top N traffic lines
+  trafficData.sort((a, b) => b.intensity - a.intensity);
+  const topLines = new Set(trafficData.slice(0, TOP_GLOW_COUNT).map(d => d.line));
+  trafficData.forEach(({ line, cache }) => {
+    const shouldGlow = topLines.has(line);
+    if (shouldGlow !== cache.glow) {
+      if (shouldGlow) line.classList.add('conn-glow');
+      else line.classList.remove('conn-glow');
+      cache.glow = shouldGlow;
     }
   });
 
