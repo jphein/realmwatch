@@ -4637,7 +4637,7 @@
   __name(restoreSettings, "restoreSettings");
   function saveLayout() {
     const layout = { panels: {}, nodes: {}, minimized: [] };
-    ["realm-panel", "legend", "spellbook", "quest-log", "realm-codex", "minimap", "node-list", "debug-panel"].forEach((id) => {
+    ["realm-panel", "legend", "spellbook", "quest-log", "realm-codex", "minimap", "node-list", "debug-panel", "cartographer", "energy-panel"].forEach((id) => {
       const el = document.getElementById(id);
       if (el && el.style.left) {
         layout.panels[id] = { left: el.style.left, top: el.style.top };
@@ -4940,7 +4940,7 @@
     window.addEventListener("touchcancel", endNodeDrag, { passive: true });
   })();
   if (!restoreLayout()) {
-    ["realm-panel", "legend", "spellbook", "quest-log", "realm-codex", "minimap", "node-list"].forEach((id) => {
+    ["realm-panel", "legend", "spellbook", "quest-log", "realm-codex", "minimap", "node-list", "cartographer", "energy-panel"].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.classList.add("panel-minimized");
     });

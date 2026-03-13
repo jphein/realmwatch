@@ -4314,7 +4314,7 @@ export function restoreSettings() {
 export function saveLayout() {
   const layout = { panels: {}, nodes: {}, minimized: [] };
   // Save panel positions and minimized state
-  ['realm-panel','legend','spellbook','quest-log','realm-codex','minimap','node-list','debug-panel'].forEach(id => {
+  ['realm-panel','legend','spellbook','quest-log','realm-codex','minimap','node-list','debug-panel','cartographer','energy-panel'].forEach(id => {
     const el = document.getElementById(id);
     if (el && el.style.left) {
       layout.panels[id] = { left: el.style.left, top: el.style.top };
@@ -4622,7 +4622,7 @@ makeDraggable(document.getElementById('node-list'), '#node-list-header', [192,14
 
 // Restore saved layout on load, or default all panels to minimized (icons only)
 if (!restoreLayout()) {
-  ['realm-panel', 'legend', 'spellbook', 'quest-log', 'realm-codex', 'minimap', 'node-list'].forEach(id => {
+  ['realm-panel', 'legend', 'spellbook', 'quest-log', 'realm-codex', 'minimap', 'node-list', 'cartographer', 'energy-panel'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.add('panel-minimized');
   });
