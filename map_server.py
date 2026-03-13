@@ -161,6 +161,7 @@ class RealmHandler(SimpleHTTPRequestHandler):
             status["wled"] = wled_bridge.get_wled_states()
             topo_nodes = _load_topology().get("nodes", [])
             status["roles"] = {n["id"]: node_roles.get_role(n["id"], n) for n in topo_nodes}
+            status["groups"] = node_roles.get_ha_map()
             self._json_response(status)
 
         elif self.path.startswith("/events"):
@@ -512,6 +513,7 @@ if __name__ == "__main__":
     realm_db.migrate_config("chat", _CHAT_CONFIG, _CHAT_SAFE_KEYS)
     realm_db.migrate_config("speech", _SPEECH_CONFIG, _SPEECH_SAFE_KEYS)
     realm_db.migrate_topology(TOPOLOGY_FILE)
+    node_roles.migrate_to_db()
     print(f"collectd RRD: /var/lib/collectd/rrd/")
     ap_scanner._event_callback = push_event
     ap_scanner.start_background_scanner()

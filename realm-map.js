@@ -984,6 +984,7 @@
     _lastTopoCollectd = d.collectd;
     if (_topoEnabled) renderTopoLayer(d.collectd);
     updateNodeListStatus(d);
+    updateCensusSubLabels(d);
     firePulse();
     clearTimeout(_dbgRefreshTimer);
     _dbgRefreshTimer = setTimeout(_dbgRefresh, 200);
@@ -2194,6 +2195,12 @@
       peHintsList = [];
       renderHints();
     });
+    const groupTab = document.querySelector('.pe-tab[data-pe-tab="group"]');
+    if (groupTab) {
+      const groupConfig = lastStatus?.groups?.[nodeKey];
+      const hasMembers = groupConfig && (Array.isArray(groupConfig.entities) ? groupConfig.entities.length > 1 : typeof groupConfig.entities === "object" ? Object.keys(groupConfig.entities).length > 1 : false);
+      groupTab.style.display = hasMembers ? "" : "none";
+    }
     peEditor.classList.add("open");
     peOverlay.classList.add("open");
     peSaved.classList.remove("show");
@@ -2273,6 +2280,7 @@
       else stopStatsRefresh();
       if (target === "node") renderNodePane(currentEditNode);
       if (target === "control") renderControlPane(currentEditNode);
+      if (target === "group") renderGroupPane(currentEditNode);
       if (target === "shell") {
         renderShellPane(currentEditNode);
         _shellInput.focus();
@@ -2288,6 +2296,7 @@
     else stopStatsRefresh();
     if (name === "node") renderNodePane(currentEditNode);
     if (name === "control") renderControlPane(currentEditNode);
+    if (name === "group") renderGroupPane(currentEditNode);
     if (name === "shell") renderShellPane(currentEditNode);
     if (name === "links") renderConnectionsPane(currentEditNode);
   }
@@ -2793,6 +2802,89 @@
     });
   }
   __name(renderControlPane, "renderControlPane");
+  function renderGroupPane(nodeKey) {
+    const body = document.getElementById("pe-group-body");
+    const titleEl = document.getElementById("pe-group-title");
+    const countEl = document.getElementById("pe-group-count");
+    if (!body) return;
+    const groupConfig = lastStatus?.groups?.[nodeKey];
+    if (!groupConfig || !groupConfig.entities) {
+      body.innerHTML = '<div class="pe-stats-empty">Not a group node.</div>';
+      return;
+    }
+    const entities = groupConfig.entities;
+    const fnType = groupConfig.fn || "";
+    const also = groupConfig.also || [];
+    const allStates = lastStatus?._ha_raw || null;
+    const info = infraNodes[nodeKey];
+    const nodeName = info ? info.name : nodeKey;
+    titleEl.textContent = nodeName + " \u2014 Members";
+    let html = "";
+    let memberCount = 0;
+    if (Array.isArray(entities)) {
+      memberCount = entities.length;
+      countEl.textContent = `${memberCount} members`;
+      entities.forEach((eid) => {
+        const entityName = eid.split(".").pop().replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+        const domain = eid.split(".")[0];
+        html += `<div class="pe-group-member">`;
+        html += `<div class="pe-group-member-icon">${_groupMemberIcon(domain, fnType)}</div>`;
+        html += `<div class="pe-group-member-info">`;
+        html += `<div class="pe-group-member-name">${entityName}</div>`;
+        html += `<div class="pe-group-member-id">${eid}</div>`;
+        html += `</div>`;
+        html += `</div>`;
+      });
+    } else if (typeof entities === "object") {
+      const keys = Object.entries(entities);
+      memberCount = keys.length;
+      countEl.textContent = `${memberCount} sensors`;
+      keys.forEach(([label, eid]) => {
+        const entityName = label.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+        html += `<div class="pe-group-member">`;
+        html += `<div class="pe-group-member-icon">\u{1F4CA}</div>`;
+        html += `<div class="pe-group-member-info">`;
+        html += `<div class="pe-group-member-name">${entityName}</div>`;
+        html += `<div class="pe-group-member-id">${eid}</div>`;
+        html += `</div>`;
+        html += `</div>`;
+      });
+    }
+    if (also.length) {
+      html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Linked Nodes</div>';
+      also.forEach((nid) => {
+        const alsoNode = _topology?.nodes.find((n) => n.id === nid);
+        const label = alsoNode?.label || nid;
+        html += `<div class="pe-group-member">`;
+        html += `<div class="pe-group-member-icon">${alsoNode?.icon || "\u2753"}</div>`;
+        html += `<div class="pe-group-member-info">`;
+        html += `<div class="pe-group-member-name">${label}</div>`;
+        html += `<div class="pe-group-member-id">${nid} (shares this group's state)</div>`;
+        html += `</div>`;
+        html += `</div>`;
+      });
+      html += "</div>";
+    }
+    body.innerHTML = html;
+  }
+  __name(renderGroupPane, "renderGroupPane");
+  function _groupMemberIcon(domain, fnType) {
+    const icons = {
+      climate: "\u{1F321}\uFE0F",
+      camera: "\u{1F4F9}",
+      media_player: "\u{1F50A}",
+      switch: "\u{1F50C}",
+      light: "\u{1F4A1}",
+      fan: "\u{1F32C}\uFE0F",
+      vacuum: "\u{1F916}",
+      sensor: "\u{1F4CA}",
+      binary_sensor: "\u{1F4CA}",
+      humidifier: "\u{1F4A7}",
+      select: "\u2699\uFE0F"
+    };
+    return icons[domain] || "\u2022";
+  }
+  __name(_groupMemberIcon, "_groupMemberIcon");
   async function handleControlAction(e) {
     const el = e.target.closest("[data-action]");
     if (!el) return;
@@ -3723,6 +3815,39 @@
   }
   __name(updateNodeListStatus, "updateNodeListStatus");
   buildNodeList();
+  function updateCensusSubLabels(d) {
+    if (!d) return;
+    document.querySelectorAll(".nl-item").forEach((item) => {
+      const id = item.dataset.nodeId;
+      if (!id) return;
+      const subEl = item.querySelector(".nl-sub");
+      if (!subEl) return;
+      const haInfo = d.ha?.[id];
+      if (haInfo?.sublabel) {
+        subEl.textContent = haInfo.sublabel;
+        return;
+      }
+      const wledInfo = d.wled?.[id];
+      if (wledInfo?.online) {
+        subEl.textContent = wledInfo.on ? `On \u2022 ${wledInfo.effect || "Solid"}` : "Off";
+        return;
+      }
+      const wifi = d.wifi?.[id];
+      if (wifi?.signal != null) {
+        subEl.textContent = `${wifi.signal} dBm \u2022 ${wifi.ap || ""}`;
+        return;
+      }
+    });
+  }
+  __name(updateCensusSubLabels, "updateCensusSubLabels");
+  var _lastCensusCount = _topology?.nodes?.length || 0;
+  setInterval(() => {
+    const n = _topology?.nodes?.length || 0;
+    if (n !== _lastCensusCount) {
+      _lastCensusCount = n;
+      buildNodeList();
+    }
+  }, 1e4);
   function updateEnergyPanel(data) {
     if (!data || data.error) return;
     const fmt = /* @__PURE__ */ __name((v, unit, decimals = 1) => v != null ? `${v.toFixed(decimals)}${unit}` : "--", "fmt");

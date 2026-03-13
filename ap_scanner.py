@@ -19,6 +19,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import realm_db
+import node_roles
 
 TOPOLOGY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "topology.json")
 SSH_OPTS = ["-o", "ConnectTimeout=4", "-o", "StrictHostKeyChecking=no"]
@@ -288,56 +289,75 @@ def scan_and_update():
                 "hostname": lease_info[1] if lease_info else None,
             })
 
-    # --- Auto-create unknown nodes on the map ---
-    # Place named unknowns in a "Wandering Spirits" area, connected to their AP
+    # --- Auto-create/update unknown nodes on the map ---
+    # All unknown MACs get a node (nameless devices use OUI vendor for label).
+    # Nodes persist even when offline — only removed manually.
     UNKNOWN_BASE_X, UNKNOWN_BASE_Y = 2300, 750  # right side of map
-    UNKNOWN_COLS = 4
-    existing_auto = {n["id"] for n in topo["nodes"] if n.get("_auto")}
+    UNKNOWN_COLS = 6
+    existing_auto = {n["id"]: n for n in topo["nodes"] if n.get("_auto")}
     seen_auto = set()
     auto_added = 0
     for i, u in enumerate(unknown):
         hostname = u.get("hostname") or "*"
-        if hostname == "*":
-            continue  # skip nameless clients
-        node_id = f"_unknown_{u['mac'].replace(':', '')}"
+        mac = u["mac"]
+        node_id = f"_unknown_{mac.replace(':', '')}"
         seen_auto.add(node_id)
-        col, row = i % UNKNOWN_COLS, i // UNKNOWN_COLS
-        x = UNKNOWN_BASE_X + col * 70
-        y = UNKNOWN_BASE_Y + row * 50
         if node_id not in existing_auto:
+            col, row = i % UNKNOWN_COLS, i // UNKNOWN_COLS
+            x = UNKNOWN_BASE_X + col * 70
+            y = UNKNOWN_BASE_Y + row * 50
+            # Auto-enrich: role, icon, label, persona from MAC/hostname/OUI
+            hn = hostname if hostname != "*" else None
+            enriched, persona = node_roles.enrich_unknown_node(
+                node_id, mac, hn, u.get("ip"))
             new_node = {
                 "id": node_id, "type": "device", "_auto": True,
                 "x": x, "y": y,
-                "icon": "&#128123;",  # ghost
-                "label": hostname[:20],
-                "sublabel": f"{u.get('ip', '?')} \u2022 {u['mac'][:8]}...",
                 "ip": u.get("ip", ""),
-                "mac": u["mac"],
-                "iconStyle": {
-                    "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-                    "borderColor": "rgba(160,100,200,0.3)",
-                    "width": "32px", "height": "32px", "fontSize": "14px",
-                    "opacity": "0.7",
-                },
+                "mac": mac,
+                "_last_seen": time.time(),
+                **enriched,
             }
             topo["nodes"].append(new_node)
             realm_db.set_node(node_id, new_node)
-            # Connect to AP
+            if not realm_db.get_persona(node_id):
+                realm_db.set_persona(node_id, persona)
             conn = {"from": node_id, "to": u["ap"], "type": "active"}
             topo["connections"].append(conn)
             auto_added += 1
+        else:
+            # Update last-seen timestamp and IP for existing auto-nodes
+            existing = existing_auto[node_id]
+            existing["_last_seen"] = time.time()
+            if u.get("ip") and existing.get("ip") != u["ip"]:
+                existing["ip"] = u["ip"]
+            realm_db.set_node(node_id, existing)
 
-    # Clean up auto nodes that disappeared from scan
-    auto_removed = 0
-    for old_id in existing_auto - seen_auto:
-        topo["nodes"] = [n for n in topo["nodes"] if n["id"] != old_id]
-        topo["connections"] = [c for c in topo["connections"]
-                               if c["from"] != old_id and c["to"] != old_id]
-        realm_db.delete_node(old_id)
-        auto_removed += 1
+    if auto_added:
+        print(f"[AP Scanner] Added {auto_added} new auto-nodes")
 
-    if auto_added or auto_removed:
-        print(f"[AP Scanner] Unknown nodes: +{auto_added} -{auto_removed}")
+    # --- Enrich existing auto-nodes that lack role/icon data ---
+    enriched_count = 0
+    for n in topo["nodes"]:
+        if not n.get("_auto"):
+            continue
+        if n.get("_role"):
+            continue  # already enriched
+        mac = n.get("mac", "")
+        if not mac:
+            continue
+        hostname = n.get("label", "")
+        ip = n.get("ip", "")
+        enriched, persona = node_roles.enrich_unknown_node(
+            n["id"], mac, hostname, ip)
+        # Merge enriched data into existing node (preserve position)
+        n.update(enriched)
+        realm_db.set_node(n["id"], n)
+        if not realm_db.get_persona(n["id"]):
+            realm_db.set_persona(n["id"], persona)
+        enriched_count += 1
+    if enriched_count:
+        print(f"[AP Scanner] Enriched {enriched_count} existing nodes with role/icon data")
 
     # --- Build per-node WiFi signal data ---
     wifi = {}  # node_id → {ap, signal, snr, tx_rate, rx_rate}
@@ -349,7 +369,7 @@ def scan_and_update():
         if info:
             wifi[node_id] = {"ap": ap_id, **info}
 
-    if changes or ip_updates or auto_added or auto_removed:
+    if changes or ip_updates or auto_added or enriched_count:
         _save_topo(topo)
 
     with _lock:

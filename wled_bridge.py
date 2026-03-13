@@ -1,21 +1,28 @@
 #!/usr/bin/env python3
-"""WLED bridge — polls WLED devices for LED strip stats."""
+"""WLED bridge — polls WLED devices for LED strip stats.
+
+Device list derived from topology (nodes with _role=wled and an IP).
+"""
 
 import json
-import os
 import threading
 import time
 import urllib.request
+
+import realm_db
 
 POLL_INTERVAL = 30
 _cache = {"ts": 0, "devices": {}}
 _lock = threading.Lock()
 
-# WLED devices: node_id → IP
-WLED_DEVICES = {
-    "wled-main": "10.0.6.149",
-    "wled-aqi": "10.0.6.152",
-}
+
+def _get_wled_devices():
+    """Get WLED device IPs from topology DB (nodes with _role=wled)."""
+    devices = {}
+    for node in realm_db.get_nodes():
+        if node.get("_role") == "wled" and node.get("ip"):
+            devices[node["id"]] = node["ip"]
+    return devices
 
 
 def _fetch_wled(ip):
@@ -37,12 +44,10 @@ def _build_wled_stats(data):
     info = data.get("info", {})
     effects = data.get("effects", [])
 
-    # Get current effect name
     seg = state.get("seg", [{}])[0]
     fx_id = seg.get("fx", 0)
     effect_name = effects[fx_id] if fx_id < len(effects) else f"Effect {fx_id}"
 
-    # Calculate uptime
     uptime_s = info.get("uptime", 0)
     uptime_d = uptime_s // 86400
     uptime_h = (uptime_s % 86400) // 3600
@@ -69,25 +74,26 @@ def _build_wled_stats(data):
         "uptime_s": uptime_s,
         "uptime_str": f"{uptime_d}d {uptime_h}h" if uptime_d else f"{uptime_h}h",
         "free_heap": info.get("freeheap"),
-        "live_mode": state.get("lor", 0),  # 0=normal, 1=live, 2=def
+        "live_mode": state.get("lor", 0),
     }
 
 
 def poll_once():
     """Poll all WLED devices once."""
-    devices = {}
-    for node_id, ip in WLED_DEVICES.items():
+    devices = _get_wled_devices()
+    results = {}
+    for node_id, ip in devices.items():
         data = _fetch_wled(ip)
         stats = _build_wled_stats(data)
         if stats:
-            devices[node_id] = stats
+            results[node_id] = stats
         else:
-            devices[node_id] = {"online": False}
+            results[node_id] = {"online": False}
 
     with _lock:
         _cache["ts"] = time.time()
-        _cache["devices"] = devices
-    return len([d for d in devices.values() if d.get("online")])
+        _cache["devices"] = results
+    return len([d for d in results.values() if d.get("online")])
 
 
 def get_wled_states():
@@ -100,9 +106,10 @@ def _poll_loop():
     """Background polling loop."""
     while True:
         try:
+            devices = _get_wled_devices()
             n = poll_once()
-            if n:
-                print(f"[WLED Bridge] Polled {len(WLED_DEVICES)} devices, {n} online")
+            if devices:
+                print(f"[WLED Bridge] Polled {len(devices)} devices, {n} online")
         except Exception as e:
             print(f"[WLED Bridge] Error: {e}")
         time.sleep(POLL_INTERVAL)
@@ -110,14 +117,14 @@ def _poll_loop():
 
 def start_wled_bridge():
     """Start the WLED bridge as a daemon thread."""
-    if not WLED_DEVICES:
-        print("[WLED Bridge] No devices configured, skipping")
+    devices = _get_wled_devices()
+    if not devices:
+        print("[WLED Bridge] No WLED devices in topology, skipping")
         return None
-    # Initial poll
     poll_once()
     t = threading.Thread(target=_poll_loop, daemon=True)
     t.start()
-    print(f"[WLED Bridge] Started (interval={POLL_INTERVAL}s, devices={len(WLED_DEVICES)})")
+    print(f"[WLED Bridge] Started (interval={POLL_INTERVAL}s, devices={len(devices)})")
     return t
 
 
@@ -125,7 +132,8 @@ def start_wled_bridge():
 
 def set_wled_state(node_id, on=None, brightness=None, effect=None):
     """Set WLED state via API."""
-    ip = WLED_DEVICES.get(node_id)
+    devices = _get_wled_devices()
+    ip = devices.get(node_id)
     if not ip:
         return {"error": f"Unknown WLED device: {node_id}"}
 

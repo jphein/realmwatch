@@ -559,6 +559,7 @@ export function updateUI(d) {
   _lastTopoCollectd = d.collectd;
   if (_topoEnabled) renderTopoLayer(d.collectd);
   updateNodeListStatus(d);
+  updateCensusSubLabels(d);
   firePulse();
   // Debounced debug panel refresh
   clearTimeout(_dbgRefreshTimer);
@@ -1836,6 +1837,16 @@ export function openPersonaEditor(nodeKey) {
     peHintsList = [];
     renderHints();
   });
+  // Show/hide Group tab based on whether node has entity members
+  const groupTab = document.querySelector('.pe-tab[data-pe-tab="group"]');
+  if (groupTab) {
+    const groupConfig = lastStatus?.groups?.[nodeKey];
+    const hasMembers = groupConfig && (
+      Array.isArray(groupConfig.entities) ? groupConfig.entities.length > 1 :
+      typeof groupConfig.entities === 'object' ? Object.keys(groupConfig.entities).length > 1 : false
+    );
+    groupTab.style.display = hasMembers ? '' : 'none';
+  }
   peEditor.classList.add('open');
   peOverlay.classList.add('open');
   peSaved.classList.remove('show');
@@ -1916,6 +1927,7 @@ document.querySelectorAll('.pe-tab').forEach(tab => {
     else stopStatsRefresh();
     if (target === 'node') renderNodePane(currentEditNode);
     if (target === 'control') renderControlPane(currentEditNode);
+    if (target === 'group') renderGroupPane(currentEditNode);
     if (target === 'shell') { renderShellPane(currentEditNode); _shellInput.focus(); }
     if (target === 'links') renderConnectionsPane(currentEditNode);
   });
@@ -1929,6 +1941,7 @@ function _switchToTab(name) {
   else stopStatsRefresh();
   if (name === 'node') renderNodePane(currentEditNode);
   if (name === 'control') renderControlPane(currentEditNode);
+  if (name === 'group') renderGroupPane(currentEditNode);
   if (name === 'shell') renderShellPane(currentEditNode);
   if (name === 'links') renderConnectionsPane(currentEditNode);
 }
@@ -2478,6 +2491,98 @@ function renderControlPane(nodeKey) {
     el.addEventListener('click', handleControlAction);
     el.addEventListener('input', handleControlAction);
   });
+}
+
+// ── Group Tab (multi-device nodes) ──
+function renderGroupPane(nodeKey) {
+  const body = document.getElementById('pe-group-body');
+  const titleEl = document.getElementById('pe-group-title');
+  const countEl = document.getElementById('pe-group-count');
+  if (!body) return;
+
+  const groupConfig = lastStatus?.groups?.[nodeKey];
+  if (!groupConfig || !groupConfig.entities) {
+    body.innerHTML = '<div class="pe-stats-empty">Not a group node.</div>';
+    return;
+  }
+
+  const entities = groupConfig.entities;
+  const fnType = groupConfig.fn || '';
+  const also = groupConfig.also || [];
+
+  // Get entity states from HA
+  const allStates = lastStatus?._ha_raw || null;
+  const info = infraNodes[nodeKey];
+  const nodeName = info ? info.name : nodeKey;
+  titleEl.textContent = nodeName + ' — Members';
+
+  let html = '';
+  let memberCount = 0;
+
+  if (Array.isArray(entities)) {
+    // Entity list (cameras, speakers, thermostats, switches)
+    memberCount = entities.length;
+    countEl.textContent = `${memberCount} members`;
+
+    entities.forEach(eid => {
+      const entityName = eid.split('.').pop().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      const domain = eid.split('.')[0];
+
+      // Build member row with live state from HA sublabel data
+      html += `<div class="pe-group-member">`;
+      html += `<div class="pe-group-member-icon">${_groupMemberIcon(domain, fnType)}</div>`;
+      html += `<div class="pe-group-member-info">`;
+      html += `<div class="pe-group-member-name">${entityName}</div>`;
+      html += `<div class="pe-group-member-id">${eid}</div>`;
+      html += `</div>`;
+      html += `</div>`;
+    });
+  } else if (typeof entities === 'object') {
+    // Named entity map (solar: {kw, grid_in, batt_v, ...})
+    const keys = Object.entries(entities);
+    memberCount = keys.length;
+    countEl.textContent = `${memberCount} sensors`;
+
+    keys.forEach(([label, eid]) => {
+      const entityName = label.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      html += `<div class="pe-group-member">`;
+      html += `<div class="pe-group-member-icon">\uD83D\uDCCA</div>`;
+      html += `<div class="pe-group-member-info">`;
+      html += `<div class="pe-group-member-name">${entityName}</div>`;
+      html += `<div class="pe-group-member-id">${eid}</div>`;
+      html += `</div>`;
+      html += `</div>`;
+    });
+  }
+
+  // Show "also" linked nodes
+  if (also.length) {
+    html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Linked Nodes</div>';
+    also.forEach(nid => {
+      const alsoNode = _topology?.nodes.find(n => n.id === nid);
+      const label = alsoNode?.label || nid;
+      html += `<div class="pe-group-member">`;
+      html += `<div class="pe-group-member-icon">${alsoNode?.icon || '\u2753'}</div>`;
+      html += `<div class="pe-group-member-info">`;
+      html += `<div class="pe-group-member-name">${label}</div>`;
+      html += `<div class="pe-group-member-id">${nid} (shares this group's state)</div>`;
+      html += `</div>`;
+      html += `</div>`;
+    });
+    html += '</div>';
+  }
+
+  body.innerHTML = html;
+}
+
+function _groupMemberIcon(domain, fnType) {
+  const icons = {
+    climate: '\uD83C\uDF21\uFE0F', camera: '\uD83D\uDCF9', media_player: '\uD83D\uDD0A',
+    switch: '\uD83D\uDD0C', light: '\uD83D\uDCA1', fan: '\uD83C\uDF2C\uFE0F',
+    vacuum: '\uD83E\uDD16', sensor: '\uD83D\uDCCA', binary_sensor: '\uD83D\uDCCA',
+    humidifier: '\uD83D\uDCA7', select: '\u2699\uFE0F',
+  };
+  return icons[domain] || '\u2022';
 }
 
 async function handleControlAction(e) {
@@ -3436,6 +3541,44 @@ export function updateNodeListStatus(d) {
 
 // Build the node list from topology
 buildNodeList();
+
+function updateCensusSubLabels(d) {
+  if (!d) return;
+  document.querySelectorAll('.nl-item').forEach(item => {
+    const id = item.dataset.nodeId;
+    if (!id) return;
+    const subEl = item.querySelector('.nl-sub');
+    if (!subEl) return;
+    // Show live HA sublabel if available
+    const haInfo = d.ha?.[id];
+    if (haInfo?.sublabel) {
+      subEl.textContent = haInfo.sublabel;
+      return;
+    }
+    // Show WLED state
+    const wledInfo = d.wled?.[id];
+    if (wledInfo?.online) {
+      subEl.textContent = wledInfo.on ? `On \u2022 ${wledInfo.effect || 'Solid'}` : 'Off';
+      return;
+    }
+    // Show WiFi signal
+    const wifi = d.wifi?.[id];
+    if (wifi?.signal != null) {
+      subEl.textContent = `${wifi.signal} dBm \u2022 ${wifi.ap || ''}`;
+      return;
+    }
+  });
+}
+
+// Rebuild census when topology refreshes
+let _lastCensusCount = _topology?.nodes?.length || 0;
+setInterval(() => {
+  const n = _topology?.nodes?.length || 0;
+  if (n !== _lastCensusCount) {
+    _lastCensusCount = n;
+    buildNodeList();
+  }
+}, 10000);
 
 // ── Energy Panel ──
 function updateEnergyPanel(data) {
