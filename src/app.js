@@ -693,15 +693,20 @@ export function getNodeTraffic(collectd, nodeKey) {
 // Snapshot connection paths for traffic updates (uses _connPaths from renderTopology)
 const _connLinesWithData = _connPaths.filter(p => p && p.dataset.to);
 const _connBaseWidths = new Map();
+const _connCache = new WeakMap();  // Cache per-line: {connType, sw, speed, dir, tier, stroke}
 _connPaths.forEach(path => {
   if (!path) return;
   const cs = getComputedStyle(path);
   _connBaseWidths.set(path, parseFloat(cs.getPropertyValue('--sw')) || 1.5);
+  // Pre-cache connType (doesn't change)
+  const connType = Array.from(path.classList).find(c => connColors[c]);
+  _connCache.set(path, { connType, sw: 0, speed: 0, dir: '', tier: '', stroke: '' });
 });
 
 export function updateConnectionTraffic(collectd) {
   if (!collectd) return;
   _connLinesWithData.forEach(line => {
+    const cache = _connCache.get(line) || { connType: null, sw: 0, speed: 0, dir: '', tier: '', stroke: '' };
     const toNode = line.dataset.to;
     const fromNode = line.dataset.from;
     const toTraffic = getNodeTraffic(collectd, toNode);
@@ -711,38 +716,43 @@ export function updateConnectionTraffic(collectd) {
       : (toTraffic || fromTraffic);
     const baseW = _connBaseWidths.get(line) || 1.5;
     if (!traffic || traffic.total === 0) {
-      line.style.setProperty('--sw', baseW);
-      line.style.removeProperty('--speed');
-      line.style.removeProperty('--dir');
-      line.removeAttribute('stroke');
-      line.classList.remove('conn-traffic-low', 'conn-traffic-med', 'conn-traffic-high');
+      // Only update if was previously active
+      if (cache.tier || cache.sw !== baseW) {
+        line.style.setProperty('--sw', baseW);
+        line.style.removeProperty('--speed');
+        line.style.removeProperty('--dir');
+        line.removeAttribute('stroke');
+        if (cache.tier) line.classList.remove(cache.tier);
+        cache.sw = baseW; cache.speed = 0; cache.dir = ''; cache.tier = ''; cache.stroke = '';
+      }
       return;
     }
     // Realistic bandwidth scale: 0→1 mapped over 1 KB/s → 10 MB/s (log scale)
     const rawIntensity = Math.max(0, Math.min(1, (Math.log10(traffic.total + 1) - 3) / 4));
     const intensity = Math.min(1, rawIntensity * trafficScale);
     // Stroke width: base (frozen original) + up to 8px extra scaled by slider
-    const sw = baseW + intensity * 8 * trafficScale;
-    line.style.setProperty('--sw', sw.toFixed(1));
-    // Animation speed: 20s → 2s (faster = more traffic)
-    const speed = Math.max(2, 20 - intensity * 18);
-    line.style.setProperty('--speed', speed.toFixed(1) + 's');
-    // Flow direction: toward the hub if download-dominant, outward if upload-dominant
-    const rxDominant = traffic.rx > traffic.tx;
-    line.style.setProperty('--dir', rxDominant ? 'reverse' : 'normal');
-    // Brighten stroke color
-    const connType = Array.from(line.classList).find(c => connColors[c]);
-    if (connType) {
-      const [r,g,b] = connColors[connType];
-      const alpha = 0.15 + intensity * 0.5;
+    const sw = +(baseW + intensity * 8 * trafficScale).toFixed(1);
+    const speed = +Math.max(2, 20 - intensity * 18).toFixed(1);
+    const dir = traffic.rx > traffic.tx ? 'reverse' : 'normal';
+    const tier = intensity > 0.65 ? 'conn-traffic-high' : intensity > 0.35 ? 'conn-traffic-med' : intensity > 0.15 ? 'conn-traffic-low' : '';
+    // Only update DOM if values changed
+    if (sw !== cache.sw) { line.style.setProperty('--sw', sw); cache.sw = sw; }
+    if (speed !== cache.speed) { line.style.setProperty('--speed', speed + 's'); cache.speed = speed; }
+    if (dir !== cache.dir) { line.style.setProperty('--dir', dir); cache.dir = dir; }
+    // Stroke color
+    if (cache.connType) {
+      const [r,g,b] = connColors[cache.connType];
+      const alpha = +(0.15 + intensity * 0.5).toFixed(2);
       const bright = 1 + intensity * 0.3;
-      line.setAttribute('stroke', `rgba(${Math.min(255,r*bright)|0},${Math.min(255,g*bright)|0},${Math.min(255,b*bright)|0},${alpha.toFixed(2)})`);
+      const stroke = `rgba(${Math.min(255,r*bright)|0},${Math.min(255,g*bright)|0},${Math.min(255,b*bright)|0},${alpha})`;
+      if (stroke !== cache.stroke) { line.setAttribute('stroke', stroke); cache.stroke = stroke; }
     }
-    // Glow tier
-    line.classList.remove('conn-traffic-low', 'conn-traffic-med', 'conn-traffic-high');
-    if (intensity > 0.65) line.classList.add('conn-traffic-high');
-    else if (intensity > 0.35) line.classList.add('conn-traffic-med');
-    else if (intensity > 0.15) line.classList.add('conn-traffic-low');
+    // Glow tier - only change if different
+    if (tier !== cache.tier) {
+      if (cache.tier) line.classList.remove(cache.tier);
+      if (tier) line.classList.add(tier);
+      cache.tier = tier;
+    }
   });
 
   // Scale node icons based on traffic (use cached DOM refs, not querySelectorAll)
