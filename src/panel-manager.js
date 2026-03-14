@@ -59,13 +59,21 @@ const FORMATIONS = {
 };
 
 const STORAGE_KEY = 'realm-panel-formation';
+const SEAL_MODES = {
+  dock: { name: 'Docked', icon: '⚓', desc: 'Sealed runes gather in the dock' },
+  anchored: { name: 'Anchored', icon: '📍', desc: 'Runes stay where panels were' },
+  wander: { name: 'Wander', icon: '✨', desc: 'Runes float freely about' },
+  conjure: { name: 'Conjure', icon: '🔮', desc: 'Runes arrange themselves' },
+};
 let _mode = 'auto'; // 'auto' or 'manual'
+let _sealMode = 'dock'; // 'dock', 'anchored', 'wander', 'conjure'
 let _currentFormation = null;
 let _dragging = null;
 let _dragOffset = { x: 0, y: 0 };
 let _anchorOverlay = null;
 let _particleCanvas = null;
 let _sealedDock = null;
+let _wanderingRunes = []; // For wander mode animation
 
 // ── Initialization ──
 export function initPanelManager() {
@@ -294,6 +302,8 @@ function _sealPanel(panel) {
   const def = PANELS[panel.id];
   if (!def) return;
 
+  const rect = panel.getBoundingClientRect();
+
   // Store original position for restoration
   panel.dataset.originalAnchor = panel.dataset.anchor || def.anchor;
   panel.dataset.originalLeft = panel.style.left;
@@ -302,11 +312,28 @@ function _sealPanel(panel) {
   panel.dataset.originalBottom = panel.style.bottom;
   panel.dataset.originalTransform = panel.style.transform;
 
-  // Create sealed rune icon in dock
-  const tray = _sealedDock.querySelector('.dock-tray');
+  // Create sealed rune
+  const rune = _createRune(panel.id, def);
+
+  // Spawn particles from original position
+  _spawnSealParticles(panel);
+
+  // Handle based on seal mode
+  if (_sealMode === 'dock') {
+    _sealToDock(panel, rune, rect);
+  } else if (_sealMode === 'anchored') {
+    _sealAnchored(panel, rune, rect);
+  } else if (_sealMode === 'wander') {
+    _sealWandering(panel, rune, rect);
+  } else if (_sealMode === 'conjure') {
+    _sealConjured(panel, rune, rect);
+  }
+}
+
+function _createRune(panelId, def) {
   const rune = document.createElement('div');
   rune.className = 'sealed-rune';
-  rune.dataset.panelId = panel.id;
+  rune.dataset.panelId = panelId;
   rune.title = def.name;
 
   const icon = document.createElement('span');
@@ -320,54 +347,269 @@ function _sealPanel(panel) {
   rune.appendChild(glow);
 
   // Click to unseal
+  const panel = document.getElementById(panelId);
   rune.addEventListener('click', () => _toggleMinimize(panel));
 
-  tray.appendChild(rune);
+  return rune;
+}
 
-  // Show dock FIRST so we can get its position
+function _sealToDock(panel, rune, rect) {
+  const tray = _sealedDock.querySelector('.dock-tray');
+  tray.appendChild(rune);
   _sealedDock.classList.add('has-runes');
 
-  // Spawn particles from original position
-  _spawnSealParticles(panel);
-
-  // Wait a frame for dock to be visible, then animate
   requestAnimationFrame(() => {
-    const rect = panel.getBoundingClientRect();
     const dockRect = _sealedDock.getBoundingClientRect();
     const targetX = dockRect.left + dockRect.width / 2;
-    const targetY = dockRect.top + 40; // Center of dock
+    const targetY = dockRect.top + 40;
 
-    // Animate shrink and fly to dock
     panel.style.transition = 'all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
     panel.style.transform = `translate(${targetX - rect.left - rect.width/2}px, ${targetY - rect.top - rect.height/2}px) scale(0)`;
     panel.style.opacity = '0';
 
     setTimeout(() => {
-      panel.classList.add('panel-sealed');
-      panel.style.display = 'none';
-      panel.style.transition = '';
-      panel.style.transform = '';
-      panel.style.opacity = '';
-
-      // Entrance animation for rune
+      _finalizeSeal(panel);
       rune.classList.add('entering');
       setTimeout(() => rune.classList.remove('entering'), 500);
     }, 500);
   });
 }
 
+function _sealAnchored(panel, rune, rect) {
+  // Position rune where panel was
+  rune.classList.add('anchored-rune');
+  rune.style.position = 'fixed';
+  rune.style.left = (rect.left + rect.width / 2 - 25) + 'px';
+  rune.style.top = (rect.top + rect.height / 2 - 25) + 'px';
+  document.body.appendChild(rune);
+
+  panel.style.transition = 'all 0.4s ease-out';
+  panel.style.transform = 'scale(0)';
+  panel.style.opacity = '0';
+
+  setTimeout(() => {
+    _finalizeSeal(panel);
+    rune.classList.add('entering');
+    setTimeout(() => rune.classList.remove('entering'), 500);
+  }, 400);
+}
+
+function _sealWandering(panel, rune, rect) {
+  // Position rune where panel was, then let it wander
+  rune.classList.add('wandering-rune');
+  rune.style.position = 'fixed';
+  rune.style.left = (rect.left + rect.width / 2 - 25) + 'px';
+  rune.style.top = (rect.top + rect.height / 2 - 25) + 'px';
+  document.body.appendChild(rune);
+
+  // Add to wandering list with velocity
+  _wanderingRunes.push({
+    el: rune,
+    x: rect.left + rect.width / 2 - 25,
+    y: rect.top + rect.height / 2 - 25,
+    vx: (Math.random() - 0.5) * 2,
+    vy: (Math.random() - 0.5) * 2,
+  });
+
+  // Start wandering animation if not already running
+  if (_wanderingRunes.length === 1) {
+    _animateWandering();
+  }
+
+  panel.style.transition = 'all 0.4s ease-out';
+  panel.style.transform = 'scale(0)';
+  panel.style.opacity = '0';
+
+  setTimeout(() => {
+    _finalizeSeal(panel);
+    rune.classList.add('entering');
+    setTimeout(() => rune.classList.remove('entering'), 500);
+  }, 400);
+}
+
+function _sealConjured(panel, rune, rect) {
+  // Add to a conjured container that auto-arranges
+  let conjured = document.getElementById('conjured-runes');
+  if (!conjured) {
+    conjured = document.createElement('div');
+    conjured.id = 'conjured-runes';
+    conjured.className = 'conjured-runes';
+    document.body.appendChild(conjured);
+  }
+  conjured.appendChild(rune);
+
+  panel.style.transition = 'all 0.4s ease-out';
+  panel.style.transform = 'scale(0)';
+  panel.style.opacity = '0';
+
+  setTimeout(() => {
+    _finalizeSeal(panel);
+    rune.classList.add('entering');
+    setTimeout(() => rune.classList.remove('entering'), 500);
+    _arrangeConjuredRunes();
+  }, 400);
+}
+
+function _finalizeSeal(panel) {
+  panel.classList.add('panel-sealed');
+  panel.style.display = 'none';
+  panel.style.transition = '';
+  panel.style.transform = '';
+  panel.style.opacity = '';
+}
+
+function _animateWandering() {
+  if (_wanderingRunes.length === 0) return;
+
+  const padding = 60;
+  const maxX = window.innerWidth - padding;
+  const maxY = window.innerHeight - padding;
+
+  for (const wr of _wanderingRunes) {
+    // Update position
+    wr.x += wr.vx;
+    wr.y += wr.vy;
+
+    // Bounce off edges
+    if (wr.x < padding || wr.x > maxX) {
+      wr.vx *= -1;
+      wr.x = Math.max(padding, Math.min(maxX, wr.x));
+    }
+    if (wr.y < padding || wr.y > maxY) {
+      wr.vy *= -1;
+      wr.y = Math.max(padding, Math.min(maxY, wr.y));
+    }
+
+    // Apply slight random drift
+    wr.vx += (Math.random() - 0.5) * 0.1;
+    wr.vy += (Math.random() - 0.5) * 0.1;
+
+    // Clamp velocity
+    const maxV = 1.5;
+    wr.vx = Math.max(-maxV, Math.min(maxV, wr.vx));
+    wr.vy = Math.max(-maxV, Math.min(maxV, wr.vy));
+
+    wr.el.style.left = wr.x + 'px';
+    wr.el.style.top = wr.y + 'px';
+  }
+
+  requestAnimationFrame(_animateWandering);
+}
+
+function _arrangeConjuredRunes() {
+  const conjured = document.getElementById('conjured-runes');
+  if (!conjured) return;
+
+  const runes = [...conjured.children];
+  const count = runes.length;
+  if (count === 0) return;
+
+  // Arrange in a circle near top-right
+  const centerX = window.innerWidth - 120;
+  const centerY = 120;
+  const radius = 40 + count * 15;
+
+  runes.forEach((rune, i) => {
+    const angle = (i / count) * Math.PI * 2 - Math.PI / 2;
+    const x = centerX + Math.cos(angle) * radius - 25;
+    const y = centerY + Math.sin(angle) * radius - 25;
+
+    rune.style.transition = 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
+    rune.style.left = x + 'px';
+    rune.style.top = y + 'px';
+  });
+}
+
+function _migrateSealedRunes(newMode) {
+  // Find all sealed runes from any location
+  const allRunes = document.querySelectorAll('.sealed-rune');
+  if (allRunes.length === 0) return;
+
+  // Clear wandering animation
+  _wanderingRunes = [];
+
+  allRunes.forEach(rune => {
+    const panelId = rune.dataset.panelId;
+    const rect = rune.getBoundingClientRect();
+
+    // Remove from current location
+    rune.remove();
+
+    // Re-add based on new mode
+    if (newMode === 'dock') {
+      const tray = _sealedDock.querySelector('.dock-tray');
+      rune.className = 'sealed-rune';
+      rune.style = '';
+      tray.appendChild(rune);
+      _sealedDock.classList.add('has-runes');
+    } else if (newMode === 'anchored') {
+      rune.classList.add('anchored-rune');
+      rune.classList.remove('wandering-rune');
+      rune.style.position = 'fixed';
+      rune.style.left = rect.left + 'px';
+      rune.style.top = rect.top + 'px';
+      document.body.appendChild(rune);
+      _sealedDock.classList.remove('has-runes');
+    } else if (newMode === 'wander') {
+      rune.classList.add('wandering-rune');
+      rune.classList.remove('anchored-rune');
+      rune.style.position = 'fixed';
+      rune.style.left = rect.left + 'px';
+      rune.style.top = rect.top + 'px';
+      document.body.appendChild(rune);
+      _wanderingRunes.push({
+        el: rune,
+        x: rect.left,
+        y: rect.top,
+        vx: (Math.random() - 0.5) * 2,
+        vy: (Math.random() - 0.5) * 2,
+      });
+      _sealedDock.classList.remove('has-runes');
+    } else if (newMode === 'conjure') {
+      let conjured = document.getElementById('conjured-runes');
+      if (!conjured) {
+        conjured = document.createElement('div');
+        conjured.id = 'conjured-runes';
+        conjured.className = 'conjured-runes';
+        document.body.appendChild(conjured);
+      }
+      rune.classList.remove('anchored-rune', 'wandering-rune');
+      rune.style.position = 'fixed';
+      conjured.appendChild(rune);
+      _sealedDock.classList.remove('has-runes');
+    }
+  });
+
+  // Start wandering if needed
+  if (newMode === 'wander' && _wanderingRunes.length > 0) {
+    _animateWandering();
+  }
+
+  // Arrange conjured if needed
+  if (newMode === 'conjure') {
+    _arrangeConjuredRunes();
+  }
+}
+
 function _unsealPanel(panel) {
-  // Remove rune from dock
-  const rune = _sealedDock.querySelector(`.sealed-rune[data-panel-id="${panel.id}"]`);
+  // Find rune from any location (dock, body, or conjured container)
+  let rune = _sealedDock?.querySelector(`.sealed-rune[data-panel-id="${panel.id}"]`);
+  if (!rune) rune = document.querySelector(`.sealed-rune[data-panel-id="${panel.id}"]`);
+
   if (rune) {
+    // Remove from wandering list if present
+    _wanderingRunes = _wanderingRunes.filter(wr => wr.el !== rune);
+
     rune.classList.add('exiting');
     setTimeout(() => {
       rune.remove();
       // Hide dock if now empty
-      const tray = _sealedDock.querySelector('.dock-tray');
+      const tray = _sealedDock?.querySelector('.dock-tray');
       if (tray && tray.children.length === 0) {
         _sealedDock.classList.remove('has-runes');
       }
+      // Re-arrange conjured if applicable
+      _arrangeConjuredRunes();
     }, 300);
   }
 
@@ -796,33 +1038,46 @@ function _injectFormationUI() {
     grid.appendChild(btn);
   });
 
-  // Mode toggle
-  const modeRow = document.createElement('div');
-  modeRow.className = 'formation-mode';
+  // Seal mode selector
+  const sealSection = document.createElement('div');
+  sealSection.className = 'seal-mode-section';
 
-  const toggleLabel = document.createElement('label');
-  toggleLabel.className = 'topo-switch';
+  const sealLabel = document.createElement('div');
+  sealLabel.className = 'seal-mode-label';
+  sealLabel.textContent = 'Sealed Rune Behavior';
+  sealSection.appendChild(sealLabel);
 
-  const toggleInput = document.createElement('input');
-  toggleInput.type = 'checkbox';
-  toggleInput.id = 'auto-conjure-toggle';
-  toggleInput.checked = _mode === 'auto';
-  toggleInput.addEventListener('change', e => {
-    _mode = e.target.checked ? 'auto' : 'manual';
+  const sealGrid = document.createElement('div');
+  sealGrid.className = 'seal-mode-grid';
+
+  Object.entries(SEAL_MODES).forEach(([id, mode]) => {
+    const btn = document.createElement('button');
+    btn.className = 'seal-mode-btn' + (_sealMode === id ? ' active' : '');
+    btn.dataset.mode = id;
+    btn.title = mode.desc;
+
+    const icon = document.createElement('span');
+    icon.className = 'seal-mode-icon';
+    icon.textContent = mode.icon;
+
+    const name = document.createElement('span');
+    name.className = 'seal-mode-name';
+    name.textContent = mode.name;
+
+    btn.appendChild(icon);
+    btn.appendChild(name);
+
+    btn.addEventListener('click', () => {
+      _sealMode = id;
+      sealGrid.querySelectorAll('.seal-mode-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _migrateSealedRunes(id);
+    });
+
+    sealGrid.appendChild(btn);
   });
 
-  const toggleTrack = document.createElement('span');
-  toggleTrack.className = 'topo-switch-track';
-
-  toggleLabel.appendChild(toggleInput);
-  toggleLabel.appendChild(toggleTrack);
-
-  const modeLabel = document.createElement('span');
-  modeLabel.className = 'layer-name';
-  modeLabel.textContent = 'Auto-Conjure';
-
-  modeRow.appendChild(toggleLabel);
-  modeRow.appendChild(modeLabel);
+  sealSection.appendChild(sealGrid);
 
   // Save button
   const saveBtn = document.createElement('button');
@@ -840,7 +1095,7 @@ function _injectFormationUI() {
   });
 
   body.appendChild(grid);
-  body.appendChild(modeRow);
+  body.appendChild(sealSection);
   body.appendChild(saveBtn);
 
   section.appendChild(header);
