@@ -65,14 +65,35 @@ let _dragging = null;
 let _dragOffset = { x: 0, y: 0 };
 let _anchorOverlay = null;
 let _particleCanvas = null;
+let _sealedDock = null;
 
 // ── Initialization ──
 export function initPanelManager() {
   _createAnchorOverlay();
   _createParticleCanvas();
+  _createSealedDock();
   _attachDragHandlers();
   _loadFormation();
   _injectFormationUI();
+}
+
+function _createSealedDock() {
+  _sealedDock = document.createElement('div');
+  _sealedDock.id = 'sealed-dock';
+  _sealedDock.className = 'sealed-dock';
+
+  // Mystical dock label
+  const label = document.createElement('div');
+  label.className = 'dock-label';
+  label.textContent = '\u2726 Sealed Runes \u2726'; // ✦ Sealed Runes ✦
+  _sealedDock.appendChild(label);
+
+  // Container for sealed panel icons
+  const tray = document.createElement('div');
+  tray.className = 'dock-tray';
+  _sealedDock.appendChild(tray);
+
+  document.body.appendChild(_sealedDock);
 }
 
 function _createAnchorOverlay() {
@@ -261,14 +282,128 @@ function _toggleMinimize(panel) {
   const isMinimized = panel.classList.contains('panel-sealed');
 
   if (isMinimized) {
-    panel.classList.remove('panel-sealed');
-    _spawnRestoreParticles(panel);
+    _unsealPanel(panel);
   } else {
-    panel.classList.add('panel-sealed');
-    _spawnSealParticles(panel);
+    _sealPanel(panel);
   }
 
   _saveFormation();
+}
+
+function _sealPanel(panel) {
+  const def = PANELS[panel.id];
+  if (!def) return;
+
+  // Store original position for restoration
+  panel.dataset.originalAnchor = panel.dataset.anchor || def.anchor;
+  panel.dataset.originalLeft = panel.style.left;
+  panel.dataset.originalTop = panel.style.top;
+  panel.dataset.originalRight = panel.style.right;
+  panel.dataset.originalBottom = panel.style.bottom;
+  panel.dataset.originalTransform = panel.style.transform;
+
+  // Create sealed rune icon in dock
+  const tray = _sealedDock.querySelector('.dock-tray');
+  const rune = document.createElement('div');
+  rune.className = 'sealed-rune';
+  rune.dataset.panelId = panel.id;
+  rune.title = def.name;
+
+  const icon = document.createElement('span');
+  icon.className = 'rune-icon';
+  icon.textContent = def.icon;
+
+  const glow = document.createElement('span');
+  glow.className = 'rune-glow';
+
+  rune.appendChild(icon);
+  rune.appendChild(glow);
+
+  // Click to unseal
+  rune.addEventListener('click', () => _toggleMinimize(panel));
+
+  tray.appendChild(rune);
+
+  // Show dock FIRST so we can get its position
+  _sealedDock.classList.add('has-runes');
+
+  // Spawn particles from original position
+  _spawnSealParticles(panel);
+
+  // Wait a frame for dock to be visible, then animate
+  requestAnimationFrame(() => {
+    const rect = panel.getBoundingClientRect();
+    const dockRect = _sealedDock.getBoundingClientRect();
+    const targetX = dockRect.left + dockRect.width / 2;
+    const targetY = dockRect.top + 40; // Center of dock
+
+    // Animate shrink and fly to dock
+    panel.style.transition = 'all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
+    panel.style.transform = `translate(${targetX - rect.left - rect.width/2}px, ${targetY - rect.top - rect.height/2}px) scale(0)`;
+    panel.style.opacity = '0';
+
+    setTimeout(() => {
+      panel.classList.add('panel-sealed');
+      panel.style.display = 'none';
+      panel.style.transition = '';
+      panel.style.transform = '';
+      panel.style.opacity = '';
+
+      // Entrance animation for rune
+      rune.classList.add('entering');
+      setTimeout(() => rune.classList.remove('entering'), 500);
+    }, 500);
+  });
+}
+
+function _unsealPanel(panel) {
+  // Remove rune from dock
+  const rune = _sealedDock.querySelector(`.sealed-rune[data-panel-id="${panel.id}"]`);
+  if (rune) {
+    rune.classList.add('exiting');
+    setTimeout(() => {
+      rune.remove();
+      // Hide dock if now empty
+      const tray = _sealedDock.querySelector('.dock-tray');
+      if (tray && tray.children.length === 0) {
+        _sealedDock.classList.remove('has-runes');
+      }
+    }, 300);
+  }
+
+  // Restore panel
+  panel.classList.remove('panel-sealed');
+  panel.style.display = '';
+
+  // Restore original position
+  const anchorId = panel.dataset.originalAnchor;
+  const anchor = ANCHORS.find(a => a.id === anchorId);
+
+  if (anchor) {
+    _snapToAnchor(panel, anchor);
+  } else {
+    panel.style.left = panel.dataset.originalLeft || '';
+    panel.style.top = panel.dataset.originalTop || '';
+    panel.style.right = panel.dataset.originalRight || '';
+    panel.style.bottom = panel.dataset.originalBottom || '';
+    panel.style.transform = panel.dataset.originalTransform || '';
+  }
+
+  // Conjuration animation
+  panel.style.opacity = '0';
+  panel.style.transform = (panel.style.transform || '') + ' scale(0.5)';
+
+  requestAnimationFrame(() => {
+    panel.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+    panel.style.opacity = '1';
+    panel.style.transform = panel.style.transform.replace(' scale(0.5)', '');
+
+    setTimeout(() => {
+      panel.style.transition = '';
+    }, 400);
+  });
+
+  _spawnRestoreParticles(panel);
 }
 
 // ── Particle Effects ──
@@ -398,22 +533,32 @@ export function applyFormation(formationId) {
   // Handle grimoire (custom saved)
   let visible = formation.visible;
   let anchors = formation.anchors;
+  let minimized = [];
 
   if (formationId === 'grimoire-binding') {
     const saved = _loadSavedFormation();
     if (saved) {
       visible = saved.visible;
       anchors = saved.anchors;
+      minimized = saved.minimized || [];
     } else {
       visible = Object.keys(PANELS);
       anchors = null;
     }
   }
 
+  // Clear existing dock runes
+  const tray = _sealedDock?.querySelector('.dock-tray');
+  if (tray) tray.innerHTML = '';
+  _sealedDock?.classList.remove('has-runes');
+
   // Hide all panels first
   Object.keys(PANELS).forEach(id => {
     const panel = document.getElementById(id);
-    if (panel) panel.style.display = 'none';
+    if (panel) {
+      panel.style.display = 'none';
+      panel.classList.remove('panel-sealed');
+    }
   });
 
   // Show and position visible panels
@@ -422,22 +567,59 @@ export function applyFormation(formationId) {
       const panel = document.getElementById(id);
       if (!panel) return;
 
-      panel.style.display = '';
+      // Check if this panel should be minimized
+      if (minimized.includes(id)) {
+        _restoreSealedToDoc(panel);
+      } else {
+        panel.style.display = '';
 
-      if (anchors && anchors[id]) {
-        const anchor = ANCHORS.find(a => a.id === anchors[id]);
-        if (anchor) _snapToAnchor(panel, anchor);
+        if (anchors && anchors[id]) {
+          const anchor = ANCHORS.find(a => a.id === anchors[id]);
+          if (anchor) _snapToAnchor(panel, anchor);
+        }
       }
     });
   }
 
   // Auto-arrange if no specific anchors
   if (!anchors && visible) {
-    _autoArrangePanels(visible);
+    _autoArrangePanels(visible.filter(id => !minimized.includes(id)));
   }
 
   // Conjuration animation
   _spawnConjurationCircle();
+}
+
+// Restore a sealed panel to the dock without animation (for page load)
+function _restoreSealedToDoc(panel) {
+  const def = PANELS[panel.id];
+  if (!def) return;
+
+  // Create rune in dock
+  const tray = _sealedDock.querySelector('.dock-tray');
+  const rune = document.createElement('div');
+  rune.className = 'sealed-rune';
+  rune.dataset.panelId = panel.id;
+  rune.title = def.name;
+
+  const icon = document.createElement('span');
+  icon.className = 'rune-icon';
+  icon.textContent = def.icon;
+
+  const glow = document.createElement('span');
+  glow.className = 'rune-glow';
+
+  rune.appendChild(icon);
+  rune.appendChild(glow);
+  rune.addEventListener('click', () => _toggleMinimize(panel));
+  tray.appendChild(rune);
+
+  // Mark panel as sealed
+  panel.classList.add('panel-sealed');
+  panel.style.display = 'none';
+
+  // Show dock
+  _sealedDock.classList.add('has-runes');
 }
 
 function _autoArrangePanels(panelIds) {

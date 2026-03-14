@@ -20,6 +20,7 @@
     _mapTilt = v;
   }
   __name(setMapTilt, "setMapTilt");
+  var SSE_URL = "/sse";
   var _PERF = {
     get moteCap() {
       return _perfTier === "low" ? 80 : _perfTier === "medium" ? 180 : 400;
@@ -330,6 +331,29 @@
       if (n.ip || n.ssh) infraNodes[n.id] = { name: n.label, ip: n.ip || "", collectdHost: n.collectd || null, sshHost: n.ssh || null, tsHost: n.tsHost || null };
       if (n.tsHost) _tsHostMap[n.tsHost] = n.id;
     });
+    const _vlanCounts = {};
+    topo.connections.forEach((c) => {
+      if (!c.vlan) return;
+      [c.from, c.to].forEach((id) => {
+        if (!_vlanCounts[id]) _vlanCounts[id] = {};
+        _vlanCounts[id][c.vlan] = (_vlanCounts[id][c.vlan] || 0) + 1;
+      });
+    });
+    const _nodeVlans2 = {};
+    topo.nodes.forEach((n) => {
+      if (_vlanCounts[n.id]) {
+        let best = 6, max = 0;
+        for (const [v, cnt] of Object.entries(_vlanCounts[n.id])) {
+          if (cnt > max) {
+            max = cnt;
+            best = +v;
+          }
+        }
+        _nodeVlans2[n.id] = best;
+      } else {
+        _nodeVlans2[n.id] = n.tailscale || n.type === "tailscale" ? 0 : 6;
+      }
+    });
     _buildObstacles();
     const fanAngles = _computeFanAngles();
     topo.connections.forEach((c, i) => {
@@ -344,6 +368,8 @@
       const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
       path.setAttribute("d", _computePathD(fp, tp, fa.fromAngle, fa.toAngle, c.from, c.to));
       path.setAttribute("class", "conn-line " + (CONN_TYPE_TO_CLASS[c.type] || "conn-active"));
+      const connVlan = c.vlan || _nodeVlans2[c.from] || _nodeVlans2[c.to] || 6;
+      path.dataset.vlan = connVlan;
       if (c.collectd) path.dataset.to = c.collectd;
       else path.dataset.to = c.to;
       path.dataset.from = c.from;
@@ -750,8 +776,6 @@
   var lastStatus = null;
   var liveOk = false;
   var _lastReportTs = 0;
-  var _dbgPollN = 0;
-  var _dbgErrN = 0;
   var _dbgRefreshTimer = null;
   function updateGauges(d) {
     const { forge, mana, essence } = d;
@@ -986,9 +1010,11 @@
     }
     if (d.collectd && DOM.codexCd) DOM.codexCd.textContent = Object.keys(d.collectd).length;
     if (DOM.codexNodes) DOM.codexNodes.textContent = _topology.nodes ? _topology.nodes.length : "?";
-    updateConnectionTraffic(d.collectd);
-    _lastTopoCollectd = d.collectd;
-    if (_topoEnabled) renderTopoLayer(d.collectd);
+    if (!_sseTrafficMap) {
+      updateConnectionTraffic(d.collectd);
+      _lastTopoCollectd = d.collectd;
+      if (_topoEnabled) renderTopoLayer(d.collectd);
+    }
     updateNodeListStatus(d);
     updateCensusSubLabels(d);
     firePulse();
@@ -1017,7 +1043,8 @@
   trafficSlider.addEventListener("input", () => {
     trafficScale = parseFloat(trafficSlider.value);
     trafficScaleVal.textContent = trafficScale.toFixed(1) + "x";
-    if (lastStatus && lastStatus.collectd) updateConnectionTraffic(lastStatus.collectd);
+    if (_sseTrafficMap) updateConnectionTrafficSSE(_sseTrafficMap);
+    else if (lastStatus && lastStatus.collectd) updateConnectionTraffic(lastStatus.collectd);
     scheduleSave();
   });
   var nodeScale = 1;
@@ -1062,14 +1089,8 @@
     document.documentElement.style.setProperty("--bubble-scale", bubbleScale);
     scheduleSave();
   });
-  var updateSpeedMs = 1e4;
   var updateSpeedSlider = document.getElementById("update-speed-slider");
   var updateSpeedVal = document.getElementById("update-speed-val");
-  updateSpeedSlider.addEventListener("input", () => {
-    updateSpeedMs = parseInt(updateSpeedSlider.value) * 1e3;
-    updateSpeedVal.textContent = updateSpeedSlider.value + "s";
-    scheduleSave();
-  });
   var connColors = {
     "conn-active": [100, 180, 255],
     "conn-ap": [100, 180, 255],
@@ -1078,6 +1099,13 @@
     "conn-bridge": [160, 100, 220],
     "conn-vlan": [255, 160, 60],
     "conn-mesh": [120, 220, 120]
+  };
+  var vlanColors = {
+    "6": [140, 180, 255],
+    "8": [255, 200, 100],
+    "10": [100, 220, 160],
+    "11": [200, 140, 255],
+    "0": [100, 220, 220]
   };
   function getNodeTraffic(collectd, nodeKey) {
     if (!collectd) return null;
@@ -1176,7 +1204,8 @@
         cache.dir = dir;
       }
       if (cache.connType) {
-        const [r, g, b] = connColors[cache.connType];
+        const vlan = line.dataset.vlan;
+        const [r, g, b] = vlan && vlanColors[vlan] || connColors[cache.connType] || [100, 180, 255];
         const alpha = +(0.15 + intensity * 0.5).toFixed(2);
         const bright = 1 + intensity * 0.3;
         const stroke = `rgba(${Math.min(255, r * bright) | 0},${Math.min(255, g * bright) | 0},${Math.min(255, b * bright) | 0},${alpha})`;
@@ -1227,6 +1256,121 @@
     }
   }
   __name(updateConnectionTraffic, "updateConnectionTraffic");
+  function updateConnectionTrafficSSE(trafficMap) {
+    if (!trafficMap) return;
+    const trafficData = [];
+    _connLinesWithData.forEach((line) => {
+      const cache = _connCache.get(line) || { connType: null, sw: 0, speed: 0, dir: "", tier: "", stroke: "", animated: false, glow: false };
+      const toNode = line.dataset.to;
+      const fromNode = line.dataset.from;
+      const toT = trafficMap[toNode];
+      const fromT = fromNode ? trafficMap[fromNode] : null;
+      const traffic = toT && fromT ? toT.total > fromT.total ? toT : fromT : toT || fromT;
+      const baseW = _connBaseWidths.get(line) || 1.5;
+      if (!traffic || traffic.total === 0) {
+        if (cache.tier || cache.sw !== baseW || cache.animated || cache.glow) {
+          line.style.setProperty("--sw", baseW);
+          line.style.removeProperty("--speed");
+          line.style.removeProperty("--dir");
+          line.removeAttribute("stroke");
+          if (cache.tier) line.classList.remove(cache.tier);
+          if (cache.animated) {
+            line.classList.remove("conn-animated");
+            cache.animated = false;
+          }
+          if (cache.glow) {
+            line.classList.remove("conn-glow");
+            cache.glow = false;
+          }
+          cache.sw = baseW;
+          cache.speed = 0;
+          cache.dir = "";
+          cache.tier = "";
+          cache.stroke = "";
+        }
+        return;
+      }
+      if (!cache.animated) {
+        line.classList.add("conn-animated");
+        cache.animated = true;
+      }
+      const intensity = Math.min(1, traffic.intensity * trafficScale);
+      const sw = +(baseW + intensity * 8 * trafficScale).toFixed(1);
+      const speed = +Math.max(2, 20 - intensity * 18).toFixed(1);
+      const dir = traffic.rx > traffic.tx ? "reverse" : "normal";
+      const tier = intensity > 0.65 ? "conn-traffic-high" : intensity > 0.35 ? "conn-traffic-med" : intensity > 0.15 ? "conn-traffic-low" : "";
+      if (sw !== cache.sw) {
+        line.style.setProperty("--sw", sw);
+        cache.sw = sw;
+      }
+      if (speed !== cache.speed) {
+        line.style.setProperty("--speed", speed + "s");
+        cache.speed = speed;
+      }
+      if (dir !== cache.dir) {
+        line.style.setProperty("--dir", dir);
+        cache.dir = dir;
+      }
+      if (cache.connType) {
+        const vlan = line.dataset.vlan;
+        const [r, g, b] = vlan && vlanColors[vlan] || connColors[cache.connType] || [100, 180, 255];
+        const alpha = +(0.15 + intensity * 0.5).toFixed(2);
+        const bright = 1 + intensity * 0.3;
+        const stroke = `rgba(${Math.min(255, r * bright) | 0},${Math.min(255, g * bright) | 0},${Math.min(255, b * bright) | 0},${alpha})`;
+        if (stroke !== cache.stroke) {
+          line.setAttribute("stroke", stroke);
+          cache.stroke = stroke;
+        }
+      }
+      if (tier !== cache.tier) {
+        if (cache.tier) line.classList.remove(cache.tier);
+        if (tier) line.classList.add(tier);
+        cache.tier = tier;
+      }
+      if (intensity > 0.3) trafficData.push({ line, cache, intensity });
+    });
+    trafficData.sort((a, b) => b.intensity - a.intensity);
+    const topLines = new Set(trafficData.slice(0, TOP_GLOW_COUNT).map((d) => d.line));
+    trafficData.forEach(({ line, cache }) => {
+      const shouldGlow = topLines.has(line);
+      if (shouldGlow !== cache.glow) {
+        if (shouldGlow) line.classList.add("conn-glow");
+        else line.classList.remove("conn-glow");
+        cache.glow = shouldGlow;
+      }
+    });
+    for (const tipKey of Object.keys(_nodeDOM)) {
+      const n = _nodeDOM[tipKey];
+      if (!n.el) continue;
+      const icon = n._icon || (n._icon = n.el.querySelector(".node-icon"));
+      if (!icon) continue;
+      const t = trafficMap[tipKey];
+      if (!t || t.total === 0) {
+        if (n._lastTrafficScale) {
+          icon.style.transform = "";
+          icon.style.filter = "";
+          n._lastTrafficScale = 0;
+        }
+        continue;
+      }
+      const intensity = Math.min(1, t.intensity * trafficScale);
+      const s = 1 + intensity * 0.5;
+      if (Math.abs(s - (n._lastTrafficScale || 1)) > 0.01) {
+        icon.style.transform = `scale(${s.toFixed(2)})`;
+        icon.style.filter = intensity > 0.3 ? `brightness(${(1 + intensity * 0.4).toFixed(2)})` : "";
+        n._lastTrafficScale = s;
+      }
+    }
+  }
+  __name(updateConnectionTrafficSSE, "updateConnectionTrafficSSE");
+  function _trafficToCollectd(trafficMap) {
+    const fake = {};
+    for (const [nodeId, t] of Object.entries(trafficMap)) {
+      fake[nodeId] = { hostname: nodeId, interfaces: { best: { rx_bps: t.rx, tx_bps: t.tx } } };
+    }
+    return fake;
+  }
+  __name(_trafficToCollectd, "_trafficToCollectd");
   var _topoSvg = document.getElementById("topo-svg");
   var _topoEnabled = true;
   var _topoOpacity = 0.6;
@@ -1237,40 +1381,9 @@
   var _lastTopoCollectd = null;
   var _topoRafId = 0;
   var _topoHash = "";
-  var _topoNodeMap = null;
-  function _getTopoNodeMap() {
-    if (_topoNodeMap) return _topoNodeMap;
-    _topoNodeMap = /* @__PURE__ */ new Map();
-    for (const n of _topology.nodes) _topoNodeMap.set(n.id, n);
-    return _topoNodeMap;
-  }
-  __name(_getTopoNodeMap, "_getTopoNodeMap");
-  function _topoNodeHeight(node, trafficMap) {
-    const traffic = trafficMap.get(node.id);
-    let h = 0.18;
-    if (traffic && traffic.total > 0) {
-      const raw = Math.max(0, Math.min(1, (Math.log10(traffic.total + 1) - 3) / 4));
-      h = 0.25 + raw * 0.75;
-    }
-    if (node.type === "core") h = Math.max(h, 0.6);
-    else if (node.type === "tower") h = Math.max(h, 0.35);
-    else if (node.type === "bridge") h = Math.max(h, 0.28);
-    return h;
-  }
-  __name(_topoNodeHeight, "_topoNodeHeight");
-  function _topoColor(t) {
-    if (t < 0.15) {
-      const s = t / 0.15;
-      return `rgb(${32 + 26 * s | 0},${37 + 3 * s | 0},${144 - 32 * s | 0})`;
-    } else if (t < 0.5) {
-      const s = (t - 0.15) / 0.35;
-      return `rgb(${58 + 48 * s | 0},${40 + 34 * s | 0},${112 - 32 * s | 0})`;
-    } else {
-      const s = (t - 0.5) / 0.5;
-      return `rgb(${106 + 106 * s | 0},${74 + 86 * s | 0},${80 - 16 * s | 0})`;
-    }
-  }
-  __name(_topoColor, "_topoColor");
+  var _topoWorkerBusy = false;
+  var _topoLastDispatch = 0;
+  var _TOPO_MIN_INTERVAL = 3e4;
   var _TOPO_DEFS = `<defs>
 <filter id="topo-glow" x="-15%" y="-15%" width="130%" height="130%">
   <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
@@ -1284,180 +1397,82 @@
   <feMerge><feMergeNode in="golden"/><feMergeNode in="soft"/><feMergeNode in="SourceGraphic"/></feMerge>
 </filter>
 </defs>`;
+  var _topoNodeMap = null;
+  function _getTopoNodeMap() {
+    if (_topoNodeMap) return _topoNodeMap;
+    _topoNodeMap = /* @__PURE__ */ new Map();
+    for (const n of _topology.nodes) _topoNodeMap.set(n.id, n);
+    return _topoNodeMap;
+  }
+  __name(_getTopoNodeMap, "_getTopoNodeMap");
   var _TOPO_PAD = 50;
   var _TOPO_SX = 10;
   var _TOPO_SY = 10;
   var _TOPO_W = Math.ceil(WORLD_W / _TOPO_SX) + _TOPO_PAD * 2;
   var _TOPO_H = Math.ceil(WORLD_H / _TOPO_SY) + _TOPO_PAD * 2;
-  function renderTopoLayer(collectd) {
-    if (!_topoSvg || !_topoEnabled || !_topology.nodes) return;
-    collectd = collectd || {};
-    const trafficMap = /* @__PURE__ */ new Map();
-    let hash = _topoSpread + "|" + _topoContours + "|" + _topoRiverWidth + "|" + _topoRiverDepth;
-    for (const n of _topology.nodes) {
-      const t = getNodeTraffic(collectd, n.id);
-      trafficMap.set(n.id, t);
-      hash += "|" + (t ? Math.log2(t.total + 1) | 0 : 0);
-    }
+  var _topoWorker = new Worker("topo-worker.js");
+  _topoWorker.onmessage = function(e) {
+    _topoWorkerBusy = false;
+    const { hash, bands } = e.data;
+    if (!bands || bands.length === 0) return;
     if (hash === _topoHash) return;
     _topoHash = hash;
-    const W = _TOPO_W, H = _TOPO_H, sx = _TOPO_SX, sy = _TOPO_SY, pad = _TOPO_PAD;
-    const sigma = _topoSpread / sx;
-    if (!renderTopoLayer._hmap || renderTopoLayer._hmap.length !== W * H)
-      renderTopoLayer._hmap = new Float32Array(W * H);
-    const hmap = renderTopoLayer._hmap;
-    hmap.fill(0);
-    const nodeMap = _getTopoNodeMap();
-    hmap.fill(0.15);
-    const hs3 = sigma * 3 | 0;
-    const inv2s2 = 1 / (2 * sigma * sigma);
-    for (const n of _topology.nodes) {
-      const iw = n.iconStyle && n.iconStyle.width ? parseInt(n.iconStyle.width) : 64;
-      const ih = n.iconStyle && n.iconStyle.height ? parseInt(n.iconStyle.height) : 64;
-      const cx = (n.x + iw / 2) / sx + pad, cy = (n.y + ih / 2) / sy + pad;
-      const h = _topoNodeHeight(n, trafficMap);
-      const x0 = Math.max(0, cx - hs3 | 0), x1 = Math.min(W - 1, cx + hs3 | 0);
-      const y0 = Math.max(0, cy - hs3 | 0), y1 = Math.min(H - 1, cy + hs3 | 0);
-      for (let y = y0; y <= y1; y++) {
-        const dy2 = (y - cy) * (y - cy);
-        const row = y * W;
-        for (let x = x0; x <= x1; x++) {
-          const dx = x - cx;
-          const d = (dx * dx + dy2) * inv2s2;
-          if (d < 8) hmap[row + x] += h * Math.exp(-d);
-        }
-      }
-    }
-    if (_topology.connections) {
-      for (const c of _topology.connections) {
-        const fn = nodeMap.get(c.from), tn = nodeMap.get(c.to);
-        if (!fn || !tn) continue;
-        const tFrom = trafficMap.get(c.from), tTo = trafficMap.get(c.to);
-        const tr = tFrom && tTo ? tFrom.total > tTo.total ? tFrom : tTo : tFrom || tTo;
-        let I = 0;
-        if (tr && tr.total > 0) I = Math.max(0, Math.min(1, (Math.log10(tr.total + 1) - 3) / 4));
-        const rw = sigma * (_topoRiverWidth + I * 0.5);
-        const rd = _topoRiverDepth + I * (1 - _topoRiverDepth) * 0.5;
-        const irw = 1 / (2 * rw * rw);
-        const rw3 = rw * 3 | 0;
-        const ax = fn.x / sx + pad, ay = fn.y / sy + pad, bx = tn.x / sx + pad, by = tn.y / sy + pad;
-        const dist = Math.hypot(bx - ax, by - ay);
-        const steps = Math.max(4, dist / 2 | 0);
-        for (let s = 0; s <= steps; s++) {
-          const t = s / steps;
-          const px = ax + (bx - ax) * t, py = ay + (by - ay) * t;
-          const lx0 = Math.max(0, px - rw3 | 0), lx1 = Math.min(W - 1, px + rw3 | 0);
-          const ly0 = Math.max(0, py - rw3 | 0), ly1 = Math.min(H - 1, py + rw3 | 0);
-          for (let y = ly0; y <= ly1; y++) {
-            const dy2 = (y - py) * (y - py);
-            const row = y * W;
-            for (let x = lx0; x <= lx1; x++) {
-              const dx = x - px, d = (dx * dx + dy2) * irw;
-              if (d < 8) {
-                hmap[row + x] *= 1 - rd * Math.exp(-d);
-              }
-            }
-          }
-        }
-      }
-    }
-    const nC = _topoContours;
-    const cStep = nC > 0 ? 1 / (nC + 1) : 0;
     const VB = "-500 -500 5800 4300";
-    const bandEls = [];
-    for (let ci = 1; ci <= nC; ci++) {
-      const lev = ci * cStep;
-      const isIdx = ci % 5 === 0;
-      const t = ci / nC;
-      const col = _topoColor(t);
-      let pathD = "";
-      for (let gy = 0; gy < H - 1; gy++) {
-        for (let gx = 0; gx < W - 1; gx++) {
-          const i = gy * W + gx;
-          const v00 = hmap[i], v10 = hmap[i + 1], v01 = hmap[i + W], v11 = hmap[i + W + 1];
-          const cls = (v00 >= lev) << 3 | (v10 >= lev) << 2 | (v11 >= lev) << 1 | v01 >= lev;
-          if (cls === 0 || cls === 15) continue;
-          const lrp = /* @__PURE__ */ __name((a, b) => b === a ? 0.5 : (lev - a) / (b - a), "lrp");
-          const T = [(gx + lrp(v00, v10) - pad) * sx, (gy - pad) * sy];
-          const B = [(gx + lrp(v01, v11) - pad) * sx, (gy + 1 - pad) * sy];
-          const L = [(gx - pad) * sx, (gy + lrp(v00, v01) - pad) * sy];
-          const R = [(gx + 1 - pad) * sx, (gy + lrp(v10, v11) - pad) * sy];
-          const seg = /* @__PURE__ */ __name((a, b) => {
-            pathD += `M${a[0] | 0},${a[1] | 0}L${b[0] | 0},${b[1] | 0}`;
-          }, "seg");
-          switch (cls) {
-            case 1:
-            case 14:
-              seg(L, B);
-              break;
-            case 2:
-            case 13:
-              seg(B, R);
-              break;
-            case 3:
-            case 12:
-              seg(L, R);
-              break;
-            case 4:
-            case 11:
-              seg(T, R);
-              break;
-            case 6:
-            case 9:
-              seg(T, B);
-              break;
-            case 7:
-            case 8:
-              seg(L, T);
-              break;
-            case 5: {
-              const ctr = (v00 + v10 + v01 + v11) / 4;
-              if (ctr >= lev) {
-                seg(L, B);
-                seg(T, R);
-              } else {
-                seg(L, T);
-                seg(B, R);
-              }
-              break;
-            }
-            case 10: {
-              const ctr = (v00 + v10 + v01 + v11) / 4;
-              if (ctr >= lev) {
-                seg(L, T);
-                seg(B, R);
-              } else {
-                seg(L, B);
-                seg(T, R);
-              }
-              break;
-            }
-          }
-        }
-      }
-      if (!pathD) continue;
+    const fragment = document.createDocumentFragment();
+    let first = true;
+    for (const b of bands) {
       let inner = "";
-      if (bandEls.length === 0) inner += _TOPO_DEFS;
-      if (ci % _PERF.topoHaloRes === 0) {
-        const fillOp = t < 0.15 ? 0.09 : 0.05;
-        inner += `<path d="${pathD}" fill="none" stroke="${col}" stroke-width="25" opacity="${fillOp}" stroke-linecap="round" stroke-linejoin="round"/>`;
+      if (first) {
+        inner += _TOPO_DEFS;
+        first = false;
       }
-      const sw = isIdx ? 3 : 1.3;
-      const op = isIdx ? 0.6 : 0.3;
-      const filter = isIdx && _PERF.topoFilters ? ' filter="url(#topo-shimmer)" class="topo-idx"' : isIdx ? ' class="topo-idx"' : "";
-      inner += `<path d="${pathD}" fill="none" stroke="${col}" stroke-width="${sw}" opacity="${op}" stroke-linecap="round"${filter}/>`;
+      if (b.halo && b.fillOp > 0) {
+        inner += `<path d="${b.pathD}" fill="none" stroke="${b.col}" stroke-width="25" opacity="${b.fillOp}" stroke-linecap="round" stroke-linejoin="round"/>`;
+      }
+      const filterAttr = b.useFilter ? ' filter="url(#topo-shimmer)" class="topo-idx"' : "";
+      inner += `<path d="${b.pathD}" fill="none" stroke="${b.col}" stroke-width="${b.sw}" opacity="${b.op}" stroke-linecap="round"${filterAttr}/>`;
       const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       svg.setAttribute("viewBox", VB);
       svg.setAttribute("class", "topo-band");
-      svg.dataset.elev = t.toFixed(3);
+      svg.dataset.elev = b.elev.toFixed(3);
       svg.innerHTML = inner;
-      bandEls.push(svg);
+      fragment.appendChild(svg);
     }
     _topoSvg.innerHTML = "";
-    bandEls.forEach((s) => _topoSvg.appendChild(s));
+    _topoSvg.appendChild(fragment);
     if (_mapTilt > 0) _applyTopoZ();
+  };
+  function renderTopoLayer(collectd) {
+    if (!_topoSvg || !_topoEnabled || !_topology.nodes) return;
+    if (_topoWorkerBusy) return;
+    const now = Date.now();
+    if (now - _topoLastDispatch < _TOPO_MIN_INTERVAL) return;
+    _topoWorkerBusy = true;
+    _topoLastDispatch = now;
+    const nodes = _topology.nodes.map((n) => ({
+      id: n.id,
+      x: n.x,
+      y: n.y,
+      type: n.type,
+      iconStyle: n.iconStyle ? { width: n.iconStyle.width, height: n.iconStyle.height } : null
+    }));
+    const connections = (_topology.connections || []).map((c) => ({ from: c.from, to: c.to }));
+    _topoWorker.postMessage({
+      nodes,
+      connections,
+      collectd: collectd || {},
+      settings: { spread: _topoSpread, contours: _topoContours, riverWidth: _topoRiverWidth, riverDepth: _topoRiverDepth },
+      grid: { W: _TOPO_W, H: _TOPO_H, sx: _TOPO_SX, sy: _TOPO_SY, pad: _TOPO_PAD },
+      perfTier: _perfTier
+    });
   }
   __name(renderTopoLayer, "renderTopoLayer");
+  function _topoForceRender() {
+    _topoLastDispatch = 0;
+    _topoHash = "";
+    renderTopoLayer(_lastTopoCollectd);
+  }
+  __name(_topoForceRender, "_topoForceRender");
   (/* @__PURE__ */ __name((function initTopoControls() {
     const toggle = document.getElementById("topo-toggle-cb");
     const opSlider = document.getElementById("topo-opacity-slider");
@@ -1470,10 +1485,7 @@
     _topoSvg.style.setProperty("--topo-opacity", _topoOpacity);
     function scheduleRender() {
       cancelAnimationFrame(_topoRafId);
-      _topoRafId = requestAnimationFrame(() => {
-        _topoHash = "";
-        renderTopoLayer(_lastTopoCollectd);
-      });
+      _topoRafId = requestAnimationFrame(() => _topoForceRender());
     }
     __name(scheduleRender, "scheduleRender");
     toggle.addEventListener("change", () => {
@@ -1620,28 +1632,187 @@
     };
     applyGridStyle();
   }), "initGridControls"))();
-  var lastEventTs = 0;
-  var EVENTS_POLL_MS = 3e3;
-  var _isFirstPoll = true;
-  async function pollEvents() {
-    try {
-      const r = await fetch(`/events?since=${lastEventTs}`);
-      if (!r.ok) throw new Error(r.status);
-      const events = await r.json();
-      if (_isFirstPoll && events.length > 0) {
-        const sorted = [...events].sort((a, b) => (b.ts || 0) - (a.ts || 0));
-        sorted.forEach((evt) => renderEvent(evt, true));
-        _isFirstPoll = false;
-      } else {
-        events.forEach((evt) => renderEvent(evt, false));
+  (/* @__PURE__ */ __name((function initAmbianceControls() {
+    const compassEl = document.getElementById("compass-rose");
+    const sparkleLayer = document.getElementById("sparkle-layer");
+    const vignetteEl = document.getElementById("map-vignette");
+    const mapWorld = document.getElementById("map-world");
+    let compassEnabled = true, compassOpacity = 0.7, compassScale = 1;
+    let sparklesEnabled = true, sparkleOpacity = 0.7, sparkleDensity = 0.5;
+    let vignetteEnabled = true, vignetteOpacity = 0.3;
+    let ambientGlow = 0.3;
+    let sparkleTimer = null;
+    function applyCompass() {
+      if (compassEl) {
+        compassEl.style.display = compassEnabled ? "" : "none";
+        compassEl.style.setProperty("--compass-opacity", compassOpacity);
+        compassEl.style.opacity = compassOpacity;
+        compassEl.style.transform = `scale(${compassScale})`;
       }
-    } catch (e) {
     }
-    setTimeout(pollEvents, EVENTS_POLL_MS);
-  }
-  __name(pollEvents, "pollEvents");
-  pollEvents();
-  setInterval(refreshTopology, 9e4);
+    __name(applyCompass, "applyCompass");
+    function applySparkles() {
+      if (sparkleLayer) {
+        sparkleLayer.style.display = sparklesEnabled ? "" : "none";
+        sparkleLayer.style.opacity = sparkleOpacity;
+      }
+      if (sparkleTimer) {
+        clearInterval(sparkleTimer);
+        sparkleTimer = null;
+      }
+      if (sparklesEnabled && sparkleDensity > 0 && sparkleLayer) {
+        const ms = Math.max(80, 600 / sparkleDensity);
+        sparkleTimer = setInterval(spawnSparkle, ms);
+      }
+    }
+    __name(applySparkles, "applySparkles");
+    function spawnSparkle() {
+      if (!sparkleLayer) return;
+      if (sparkleLayer.children.length > 60) return;
+      const el = document.createElement("div");
+      const isLarge = Math.random() < 0.15;
+      el.className = isLarge ? "sparkle sparkle-large" : "sparkle";
+      el.style.left = Math.random() * 4800 + "px";
+      el.style.top = Math.random() * 3300 + "px";
+      const dur = 2 + Math.random() * 4;
+      const size = isLarge ? 4 + Math.random() * 4 : 2 + Math.random() * 3;
+      el.style.setProperty("--sparkle-dur", dur + "s");
+      el.style.width = size + "px";
+      el.style.height = size + "px";
+      sparkleLayer.appendChild(el);
+      el.addEventListener("animationend", () => el.remove());
+    }
+    __name(spawnSparkle, "spawnSparkle");
+    function applyVignette() {
+      if (vignetteEl) {
+        vignetteEl.style.display = vignetteEnabled ? "" : "none";
+        vignetteEl.style.opacity = vignetteOpacity;
+      }
+    }
+    __name(applyVignette, "applyVignette");
+    function applyGlow() {
+      if (mapWorld) mapWorld.style.setProperty("--ambient-glow", ambientGlow);
+    }
+    __name(applyGlow, "applyGlow");
+    const visCb = { compass: "vis-compass", sparkles: "vis-sparkles", vignette: "vis-vignette" };
+    const layerSl = { compass: "layer-compass-slider", sparkles: "layer-sparkles-slider", vignette: "layer-vignette-slider" };
+    const compassCb = document.getElementById(visCb.compass);
+    if (compassCb) compassCb.addEventListener("change", () => {
+      compassEnabled = compassCb.checked;
+      applyCompass();
+      scheduleSave();
+    });
+    const compassLayerSl = document.getElementById(layerSl.compass);
+    if (compassLayerSl) compassLayerSl.addEventListener("input", () => {
+      compassOpacity = parseFloat(compassLayerSl.value);
+      applyCompass();
+      scheduleSave();
+    });
+    const sparklesCb = document.getElementById(visCb.sparkles);
+    if (sparklesCb) sparklesCb.addEventListener("change", () => {
+      sparklesEnabled = sparklesCb.checked;
+      applySparkles();
+      scheduleSave();
+    });
+    const sparklesLayerSl = document.getElementById(layerSl.sparkles);
+    if (sparklesLayerSl) sparklesLayerSl.addEventListener("input", () => {
+      sparkleOpacity = parseFloat(sparklesLayerSl.value);
+      applySparkles();
+      scheduleSave();
+    });
+    const vignetteCb = document.getElementById(visCb.vignette);
+    if (vignetteCb) vignetteCb.addEventListener("change", () => {
+      vignetteEnabled = vignetteCb.checked;
+      applyVignette();
+      scheduleSave();
+    });
+    const vignetteLayerSl = document.getElementById(layerSl.vignette);
+    if (vignetteLayerSl) vignetteLayerSl.addEventListener("input", () => {
+      vignetteOpacity = parseFloat(vignetteLayerSl.value);
+      applyVignette();
+      scheduleSave();
+    });
+    const compassScaleSl = document.getElementById("compass-scale-slider");
+    const compassScaleVal = document.getElementById("compass-scale-val");
+    if (compassScaleSl) compassScaleSl.addEventListener("input", () => {
+      compassScale = parseFloat(compassScaleSl.value);
+      if (compassScaleVal) compassScaleVal.textContent = compassScale.toFixed(1);
+      applyCompass();
+      scheduleSave();
+    });
+    const sparkleDensitySl = document.getElementById("sparkle-density-slider");
+    const sparkleDensityVal = document.getElementById("sparkle-density-val");
+    if (sparkleDensitySl) sparkleDensitySl.addEventListener("input", () => {
+      sparkleDensity = parseFloat(sparkleDensitySl.value);
+      if (sparkleDensityVal) sparkleDensityVal.textContent = sparkleDensity.toFixed(2);
+      applySparkles();
+      scheduleSave();
+    });
+    const ambientGlowSl = document.getElementById("ambient-glow-slider");
+    const ambientGlowVal = document.getElementById("ambient-glow-val");
+    if (ambientGlowSl) ambientGlowSl.addEventListener("input", () => {
+      ambientGlow = parseFloat(ambientGlowSl.value);
+      if (ambientGlowVal) ambientGlowVal.textContent = ambientGlow.toFixed(2);
+      applyGlow();
+      scheduleSave();
+    });
+    const vignetteSl = document.getElementById("vignette-slider");
+    const vignetteValEl = document.getElementById("vignette-val");
+    if (vignetteSl) vignetteSl.addEventListener("input", () => {
+      vignetteOpacity = parseFloat(vignetteSl.value);
+      if (vignetteLayerSl) vignetteLayerSl.value = vignetteOpacity;
+      if (vignetteValEl) vignetteValEl.textContent = vignetteOpacity.toFixed(2);
+      applyVignette();
+      scheduleSave();
+    });
+    window._ambianceControls = {
+      getState: /* @__PURE__ */ __name(() => ({
+        compass: compassEnabled,
+        compassOp: compassOpacity,
+        compassSc: compassScale,
+        sparkles: sparklesEnabled,
+        sparkleOp: sparkleOpacity,
+        sparkleDen: sparkleDensity,
+        vignette: vignetteEnabled,
+        vignetteOp: vignetteOpacity,
+        glow: ambientGlow
+      }), "getState"),
+      setState: /* @__PURE__ */ __name((s) => {
+        if (s.compass !== void 0) compassEnabled = s.compass;
+        if (s.compassOp !== void 0) compassOpacity = s.compassOp;
+        if (s.compassSc !== void 0) compassScale = s.compassSc;
+        if (s.sparkles !== void 0) sparklesEnabled = s.sparkles;
+        if (s.sparkleOp !== void 0) sparkleOpacity = s.sparkleOp;
+        if (s.sparkleDen !== void 0) sparkleDensity = s.sparkleDen;
+        if (s.vignette !== void 0) vignetteEnabled = s.vignette;
+        if (s.vignetteOp !== void 0) vignetteOpacity = s.vignetteOp;
+        if (s.glow !== void 0) ambientGlow = s.glow;
+        if (compassCb) compassCb.checked = compassEnabled;
+        if (compassLayerSl) compassLayerSl.value = compassOpacity;
+        if (compassScaleSl) compassScaleSl.value = compassScale;
+        if (compassScaleVal) compassScaleVal.textContent = compassScale.toFixed(1);
+        if (sparklesCb) sparklesCb.checked = sparklesEnabled;
+        if (sparklesLayerSl) sparklesLayerSl.value = sparkleOpacity;
+        if (sparkleDensitySl) sparkleDensitySl.value = sparkleDensity;
+        if (sparkleDensityVal) sparkleDensityVal.textContent = sparkleDensity.toFixed(2);
+        if (vignetteCb) vignetteCb.checked = vignetteEnabled;
+        if (vignetteLayerSl) vignetteLayerSl.value = vignetteOpacity;
+        if (vignetteSl) vignetteSl.value = vignetteOpacity;
+        if (vignetteValEl) vignetteValEl.textContent = vignetteOpacity.toFixed(2);
+        if (ambientGlowSl) ambientGlowSl.value = ambientGlow;
+        if (ambientGlowVal) ambientGlowVal.textContent = ambientGlow.toFixed(2);
+        applyCompass();
+        applySparkles();
+        applyVignette();
+        applyGlow();
+      }, "setState")
+    };
+    applyCompass();
+    applySparkles();
+    applyVignette();
+    applyGlow();
+  }), "initAmbianceControls"))();
+  var lastEventTs = 0;
   var _pageLoadTs = Date.now() / 1e3;
   var BUBBLE_RESTORE_AGE = 600;
   var _restoredBubbleNodes = /* @__PURE__ */ new Set();
@@ -1838,8 +2009,19 @@
     } else if (logType === "highlight") {
       textContent = `<div class="log-text" style="font-style:italic;color:#708060">A pulse of energy ripples outward.</div>`;
     }
-    entry.innerHTML = `<button class="log-dismiss" title="Dismiss">\u2715</button><div class="log-time">${timeStr}</div><div class="log-speaker">${name}</div>${textContent}`;
-    entry.querySelector(".log-dismiss").addEventListener("click", () => {
+    const communeHint = evt.node ? '<span class="log-commune" title="Click to commune with this node">\u{1F52E}</span>' : "";
+    entry.innerHTML = `<button class="panel-close panel-close--danger" title="Dismiss">\u2715</button><div class="log-time">${timeStr}</div><div class="log-speaker">${name}${communeHint}</div>${textContent}`;
+    entry._nodeId = evt.node;
+    entry.addEventListener("click", (e) => {
+      if (e.target.closest(".panel-close") || e.target.closest(".quest-check")) return;
+      const nodeId = entry._nodeId;
+      if (!nodeId) return;
+      const tn = _topology?.nodes.find((nd) => nd.id === nodeId);
+      if (tn) panToNode(tn.x, tn.y);
+      openNodeChat(nodeId, evt.text, false);
+    });
+    entry.querySelector(".panel-close").addEventListener("click", (e) => {
+      e.stopPropagation();
       entry.classList.add("log-entry-dismiss");
       if (evt.text) {
         for (const b of _activeBubbles) {
@@ -1962,6 +2144,9 @@
   }
   __name(updateBubblePositions, "updateBubblePositions");
   setTopologyRefreshHook(updateBubblePositions);
+  setTopologyRefreshHook(() => {
+    _searchIndex = null;
+  });
   function _dismissBubble(bubble) {
     bubble.style.animation = "bubbleOut 0.3s ease-in forwards";
     setTimeout(() => {
@@ -1989,7 +2174,7 @@
     bubble._nodeId = evt.node;
     const name = nodeEl.querySelector(".node-label")?.textContent || evt.node;
     const closeBtn = document.createElement("button");
-    closeBtn.className = "bubble-close";
+    closeBtn.className = "panel-close";
     closeBtn.innerHTML = "\xD7";
     closeBtn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -2067,28 +2252,12 @@
     }
   }
   __name(showOffline, "showOffline");
-  var STATUS_URL = "/status";
-  async function poll() {
-    try {
-      const r = await fetch(STATUS_URL);
-      if (!r.ok) throw new Error(r.status);
-      const d = await r.json();
-      updateUI(d);
-      _dbgPollN++;
-      if (!liveOk) {
-        liveOk = true;
-        console.log("Realm Map: live data connected");
-      }
-    } catch (e) {
-      _dbgErrN++;
-      showOffline();
-    }
-    setTimeout(poll, updateSpeedMs);
-  }
-  __name(poll, "poll");
-  poll();
   var canvas = document.getElementById("map-canvas");
   var world = document.getElementById("map-world");
+  var _canvasRect = canvas.getBoundingClientRect();
+  window.addEventListener("resize", () => {
+    _canvasRect = canvas.getBoundingClientRect();
+  });
   var scale = 1;
   var panX = 0;
   var panY = 0;
@@ -2096,7 +2265,16 @@
   var lastX;
   var lastY;
   var _lastGlobeTilt = 0;
-  function applyTransform() {
+  var _transformRafId = 0;
+  var _minimapTimer = 0;
+  var _willChangeTimer = 0;
+  function _applyTransformNow() {
+    _transformRafId = 0;
+    if (world.style.willChange !== "transform") world.style.willChange = "transform";
+    clearTimeout(_willChangeTimer);
+    _willChangeTimer = setTimeout(() => {
+      world.style.willChange = "";
+    }, 300);
     if (_mapTilt > 0) {
       world.style.transformStyle = "preserve-3d";
       const cx = WORLD_W / 2, cy = WORLD_H / 2;
@@ -2113,7 +2291,12 @@
       world.style.transformStyle = "";
       world.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
     }
-    updateMinimap();
+    clearTimeout(_minimapTimer);
+    _minimapTimer = setTimeout(updateMinimap, 100);
+  }
+  __name(_applyTransformNow, "_applyTransformNow");
+  function applyTransform() {
+    if (!_transformRafId) _transformRafId = requestAnimationFrame(_applyTransformNow);
   }
   __name(applyTransform, "applyTransform");
   function _applyGlobeZ() {
@@ -2250,8 +2433,7 @@
       );
       const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
       const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-      const rect = canvas.getBoundingClientRect();
-      const mx = midX - rect.left, my = midY - rect.top;
+      const mx = midX - _canvasRect.left, my = midY - _canvasRect.top;
       const oldScale = scale;
       scale = Math.max(0.1, Math.min(3, scale * (newDist / _pinchDist)));
       panX = mx - (mx - panX) * (scale / oldScale);
@@ -2273,8 +2455,7 @@
   }, { passive: true });
   canvas.addEventListener("wheel", (e) => {
     e.preventDefault();
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    const mx = e.clientX - _canvasRect.left, my = e.clientY - _canvasRect.top;
     const oldScale = scale;
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
     scale = Math.max(0.1, Math.min(3, scale * delta));
@@ -3148,7 +3329,6 @@
         if (action === "wled-power" || action === "ha-switch") {
           el.classList.toggle("active");
         }
-        setTimeout(() => pollStatus(), 1e3);
       } else {
         statusEl.textContent = "Failed";
         statusEl.style.color = "#c04040";
@@ -3568,6 +3748,7 @@
     scale: { "master-scale": 1, "node-scale": 1, "text-scale": 1, "bubble-scale": 1 },
     "ley-lines": { "traffic-scale": 1, "fx-leylines": 0.4, "fx-leyglow": 1 },
     "arcane-grid": { "grid-opacity": 0.4, "grid-scale": 1, "grid-hue": 0 },
+    ambiance: { "compass-scale": 1, "sparkle-density": 0.5, "ambient-glow": 0.3, "vignette": 0.3 },
     topographic: { "topo-opacity": 0.6, "topo-spread": 120, "topo-contour": 12, "topo-rw": 0.4, "topo-rd": 0.6 },
     layout: { "layout-attract": 4, "layout-repulse": 80, "layout-edge": 80, "layout-spacing": 8, "layout-tilt": 0 }
   };
@@ -3728,11 +3909,15 @@
     { id: "_panel:realm-codex", icon: "&#128220;", label: "Realm Codex", sub: "Lore, tools, personas", kind: "Panel", sel: "#realm-codex" },
     { id: "_panel:quest-log", icon: "&#9753;", label: "Quest Log", sub: "Events, quests, speech", kind: "Panel", sel: "#quest-log" },
     { id: "_panel:node-list", icon: "&#9873;", label: "Realm Census", sub: "All nodes by region", kind: "Panel", sel: "#node-list" },
-    { id: "_panel:minimap", icon: "&#9678;", label: "Minimap", sub: "Overview navigation", kind: "Panel", sel: "#minimap" }
+    { id: "_panel:minimap", icon: "&#9678;", label: "Minimap", sub: "Overview navigation", kind: "Panel", sel: "#minimap" },
+    { id: "_panel:cartographer", icon: "&#128506;", label: "Cartographer", sub: "Map layout modes", kind: "Panel", sel: "#cartographer" },
+    { id: "_panel:energy-panel", icon: "&#9889;", label: "Realm Energy", sub: "Energy & data flow", kind: "Panel", sel: "#energy-panel" },
+    { id: "_panel:debug-panel", icon: "&#128302;", label: "Arcane Mirror", sub: "Debug panel, diagnostics", kind: "Panel", sel: "#debug-panel" }
   ];
   function _buildSearchIndex() {
     if (!_topology || _searchIndex) return;
     _searchIndex = [
+      // Topology nodes
       ..._topology.nodes.map((n) => ({
         id: n.id,
         icon: n.icon,
@@ -3742,6 +3927,7 @@
         type: n.type || "core",
         _text: [n.label, n.sublabel, n.ip, n.id, n.type].filter(Boolean).join(" ").toLowerCase()
       })),
+      // Panel entries
       ..._panelEntries.map((p) => ({
         id: p.id,
         icon: p.icon,
@@ -3753,8 +3939,203 @@
         _text: [p.label, p.sub, p.kind].join(" ").toLowerCase()
       }))
     ];
+    _indexPanelControls();
   }
   __name(_buildSearchIndex, "_buildSearchIndex");
+  var _panelIcons = {
+    "spellbook": "&#128214;",
+    "legend": "&#128506;",
+    "realm-codex": "&#128220;",
+    "realm-panel": "&#9876;",
+    "cartographer": "&#128506;",
+    "energy-panel": "&#9889;",
+    "debug-panel": "&#128302;",
+    "quest-log": "&#9753;",
+    "node-list": "&#9873;"
+  };
+  var _panelNames = {
+    "spellbook": "Spellbook",
+    "legend": "Legend",
+    "realm-codex": "Realm Codex",
+    "realm-panel": "Realm Vitals",
+    "cartographer": "Cartographer",
+    "energy-panel": "Energy",
+    "debug-panel": "Arcane Mirror",
+    "quest-log": "Quest Log",
+    "node-list": "Census"
+  };
+  function _indexPanelControls() {
+    const panelIds = ["spellbook", "legend", "realm-codex", "realm-panel", "cartographer", "energy-panel"];
+    for (const panelId of panelIds) {
+      const panel = document.getElementById(panelId);
+      if (!panel) continue;
+      const icon = _panelIcons[panelId] || "&#9881;";
+      const panelName = _panelNames[panelId] || panelId;
+      panel.querySelectorAll('input[type="range"]').forEach((slider) => {
+        const label = _findControlLabel(slider);
+        if (!label) return;
+        const section = _findSectionName(slider);
+        const sub = section ? `${panelName} \u203A ${section}` : panelName;
+        _searchIndex.push({
+          id: `_ctrl:${slider.id || label}`,
+          icon,
+          label,
+          sub,
+          ip: "",
+          type: "Slider",
+          _el: slider,
+          _text: [label, sub, "slider", panelName, section].filter(Boolean).join(" ").toLowerCase()
+        });
+      });
+      panel.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+        const label = _findControlLabel(cb);
+        if (!label) return;
+        const section = _findSectionName(cb);
+        const sub = section ? `${panelName} \u203A ${section}` : panelName;
+        _searchIndex.push({
+          id: `_ctrl:${cb.id || label}`,
+          icon,
+          label,
+          sub,
+          ip: "",
+          type: "Toggle",
+          _el: cb,
+          _text: [label, sub, "toggle", "switch", panelName, section].filter(Boolean).join(" ").toLowerCase()
+        });
+      });
+      panel.querySelectorAll("select").forEach((sel) => {
+        const label = _findControlLabel(sel);
+        if (!label) return;
+        const section = _findSectionName(sel);
+        const optTexts = [...sel.options].map((o) => o.textContent).join(" ");
+        const sub = section ? `${panelName} \u203A ${section}` : panelName;
+        _searchIndex.push({
+          id: `_ctrl:${sel.id || label}`,
+          icon,
+          label,
+          sub,
+          ip: "",
+          type: "Select",
+          _el: sel,
+          _text: [label, sub, "select", optTexts, panelName, section].filter(Boolean).join(" ").toLowerCase()
+        });
+      });
+      panel.querySelectorAll('input[type="number"]').forEach((input) => {
+        const label = _findControlLabel(input);
+        if (!label) return;
+        const section = _findSectionName(input);
+        const sub = section ? `${panelName} \u203A ${section}` : panelName;
+        _searchIndex.push({
+          id: `_ctrl:${input.id || label}`,
+          icon,
+          label,
+          sub,
+          ip: "",
+          type: "Setting",
+          _el: input,
+          _text: [label, sub, "setting", panelName, section].filter(Boolean).join(" ").toLowerCase()
+        });
+      });
+      panel.querySelectorAll(".preset-btn").forEach((btn) => {
+        const label = btn.textContent.trim();
+        const section = _findSectionName(btn);
+        const sub = section ? `${panelName} \u203A ${section}` : panelName;
+        _searchIndex.push({
+          id: `_ctrl:preset-${btn.dataset.preset || label}`,
+          icon,
+          label: `Preset: ${label}`,
+          sub,
+          ip: "",
+          type: "Action",
+          _el: btn,
+          _text: [label, "preset", sub, panelName, section].filter(Boolean).join(" ").toLowerCase()
+        });
+      });
+    }
+    document.querySelectorAll(".carto-mode").forEach((btn) => {
+      const name = btn.querySelector(".carto-name")?.textContent || "";
+      const iconEl = btn.querySelector(".carto-icon")?.innerHTML || "";
+      _searchIndex.push({
+        id: `_ctrl:layout-${btn.dataset.layout}`,
+        icon: iconEl || "&#128506;",
+        label: `Layout: ${name}`,
+        sub: "Cartographer",
+        ip: "",
+        type: "Layout",
+        _el: btn,
+        _text: [name, "layout", "cartographer", "map", btn.dataset.layout].join(" ").toLowerCase()
+      });
+    });
+    document.querySelectorAll(".codex-tool code").forEach((code) => {
+      const toolName = code.textContent;
+      const desc = code.parentElement?.querySelector("span")?.textContent || "";
+      const group = code.closest(".codex-tools")?.previousElementSibling?.textContent?.replace(/\d+ tools/, "").trim() || "";
+      _searchIndex.push({
+        id: `_ctrl:tool-${toolName}`,
+        icon: "&#128220;",
+        label: toolName,
+        sub: `${group} \u203A ${desc}`.substring(0, 60),
+        ip: "",
+        type: "Tool",
+        _el: code.closest(".codex-tool"),
+        _text: [toolName, desc, group, "tool", "codex", "mcp"].join(" ").toLowerCase()
+      });
+    });
+    document.querySelectorAll("#legend .legend-item").forEach((item) => {
+      const label = item.textContent.trim();
+      const section = _findSectionName(item);
+      _searchIndex.push({
+        id: `_ctrl:legend-${label}`,
+        icon: "&#128506;",
+        label,
+        sub: `Legend \u203A ${section || ""}`,
+        ip: "",
+        type: "Legend",
+        _el: item,
+        _text: [label, "legend", section, "ley line", "node type"].filter(Boolean).join(" ").toLowerCase()
+      });
+    });
+  }
+  __name(_indexPanelControls, "_indexPanelControls");
+  function _findControlLabel(el) {
+    const parent = el.closest(".traffic-control, .layer-row, .cfg-row");
+    if (parent) {
+      const lbl = parent.querySelector("label");
+      if (lbl) {
+        const clone = lbl.cloneNode(true);
+        clone.querySelectorAll(".tc-val, .topo-switch").forEach((v) => v.remove());
+        return clone.textContent.trim();
+      }
+      const name = parent.querySelector(".layer-name");
+      if (name) return name.textContent.trim();
+    }
+    const wrapper = el.closest("label");
+    if (wrapper) {
+      const clone = wrapper.cloneNode(true);
+      clone.querySelectorAll("input, select, .tc-val, .topo-switch-track").forEach((v) => v.remove());
+      return clone.textContent.trim();
+    }
+    return "";
+  }
+  __name(_findControlLabel, "_findControlLabel");
+  function _findSectionName(el) {
+    const section = el.closest(".legend-section");
+    if (section) {
+      const header = section.querySelector(".legend-section-header");
+      if (header) {
+        const clone = header.cloneNode(true);
+        clone.querySelectorAll(".legend-chevron, .section-reset").forEach((v) => v.remove());
+        return clone.textContent.trim();
+      }
+    }
+    const codexSection = el.closest(".codex-section");
+    if (codexSection) {
+      const h4 = codexSection.querySelector("h4");
+      if (h4) return h4.textContent.replace(/\d+ tools/, "").trim();
+    }
+    return "";
+  }
+  __name(_findSectionName, "_findSectionName");
   function _searchRealm(query) {
     _buildSearchIndex();
     if (!_searchIndex || !query) return [];
@@ -3776,7 +4157,7 @@
       if (match) scored.push({ entry, score });
     }
     scored.sort((a, b) => b.score - a.score);
-    return scored.slice(0, 12).map((s) => s.entry);
+    return scored.slice(0, 16).map((s) => s.entry);
   }
   __name(_searchRealm, "_searchRealm");
   function _highlightMatch(text, query) {
@@ -3803,7 +4184,23 @@
       _searchResults.classList.add("open");
       return;
     }
-    const typeName = { core: "Core", infra: "Infra", tower: "Tower", bridge: "Bridge", cluster: "IoT", tailscale: "Astral" };
+    const typeName = {
+      core: "Core",
+      infra: "Infra",
+      tower: "Tower",
+      bridge: "Bridge",
+      cluster: "IoT",
+      tailscale: "Astral",
+      Panel: "Panel",
+      Slider: "Slider",
+      Toggle: "Toggle",
+      Select: "Setting",
+      Setting: "Setting",
+      Action: "Action",
+      Layout: "Layout",
+      Tool: "Tool",
+      Legend: "Legend"
+    };
     const frag = document.createDocumentFragment();
     for (let i = 0; i < results.length; i++) {
       const r = results[i];
@@ -3811,6 +4208,7 @@
       item.className = "sr-item";
       item.dataset.idx = i;
       item.dataset.nodeId = r.id;
+      item.dataset.kind = r.type || "";
       const iconEl = document.createElement("div");
       iconEl.className = "sr-icon";
       iconEl.innerHTML = r.icon;
@@ -3837,28 +4235,91 @@
     _searchResults.classList.add("open");
   }
   __name(_renderSearchResults, "_renderSearchResults");
+  function _restorePanel(panelEl) {
+    if (!panelEl) return;
+    if (panelEl.classList.contains("panel-minimized")) {
+      panelEl.classList.remove("panel-minimized");
+      panelEl.style.animation = "";
+    }
+    panelEl.style.display = "";
+    const id = panelEl.id;
+    const visMap = {
+      "realm-panel": "vis-statuspanel",
+      "legend": "vis-legend",
+      "spellbook": "vis-spellbook",
+      "realm-codex": "vis-codex",
+      "quest-log": "vis-questlog",
+      "node-list": "vis-nodelist",
+      "minimap": "vis-minimap",
+      "cartographer": "vis-cartographer",
+      "energy-panel": "vis-energy",
+      "debug-panel": "vis-debug"
+    };
+    const visId = visMap[id] || "vis-" + id;
+    const visCb = document.getElementById(visId);
+    if (visCb && !visCb.checked) {
+      visCb.checked = true;
+      visCb.dispatchEvent(new Event("change"));
+    }
+  }
+  __name(_restorePanel, "_restorePanel");
+  function _flashElement(el) {
+    if (!el) return;
+    el.style.transition = "box-shadow 0.3s, outline 0.3s";
+    el.style.boxShadow = "0 0 20px rgba(240,216,144,0.5)";
+    el.style.outline = "2px solid rgba(240,216,144,0.6)";
+    el.style.outlineOffset = "2px";
+    setTimeout(() => {
+      el.style.boxShadow = "";
+      el.style.outline = "";
+      el.style.outlineOffset = "";
+    }, 1500);
+  }
+  __name(_flashElement, "_flashElement");
   function _navigateToSearchResult(nodeId) {
+    _searchInput.blur();
+    _searchResults.classList.remove("open");
+    if (nodeId.startsWith("_ctrl:")) {
+      const entry = _searchIndex?.find((e) => e.id === nodeId);
+      const el = entry?._el;
+      if (!el) return;
+      const panel = el.closest(".panel, #persona-editor, #debug-panel");
+      if (panel) {
+        _restorePanel(panel);
+        const body = panel.querySelector("#codex-body");
+        if (body) body.style.display = "";
+      }
+      const spellPage = el.closest(".spell-page");
+      if (spellPage) {
+        const pageIdx = parseInt(spellPage.dataset.spellPage);
+        if (!isNaN(pageIdx)) _showSpellPage(pageIdx);
+      }
+      const section = el.closest(".legend-section");
+      if (section && section.classList.contains("collapsed")) {
+        section.classList.remove("collapsed");
+      }
+      const codexTools = el.closest(".codex-tools");
+      if (codexTools && !codexTools.classList.contains("open")) {
+        codexTools.classList.add("open");
+        const h4 = codexTools.previousElementSibling;
+        if (h4) h4.classList.add("open");
+      }
+      requestAnimationFrame(() => {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        _flashElement(el.closest(".traffic-control, .layer-row, .cfg-row, .codex-tool, .legend-item, .carto-mode, .preset-btn") || el);
+        if (el.tagName === "SELECT" || el.tagName === "INPUT") el.focus();
+        if (el.tagName === "BUTTON") el.click();
+      });
+      return;
+    }
     if (nodeId.startsWith("_panel:")) {
       const entry = _searchIndex?.find((e) => e.id === nodeId);
       const panelEl = entry?.sel ? document.querySelector(entry.sel) : null;
       if (panelEl) {
-        if (panelEl.classList.contains("panel-minimized")) {
-          panelEl.classList.remove("panel-minimized");
-          panelEl.style.animation = "";
-        }
-        panelEl.style.display = "";
-        const visId = "vis-" + entry.sel.replace("#", "");
-        const visCb = document.getElementById(visId);
-        if (visCb && !visCb.checked) visCb.checked = true;
+        _restorePanel(panelEl);
         panelEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
-        panelEl.style.transition = "box-shadow 0.3s";
-        panelEl.style.boxShadow = "0 0 20px rgba(240,216,144,0.5)";
-        setTimeout(() => {
-          panelEl.style.boxShadow = "";
-        }, 1200);
+        _flashElement(panelEl);
       }
-      _searchInput.blur();
-      _searchResults.classList.remove("open");
       return;
     }
     const nodeEl = document.querySelector(`[data-tip="${CSS.escape(nodeId)}"]`);
@@ -3870,8 +4331,6 @@
     panY = canvas.clientHeight / 2 - nodeTop * scale;
     applyTransform();
     showHighlight(nodeEl, { color: "rgba(240,216,144,0.5)" });
-    _searchInput.blur();
-    _searchResults.classList.remove("open");
   }
   __name(_navigateToSearchResult, "_navigateToSearchResult");
   if (_searchInput) {
@@ -4105,13 +4564,6 @@
     }
   }
   __name(updateEnergyPanel, "updateEnergyPanel");
-  function fetchEnergy() {
-    fetch("/energy").then((r) => r.json()).then(updateEnergyPanel).catch(() => {
-    });
-  }
-  __name(fetchEnergy, "fetchEnergy");
-  fetchEnergy();
-  setInterval(fetchEnergy, 3e4);
   var _originalPositions = {};
   if (_topology) _topology.nodes.forEach((n) => {
     _originalPositions[n.id] = { x: n.x, y: n.y };
@@ -4177,9 +4629,9 @@
       _layoutWorker.terminate();
       _layoutWorker = null;
     }
-    const nodeData = _topology.nodes.map((n) => ({ type: n.type }));
+    const nodeData = _topology.nodes.map((n) => ({ id: n.id, type: n.type }));
     const connData = _connIdx.map((c) => [c[0], c[1]]);
-    _layoutWorker = new Worker("layout-worker.js");
+    _layoutWorker = new Worker("layout-worker.js?v=2");
     _layoutWorker.onmessage = function(e) {
       const msg = e.data;
       if (msg.type === "progress") {
@@ -4222,7 +4674,9 @@
       worldW: WORLD_W,
       worldH: WORLD_H,
       mode: _layoutMode,
-      nodeVlans: _nodeVlans
+      nodeVlans: _nodeVlans,
+      latencyMap: _latencyMap,
+      wifiMap: _wifiMap
     });
   }
   __name(autoArrangeLayout, "autoArrangeLayout");
@@ -4267,8 +4721,7 @@
         requestAnimationFrame(step);
       } else {
         _topoNodeMap = null;
-        _topoHash = "";
-        if (_topoEnabled) renderTopoLayer(_lastTopoCollectd);
+        _topoForceRender();
         scheduleSave();
         if (onDone) onDone();
       }
@@ -4617,6 +5070,60 @@
   }
   __name(animateMotes, "animateMotes");
   animateMotes();
+  var _sseTrafficMap = null;
+  var _sseConnected = false;
+  var _latencyMap = null;
+  var _wifiMap = null;
+  (/* @__PURE__ */ __name((function initSSE() {
+    const sse = new EventSource(SSE_URL);
+    let _sseRestoreMode = true;
+    sse.addEventListener("traffic", (e) => {
+      const traffic = JSON.parse(e.data);
+      _sseTrafficMap = traffic;
+      updateConnectionTrafficSSE(traffic);
+      const fakeCollectd = _trafficToCollectd(traffic);
+      _lastTopoCollectd = fakeCollectd;
+      if (_topoEnabled) renderTopoLayer(fakeCollectd);
+    });
+    sse.addEventListener("realm-event", (e) => {
+      const evt = JSON.parse(e.data);
+      renderEvent(evt, _sseRestoreMode);
+    });
+    sse.addEventListener("topology", (e) => {
+      refreshTopology();
+    });
+    sse.addEventListener("status", (e) => {
+      const d = JSON.parse(e.data);
+      _sseRestoreMode = false;
+      updateUI(d);
+      if (d.wifi) _wifiMap = d.wifi;
+      if (!liveOk) {
+        liveOk = true;
+        console.log("Realm Map: SSE live data connected");
+      }
+    });
+    sse.addEventListener("energy", (e) => {
+      const data = JSON.parse(e.data);
+      updateEnergyPanel(data);
+    });
+    sse.addEventListener("latency", (e) => {
+      _latencyMap = JSON.parse(e.data);
+    });
+    sse.addEventListener("open", () => {
+      if (!_sseConnected) {
+        _sseConnected = true;
+        _sseRestoreMode = true;
+        console.log("Realm Map: SSE connected");
+      }
+    });
+    sse.addEventListener("error", () => {
+      if (_sseConnected) {
+        _sseConnected = false;
+        console.warn("Realm Map: SSE disconnected, reconnecting...");
+        showOffline();
+      }
+    });
+  }), "initSSE"))();
   var LAYOUT_KEY = "realm-map-layout-v2";
   var SETTINGS_KEY = "realm-map-settings-v3";
   var _PERSIST_SLIDERS = [
@@ -4672,7 +5179,14 @@
     "panel-cartographer",
     "panel-energy",
     "panel-nodelist",
-    "panel-mirror"
+    "panel-mirror",
+    "layer-compass",
+    "layer-sparkles",
+    "layer-vignette",
+    "compass-scale",
+    "sparkle-density",
+    "ambient-glow",
+    "vignette"
   ];
   var _PERSIST_CHECKBOXES = [
     "topo-toggle-cb",
@@ -4689,6 +5203,9 @@
     "vis-regions",
     "vis-vlanlabels",
     "vis-bubbles",
+    "vis-compass",
+    "vis-sparkles",
+    "vis-vignette",
     "vis-titlebar",
     "vis-search",
     "vis-statuspanel",
@@ -5078,8 +5595,7 @@
           }
           scheduleSave();
           _topoNodeMap = null;
-          _topoHash = "";
-          if (_topoEnabled) renderTopoLayer(_lastTopoCollectd);
+          _topoForceRender();
           generateTerrain();
           updateRegionLabels();
         } else {
@@ -5144,25 +5660,24 @@
     const dialog = document.createElement("div");
     dialog.id = "node-chat-dialog";
     dialog.className = "panel";
-    dialog.style.cssText = "position:fixed;right:20px;top:100px;width:360px;max-height:500px;z-index:1000;display:none;--panel-accent:rgba(192,128,255,0.5);";
     dialog.innerHTML = `
-    <div class="panel-header" style="cursor:move">
-      <span class="panel-hdr-icon">&#128172;</span>
+    <div class="panel-header">
+      <span class="panel-hdr-icon">&#128302;</span>
       <span class="panel-hdr-title" id="chat-dialog-title">Oracle Commune</span>
-      <button class="bubble-close" id="chat-close">&times;</button>
+      <button class="panel-close" id="chat-close">&times;</button>
     </div>
-    <div id="chat-messages" style="max-height:300px;overflow-y:auto;padding:8px;font-size:13px;"></div>
-    <div style="padding:8px;border-top:1px solid rgba(255,255,255,0.1);">
-      <textarea id="chat-input" placeholder="Ask the oracle..." style="width:100%;height:50px;resize:none;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);border-radius:4px;color:#e0e0e0;padding:6px;font-size:13px;"></textarea>
-      <div style="display:flex;gap:8px;margin-top:6px;">
-        <button id="chat-send" style="flex:1;padding:6px;background:rgba(160,128,255,0.3);border:1px solid rgba(160,128,255,0.5);border-radius:4px;color:#e0e0e0;cursor:pointer;">Send</button>
-        <button id="chat-clear" style="padding:6px 12px;background:rgba(100,100,100,0.3);border:1px solid rgba(100,100,100,0.5);border-radius:4px;color:#a0a0a0;cursor:pointer;">Clear</button>
+    <div id="chat-messages"></div>
+    <div class="chat-input-area">
+      <textarea id="chat-input" placeholder="Speak to the oracle..."></textarea>
+      <div class="chat-actions">
+        <button id="chat-send" class="chat-btn chat-btn-send">Commune</button>
+        <button id="chat-clear" class="chat-btn chat-btn-clear">Clear</button>
       </div>
     </div>
   `;
     document.body.appendChild(dialog);
     dialog.querySelector("#chat-close").addEventListener("click", () => {
-      dialog.style.display = "none";
+      dialog.classList.remove("open");
     });
     dialog.querySelector("#chat-send").addEventListener("click", sendChatMessage);
     dialog.querySelector("#chat-input").addEventListener("keydown", (e) => {
@@ -5179,7 +5694,7 @@
           body: JSON.stringify({ session: _chatNodeId ? `node-${_chatNodeId}` : null })
         });
         _chatHistory = [];
-        dialog.querySelector("#chat-messages").innerHTML = '<div style="color:#808080;font-style:italic;">Session cleared.</div>';
+        dialog.querySelector("#chat-messages").innerHTML = '<div class="chat-msg-system">Session cleared. The oracle awaits.</div>';
       } catch (e) {
       }
     });
@@ -5209,7 +5724,7 @@
     const node = document.querySelector(`[data-tip="${nodeId}"]`);
     const nodeName = node?.querySelector(".node-label")?.textContent || nodeId;
     dialog.querySelector("#chat-dialog-title").textContent = `Commune: ${nodeName}`;
-    dialog.style.display = "block";
+    dialog.classList.add("open");
     await _loadChatHistory(nodeId);
     if (contextText && autoChat) {
       _chatHistory.push({ role: "system", content: `[Event] ${contextText}` });
@@ -5240,32 +5755,25 @@
   function _renderChatHistory() {
     const messagesEl = _chatDialog.querySelector("#chat-messages");
     if (_chatHistory.length === 0) {
-      messagesEl.innerHTML = '<div style="color:#808080;font-style:italic;">No messages yet. Click a bubble or ask a question to begin.</div>';
+      messagesEl.innerHTML = '<div class="chat-msg-system">No messages yet. Click a speech bubble or ask a question to commune.</div>';
       return;
     }
     messagesEl.innerHTML = _chatHistory.map((m) => {
       const isUser = m.role === "user";
       const isSystem = m.role === "system";
-      let bg, align, label;
+      let cls, label;
       if (isSystem) {
-        bg = "rgba(255,200,100,0.15)";
-        align = "center";
-        label = "Context";
+        cls = "chat-msg-system";
+        label = "";
       } else if (isUser) {
-        bg = "rgba(100,140,200,0.2)";
-        align = "right";
+        cls = "chat-msg chat-msg-user";
         label = "You";
       } else {
-        bg = "rgba(160,128,255,0.2)";
-        align = "left";
+        cls = "chat-msg chat-msg-oracle";
         label = "Oracle";
       }
-      return `<div style="text-align:${align};margin:6px 0;">
-      <div style="display:inline-block;max-width:${isSystem ? "95%" : "85%"};padding:6px 10px;background:${bg};border-radius:8px;text-align:left;${isSystem ? "font-style:italic;" : ""}">
-        <div style="font-size:10px;color:#a0a0a0;margin-bottom:2px;">${label}</div>
-        <div>${m.content}</div>
-      </div>
-    </div>`;
+      if (isSystem) return `<div class="${cls}">${m.content}</div>`;
+      return `<div class="${cls}"><span class="chat-msg-label">${label}</span>${m.content}</div>`;
     }).join("");
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
@@ -5281,8 +5789,8 @@
     _renderChatHistory();
     const messagesEl = _chatDialog.querySelector("#chat-messages");
     const loadingEl = document.createElement("div");
-    loadingEl.style.cssText = "text-align:left;margin:6px 0;color:#a0a0a0;font-style:italic;";
-    loadingEl.textContent = "Oracle is contemplating...";
+    loadingEl.className = "chat-typing";
+    loadingEl.innerHTML = '<span class="chat-typing-dot"></span><span class="chat-typing-dot"></span><span class="chat-typing-dot"></span>';
     messagesEl.appendChild(loadingEl);
     messagesEl.scrollTop = messagesEl.scrollHeight;
     try {
@@ -5408,7 +5916,7 @@
   var _dbgPanel = document.getElementById("debug-panel");
   var _dbgBody = document.getElementById("debug-body");
   var _dbgSearch = document.getElementById("debug-search");
-  var _dbgPollCount = document.getElementById("debug-poll-count");
+  var _dbgSseStatus = document.getElementById("debug-poll-count");
   var _dbgTab = "all";
   var _dbgDbInfo = null;
   document.getElementById("debug-close")?.addEventListener("click", () => {
@@ -5507,7 +6015,7 @@
     const filter = (_dbgSearch?.value || "").toLowerCase().trim();
     const tab = _dbgTab;
     let html = "";
-    if (_dbgPollCount) _dbgPollCount.textContent = `polls:${_dbgPollN} err:${_dbgErrN}`;
+    if (_dbgSseStatus) _dbgSseStatus.textContent = _sseConnected ? "sse:live" : "sse:off";
     if (tab === "all" || tab === "status") {
       const s = d ? {
         realm_scale: d.realm_scale,
@@ -5517,7 +6025,7 @@
         uptime: d.adult?.uptime,
         load: d.adult?.load1,
         host: d.host?.hostname,
-        poll_ms: updateSpeedMs
+        sse: _sseConnected ? "live" : "off"
       } : { status: "no data yet" };
       html += _dbgSection("Status", "status", _dbgTree(s, 0, filter));
     }
@@ -5571,7 +6079,7 @@
       const count = logBody ? logBody.children.length : 0;
       let body = _dbgKV("log entries", count);
       body += _dbgKV("last event ts", lastEventTs ? new Date(lastEventTs * 1e3).toLocaleTimeString() : "none");
-      body += _dbgKV("events poll ms", EVENTS_POLL_MS);
+      body += _dbgKV("delivery", "SSE (real-time)");
       html += _dbgSection(`Events (${count})`, "events", body);
     }
     if (tab === "all" || tab === "db") {
@@ -5633,5 +6141,703 @@
   setInterval(() => {
     if (_dbgPanel && _dbgPanel.style.display !== "none") _dbgFetchDb();
   }, 3e4);
+
+  // src/panel-manager.js
+  var ANCHORS = [
+    { id: "nw", x: 0, y: 0, label: "Northwest Anchor" },
+    { id: "n", x: 0.5, y: 0, label: "North Anchor" },
+    { id: "ne", x: 1, y: 0, label: "Northeast Anchor" },
+    { id: "e", x: 1, y: 0.5, label: "East Anchor" },
+    { id: "se", x: 1, y: 1, label: "Southeast Anchor" },
+    { id: "s", x: 0.5, y: 1, label: "South Anchor" },
+    { id: "sw", x: 0, y: 1, label: "Southwest Anchor" },
+    { id: "w", x: 0, y: 0.5, label: "West Anchor" }
+  ];
+  var PANELS = {
+    "realm-panel": { name: "Realm Vitals", anchor: "ne", priority: 1, icon: "\u2694" },
+    "legend": { name: "Legend", anchor: "sw", priority: 5, icon: "\u{1F5FA}" },
+    "spellbook": { name: "Spellbook", anchor: "sw", priority: 3, icon: "\u{1F4D6}" },
+    "realm-codex": { name: "Codex", anchor: "nw", priority: 4, icon: "\u2630" },
+    "quest-log": { name: "Quest Log", anchor: "se", priority: 6, icon: "\u2619" },
+    "minimap": { name: "Minimap", anchor: "se", priority: 2, icon: "\u{1F9ED}" },
+    "cartographer": { name: "Cartographer", anchor: "e", priority: 7, icon: "\u{1F9ED}" },
+    "energy-panel": { name: "Energy", anchor: "w", priority: 8, icon: "\u26A1" },
+    "node-list": { name: "Census", anchor: "w", priority: 9, icon: "\u{1F4DC}" },
+    "debug-panel": { name: "Arcane Mirror", anchor: "s", priority: 10, icon: "\u{1F52E}" }
+  };
+  var FORMATIONS = {
+    "scrying-focus": {
+      name: "Scrying Focus",
+      icon: "\u{1F441}",
+      desc: "Clear sight upon the realm",
+      visible: ["minimap"],
+      anchors: { "minimap": "se" }
+    },
+    "wardens-watch": {
+      name: "Warden's Watch",
+      icon: "\u{1F6E1}",
+      desc: "Monitor the realm vitals",
+      visible: ["realm-panel", "energy-panel", "minimap"],
+      anchors: { "realm-panel": "ne", "energy-panel": "nw", "minimap": "se" }
+    },
+    "grand-arcanum": {
+      name: "Grand Arcanum",
+      icon: "\u2728",
+      desc: "Summon all panels",
+      visible: Object.keys(PANELS),
+      anchors: null
+      // auto-arrange
+    },
+    "grimoire-binding": {
+      name: "Grimoire Binding",
+      icon: "\u{1F4D5}",
+      desc: "Your saved formation",
+      visible: null,
+      // loaded from storage
+      anchors: null
+    }
+  };
+  var STORAGE_KEY = "realm-panel-formation";
+  var _mode = "auto";
+  var _currentFormation = null;
+  var _dragging = null;
+  var _dragOffset = { x: 0, y: 0 };
+  var _anchorOverlay = null;
+  var _particleCanvas = null;
+  var _sealedDock = null;
+  function initPanelManager() {
+    _createAnchorOverlay();
+    _createParticleCanvas();
+    _createSealedDock();
+    _attachDragHandlers();
+    _loadFormation();
+    _injectFormationUI();
+  }
+  __name(initPanelManager, "initPanelManager");
+  function _createSealedDock() {
+    _sealedDock = document.createElement("div");
+    _sealedDock.id = "sealed-dock";
+    _sealedDock.className = "sealed-dock";
+    const label = document.createElement("div");
+    label.className = "dock-label";
+    label.textContent = "\u2726 Sealed Runes \u2726";
+    _sealedDock.appendChild(label);
+    const tray = document.createElement("div");
+    tray.className = "dock-tray";
+    _sealedDock.appendChild(tray);
+    document.body.appendChild(_sealedDock);
+  }
+  __name(_createSealedDock, "_createSealedDock");
+  function _createAnchorOverlay() {
+    _anchorOverlay = document.createElement("div");
+    _anchorOverlay.id = "ley-anchor-overlay";
+    ANCHORS.forEach((a) => {
+      const anchor = document.createElement("div");
+      anchor.className = "ley-anchor";
+      anchor.dataset.anchor = a.id;
+      anchor.style.left = a.x * 100 + "%";
+      anchor.style.top = a.y * 100 + "%";
+      const rune = document.createElement("span");
+      rune.className = "anchor-rune";
+      rune.textContent = "\u25C8";
+      const glow = document.createElement("span");
+      glow.className = "anchor-glow";
+      anchor.appendChild(rune);
+      anchor.appendChild(glow);
+      _anchorOverlay.appendChild(anchor);
+    });
+    document.body.appendChild(_anchorOverlay);
+  }
+  __name(_createAnchorOverlay, "_createAnchorOverlay");
+  function _createParticleCanvas() {
+    _particleCanvas = document.createElement("canvas");
+    _particleCanvas.id = "arcane-particles";
+    _particleCanvas.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9998;";
+    document.body.appendChild(_particleCanvas);
+    _resizeParticleCanvas();
+    window.addEventListener("resize", _resizeParticleCanvas);
+  }
+  __name(_createParticleCanvas, "_createParticleCanvas");
+  function _resizeParticleCanvas() {
+    _particleCanvas.width = window.innerWidth;
+    _particleCanvas.height = window.innerHeight;
+  }
+  __name(_resizeParticleCanvas, "_resizeParticleCanvas");
+  function _attachDragHandlers() {
+    document.querySelectorAll(".panel").forEach((panel) => {
+      const header = panel.querySelector(".panel-header");
+      if (!header || !PANELS[panel.id]) return;
+      header.style.cursor = "grab";
+      header.addEventListener("mousedown", (e) => _startDrag(e, panel));
+      header.addEventListener("touchstart", (e) => _startDrag(e, panel), { passive: false });
+      header.addEventListener("dblclick", () => _toggleMinimize(panel));
+    });
+    document.addEventListener("mousemove", _onDrag);
+    document.addEventListener("touchmove", _onDrag, { passive: false });
+    document.addEventListener("mouseup", _endDrag);
+    document.addEventListener("touchend", _endDrag);
+  }
+  __name(_attachDragHandlers, "_attachDragHandlers");
+  function _startDrag(e, panel) {
+    if (e.target.closest(".panel-close, .panel-min-icon, button, input, select")) return;
+    e.preventDefault();
+    _dragging = panel;
+    _mode = "manual";
+    const rect = panel.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    _dragOffset = { x: clientX - rect.left, y: clientY - rect.top };
+    panel.classList.add("panel-dragging");
+    panel.style.transition = "none";
+    panel.style.position = "fixed";
+    panel.style.zIndex = "9999";
+    _anchorOverlay.classList.add("visible");
+    _startParticleTrail(clientX, clientY);
+  }
+  __name(_startDrag, "_startDrag");
+  function _onDrag(e) {
+    if (!_dragging) return;
+    e.preventDefault();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const x = clientX - _dragOffset.x;
+    const y = clientY - _dragOffset.y;
+    _dragging.style.left = x + "px";
+    _dragging.style.top = y + "px";
+    _dragging.style.right = "auto";
+    _dragging.style.bottom = "auto";
+    const nearest = _findNearestAnchor(clientX, clientY);
+    document.querySelectorAll(".ley-anchor").forEach((el) => {
+      el.classList.toggle("active", el.dataset.anchor === nearest.id);
+    });
+    _updateParticleTrail(clientX, clientY);
+  }
+  __name(_onDrag, "_onDrag");
+  function _endDrag() {
+    if (!_dragging) return;
+    const panel = _dragging;
+    const rect = panel.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const anchor = _findNearestAnchor(centerX, centerY);
+    _snapToAnchor(panel, anchor);
+    _flashAnchorRune(anchor);
+    panel.classList.remove("panel-dragging");
+    panel.style.transition = "";
+    panel.style.zIndex = "";
+    _anchorOverlay.classList.remove("visible");
+    _stopParticleTrail();
+    _dragging = null;
+    _saveFormation();
+  }
+  __name(_endDrag, "_endDrag");
+  function _findNearestAnchor(x, y) {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let nearest = ANCHORS[0];
+    let minDist = Infinity;
+    for (const a of ANCHORS) {
+      const ax = a.x * vw;
+      const ay = a.y * vh;
+      const dist = Math.hypot(x - ax, y - ay);
+      if (dist < minDist) {
+        minDist = dist;
+        nearest = a;
+      }
+    }
+    return nearest;
+  }
+  __name(_findNearestAnchor, "_findNearestAnchor");
+  function _snapToAnchor(panel, anchor) {
+    const pad = 15;
+    const style = panel.style;
+    style.left = style.right = style.top = style.bottom = "auto";
+    style.transform = "";
+    if (anchor.x === 0) style.left = pad + "px";
+    else if (anchor.x === 1) style.right = pad + "px";
+    else {
+      style.left = "50%";
+      style.transform = "translateX(-50%)";
+    }
+    if (anchor.y === 0) style.top = pad + "px";
+    else if (anchor.y === 1) style.bottom = pad + "px";
+    else {
+      style.top = "50%";
+      style.transform = anchor.x === 0.5 ? "translate(-50%, -50%)" : "translateY(-50%)";
+    }
+    panel.dataset.anchor = anchor.id;
+  }
+  __name(_snapToAnchor, "_snapToAnchor");
+  function _toggleMinimize(panel) {
+    const isMinimized = panel.classList.contains("panel-sealed");
+    if (isMinimized) {
+      _unsealPanel(panel);
+    } else {
+      _sealPanel(panel);
+    }
+    _saveFormation();
+  }
+  __name(_toggleMinimize, "_toggleMinimize");
+  function _sealPanel(panel) {
+    const def = PANELS[panel.id];
+    if (!def) return;
+    panel.dataset.originalAnchor = panel.dataset.anchor || def.anchor;
+    panel.dataset.originalLeft = panel.style.left;
+    panel.dataset.originalTop = panel.style.top;
+    panel.dataset.originalRight = panel.style.right;
+    panel.dataset.originalBottom = panel.style.bottom;
+    panel.dataset.originalTransform = panel.style.transform;
+    const tray = _sealedDock.querySelector(".dock-tray");
+    const rune = document.createElement("div");
+    rune.className = "sealed-rune";
+    rune.dataset.panelId = panel.id;
+    rune.title = def.name;
+    const icon = document.createElement("span");
+    icon.className = "rune-icon";
+    icon.textContent = def.icon;
+    const glow = document.createElement("span");
+    glow.className = "rune-glow";
+    rune.appendChild(icon);
+    rune.appendChild(glow);
+    rune.addEventListener("click", () => _toggleMinimize(panel));
+    tray.appendChild(rune);
+    _sealedDock.classList.add("has-runes");
+    _spawnSealParticles(panel);
+    requestAnimationFrame(() => {
+      const rect = panel.getBoundingClientRect();
+      const dockRect = _sealedDock.getBoundingClientRect();
+      const targetX = dockRect.left + dockRect.width / 2;
+      const targetY = dockRect.top + 40;
+      panel.style.transition = "all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55)";
+      panel.style.transform = `translate(${targetX - rect.left - rect.width / 2}px, ${targetY - rect.top - rect.height / 2}px) scale(0)`;
+      panel.style.opacity = "0";
+      setTimeout(() => {
+        panel.classList.add("panel-sealed");
+        panel.style.display = "none";
+        panel.style.transition = "";
+        panel.style.transform = "";
+        panel.style.opacity = "";
+        rune.classList.add("entering");
+        setTimeout(() => rune.classList.remove("entering"), 500);
+      }, 500);
+    });
+  }
+  __name(_sealPanel, "_sealPanel");
+  function _unsealPanel(panel) {
+    const rune = _sealedDock.querySelector(`.sealed-rune[data-panel-id="${panel.id}"]`);
+    if (rune) {
+      rune.classList.add("exiting");
+      setTimeout(() => {
+        rune.remove();
+        const tray = _sealedDock.querySelector(".dock-tray");
+        if (tray && tray.children.length === 0) {
+          _sealedDock.classList.remove("has-runes");
+        }
+      }, 300);
+    }
+    panel.classList.remove("panel-sealed");
+    panel.style.display = "";
+    const anchorId = panel.dataset.originalAnchor;
+    const anchor = ANCHORS.find((a) => a.id === anchorId);
+    if (anchor) {
+      _snapToAnchor(panel, anchor);
+    } else {
+      panel.style.left = panel.dataset.originalLeft || "";
+      panel.style.top = panel.dataset.originalTop || "";
+      panel.style.right = panel.dataset.originalRight || "";
+      panel.style.bottom = panel.dataset.originalBottom || "";
+      panel.style.transform = panel.dataset.originalTransform || "";
+    }
+    panel.style.opacity = "0";
+    panel.style.transform = (panel.style.transform || "") + " scale(0.5)";
+    requestAnimationFrame(() => {
+      panel.style.transition = "all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)";
+      panel.style.opacity = "1";
+      panel.style.transform = panel.style.transform.replace(" scale(0.5)", "");
+      setTimeout(() => {
+        panel.style.transition = "";
+      }, 400);
+    });
+    _spawnRestoreParticles(panel);
+  }
+  __name(_unsealPanel, "_unsealPanel");
+  var _particles = [];
+  var _trailActive = false;
+  var _trailX = 0;
+  var _trailY = 0;
+  function _startParticleTrail(x, y) {
+    _trailActive = true;
+    _trailX = x;
+    _trailY = y;
+    _animateParticles();
+  }
+  __name(_startParticleTrail, "_startParticleTrail");
+  function _updateParticleTrail(x, y) {
+    if (!_trailActive) return;
+    const dx = x - _trailX;
+    const dy = y - _trailY;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 5) {
+      _particles.push({
+        x,
+        y,
+        vx: (Math.random() - 0.5) * 2,
+        vy: (Math.random() - 0.5) * 2 - 1,
+        life: 1,
+        size: Math.random() * 4 + 2,
+        hue: 200 + Math.random() * 60
+      });
+      _trailX = x;
+      _trailY = y;
+    }
+  }
+  __name(_updateParticleTrail, "_updateParticleTrail");
+  function _stopParticleTrail() {
+    _trailActive = false;
+  }
+  __name(_stopParticleTrail, "_stopParticleTrail");
+  function _animateParticles() {
+    if (!_trailActive && _particles.length === 0) return;
+    const ctx = _particleCanvas.getContext("2d");
+    ctx.clearRect(0, 0, _particleCanvas.width, _particleCanvas.height);
+    for (let i = _particles.length - 1; i >= 0; i--) {
+      const p = _particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life -= 0.02;
+      if (p.life <= 0) {
+        _particles.splice(i, 1);
+        continue;
+      }
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+      ctx.fillStyle = `hsla(${p.hue}, 80%, 60%, ${p.life * 0.8})`;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * p.life * 2, 0, Math.PI * 2);
+      ctx.fillStyle = `hsla(${p.hue}, 80%, 70%, ${p.life * 0.3})`;
+      ctx.fill();
+    }
+    requestAnimationFrame(_animateParticles);
+  }
+  __name(_animateParticles, "_animateParticles");
+  function _flashAnchorRune(anchor) {
+    const el = document.querySelector(`.ley-anchor[data-anchor="${anchor.id}"]`);
+    if (!el) return;
+    el.classList.add("flash");
+    setTimeout(() => el.classList.remove("flash"), 500);
+  }
+  __name(_flashAnchorRune, "_flashAnchorRune");
+  function _spawnSealParticles(panel) {
+    const rect = panel.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    for (let i = 0; i < 20; i++) {
+      const angle = i / 20 * Math.PI * 2;
+      _particles.push({
+        x: cx + Math.cos(angle) * 50,
+        y: cy + Math.sin(angle) * 50,
+        vx: -Math.cos(angle) * 3,
+        vy: -Math.sin(angle) * 3,
+        life: 1,
+        size: 4,
+        hue: 280
+      });
+    }
+    _animateParticles();
+  }
+  __name(_spawnSealParticles, "_spawnSealParticles");
+  function _spawnRestoreParticles(panel) {
+    const rect = panel.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    for (let i = 0; i < 30; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * 4 + 2;
+      _particles.push({
+        x: cx,
+        y: cy,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1,
+        size: Math.random() * 3 + 2,
+        hue: 50 + Math.random() * 30
+      });
+    }
+    _animateParticles();
+  }
+  __name(_spawnRestoreParticles, "_spawnRestoreParticles");
+  function applyFormation(formationId) {
+    const formation = FORMATIONS[formationId];
+    if (!formation) return;
+    _currentFormation = formationId;
+    let visible = formation.visible;
+    let anchors = formation.anchors;
+    let minimized = [];
+    if (formationId === "grimoire-binding") {
+      const saved = _loadSavedFormation();
+      if (saved) {
+        visible = saved.visible;
+        anchors = saved.anchors;
+        minimized = saved.minimized || [];
+      } else {
+        visible = Object.keys(PANELS);
+        anchors = null;
+      }
+    }
+    const tray = _sealedDock?.querySelector(".dock-tray");
+    if (tray) tray.innerHTML = "";
+    _sealedDock?.classList.remove("has-runes");
+    Object.keys(PANELS).forEach((id) => {
+      const panel = document.getElementById(id);
+      if (panel) {
+        panel.style.display = "none";
+        panel.classList.remove("panel-sealed");
+      }
+    });
+    if (visible) {
+      visible.forEach((id) => {
+        const panel = document.getElementById(id);
+        if (!panel) return;
+        if (minimized.includes(id)) {
+          _restoreSealedToDoc(panel);
+        } else {
+          panel.style.display = "";
+          if (anchors && anchors[id]) {
+            const anchor = ANCHORS.find((a) => a.id === anchors[id]);
+            if (anchor) _snapToAnchor(panel, anchor);
+          }
+        }
+      });
+    }
+    if (!anchors && visible) {
+      _autoArrangePanels(visible.filter((id) => !minimized.includes(id)));
+    }
+    _spawnConjurationCircle();
+  }
+  __name(applyFormation, "applyFormation");
+  function _restoreSealedToDoc(panel) {
+    const def = PANELS[panel.id];
+    if (!def) return;
+    const tray = _sealedDock.querySelector(".dock-tray");
+    const rune = document.createElement("div");
+    rune.className = "sealed-rune";
+    rune.dataset.panelId = panel.id;
+    rune.title = def.name;
+    const icon = document.createElement("span");
+    icon.className = "rune-icon";
+    icon.textContent = def.icon;
+    const glow = document.createElement("span");
+    glow.className = "rune-glow";
+    rune.appendChild(icon);
+    rune.appendChild(glow);
+    rune.addEventListener("click", () => _toggleMinimize(panel));
+    tray.appendChild(rune);
+    panel.classList.add("panel-sealed");
+    panel.style.display = "none";
+    _sealedDock.classList.add("has-runes");
+  }
+  __name(_restoreSealedToDoc, "_restoreSealedToDoc");
+  function _autoArrangePanels(panelIds) {
+    const sorted = [...panelIds].sort(
+      (a, b) => (PANELS[a]?.priority || 99) - (PANELS[b]?.priority || 99)
+    );
+    const usedAnchors = /* @__PURE__ */ new Set();
+    const anchorStacks = {};
+    sorted.forEach((id) => {
+      const panel = document.getElementById(id);
+      if (!panel) return;
+      const def = PANELS[id];
+      let anchor = ANCHORS.find((a) => a.id === def?.anchor);
+      if (usedAnchors.has(anchor?.id)) {
+        const alternatives = ANCHORS.filter((a) => !usedAnchors.has(a.id));
+        if (alternatives.length > 0) {
+          anchor = alternatives[0];
+        }
+      }
+      if (anchor) {
+        _snapToAnchor(panel, anchor);
+        usedAnchors.add(anchor.id);
+        if (!anchorStacks[anchor.id]) anchorStacks[anchor.id] = 0;
+        const stackOffset = anchorStacks[anchor.id] * 40;
+        if (anchor.y === 0) panel.style.top = 15 + stackOffset + "px";
+        else if (anchor.y === 1) panel.style.bottom = 15 + stackOffset + "px";
+        anchorStacks[anchor.id]++;
+      }
+    });
+  }
+  __name(_autoArrangePanels, "_autoArrangePanels");
+  function _spawnConjurationCircle() {
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
+    for (let ring = 0; ring < 3; ring++) {
+      const radius = 100 + ring * 60;
+      const count = 20 + ring * 10;
+      for (let i = 0; i < count; i++) {
+        const angle = i / count * Math.PI * 2;
+        const delay = ring * 100 + i * 10;
+        setTimeout(() => {
+          _particles.push({
+            x: cx + Math.cos(angle) * radius,
+            y: cy + Math.sin(angle) * radius,
+            vx: Math.cos(angle) * 0.5,
+            vy: Math.sin(angle) * 0.5,
+            life: 1,
+            size: 3,
+            hue: 200 + ring * 40
+          });
+        }, delay);
+      }
+    }
+    _animateParticles();
+  }
+  __name(_spawnConjurationCircle, "_spawnConjurationCircle");
+  function _saveFormation() {
+    const state = {
+      visible: [],
+      anchors: {},
+      minimized: []
+    };
+    Object.keys(PANELS).forEach((id) => {
+      const panel = document.getElementById(id);
+      if (!panel) return;
+      if (panel.style.display !== "none") {
+        state.visible.push(id);
+        if (panel.dataset.anchor) {
+          state.anchors[id] = panel.dataset.anchor;
+        }
+        if (panel.classList.contains("panel-sealed")) {
+          state.minimized.push(id);
+        }
+      }
+    });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+  __name(_saveFormation, "_saveFormation");
+  function _loadFormation() {
+    const saved = _loadSavedFormation();
+    if (saved) {
+      applyFormation("grimoire-binding");
+    }
+  }
+  __name(_loadFormation, "_loadFormation");
+  function _loadSavedFormation() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEY);
+      return data ? JSON.parse(data) : null;
+    } catch {
+      return null;
+    }
+  }
+  __name(_loadSavedFormation, "_loadSavedFormation");
+  function _injectFormationUI() {
+    const spellbook = document.getElementById("spellbook");
+    if (!spellbook) return;
+    const enchantPage = spellbook.querySelector('.spell-page[data-spell-page="0"]');
+    if (!enchantPage) return;
+    const section = document.createElement("div");
+    section.className = "legend-section";
+    section.dataset.section = "formations";
+    const header = document.createElement("div");
+    header.className = "legend-section-header";
+    header.dataset.accent = "purple";
+    const chevron = document.createElement("span");
+    chevron.className = "legend-chevron";
+    chevron.textContent = "\u25BE";
+    const secIcon = document.createElement("span");
+    secIcon.className = "sec-icon";
+    secIcon.textContent = "\u2727";
+    header.appendChild(chevron);
+    header.appendChild(secIcon);
+    header.appendChild(document.createTextNode(" Arcane Formations"));
+    const body = document.createElement("div");
+    body.className = "legend-section-body";
+    const grid = document.createElement("div");
+    grid.className = "formation-grid";
+    Object.entries(FORMATIONS).forEach(([id, f]) => {
+      const btn = document.createElement("button");
+      btn.className = "formation-btn";
+      btn.dataset.formation = id;
+      btn.title = f.desc;
+      const icon = document.createElement("span");
+      icon.className = "formation-icon";
+      icon.textContent = f.icon;
+      const name = document.createElement("span");
+      name.className = "formation-name";
+      name.textContent = f.name;
+      btn.appendChild(icon);
+      btn.appendChild(name);
+      btn.addEventListener("click", () => {
+        applyFormation(id);
+        grid.querySelectorAll(".formation-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+      });
+      grid.appendChild(btn);
+    });
+    const modeRow = document.createElement("div");
+    modeRow.className = "formation-mode";
+    const toggleLabel = document.createElement("label");
+    toggleLabel.className = "topo-switch";
+    const toggleInput = document.createElement("input");
+    toggleInput.type = "checkbox";
+    toggleInput.id = "auto-conjure-toggle";
+    toggleInput.checked = _mode === "auto";
+    toggleInput.addEventListener("change", (e) => {
+      _mode = e.target.checked ? "auto" : "manual";
+    });
+    const toggleTrack = document.createElement("span");
+    toggleTrack.className = "topo-switch-track";
+    toggleLabel.appendChild(toggleInput);
+    toggleLabel.appendChild(toggleTrack);
+    const modeLabel = document.createElement("span");
+    modeLabel.className = "layer-name";
+    modeLabel.textContent = "Auto-Conjure";
+    modeRow.appendChild(toggleLabel);
+    modeRow.appendChild(modeLabel);
+    const saveBtn = document.createElement("button");
+    saveBtn.className = "formation-save-btn";
+    saveBtn.id = "save-grimoire-btn";
+    const saveIcon = document.createElement("span");
+    saveIcon.textContent = "\u{1F4D5}";
+    saveBtn.appendChild(saveIcon);
+    saveBtn.appendChild(document.createTextNode(" Bind to Grimoire"));
+    saveBtn.addEventListener("click", () => {
+      _saveFormation();
+      _flashSaveEffect();
+    });
+    body.appendChild(grid);
+    body.appendChild(modeRow);
+    body.appendChild(saveBtn);
+    section.appendChild(header);
+    section.appendChild(body);
+    enchantPage.insertBefore(section, enchantPage.firstChild);
+  }
+  __name(_injectFormationUI, "_injectFormationUI");
+  function _flashSaveEffect() {
+    const btn = document.getElementById("save-grimoire-btn");
+    if (!btn) return;
+    btn.classList.add("saved");
+    btn.textContent = "";
+    const check = document.createElement("span");
+    check.textContent = "\u2713";
+    btn.appendChild(check);
+    btn.appendChild(document.createTextNode(" Bound!"));
+    setTimeout(() => {
+      btn.classList.remove("saved");
+      btn.textContent = "";
+      const icon = document.createElement("span");
+      icon.textContent = "\u{1F4D5}";
+      btn.appendChild(icon);
+      btn.appendChild(document.createTextNode(" Bind to Grimoire"));
+    }, 1500);
+  }
+  __name(_flashSaveEffect, "_flashSaveEffect");
+
+  // src/main.js
+  if (document.readyState === "complete") {
+    initPanelManager();
+  } else {
+    window.addEventListener("load", initPanelManager);
+  }
 })();
 //# sourceMappingURL=realm-map.js.map
