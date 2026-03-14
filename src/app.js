@@ -3234,134 +3234,7 @@ const PANEL_ICONS = {
   'debug-panel':  { icon: '\uD83D\uDD2E', tooltip: 'Arcane Mirror', color: '#a070d0', rgb: [160,112,208] },
 };
 
-function setupPanelMinimize(panelId, handleSelector) {
-  const panel = document.getElementById(panelId);
-  if (!panel) return;
-  const cfg = PANEL_ICONS[panelId] || { icon: '\u2726', tooltip: panelId, color: '#f0d890' };
-
-  // Create the minimized icon element (always in DOM, hidden until minimized)
-  const minIcon = document.createElement('div');
-  minIcon.className = 'panel-min-icon';
-  minIcon.dataset.tooltip = cfg.tooltip;
-  minIcon.innerHTML = `<span style="color:${cfg.color};filter:drop-shadow(0 0 4px ${cfg.color})">${cfg.icon}</span><div class="min-glow" style="box-shadow:0 0 8px ${cfg.color}30"></div>`;
-  panel.appendChild(minIcon);
-
-  // Detect handle element
-  const handle = handleSelector ? panel.querySelector(handleSelector) : panel;
-  if (!handle) return;
-
-  function doMinimize() {
-    if (panel.classList.contains('panel-minimized')) return;
-    panel._origWidth = panel.style.width || '';
-    panel._origMinWidth = panel.style.minWidth || '';
-    panel._origMaxHeight = panel.style.maxHeight || '';
-    panel._origPadding = panel.style.padding || '';
-    panel._origBorderRadius = panel.style.borderRadius || '';
-    panel._origOverflow = panel.style.overflow || '';
-    panel.classList.add('panel-minimized');
-    panel.style.animation = 'panelMinimize 0.4s ease-out';
-    const rect = panel.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
-    for (let i = 0; i < 8; i++) {
-      spawnMote(cx + (Math.random() - 0.5) * 40, cy + (Math.random() - 0.5) * 40,
-        cfg.rgb);
-    }
-    scheduleSave();
-  }
-
-  handle.addEventListener('dblclick', e => {
-    e.preventDefault();
-    e.stopPropagation();
-    doMinimize();
-  });
-
-  // Touch double-tap support (dblclick doesn't fire on mobile)
-  let _lastTapTime = 0;
-  handle.addEventListener('touchend', e => {
-    const now = Date.now();
-    if (now - _lastTapTime < 350) {
-      e.preventDefault();
-      doMinimize();
-      _lastTapTime = 0;
-    } else {
-      _lastTapTime = now;
-    }
-  });
-
-  // Click the minimized icon to restore
-  minIcon.addEventListener('click', e => {
-    e.stopPropagation();
-    if (!panel.classList.contains('panel-minimized')) return;
-    if (minIcon._wasDragged) { minIcon._wasDragged = false; return; }
-    panel.classList.remove('panel-minimized');
-    panel.style.animation = '';
-    // Spawn motes on restore
-    const rect = panel.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
-    for (let i = 0; i < 6; i++) {
-      spawnMote(cx + (Math.random() - 0.5) * 60, cy + (Math.random() - 0.5) * 60,
-        cfg.rgb);
-    }
-    scheduleSave();
-  });
-
-  // Make minimized icon draggable (drags the whole panel)
-  let _minDx = 0, _minDy = 0, _minDragging = false, _minMoved = false, _minStartX = 0, _minStartY = 0;
-  function minStartDrag(cx, cy) {
-    _minDragging = true; _minMoved = false;
-    _minStartX = cx; _minStartY = cy;
-    const rect = panel.getBoundingClientRect();
-    _minDx = cx - rect.left; _minDy = cy - rect.top;
-    minIcon.style.cursor = 'grabbing';
-    panel.style.transition = 'none';
-  }
-  function minMoveDrag(cx, cy) {
-    if (!_minDragging) return;
-    // Require 6px movement threshold before counting as drag (prevents false drag on mobile tap)
-    if (!_minMoved && Math.abs(cx - _minStartX) + Math.abs(cy - _minStartY) < 6) return;
-    _minMoved = true;
-    panel.style.left = (cx - _minDx) + 'px';
-    panel.style.top = (cy - _minDy) + 'px';
-    panel.style.right = 'auto';
-    panel.style.bottom = 'auto';
-    panel.style.transform = 'none';
-    if (Math.random() < 0.4) spawnMote(cx + (Math.random()-0.5)*20, cy + (Math.random()-0.5)*20, cfg.rgb);
-  }
-  function minEndDrag() {
-    if (_minDragging) {
-      _minDragging = false;
-      minIcon.style.cursor = 'pointer';
-      panel.style.transition = '';
-      if (_minMoved) { minIcon._wasDragged = true; scheduleSave(); }
-    }
-  }
-  minIcon.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); minStartDrag(e.clientX, e.clientY); });
-  window.addEventListener('mousemove', e => minMoveDrag(e.clientX, e.clientY));
-  window.addEventListener('mouseup', minEndDrag);
-  minIcon.addEventListener('touchstart', e => { if (e.touches.length !== 1) return; e.preventDefault(); e.stopPropagation(); minStartDrag(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
-  window.addEventListener('touchmove', e => { if (_minDragging && e.touches.length) { e.preventDefault(); minMoveDrag(e.touches[0].clientX, e.touches[0].clientY); } }, { passive: false });
-  window.addEventListener('touchend', minEndDrag, { passive: true });
-  // Touch tap-to-restore (click doesn't fire because touchstart preventDefault)
-  minIcon.addEventListener('touchend', e => {
-    if (_minMoved) return; // was a drag, not a tap
-    if (!panel.classList.contains('panel-minimized')) return;
-    e.preventDefault();
-    e.stopPropagation();
-    panel.classList.remove('panel-minimized');
-    panel.style.animation = '';
-    const rect = panel.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
-    for (let i = 0; i < 6; i++) {
-      spawnMote(cx + (Math.random() - 0.5) * 60, cy + (Math.random() - 0.5) * 60, cfg.rgb);
-    }
-    scheduleSave();
-  });
-}
-
-// Wire up all panels
-setupPanelMinimize('realm-panel', '.panel-header');
-setupPanelMinimize('legend', '.panel-header');
-setupPanelMinimize('spellbook', '.panel-header');
+// Panel minimize handled by panel-manager.js (seal system with dock)
 
 // ── Spellbook Page Navigation ──
 const _spellPages = document.querySelectorAll('#spellbook .spell-page');
@@ -3520,13 +3393,7 @@ document.querySelector('.legend-section[data-section="effects"]')?.classList.add
   }
 })();
 
-setupPanelMinimize('quest-log', '#quest-log-header');
-setupPanelMinimize('realm-codex', '#codex-header');
-setupPanelMinimize('minimap', null);
-setupPanelMinimize('cartographer', '.panel-header');
-setupPanelMinimize('energy-panel', '.panel-header');
-setupPanelMinimize('node-list', '#node-list-header');
-setupPanelMinimize('debug-panel', '#debug-header');
+// Panel minimize calls removed - handled by panel-manager.js
 
 // ── Realm Search ──
 const _realmSearch = document.getElementById('realm-search');
@@ -4889,11 +4756,33 @@ function _applySettings(s) {
     const tab = document.querySelector(`.log-tab[data-tab="${s.mirrorTab}"]`);
     if (tab) tab.click();
   }
+  // Restore sealed panels (triggers seal via panel-manager)
+  if (s.sealedPanels && Array.isArray(s.sealedPanels)) {
+    setTimeout(() => {
+      s.sealedPanels.forEach(id => {
+        const panel = document.getElementById(id);
+        if (panel && !panel.classList.contains('panel-sealed')) {
+          const header = panel.querySelector('.panel-header') || panel.querySelector('[id$="-header"]');
+          if (header) header.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+        }
+      });
+    }, 500); // Delay to let panel-manager initialize
+  }
   _restoring = false;
 }
 
 let _initialRestoreDone = false;
 export function restoreSettings() {
+  // Check for reset parameter - clears all saved settings
+  if (new URLSearchParams(window.location.search).has('reset')) {
+    localStorage.removeItem(SETTINGS_KEY);
+    localStorage.removeItem('realm-panel-formation');
+    localStorage.removeItem('realm-map-layout');
+    fetch('/settings', { method: 'DELETE' }).catch(() => {});
+    window.history.replaceState({}, '', window.location.pathname);
+    console.log('Settings reset');
+    return true;
+  }
   // Try localStorage first (instant)
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);

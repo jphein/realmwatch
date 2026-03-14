@@ -3763,15 +3763,15 @@
   .conjured-runes {
     position: fixed;
     top: 0;
-    right: 0;
-    width: 250px;
-    height: 250px;
+    left: 0;
+    width: 100%;
+    height: 100%;
     pointer-events: none;
     z-index: 9989;
   }
 
   .conjured-runes .sealed-rune {
-    position: absolute;
+    position: fixed;
     pointer-events: auto;
   }
 

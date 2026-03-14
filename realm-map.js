@@ -3540,163 +3540,6 @@
     const key = node.dataset.tip;
     if (key) openPersonaEditor(key);
   });
-  var PANEL_ICONS = {
-    "realm-panel": { icon: "\u2694", tooltip: "Realm Vitals", color: "#f0d890", rgb: [240, 216, 144] },
-    "legend": { icon: "\u{1F5FA}", tooltip: "Legend", color: "#80b0ff", rgb: [128, 176, 255] },
-    "spellbook": { icon: "\u{1F4D6}", tooltip: "Spellbook", color: "#c0a0ff", rgb: [192, 160, 255] },
-    "quest-log": { icon: "\u2619", tooltip: "Quest Log", color: "#a0ff60", rgb: [160, 255, 96] },
-    "realm-codex": { icon: "\u2630", tooltip: "Realm Codex", color: "#9060c0", rgb: [144, 96, 192] },
-    "minimap": { icon: "\u25CE", tooltip: "Minimap", color: "#60a0c0", rgb: [96, 160, 192] },
-    "cartographer": { icon: "\u{1F5FA}", tooltip: "Cartographer", color: "#c09060", rgb: [192, 144, 96] },
-    "energy-panel": { icon: "\u26A1", tooltip: "Realm Energy", color: "#60c060", rgb: [96, 192, 96] },
-    "node-list": { icon: "\u2691", tooltip: "Realm Census", color: "#c09060", rgb: [192, 144, 96] },
-    "debug-panel": { icon: "\u{1F52E}", tooltip: "Arcane Mirror", color: "#a070d0", rgb: [160, 112, 208] }
-  };
-  function setupPanelMinimize(panelId, handleSelector) {
-    const panel = document.getElementById(panelId);
-    if (!panel) return;
-    const cfg = PANEL_ICONS[panelId] || { icon: "\u2726", tooltip: panelId, color: "#f0d890" };
-    const minIcon = document.createElement("div");
-    minIcon.className = "panel-min-icon";
-    minIcon.dataset.tooltip = cfg.tooltip;
-    minIcon.innerHTML = `<span style="color:${cfg.color};filter:drop-shadow(0 0 4px ${cfg.color})">${cfg.icon}</span><div class="min-glow" style="box-shadow:0 0 8px ${cfg.color}30"></div>`;
-    panel.appendChild(minIcon);
-    const handle = handleSelector ? panel.querySelector(handleSelector) : panel;
-    if (!handle) return;
-    function doMinimize() {
-      if (panel.classList.contains("panel-minimized")) return;
-      panel._origWidth = panel.style.width || "";
-      panel._origMinWidth = panel.style.minWidth || "";
-      panel._origMaxHeight = panel.style.maxHeight || "";
-      panel._origPadding = panel.style.padding || "";
-      panel._origBorderRadius = panel.style.borderRadius || "";
-      panel._origOverflow = panel.style.overflow || "";
-      panel.classList.add("panel-minimized");
-      panel.style.animation = "panelMinimize 0.4s ease-out";
-      const rect = panel.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
-      for (let i = 0; i < 8; i++) {
-        spawnMote(
-          cx + (Math.random() - 0.5) * 40,
-          cy + (Math.random() - 0.5) * 40,
-          cfg.rgb
-        );
-      }
-      scheduleSave();
-    }
-    __name(doMinimize, "doMinimize");
-    handle.addEventListener("dblclick", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      doMinimize();
-    });
-    let _lastTapTime = 0;
-    handle.addEventListener("touchend", (e) => {
-      const now = Date.now();
-      if (now - _lastTapTime < 350) {
-        e.preventDefault();
-        doMinimize();
-        _lastTapTime = 0;
-      } else {
-        _lastTapTime = now;
-      }
-    });
-    minIcon.addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (!panel.classList.contains("panel-minimized")) return;
-      if (minIcon._wasDragged) {
-        minIcon._wasDragged = false;
-        return;
-      }
-      panel.classList.remove("panel-minimized");
-      panel.style.animation = "";
-      const rect = panel.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
-      for (let i = 0; i < 6; i++) {
-        spawnMote(
-          cx + (Math.random() - 0.5) * 60,
-          cy + (Math.random() - 0.5) * 60,
-          cfg.rgb
-        );
-      }
-      scheduleSave();
-    });
-    let _minDx = 0, _minDy = 0, _minDragging = false, _minMoved = false, _minStartX = 0, _minStartY = 0;
-    function minStartDrag(cx, cy) {
-      _minDragging = true;
-      _minMoved = false;
-      _minStartX = cx;
-      _minStartY = cy;
-      const rect = panel.getBoundingClientRect();
-      _minDx = cx - rect.left;
-      _minDy = cy - rect.top;
-      minIcon.style.cursor = "grabbing";
-      panel.style.transition = "none";
-    }
-    __name(minStartDrag, "minStartDrag");
-    function minMoveDrag(cx, cy) {
-      if (!_minDragging) return;
-      if (!_minMoved && Math.abs(cx - _minStartX) + Math.abs(cy - _minStartY) < 6) return;
-      _minMoved = true;
-      panel.style.left = cx - _minDx + "px";
-      panel.style.top = cy - _minDy + "px";
-      panel.style.right = "auto";
-      panel.style.bottom = "auto";
-      panel.style.transform = "none";
-      if (Math.random() < 0.4) spawnMote(cx + (Math.random() - 0.5) * 20, cy + (Math.random() - 0.5) * 20, cfg.rgb);
-    }
-    __name(minMoveDrag, "minMoveDrag");
-    function minEndDrag() {
-      if (_minDragging) {
-        _minDragging = false;
-        minIcon.style.cursor = "pointer";
-        panel.style.transition = "";
-        if (_minMoved) {
-          minIcon._wasDragged = true;
-          scheduleSave();
-        }
-      }
-    }
-    __name(minEndDrag, "minEndDrag");
-    minIcon.addEventListener("mousedown", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      minStartDrag(e.clientX, e.clientY);
-    });
-    window.addEventListener("mousemove", (e) => minMoveDrag(e.clientX, e.clientY));
-    window.addEventListener("mouseup", minEndDrag);
-    minIcon.addEventListener("touchstart", (e) => {
-      if (e.touches.length !== 1) return;
-      e.preventDefault();
-      e.stopPropagation();
-      minStartDrag(e.touches[0].clientX, e.touches[0].clientY);
-    }, { passive: false });
-    window.addEventListener("touchmove", (e) => {
-      if (_minDragging && e.touches.length) {
-        e.preventDefault();
-        minMoveDrag(e.touches[0].clientX, e.touches[0].clientY);
-      }
-    }, { passive: false });
-    window.addEventListener("touchend", minEndDrag, { passive: true });
-    minIcon.addEventListener("touchend", (e) => {
-      if (_minMoved) return;
-      if (!panel.classList.contains("panel-minimized")) return;
-      e.preventDefault();
-      e.stopPropagation();
-      panel.classList.remove("panel-minimized");
-      panel.style.animation = "";
-      const rect = panel.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
-      for (let i = 0; i < 6; i++) {
-        spawnMote(cx + (Math.random() - 0.5) * 60, cy + (Math.random() - 0.5) * 60, cfg.rgb);
-      }
-      scheduleSave();
-    });
-  }
-  __name(setupPanelMinimize, "setupPanelMinimize");
-  setupPanelMinimize("realm-panel", ".panel-header");
-  setupPanelMinimize("legend", ".panel-header");
-  setupPanelMinimize("spellbook", ".panel-header");
   var _spellPages = document.querySelectorAll("#spellbook .spell-page");
   var _spellTabs = document.querySelectorAll(".spell-tab");
   var _spellPage = 0;
@@ -3889,13 +3732,6 @@
       });
     }
   }), "initEffectsControls"))();
-  setupPanelMinimize("quest-log", "#quest-log-header");
-  setupPanelMinimize("realm-codex", "#codex-header");
-  setupPanelMinimize("minimap", null);
-  setupPanelMinimize("cartographer", ".panel-header");
-  setupPanelMinimize("energy-panel", ".panel-header");
-  setupPanelMinimize("node-list", "#node-list-header");
-  setupPanelMinimize("debug-panel", "#debug-header");
   var _realmSearch = document.getElementById("realm-search");
   var _searchInput = document.getElementById("search-input");
   var _searchResults = document.getElementById("search-results");
@@ -5312,11 +5148,32 @@
       const tab = document.querySelector(`.log-tab[data-tab="${s.mirrorTab}"]`);
       if (tab) tab.click();
     }
+    if (s.sealedPanels && Array.isArray(s.sealedPanels)) {
+      setTimeout(() => {
+        s.sealedPanels.forEach((id) => {
+          const panel = document.getElementById(id);
+          if (panel && !panel.classList.contains("panel-sealed")) {
+            const header = panel.querySelector(".panel-header") || panel.querySelector('[id$="-header"]');
+            if (header) header.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+          }
+        });
+      }, 500);
+    }
     _restoring = false;
   }
   __name(_applySettings, "_applySettings");
   var _initialRestoreDone = false;
   function restoreSettings() {
+    if (new URLSearchParams(window.location.search).has("reset")) {
+      localStorage.removeItem(SETTINGS_KEY);
+      localStorage.removeItem("realm-panel-formation");
+      localStorage.removeItem("realm-map-layout");
+      fetch("/settings", { method: "DELETE" }).catch(() => {
+      });
+      window.history.replaceState({}, "", window.location.pathname);
+      console.log("Settings reset");
+      return true;
+    }
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
       if (raw) _applySettings(JSON.parse(raw));
@@ -6279,6 +6136,17 @@
       header.addEventListener("mousedown", (e) => _startDrag(e, panel));
       header.addEventListener("touchstart", (e) => _startDrag(e, panel), { passive: false });
       header.addEventListener("dblclick", () => _toggleMinimize(panel));
+      let lastTap = 0;
+      header.addEventListener("touchend", (e) => {
+        const now = Date.now();
+        if (now - lastTap < 300) {
+          e.preventDefault();
+          _toggleMinimize(panel);
+          lastTap = 0;
+        } else {
+          lastTap = now;
+        }
+      });
     });
     document.addEventListener("mousemove", _onDrag);
     document.addEventListener("touchmove", _onDrag, { passive: false });
@@ -6286,28 +6154,37 @@
     document.addEventListener("touchend", _endDrag);
   }
   __name(_attachDragHandlers, "_attachDragHandlers");
+  var _dragStartPos = null;
+  var _dragThreshold = 10;
   function _startDrag(e, panel) {
     if (e.target.closest(".panel-close, .panel-min-icon, button, input, select")) return;
     e.preventDefault();
-    _dragging = panel;
-    _mode = "manual";
-    const rect = panel.getBoundingClientRect();
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    _dragStartPos = { x: clientX, y: clientY, panel };
+    _mode = "manual";
+    const rect = panel.getBoundingClientRect();
     _dragOffset = { x: clientX - rect.left, y: clientY - rect.top };
-    panel.classList.add("panel-dragging");
-    panel.style.transition = "none";
-    panel.style.position = "fixed";
-    panel.style.zIndex = "9999";
-    _anchorOverlay.classList.add("visible");
-    _startParticleTrail(clientX, clientY);
   }
   __name(_startDrag, "_startDrag");
   function _onDrag(e) {
-    if (!_dragging) return;
-    e.preventDefault();
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    if (_dragStartPos && !_dragging) {
+      const dx = Math.abs(clientX - _dragStartPos.x);
+      const dy = Math.abs(clientY - _dragStartPos.y);
+      if (dx > _dragThreshold || dy > _dragThreshold) {
+        _dragging = _dragStartPos.panel;
+        _dragging.classList.add("panel-dragging");
+        _dragging.style.transition = "none";
+        _dragging.style.position = "fixed";
+        _dragging.style.zIndex = "9999";
+        _anchorOverlay.classList.add("visible");
+        _startParticleTrail(clientX, clientY);
+      }
+    }
+    if (!_dragging) return;
+    e.preventDefault();
     const x = clientX - _dragOffset.x;
     const y = clientY - _dragOffset.y;
     _dragging.style.left = x + "px";
@@ -6322,6 +6199,7 @@
   }
   __name(_onDrag, "_onDrag");
   function _endDrag() {
+    _dragStartPos = null;
     if (!_dragging) return;
     const panel = _dragging;
     const rect = panel.getBoundingClientRect();
@@ -6430,6 +6308,7 @@
     const tray = _sealedDock.querySelector(".dock-tray");
     tray.appendChild(rune);
     _sealedDock.classList.add("has-runes");
+    _sealedDock.style.bottom = "0";
     requestAnimationFrame(() => {
       const dockRect = _sealedDock.getBoundingClientRect();
       const targetX = dockRect.left + dockRect.width / 2;
@@ -6548,9 +6427,10 @@
     const runes = [...conjured.children];
     const count = runes.length;
     if (count === 0) return;
-    const centerX = window.innerWidth - 120;
-    const centerY = 120;
-    const radius = 40 + count * 15;
+    const isMobile = window.innerWidth < 600;
+    const centerX = isMobile ? window.innerWidth / 2 : window.innerWidth - 120;
+    const centerY = isMobile ? window.innerHeight / 2 : 120;
+    const radius = isMobile ? Math.min(60, count * 20) : 40 + count * 15;
     runes.forEach((rune, i) => {
       const angle = i / count * Math.PI * 2 - Math.PI / 2;
       const x = centerX + Math.cos(angle) * radius - 25;
@@ -6565,9 +6445,15 @@
     const allRunes = document.querySelectorAll(".sealed-rune");
     if (allRunes.length === 0) return;
     _wanderingRunes = [];
-    allRunes.forEach((rune) => {
+    allRunes.forEach((rune, index) => {
       const panelId = rune.dataset.panelId;
-      const rect = rune.getBoundingClientRect();
+      let rect = rune.getBoundingClientRect();
+      if (rect.top > window.innerHeight - 50 || rect.top < 0 || rect.left > window.innerWidth - 50 || rect.left < 0) {
+        rect = {
+          left: window.innerWidth / 2 - 25 + index * 60,
+          top: window.innerHeight / 2 - 25
+        };
+      }
       rune.remove();
       if (newMode === "dock") {
         const tray = _sealedDock.querySelector(".dock-tray");
@@ -6575,6 +6461,7 @@
         rune.style = "";
         tray.appendChild(rune);
         _sealedDock.classList.add("has-runes");
+        _sealedDock.style.bottom = "0";
       } else if (newMode === "anchored") {
         rune.classList.add("anchored-rune");
         rune.classList.remove("wandering-rune");
@@ -6583,6 +6470,7 @@
         rune.style.top = rect.top + "px";
         document.body.appendChild(rune);
         _sealedDock.classList.remove("has-runes");
+        _sealedDock.style.bottom = "-80px";
       } else if (newMode === "wander") {
         rune.classList.add("wandering-rune");
         rune.classList.remove("anchored-rune");
@@ -6598,6 +6486,7 @@
           vy: (Math.random() - 0.5) * 2
         });
         _sealedDock.classList.remove("has-runes");
+        _sealedDock.style.bottom = "-80px";
       } else if (newMode === "conjure") {
         let conjured = document.getElementById("conjured-runes");
         if (!conjured) {
@@ -6610,6 +6499,7 @@
         rune.style.position = "fixed";
         conjured.appendChild(rune);
         _sealedDock.classList.remove("has-runes");
+        _sealedDock.style.bottom = "-80px";
       }
     });
     if (newMode === "wander" && _wanderingRunes.length > 0) {
@@ -6631,6 +6521,7 @@
         const tray = _sealedDock?.querySelector(".dock-tray");
         if (tray && tray.children.length === 0) {
           _sealedDock.classList.remove("has-runes");
+          _sealedDock.style.bottom = "-80px";
         }
         _arrangeConjuredRunes();
       }, 300);
@@ -6937,7 +6828,7 @@
     if (!enchantPage) return;
     const section = document.createElement("div");
     section.className = "legend-section";
-    section.dataset.section = "formations";
+    section.dataset.section = "seal-modes";
     const header = document.createElement("div");
     header.className = "legend-section-header";
     header.dataset.accent = "purple";
@@ -6949,37 +6840,9 @@
     secIcon.textContent = "\u2727";
     header.appendChild(chevron);
     header.appendChild(secIcon);
-    header.appendChild(document.createTextNode(" Arcane Formations"));
+    header.appendChild(document.createTextNode(" Sealed Runes"));
     const body = document.createElement("div");
     body.className = "legend-section-body";
-    const grid = document.createElement("div");
-    grid.className = "formation-grid";
-    Object.entries(FORMATIONS).forEach(([id, f]) => {
-      const btn = document.createElement("button");
-      btn.className = "formation-btn";
-      btn.dataset.formation = id;
-      btn.title = f.desc;
-      const icon = document.createElement("span");
-      icon.className = "formation-icon";
-      icon.textContent = f.icon;
-      const name = document.createElement("span");
-      name.className = "formation-name";
-      name.textContent = f.name;
-      btn.appendChild(icon);
-      btn.appendChild(name);
-      btn.addEventListener("click", () => {
-        applyFormation(id);
-        grid.querySelectorAll(".formation-btn").forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-      });
-      grid.appendChild(btn);
-    });
-    const sealSection = document.createElement("div");
-    sealSection.className = "seal-mode-section";
-    const sealLabel = document.createElement("div");
-    sealLabel.className = "seal-mode-label";
-    sealLabel.textContent = "Sealed Rune Behavior";
-    sealSection.appendChild(sealLabel);
     const sealGrid = document.createElement("div");
     sealGrid.className = "seal-mode-grid";
     Object.entries(SEAL_MODES).forEach(([id, mode]) => {
@@ -7003,45 +6866,12 @@
       });
       sealGrid.appendChild(btn);
     });
-    sealSection.appendChild(sealGrid);
-    const saveBtn = document.createElement("button");
-    saveBtn.className = "formation-save-btn";
-    saveBtn.id = "save-grimoire-btn";
-    const saveIcon = document.createElement("span");
-    saveIcon.textContent = "\u{1F4D5}";
-    saveBtn.appendChild(saveIcon);
-    saveBtn.appendChild(document.createTextNode(" Bind to Grimoire"));
-    saveBtn.addEventListener("click", () => {
-      _saveFormation();
-      _flashSaveEffect();
-    });
-    body.appendChild(grid);
-    body.appendChild(sealSection);
-    body.appendChild(saveBtn);
+    body.appendChild(sealGrid);
     section.appendChild(header);
     section.appendChild(body);
     enchantPage.insertBefore(section, enchantPage.firstChild);
   }
   __name(_injectFormationUI, "_injectFormationUI");
-  function _flashSaveEffect() {
-    const btn = document.getElementById("save-grimoire-btn");
-    if (!btn) return;
-    btn.classList.add("saved");
-    btn.textContent = "";
-    const check = document.createElement("span");
-    check.textContent = "\u2713";
-    btn.appendChild(check);
-    btn.appendChild(document.createTextNode(" Bound!"));
-    setTimeout(() => {
-      btn.classList.remove("saved");
-      btn.textContent = "";
-      const icon = document.createElement("span");
-      icon.textContent = "\u{1F4D5}";
-      btn.appendChild(icon);
-      btn.appendChild(document.createTextNode(" Bind to Grimoire"));
-    }, 1500);
-  }
-  __name(_flashSaveEffect, "_flashSaveEffect");
 
   // src/main.js
   if (document.readyState === "complete") {

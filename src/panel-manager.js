@@ -157,6 +157,19 @@ function _attachDragHandlers() {
 
     // Double-click to minimize/restore
     header.addEventListener('dblclick', () => _toggleMinimize(panel));
+
+    // Double-tap for mobile (dblclick doesn't fire reliably on touch)
+    let lastTap = 0;
+    header.addEventListener('touchend', e => {
+      const now = Date.now();
+      if (now - lastTap < 300) {
+        e.preventDefault();
+        _toggleMinimize(panel);
+        lastTap = 0; // Reset to avoid triple-tap triggering again
+      } else {
+        lastTap = now;
+      }
+    });
   });
 
   document.addEventListener('mousemove', _onDrag);
@@ -165,36 +178,46 @@ function _attachDragHandlers() {
   document.addEventListener('touchend', _endDrag);
 }
 
+let _dragStartPos = null;
+let _dragThreshold = 10; // pixels before drag actually starts
+
 function _startDrag(e, panel) {
   if (e.target.closest('.panel-close, .panel-min-icon, button, input, select')) return;
   e.preventDefault();
 
-  _dragging = panel;
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+  // Store start position - actual drag starts on move past threshold
+  _dragStartPos = { x: clientX, y: clientY, panel };
   _mode = 'manual';
 
   const rect = panel.getBoundingClientRect();
-  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
   _dragOffset = { x: clientX - rect.left, y: clientY - rect.top };
-
-  panel.classList.add('panel-dragging');
-  panel.style.transition = 'none';
-  panel.style.position = 'fixed';
-  panel.style.zIndex = '9999';
-
-  // Show anchor overlay
-  _anchorOverlay.classList.add('visible');
-
-  // Start ethereal trail
-  _startParticleTrail(clientX, clientY);
 }
 
 function _onDrag(e) {
-  if (!_dragging) return;
-  e.preventDefault();
-
   const clientX = e.touches ? e.touches[0].clientX : e.clientX;
   const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+  // Check if we need to start actual drag (past threshold)
+  if (_dragStartPos && !_dragging) {
+    const dx = Math.abs(clientX - _dragStartPos.x);
+    const dy = Math.abs(clientY - _dragStartPos.y);
+    if (dx > _dragThreshold || dy > _dragThreshold) {
+      // Start actual drag
+      _dragging = _dragStartPos.panel;
+      _dragging.classList.add('panel-dragging');
+      _dragging.style.transition = 'none';
+      _dragging.style.position = 'fixed';
+      _dragging.style.zIndex = '9999';
+      _anchorOverlay.classList.add('visible');
+      _startParticleTrail(clientX, clientY);
+    }
+  }
+
+  if (!_dragging) return;
+  e.preventDefault();
 
   const x = clientX - _dragOffset.x;
   const y = clientY - _dragOffset.y;
@@ -215,6 +238,7 @@ function _onDrag(e) {
 }
 
 function _endDrag() {
+  _dragStartPos = null; // Clear drag start position
   if (!_dragging) return;
 
   const panel = _dragging;
@@ -357,6 +381,8 @@ function _sealToDock(panel, rune, rect) {
   const tray = _sealedDock.querySelector('.dock-tray');
   tray.appendChild(rune);
   _sealedDock.classList.add('has-runes');
+  // Force dock visible on mobile (CSS transition may not fire)
+  _sealedDock.style.bottom = '0';
 
   requestAnimationFrame(() => {
     const dockRect = _sealedDock.getBoundingClientRect();
@@ -504,10 +530,11 @@ function _arrangeConjuredRunes() {
   const count = runes.length;
   if (count === 0) return;
 
-  // Arrange in a circle near top-right
-  const centerX = window.innerWidth - 120;
-  const centerY = 120;
-  const radius = 40 + count * 15;
+  // Arrange in a circle - center of viewport on mobile, top-right on desktop
+  const isMobile = window.innerWidth < 600;
+  const centerX = isMobile ? window.innerWidth / 2 : window.innerWidth - 120;
+  const centerY = isMobile ? window.innerHeight / 2 : 120;
+  const radius = isMobile ? Math.min(60, count * 20) : 40 + count * 15;
 
   runes.forEach((rune, i) => {
     const angle = (i / count) * Math.PI * 2 - Math.PI / 2;
@@ -528,9 +555,18 @@ function _migrateSealedRunes(newMode) {
   // Clear wandering animation
   _wanderingRunes = [];
 
-  allRunes.forEach(rune => {
+  allRunes.forEach((rune, index) => {
     const panelId = rune.dataset.panelId;
-    const rect = rune.getBoundingClientRect();
+    let rect = rune.getBoundingClientRect();
+
+    // If rune is off-screen (e.g., from hidden dock), use center of viewport
+    if (rect.top > window.innerHeight - 50 || rect.top < 0 ||
+        rect.left > window.innerWidth - 50 || rect.left < 0) {
+      rect = {
+        left: window.innerWidth / 2 - 25 + index * 60,
+        top: window.innerHeight / 2 - 25
+      };
+    }
 
     // Remove from current location
     rune.remove();
@@ -542,6 +578,7 @@ function _migrateSealedRunes(newMode) {
       rune.style = '';
       tray.appendChild(rune);
       _sealedDock.classList.add('has-runes');
+      _sealedDock.style.bottom = '0'; // Force visible on mobile
     } else if (newMode === 'anchored') {
       rune.classList.add('anchored-rune');
       rune.classList.remove('wandering-rune');
@@ -550,6 +587,7 @@ function _migrateSealedRunes(newMode) {
       rune.style.top = rect.top + 'px';
       document.body.appendChild(rune);
       _sealedDock.classList.remove('has-runes');
+      _sealedDock.style.bottom = '-80px'; // Hide dock
     } else if (newMode === 'wander') {
       rune.classList.add('wandering-rune');
       rune.classList.remove('anchored-rune');
@@ -565,6 +603,7 @@ function _migrateSealedRunes(newMode) {
         vy: (Math.random() - 0.5) * 2,
       });
       _sealedDock.classList.remove('has-runes');
+      _sealedDock.style.bottom = '-80px'; // Hide dock
     } else if (newMode === 'conjure') {
       let conjured = document.getElementById('conjured-runes');
       if (!conjured) {
@@ -577,6 +616,7 @@ function _migrateSealedRunes(newMode) {
       rune.style.position = 'fixed';
       conjured.appendChild(rune);
       _sealedDock.classList.remove('has-runes');
+      _sealedDock.style.bottom = '-80px'; // Hide dock
     }
   });
 
@@ -607,6 +647,7 @@ function _unsealPanel(panel) {
       const tray = _sealedDock?.querySelector('.dock-tray');
       if (tray && tray.children.length === 0) {
         _sealedDock.classList.remove('has-runes');
+        _sealedDock.style.bottom = '-80px';
       }
       // Re-arrange conjured if applicable
       _arrangeConjuredRunes();
@@ -983,12 +1024,11 @@ function _injectFormationUI() {
   const enchantPage = spellbook.querySelector('.spell-page[data-spell-page="0"]');
   if (!enchantPage) return;
 
-  // Create formation section using safe DOM methods
+  // Create seal mode section
   const section = document.createElement('div');
   section.className = 'legend-section';
-  section.dataset.section = 'formations';
+  section.dataset.section = 'seal-modes';
 
-  // Header
   const header = document.createElement('div');
   header.className = 'legend-section-header';
   header.dataset.accent = 'purple';
@@ -1003,49 +1043,10 @@ function _injectFormationUI() {
 
   header.appendChild(chevron);
   header.appendChild(secIcon);
-  header.appendChild(document.createTextNode(' Arcane Formations'));
+  header.appendChild(document.createTextNode(' Sealed Runes'));
 
-  // Body
   const body = document.createElement('div');
   body.className = 'legend-section-body';
-
-  // Formation grid
-  const grid = document.createElement('div');
-  grid.className = 'formation-grid';
-
-  Object.entries(FORMATIONS).forEach(([id, f]) => {
-    const btn = document.createElement('button');
-    btn.className = 'formation-btn';
-    btn.dataset.formation = id;
-    btn.title = f.desc;
-
-    const icon = document.createElement('span');
-    icon.className = 'formation-icon';
-    icon.textContent = f.icon;
-
-    const name = document.createElement('span');
-    name.className = 'formation-name';
-    name.textContent = f.name;
-
-    btn.appendChild(icon);
-    btn.appendChild(name);
-    btn.addEventListener('click', () => {
-      applyFormation(id);
-      grid.querySelectorAll('.formation-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-    });
-
-    grid.appendChild(btn);
-  });
-
-  // Seal mode selector
-  const sealSection = document.createElement('div');
-  sealSection.className = 'seal-mode-section';
-
-  const sealLabel = document.createElement('div');
-  sealLabel.className = 'seal-mode-label';
-  sealLabel.textContent = 'Sealed Rune Behavior';
-  sealSection.appendChild(sealLabel);
 
   const sealGrid = document.createElement('div');
   sealGrid.className = 'seal-mode-grid';
@@ -1077,27 +1078,7 @@ function _injectFormationUI() {
     sealGrid.appendChild(btn);
   });
 
-  sealSection.appendChild(sealGrid);
-
-  // Save button
-  const saveBtn = document.createElement('button');
-  saveBtn.className = 'formation-save-btn';
-  saveBtn.id = 'save-grimoire-btn';
-
-  const saveIcon = document.createElement('span');
-  saveIcon.textContent = '\uD83D\uDCD5'; // 📕
-
-  saveBtn.appendChild(saveIcon);
-  saveBtn.appendChild(document.createTextNode(' Bind to Grimoire'));
-  saveBtn.addEventListener('click', () => {
-    _saveFormation();
-    _flashSaveEffect();
-  });
-
-  body.appendChild(grid);
-  body.appendChild(sealSection);
-  body.appendChild(saveBtn);
-
+  body.appendChild(sealGrid);
   section.appendChild(header);
   section.appendChild(body);
 

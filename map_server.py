@@ -335,7 +335,26 @@ class RealmHandler(SimpleHTTPRequestHandler):
             history = chat_bridge.get_session_history(session)
             self._json_response({"history": history, "session": session or chat_bridge.DEFAULT_SESSION})
 
-        elif self.path == "/" or self.path == "":
+        elif self.path == "/reset":
+            # Clear all UI settings in DB and serve page that clears localStorage
+            realm_db.set_settings("ui", {})
+            html = """<!DOCTYPE html><html><head><title>Reset</title></head><body>
+<script>
+localStorage.removeItem('realm-map-settings-v3');
+localStorage.removeItem('realm-panel-formation');
+localStorage.removeItem('realm-map-layout');
+localStorage.clear();
+window.location.href = '/';
+</script>
+<p>Clearing settings and redirecting...</p>
+</body></html>"""
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Length", len(html))
+            self.end_headers()
+            self.wfile.write(html.encode())
+
+        elif self.path == "/" or self.path == "" or self.path.startswith("/?"):
             self.path = "/realm-map.html"
             super().do_GET()
         else:
@@ -597,10 +616,20 @@ class RealmHandler(SimpleHTTPRequestHandler):
         else:
             self.send_error(404)
 
+    def do_DELETE(self):
+        if self.path == "/settings":
+            try:
+                realm_db.set_settings("ui", {})  # Clear UI settings
+                self._json_response({"ok": True})
+            except Exception as e:
+                self._json_response({"error": str(e)}, 500)
+        else:
+            self._json_response({"error": "Not found"}, 404)
+
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
 
