@@ -1852,8 +1852,13 @@ let _lastGlobeTilt = 0;
 // rAF-batched transform: multiple wheel/touch events per frame collapse into one DOM write
 let _transformRafId = 0;
 let _minimapTimer = 0;
+let _willChangeTimer = 0;
 function _applyTransformNow() {
   _transformRafId = 0;
+  // Promote to GPU layer on demand, release 300ms after last transform
+  if (world.style.willChange !== 'transform') world.style.willChange = 'transform';
+  clearTimeout(_willChangeTimer);
+  _willChangeTimer = setTimeout(() => { world.style.willChange = ''; }, 300);
   if (_mapTilt > 0) {
     world.style.transformStyle = 'preserve-3d';
     const cx = WORLD_W / 2, cy = WORLD_H / 2;
