@@ -16,15 +16,17 @@ from traffic_precompute import compute_traffic
 
 
 class SSEBroker:
-    def __init__(self, status_fn, energy_fn):
+    def __init__(self, status_fn, energy_fn, latency_fn=None):
         """Initialize broker.
 
         Args:
             status_fn: callable returning the full status dict (map_server.build_status)
             energy_fn: callable returning energy data dict (map_server._get_energy_data)
+            latency_fn: callable returning latency map dict (latency_prober.get_latency_map)
         """
         self._status_fn = status_fn
         self._energy_fn = energy_fn
+        self._latency_fn = latency_fn
         self._clients = []  # list of queue.Queue
         self._lock = threading.Lock()
         self._hashes = {}  # {event_type: last_hash}
@@ -104,6 +106,15 @@ class SSEBroker:
                         energy = self._energy_fn()
                         if "error" not in energy:
                             self._check_and_push("energy", energy)
+                    except Exception:
+                        pass
+
+                # -- Latency: every 6th tick (30s) --
+                if tick % 6 == 0 and self._latency_fn:
+                    try:
+                        latency = self._latency_fn()
+                        if latency:
+                            self._check_and_push("latency", latency)
                     except Exception:
                         pass
 

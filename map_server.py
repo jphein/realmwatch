@@ -33,6 +33,7 @@ import realm_db
 import event_generator
 import chat_bridge
 import asyncio
+import latency_prober
 
 engine = LitRPGEngine()
 PORT = 8777
@@ -154,11 +155,13 @@ def build_status():
     topo_nodes = _load_topology().get("nodes", [])
     status["roles"] = {n["id"]: node_roles.get_role(n["id"], n) for n in topo_nodes}
     status["groups"] = node_roles.get_ha_map()
+    # Update latency prober with current WiFi clients
+    latency_prober.set_wifi_nodes(status.get("wifi", {}))
     return status
 
 
 from sse_broker import SSEBroker
-_sse_broker = SSEBroker(build_status, _get_energy_data)
+_sse_broker = SSEBroker(build_status, _get_energy_data, latency_fn=latency_prober.get_latency_map)
 
 
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
@@ -181,6 +184,9 @@ class RealmHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/status":
             self._json_response(build_status())
+
+        elif self.path == "/latency":
+            self._json_response(latency_prober.get_latency_map())
 
         elif self.path.startswith("/events"):
             since = 0
@@ -617,5 +623,6 @@ if __name__ == "__main__":
     ha_bridge.start_ha_bridge()
     wled_bridge.start_wled_bridge()
     event_generator.start_event_generator(push_event)
+    latency_prober.start()
     _sse_broker.start()
     ThreadingHTTPServer(("", PORT), RealmHandler).serve_forever()
