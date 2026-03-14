@@ -4293,7 +4293,7 @@ export function autoArrangeLayout(mode) {
   if (_layoutWorker) { _layoutWorker.terminate(); _layoutWorker = null; }
 
   // Prepare lightweight data for the worker (no DOM refs)
-  const nodeData = _topology.nodes.map(n => ({ type: n.type }));
+  const nodeData = _topology.nodes.map(n => ({ id: n.id, type: n.type }));
   const connData = _connIdx.map(c => [c[0], c[1]]); // just indices
 
   _layoutWorker = new Worker('layout-worker.js?v=2');
@@ -4336,6 +4336,8 @@ export function autoArrangeLayout(mode) {
     worldH: WORLD_H,
     mode: _layoutMode,
     nodeVlans: _nodeVlans,
+    latencyMap: _latencyMap,
+    wifiMap: _wifiMap,
   });
 }
 
@@ -4717,6 +4719,8 @@ animateMotes();
 // ── SSE Connection (replaces poll + pollEvents + refreshTopology + fetchEnergy) ──
 let _sseTrafficMap = null;
 let _sseConnected = false;
+let _latencyMap = null;
+let _wifiMap = null;
 
 (function initSSE() {
   const sse = new EventSource(SSE_URL);
@@ -4745,12 +4749,17 @@ let _sseConnected = false;
     const d = JSON.parse(e.data);
     _sseRestoreMode = false;
     updateUI(d);
+    if (d.wifi) _wifiMap = d.wifi;
     if (!liveOk) { liveOk = true; console.log('Realm Map: SSE live data connected'); }
   });
 
   sse.addEventListener('energy', e => {
     const data = JSON.parse(e.data);
     updateEnergyPanel(data);
+  });
+
+  sse.addEventListener('latency', e => {
+    _latencyMap = JSON.parse(e.data);
   });
 
   sse.addEventListener('open', () => {
