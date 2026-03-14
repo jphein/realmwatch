@@ -48,6 +48,8 @@
     transform-style: flat;
     will-change: transform;
     contain: layout style;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
   }
 
   /* Topographic contour SVG overlay — sized larger than map to avoid edge cutoff */
@@ -61,7 +63,7 @@
     pointer-events: none;
     transition: opacity 0.5s ease;
     overflow: visible;
-    contain: strict;
+    contain: layout paint style;
   }
   #topo-svg.active { opacity: var(--topo-opacity, 0.6); }
 
@@ -717,8 +719,7 @@
     width: 100%; height: 100%;
     z-index: 5;
     pointer-events: none;
-    contain: strict;
-    will-change: contents;
+    contain: layout paint style;
   }
 
   .conn-line {
