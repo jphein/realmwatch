@@ -34,6 +34,7 @@ import event_generator
 import chat_bridge
 import asyncio
 import latency_prober
+import firewall_parser
 
 engine = LitRPGEngine()
 PORT = 8777
@@ -187,6 +188,23 @@ class RealmHandler(SimpleHTTPRequestHandler):
 
         elif self.path == "/latency":
             self._json_response(latency_prober.get_latency_map())
+
+        elif self.path == "/firewall":
+            cached = firewall_parser.get_cached()
+            if cached:
+                self._json_response(cached)
+            else:
+                # SSH to gatekeeper, get nft JSON, parse it
+                raw = engine._run_router_cmd("nft -j list ruleset")
+                if not raw:
+                    self._json_response({"error": "Cannot reach gatekeeper"}, 503)
+                else:
+                    parsed = firewall_parser.parse_nft_json(raw)
+                    if parsed:
+                        firewall_parser.update_cache(parsed)
+                        self._json_response(parsed)
+                    else:
+                        self._json_response({"error": "Failed to parse nft rules"}, 500)
 
         elif self.path.startswith("/events"):
             since = 0
@@ -359,6 +377,11 @@ window.location.href = '/';
             super().do_GET()
         else:
             super().do_GET()
+
+    def end_headers(self):
+        # Prevent caching of all static files (homelab, no CDN needed)
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+        super().end_headers()
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))

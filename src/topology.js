@@ -297,6 +297,26 @@ export function renderTopology(topo) {
     if (n.tsHost) _tsHostMap[n.tsHost] = n.id;
   });
 
+  // Compute per-node VLAN assignment (majority vote from connections)
+  const _vlanCounts = {};
+  topo.connections.forEach(c => {
+    if (!c.vlan) return;
+    [c.from, c.to].forEach(id => {
+      if (!_vlanCounts[id]) _vlanCounts[id] = {};
+      _vlanCounts[id][c.vlan] = (_vlanCounts[id][c.vlan] || 0) + 1;
+    });
+  });
+  const _nodeVlans = {};
+  topo.nodes.forEach(n => {
+    if (_vlanCounts[n.id]) {
+      let best = 6, max = 0;
+      for (const [v, cnt] of Object.entries(_vlanCounts[n.id])) { if (cnt > max) { max = cnt; best = +v; } }
+      _nodeVlans[n.id] = best;
+    } else {
+      _nodeVlans[n.id] = (n.tailscale || n.type === 'tailscale') ? 0 : 6;
+    }
+  });
+
   // Connection paths (routed curves)
   _buildObstacles();
   const fanAngles = _computeFanAngles();
@@ -310,6 +330,9 @@ export function renderTopology(topo) {
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     path.setAttribute('d', _computePathD(fp, tp, fa.fromAngle, fa.toAngle, c.from, c.to));
     path.setAttribute('class', 'conn-line ' + (CONN_TYPE_TO_CLASS[c.type] || 'conn-active'));
+    // VLAN data attribute for color-coding ley lines
+    const connVlan = c.vlan || _nodeVlans[c.from] || _nodeVlans[c.to] || 6;
+    path.dataset.vlan = connVlan;
     if (c.collectd) path.dataset.to = c.collectd;
     else path.dataset.to = c.to;
     path.dataset.from = c.from;

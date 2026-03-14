@@ -6,7 +6,7 @@
 <meta name="color-scheme" content="dark">
 <title>The Realm — Geographic Map</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link rel="stylesheet" href="realm-map.css?v=1773473100">
+<link rel="stylesheet" href="realm-map.css?v=1773600000">
 </head>
 <body>
 
@@ -100,6 +100,24 @@
     <button class="preset-btn" data-preset="cinematic" title="Rich effects, deep glow">&#127912; Epic</button>
     <button class="preset-btn" data-preset="performance" title="Low GPU, max speed">&#9889; Fast</button>
     <button class="preset-btn" data-preset="full" title="Everything maxed">&#10024; Full</button>
+  </div>
+  <div class="legend-section" data-section="panels-vis">
+    <div class="legend-section-header" data-accent="amber"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#9878;</span> Panel Wards</div>
+    <div class="legend-section-body">
+      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-statuspanel" checked><span class="topo-switch-track"></span></label><span class="layer-name">Realm Vitals</span><input type="range" class="layer-opacity" id="panel-vitals-slider" min="0" max="1" step="0.05" value="1"></div>
+      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-legend" checked><span class="topo-switch-track"></span></label><span class="layer-name">Legend</span><input type="range" class="layer-opacity" id="panel-legend-slider" min="0" max="1" step="0.05" value="1"></div>
+      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-codex" checked><span class="topo-switch-track"></span></label><span class="layer-name">Codex</span><input type="range" class="layer-opacity" id="panel-codex-slider" min="0" max="1" step="0.05" value="1"></div>
+      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-questlog" checked><span class="topo-switch-track"></span></label><span class="layer-name">Quest Log</span><input type="range" class="layer-opacity" id="panel-questlog-slider" min="0" max="1" step="0.05" value="1"></div>
+      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-energy" checked><span class="topo-switch-track"></span></label><span class="layer-name">Realm Energy</span><input type="range" class="layer-opacity" id="panel-energy-slider" min="0" max="1" step="0.05" value="1"></div>
+      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-latency" checked><span class="topo-switch-track"></span></label><span class="layer-name">Arcane Pulse</span><input type="range" class="layer-opacity" id="panel-latency-slider" min="0" max="1" step="0.05" value="1"></div>
+      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-firewall" checked><span class="topo-switch-track"></span></label><span class="layer-name">Realm Wards</span><input type="range" class="layer-opacity" id="panel-firewall-slider" min="0" max="1" step="0.05" value="1"></div>
+      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-nodelist" checked><span class="topo-switch-track"></span></label><span class="layer-name">Realm Census</span><input type="range" class="layer-opacity" id="panel-nodelist-slider" min="0" max="1" step="0.05" value="1"></div>
+      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-cartographer" checked><span class="topo-switch-track"></span></label><span class="layer-name">Cartographer</span><input type="range" class="layer-opacity" id="panel-cartographer-slider" min="0" max="1" step="0.05" value="1"></div>
+      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-debug"><span class="topo-switch-track"></span></label><span class="layer-name">Arcane Mirror</span><input type="range" class="layer-opacity" id="panel-mirror-slider" min="0" max="1" step="0.05" value="1"></div>
+      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-titlebar" checked><span class="topo-switch-track"></span></label><span class="layer-name">Title Bar</span><input type="range" class="layer-opacity" id="panel-titlebar-slider" min="0" max="1" step="0.05" value="1"></div>
+      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-search" checked><span class="topo-switch-track"></span></label><span class="layer-name">Search</span><input type="range" class="layer-opacity" id="panel-search-slider" min="0" max="1" step="0.05" value="1"></div>
+      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-spellbook" checked><span class="topo-switch-track"></span></label><span class="layer-name">Spellbook</span><input type="range" class="layer-opacity" id="panel-spellbook-slider" min="0" max="1" step="0.05" value="1"></div>
+    </div>
   </div>
   <div class="legend-section" data-section="effects">
     <div class="legend-section-header" data-accent="gold"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#10024;</span> Magical Effects <button class="section-reset" data-reset="effects" title="Reset to defaults">&#8634;</button></div>
@@ -211,23 +229,6 @@
         <span class="layer-name">Speech Bubbles</span>
         <input type="range" class="layer-opacity" id="layer-bubbles-slider" min="0" max="1" step="0.05" value="1">
       </div>
-    </div>
-  </div>
-  <div class="legend-section collapsed" data-section="panels-vis">
-    <div class="legend-section-header" data-accent="amber"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#9878;</span> Panels</div>
-    <div class="legend-section-body">
-      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-titlebar" checked><span class="topo-switch-track"></span></label><span class="layer-name">Title Bar</span><input type="range" class="layer-opacity" id="panel-titlebar-slider" min="0" max="1" step="0.05" value="1"></div>
-      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-search" checked><span class="topo-switch-track"></span></label><span class="layer-name">Search</span><input type="range" class="layer-opacity" id="panel-search-slider" min="0" max="1" step="0.05" value="1"></div>
-      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-statuspanel" checked><span class="topo-switch-track"></span></label><span class="layer-name">Realm Vitals</span><input type="range" class="layer-opacity" id="panel-vitals-slider" min="0" max="1" step="0.05" value="1"></div>
-      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-legend" checked><span class="topo-switch-track"></span></label><span class="layer-name">Legend</span><input type="range" class="layer-opacity" id="panel-legend-slider" min="0" max="1" step="0.05" value="1"></div>
-      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-spellbook" checked><span class="topo-switch-track"></span></label><span class="layer-name">Spellbook</span><input type="range" class="layer-opacity" id="panel-spellbook-slider" min="0" max="1" step="0.05" value="1"></div>
-      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-codex" checked><span class="topo-switch-track"></span></label><span class="layer-name">Codex</span><input type="range" class="layer-opacity" id="panel-codex-slider" min="0" max="1" step="0.05" value="1"></div>
-      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-questlog" checked><span class="topo-switch-track"></span></label><span class="layer-name">Quest Log</span><input type="range" class="layer-opacity" id="panel-questlog-slider" min="0" max="1" step="0.05" value="1"></div>
-      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-minimap" checked><span class="topo-switch-track"></span></label><span class="layer-name">Minimap</span><input type="range" class="layer-opacity" id="panel-minimap-slider" min="0" max="1" step="0.05" value="1"></div>
-      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-cartographer" checked><span class="topo-switch-track"></span></label><span class="layer-name">Cartographer</span><input type="range" class="layer-opacity" id="panel-cartographer-slider" min="0" max="1" step="0.05" value="1"></div>
-      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-energy" checked><span class="topo-switch-track"></span></label><span class="layer-name">Realm Energy</span><input type="range" class="layer-opacity" id="panel-energy-slider" min="0" max="1" step="0.05" value="1"></div>
-      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-nodelist" checked><span class="topo-switch-track"></span></label><span class="layer-name">Realm Census</span><input type="range" class="layer-opacity" id="panel-nodelist-slider" min="0" max="1" step="0.05" value="1"></div>
-      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-debug"><span class="topo-switch-track"></span></label><span class="layer-name">Arcane Mirror</span><input type="range" class="layer-opacity" id="panel-mirror-slider" min="0" max="1" step="0.05" value="1"></div>
     </div>
   </div>
   <div class="legend-section" data-section="globe">
@@ -822,9 +823,6 @@
   <div id="node-list-body"></div>
 </div>
 
-<div id="minimap" class="panel" style="--panel-accent:rgba(96,160,192,0.5)">
-  <div id="minimap-viewport"></div>
-</div>
 
 <div id="cartographer" class="panel" style="--panel-accent:rgba(192,144,96,0.5)">
   <div class="panel-header">
@@ -951,6 +949,85 @@
       <div class="energy-stat">
         <span class="energy-stat-label">Exported</span>
         <span class="energy-stat-val" id="energy-export">--</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="latency-panel" class="panel" style="--panel-accent:rgba(100,180,255,0.5)">
+  <div class="panel-header">
+    <span class="panel-hdr-icon">&#127992;</span>
+    <span class="panel-hdr-title">Arcane Pulse</span>
+    <span class="latency-summary" id="latency-summary">--</span>
+  </div>
+  <div class="latency-body" id="latency-body"></div>
+</div>
+
+<div id="firewall-panel" class="panel" style="--panel-accent:rgba(220,160,80,0.5)">
+  <div class="panel-header">
+    <span class="panel-hdr-icon">&#128737;</span>
+    <span class="panel-hdr-title">Realm Wards</span>
+  </div>
+  <div class="firewall-body">
+    <div class="fw-section-title">Warded Domains</div>
+    <div class="fw-vlan" data-vlan="6">
+      <div class="fw-vlan-header">
+        <span class="fw-vlan-icon">&#9876;</span>
+        <span class="fw-vlan-name">Admin Ward</span>
+        <span class="fw-vlan-tag">VLAN 6</span>
+      </div>
+      <div class="fw-vlan-desc">Servers, management, infrastructure</div>
+      <div class="fw-vlan-traffic">
+        <span class="fw-rx">&#9660; <span class="fw-rx-val">--</span></span>
+        <span class="fw-tx">&#9650; <span class="fw-tx-val">--</span></span>
+      </div>
+    </div>
+    <div class="fw-vlan" data-vlan="8">
+      <div class="fw-vlan-header">
+        <span class="fw-vlan-icon">&#128106;</span>
+        <span class="fw-vlan-name">Family Ward</span>
+        <span class="fw-vlan-tag">VLAN 8</span>
+      </div>
+      <div class="fw-vlan-desc">Personal devices, phones, laptops</div>
+      <div class="fw-vlan-traffic">
+        <span class="fw-rx">&#9660; <span class="fw-rx-val">--</span></span>
+        <span class="fw-tx">&#9650; <span class="fw-tx-val">--</span></span>
+      </div>
+    </div>
+    <div class="fw-vlan" data-vlan="10">
+      <div class="fw-vlan-header">
+        <span class="fw-vlan-icon">&#129302;</span>
+        <span class="fw-vlan-name">IoT Ward</span>
+        <span class="fw-vlan-tag">VLAN 10</span>
+      </div>
+      <div class="fw-vlan-desc">Smart devices, sensors, automations</div>
+      <div class="fw-vlan-traffic">
+        <span class="fw-rx">&#9660; <span class="fw-rx-val">--</span></span>
+        <span class="fw-tx">&#9650; <span class="fw-tx-val">--</span></span>
+      </div>
+    </div>
+    <div class="fw-vlan" data-vlan="11">
+      <div class="fw-vlan-header">
+        <span class="fw-vlan-icon">&#128100;</span>
+        <span class="fw-vlan-name">Guest Ward</span>
+        <span class="fw-vlan-tag">VLAN 11</span>
+      </div>
+      <div class="fw-vlan-desc">Guest WiFi, isolated from all wards</div>
+      <div class="fw-vlan-traffic">
+        <span class="fw-rx">&#9660; <span class="fw-rx-val">--</span></span>
+        <span class="fw-tx">&#9650; <span class="fw-tx-val">--</span></span>
+      </div>
+    </div>
+    <div class="fw-divider"></div>
+    <div class="fw-section-title">Gate Totals (nftables)</div>
+    <div class="fw-gates">
+      <div class="fw-gate">
+        <span class="fw-gate-label">WAN Out</span>
+        <span class="fw-gate-val" id="fw-wan">--</span>
+      </div>
+      <div class="fw-gate">
+        <span class="fw-gate-label">WAN Rejected</span>
+        <span class="fw-gate-val" id="fw-lan">--</span>
       </div>
     </div>
   </div>
@@ -1263,6 +1340,6 @@
 <div id="scan-line"></div>
 <div class="tooltip" id="tooltip"></div>
 
-<script src="realm-map.js?v=1773473200"></script>
+<script src="realm-map.js?v=1773600000"></script>
 </body>
 </html>

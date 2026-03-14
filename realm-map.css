@@ -417,6 +417,234 @@
     color: #a09080;
   }
 
+  /* ── Latency Panel ── */
+  #latency-panel {
+    position: fixed;
+    right: 20px;
+    top: 320px;
+    width: 220px;
+    z-index: 50;
+  }
+  .latency-summary {
+    font-size: 9px;
+    color: rgba(140,180,220,0.6);
+    margin-left: auto;
+    white-space: nowrap;
+  }
+  .latency-body {
+    padding: 6px 10px 8px;
+    max-height: 50vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(100,160,220,0.2) transparent;
+  }
+  .latency-body::-webkit-scrollbar { width: 4px; }
+  .latency-body::-webkit-scrollbar-thumb { background: rgba(100,160,220,0.2); border-radius: 2px; }
+  .latency-group-title {
+    font-size: 8px;
+    color: rgba(100,160,220,0.5);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin: 6px 0 2px;
+    padding-bottom: 2px;
+    border-bottom: 1px solid rgba(100,160,220,0.1);
+  }
+  .latency-group-title:first-child { margin-top: 0; }
+  .latency-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 0;
+  }
+  .latency-icon {
+    font-size: 11px;
+    width: 16px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .latency-label {
+    font-size: 9px;
+    color: #7090b0;
+    width: 60px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .latency-bar {
+    flex: 1;
+    height: 6px;
+    background: rgba(40,60,100,0.3);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .latency-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 3px;
+    transition: width 0.6s ease, background 0.6s ease;
+    box-shadow: 0 0 4px currentColor;
+  }
+  .latency-val {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    color: #b0c8e0;
+    text-align: right;
+    min-width: 42px;
+    flex-shrink: 0;
+  }
+  .latency-loss .latency-val {
+    color: #e08060;
+  }
+
+  /* ── Firewall Panel ── */
+  #firewall-panel {
+    position: fixed;
+    left: 20px;
+    top: 260px;
+    width: 210px;
+    z-index: 50;
+  }
+  .firewall-body {
+    padding: 8px 12px 10px;
+    max-height: 55vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(220,180,80,0.2) transparent;
+  }
+  .fw-section-title {
+    font-size: 9px;
+    color: rgba(220,180,120,0.6);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 6px;
+  }
+  .fw-vlan {
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(120,100,60,0.15);
+  }
+  .fw-vlan:last-of-type { border-bottom: none; }
+  .fw-vlan-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .fw-vlan-icon {
+    font-size: 13px;
+    width: 18px;
+    text-align: center;
+  }
+  .fw-vlan-name {
+    font-size: 11px;
+    color: #d4c5a0;
+    flex: 1;
+  }
+  .fw-vlan-tag {
+    font-size: 9px;
+    color: rgba(180,160,120,0.5);
+    padding: 1px 5px;
+    border: 1px solid rgba(180,160,120,0.2);
+    border-radius: 3px;
+  }
+  .fw-vlan-desc {
+    font-size: 9px;
+    color: rgba(160,140,100,0.5);
+    margin: 2px 0 2px 24px;
+  }
+  .fw-vlan-traffic {
+    display: flex;
+    gap: 12px;
+    margin-left: 24px;
+    font-size: 10px;
+  }
+  .fw-rx { color: rgba(100,200,140,0.8); }
+  .fw-tx { color: rgba(200,140,100,0.8); }
+  .fw-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(220,180,80,0.25), transparent);
+    margin: 8px 0;
+  }
+  .fw-gates {
+    display: flex;
+    justify-content: space-around;
+  }
+  .fw-gate {
+    text-align: center;
+  }
+  .fw-gate-label {
+    font-size: 8px;
+    color: rgba(180,160,120,0.5);
+    display: block;
+  }
+  .fw-gate-val {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    color: #c0a870;
+  }
+  .fw-zone-stats {
+    display: flex;
+    gap: 8px;
+    margin: 2px 0 0 24px;
+    font-size: 9px;
+  }
+  .fw-stat-accept { color: rgba(120,180,140,0.8); }
+  .fw-stat-reject { color: rgba(220,100,80,0.8); }
+  .fw-dns-badge {
+    font-size: 7px;
+    padding: 0 4px;
+    background: rgba(100,160,220,0.15);
+    color: rgba(100,160,220,0.8);
+    border: 1px solid rgba(100,160,220,0.2);
+    border-radius: 3px;
+    margin-left: auto;
+  }
+  .fw-blocks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin: 3px 0 0 24px;
+  }
+  .fw-block-ip {
+    font-size: 8px;
+    padding: 0 4px;
+    background: rgba(220,80,60,0.12);
+    color: rgba(220,120,100,0.9);
+    border-radius: 2px;
+  }
+  .fw-block-inactive {
+    opacity: 0.4;
+    color: rgba(180,160,120,0.6);
+    background: rgba(180,160,120,0.08);
+  }
+  .fw-reach {
+    font-size: 8px;
+    color: rgba(160,180,140,0.5);
+    margin: 2px 0 0 24px;
+  }
+  .fw-suggestions {
+    padding: 2px 0;
+  }
+  .fw-sug {
+    font-size: 9px;
+    line-height: 1.4;
+    padding: 3px 4px;
+    margin: 2px 0;
+    border-radius: 3px;
+  }
+  .fw-sug-icon { margin-right: 4px; }
+  .fw-sug-info {
+    color: rgba(120,180,220,0.8);
+    background: rgba(100,160,220,0.06);
+  }
+  .fw-sug-warn {
+    color: rgba(220,180,80,0.9);
+    background: rgba(220,180,80,0.08);
+  }
+  .fw-sug-critical {
+    color: rgba(220,80,60,0.9);
+    background: rgba(220,80,60,0.1);
+  }
+
   /* Index contour shimmer — slow magical pulse */
   #topo-svg .topo-idx {
     animation: topoShimmer 8s ease-in-out infinite;
@@ -1142,6 +1370,32 @@
     .panel-close { width: 30px; height: 30px; font-size: 16px; line-height: 28px; }
   }
 
+  /* ── Panel Seal Button ── */
+  .panel-seal-btn {
+    width: 24px; height: 24px;
+    border: 1px solid rgba(140,100,200,0.3);
+    background: radial-gradient(circle at center, rgba(80,60,120,0.4), rgba(40,30,60,0.6));
+    color: #a090c0;
+    font-size: 14px;
+    line-height: 22px;
+    text-align: center;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 0;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+  .panel-seal-btn:hover {
+    color: #d0b0ff;
+    background: radial-gradient(circle at center, rgba(140,100,200,0.3), rgba(80,60,120,0.2));
+    border-color: rgba(180,140,255,0.5);
+    box-shadow: 0 0 12px rgba(140,100,200,0.3);
+  }
+  @media (pointer: coarse) {
+    .panel-seal-btn { width: 36px; height: 36px; font-size: 18px; line-height: 34px; }
+  }
+
   /* Legend */
   #legend {
     position: fixed;
@@ -1613,30 +1867,6 @@
     text-align: right;
     color: #f0e6c8;
     font-weight: bold;
-  }
-
-  /* Minimap */
-  #minimap {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 200px;
-    height: 138px;
-    z-index: 50;
-    overflow: hidden;
-  }
-  #minimap-viewport {
-    position: absolute;
-    border: 1px solid rgba(240,216,144,0.5);
-    background: rgba(240,216,144,0.08);
-    pointer-events: none;
-  }
-  .minimap-dot {
-    position: absolute;
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
   }
 
   /* Data pulse animation */
@@ -2843,7 +3073,6 @@
     .realm-gauge .gauge-label { width: 70px; font-size: 11px; }
     #legend { padding: 8px 12px; left: 10px; bottom: 10px; }
     #spellbook { left: 10px; bottom: 10px; max-height: 60vh; }
-    #minimap { width: 140px; height: 97px; right: 10px; bottom: 10px; }
     #cartographer { width: 170px; right: 10px; top: 70px; }
     .carto-modes { grid-template-columns: repeat(2, 1fr); }
     .speech-bubble { max-width: 200px; font-size: 11px; padding: 8px 26px 8px 10px; }
@@ -2858,6 +3087,8 @@
     #quest-log { max-width: 260px; bottom: 120px; }
     #realm-codex { max-width: 280px; left: 10px; top: 60px; }
     #energy-panel { left: 10px; top: 60px; width: 140px; }
+    #latency-panel { right: 10px; top: 260px; width: 170px; }
+    #firewall-panel { left: 10px; top: 200px; width: 180px; }
     #node-list { left: 10px; top: 60px; width: 220px; max-height: 400px; }
     #node-chat-dialog { width: calc(100vw - 30px); right: 15px; top: 80px; max-height: 60vh; }
     #persona-editor { width: calc(100vw - 20px); max-height: 80vh; }
@@ -2873,7 +3104,6 @@
     #realm-panel { min-width: 140px; right: 5px; top: 5px; }
     #legend { font-size: 10px; left: 5px; bottom: 5px; }
     #spellbook { font-size: 10px; left: 5px; bottom: 5px; width: calc(100vw - 10px); }
-    #minimap { width: 110px; height: 76px; right: 5px; bottom: 5px; }
     #cartographer { width: 150px; right: 5px; top: 50px; }
     .carto-body { padding: 6px 8px; }
     #quest-log { right: 5px; bottom: 90px; width: calc(100vw - 10px); max-width: none; max-height: 250px; }
@@ -2887,118 +3117,7 @@
     .pe-field input, .pe-field select, .pe-field textarea { font-size: 12px; }
   }
 
-  /* ── Panel minimize (double-click header to shrink) ── */
-  .panel-minimized {
-    width: auto !important;
-    height: auto !important;
-    min-width: 0 !important;
-    max-height: none !important;
-    padding: 0 !important;
-    overflow: visible !important;
-    border-radius: 50% !important;
-    cursor: pointer;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .panel-minimized > *:not(.panel-min-icon) {
-    display: none !important;
-  }
-  .panel-min-icon {
-    display: none;
-    width: 48px;
-    height: 48px;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
-    background: radial-gradient(circle, rgba(20,18,35,0.95), rgba(10,10,25,0.9));
-    border: 1px solid rgba(212,197,160,0.1);
-    border-radius: 50%;
-    cursor: pointer;
-    position: relative;
-    user-select: none;
-    overflow: visible;
-    touch-action: none;
-    transition: transform 0.3s, box-shadow 0.3s;
-  }
-  .panel-min-icon:hover {
-    transform: scale(1.1);
-    box-shadow: 0 0 20px color-mix(in srgb, var(--panel-accent, rgba(240,216,144,0.5)) 40%, transparent);
-  }
-  .panel-minimized .panel-min-icon {
-    display: flex;
-  }
-  /* Mystical fire ring */
-  @property --fire-angle {
-    syntax: '<angle>';
-    initial-value: 0deg;
-    inherits: false;
-  }
-  .panel-min-icon::before {
-    content: '';
-    position: absolute;
-    inset: -4px;
-    border-radius: 50%;
-    background: conic-gradient(
-      from var(--fire-angle, 0deg),
-      var(--panel-accent, rgba(240,216,144,0.8)) 0%,
-      transparent 10%,
-      var(--panel-accent, rgba(240,216,144,0.6)) 20%,
-      transparent 32%,
-      var(--panel-accent, rgba(240,216,144,0.7)) 45%,
-      transparent 55%,
-      var(--panel-accent, rgba(240,216,144,0.5)) 68%,
-      transparent 78%,
-      var(--panel-accent, rgba(240,216,144,0.9)) 90%,
-      transparent 100%
-    );
-    -webkit-mask: radial-gradient(circle, transparent 78%, black 85%);
-    mask: radial-gradient(circle, transparent 78%, black 85%);
-    animation: fireRotate 3s linear infinite;
-    filter: blur(1.5px);
-    opacity: 0.7;
-    pointer-events: none;
-    z-index: -1;
-  }
-  .panel-min-icon:hover::before {
-    opacity: 1;
-    filter: blur(2px) brightness(1.3);
-  }
-  @keyframes fireRotate {
-    to { --fire-angle: 360deg; }
-  }
-  .panel-min-icon::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    bottom: -24px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-family: 'Cinzel', serif;
-    font-size: 9px;
-    color: #a89870;
-    white-space: nowrap;
-    opacity: 0;
-    transition: opacity 0.2s;
-    pointer-events: none;
-  }
-  .panel-min-icon:hover::after {
-    opacity: 1;
-  }
-  .panel-min-icon .min-glow {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    animation: minIconPulse 3s ease-in-out infinite;
-    pointer-events: none;
-  }
-  @keyframes minIconPulse {
-    0%, 100% { box-shadow: 0 0 8px rgba(240,216,144,0.15); }
-    50% { box-shadow: 0 0 16px rgba(240,216,144,0.3); }
-  }
-  @keyframes panelMinimize {
-    0% { opacity: 1; }
-    50% { opacity: 0.6; }
-    100% { opacity: 1; }
-  }
+  /* Panel minimize replaced by seal system in panel-manager.js */
 
   /* ── Node List Panel ── */
   #node-list {
@@ -3185,12 +3304,10 @@
   }
   @media (max-width: 768px) {
     #node-list { width: 220px; max-height: 400px; left: 10px; top: 70px; }
-    .panel-min-icon { width: 40px; height: 40px; font-size: 18px; }
     #debug-panel { width: calc(100vw - 20px); left: 10px; right: 10px; height: 50vh; }
   }
   @media (max-width: 480px) {
     #node-list { width: 180px; }
-    .panel-min-icon { width: 36px; height: 36px; font-size: 16px; }
     #debug-panel { height: 45vh; font-size: 10px; }
     .dbg-k { min-width: 70px; }
   }
@@ -3637,50 +3754,142 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
-    padding: 10px 20px 15px;
-    background: linear-gradient(180deg, rgba(30, 20, 50, 0.95), rgba(20, 15, 35, 0.98));
-    border: 1px solid rgba(140, 100, 200, 0.4);
+    gap: 4px;
+    padding: 8px 18px 12px;
+    background:
+      linear-gradient(180deg,
+        rgba(30, 20, 50, 0.9),
+        rgba(20, 12, 35, 0.95) 60%,
+        rgba(15, 8, 28, 0.98));
+    border: 1px solid rgba(140, 100, 200, 0.3);
     border-bottom: none;
     border-radius: 20px 20px 0 0;
-    box-shadow: 0 -5px 30px rgba(100, 60, 180, 0.3),
-                inset 0 1px 0 rgba(200, 180, 255, 0.1);
+    box-shadow:
+      0 -4px 20px rgba(100, 60, 180, 0.25),
+      0 -1px 40px rgba(80, 40, 160, 0.1),
+      inset 0 1px 0 rgba(180, 140, 240, 0.1);
     z-index: 9990;
-    transition: bottom 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    max-width: 95vw;
+    overflow: hidden;
+  }
+  .sealed-dock::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 10%; right: 10%;
+    height: 1px;
+    background: linear-gradient(90deg,
+      transparent,
+      rgba(180, 140, 255, 0.4) 20%,
+      rgba(220, 180, 255, 0.6) 50%,
+      rgba(180, 140, 255, 0.4) 80%,
+      transparent);
+    animation: dock-shimmer 4s ease-in-out infinite;
+  }
+  @keyframes dock-shimmer {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
   }
 
   .sealed-dock.has-runes {
     bottom: 0;
   }
 
-  .dock-label {
-    font-size: 10px;
-    color: rgba(180, 160, 220, 0.7);
-    letter-spacing: 2px;
-    text-transform: uppercase;
+  /* Swipe handle — only visible when runes overflow */
+  .dock-handle {
+    display: none;
+    width: 100%;
+    justify-content: center;
+    padding: 2px 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .sealed-dock.has-overflow .dock-handle {
+    display: flex;
+  }
+
+  .dock-grip {
+    width: 32px;
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(160, 130, 220, 0.4);
+    transition: all 0.3s;
+  }
+
+  .dock-handle:hover .dock-grip {
+    background: rgba(200, 170, 255, 0.7);
+    box-shadow: 0 0 8px rgba(160, 120, 220, 0.3);
   }
 
   .dock-tray {
     display: flex;
-    gap: 12px;
+    gap: 8px;
     align-items: center;
     justify-content: center;
-    min-height: 50px;
+    min-height: 44px;
+    flex-wrap: nowrap;
+  }
+
+  /* Hide runes past the 5th on mobile */
+  @media (max-width: 768px) {
+    .dock-tray .sealed-rune:nth-child(n+6) {
+      display: none;
+    }
+    .dock-expanded .dock-tray .sealed-rune:nth-child(n+6) {
+      display: flex;
+    }
+    .dock-expanded .dock-tray {
+      display: grid;
+      grid-template-columns: repeat(5, 50px);
+      gap: 12px;
+      justify-content: center;
+      justify-items: center;
+      max-height: 50vh;
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+    .dock-expanded .dock-tray::-webkit-scrollbar { display: none; }
+  }
+
+  .dock-expanded .dock-grip {
+    background: rgba(200, 170, 255, 0.8);
+    width: 50px;
+    box-shadow: 0 0 10px rgba(160, 120, 220, 0.4);
   }
 
   .sealed-rune {
+    box-sizing: border-box;
     width: 50px;
     height: 50px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: radial-gradient(ellipse at center, rgba(80, 60, 120, 0.9), rgba(50, 35, 80, 0.95));
-    border: 2px solid rgba(160, 120, 220, 0.5);
+    touch-action: none;
+    background:
+      radial-gradient(ellipse at 35% 35%,
+        rgba(100, 70, 160, 0.95),
+        rgba(60, 40, 100, 0.95) 60%,
+        rgba(40, 25, 70, 0.98));
+    border: 2px solid rgba(160, 120, 220, 0.4);
     border-radius: 50%;
     cursor: pointer;
     position: relative;
     transition: all 0.3s ease;
     animation: rune-float 3s ease-in-out infinite;
+    box-shadow:
+      0 2px 8px rgba(80, 40, 160, 0.3),
+      inset 0 1px 0 rgba(200, 170, 255, 0.15),
+      inset 0 -1px 0 rgba(40, 20, 80, 0.5);
+  }
+
+  .sealed-rune::after {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border-radius: 50%;
+    border: 1px solid rgba(180, 140, 255, 0.08);
+    pointer-events: none;
   }
 
   .sealed-rune:nth-child(2n) {
@@ -3689,9 +3898,12 @@
 
   .sealed-rune:hover {
     transform: scale(1.15) translateY(-5px);
-    border-color: rgba(220, 180, 255, 0.8);
-    box-shadow: 0 0 25px rgba(160, 120, 220, 0.6),
-                0 10px 20px rgba(100, 60, 180, 0.4);
+    border-color: rgba(220, 180, 255, 0.7);
+    box-shadow:
+      0 0 20px rgba(160, 120, 220, 0.5),
+      0 0 40px rgba(120, 80, 200, 0.2),
+      0 8px 16px rgba(80, 40, 140, 0.4),
+      inset 0 1px 0 rgba(220, 190, 255, 0.2);
   }
 
   .sealed-rune:hover .rune-glow {
@@ -3702,16 +3914,27 @@
     font-size: 22px;
     z-index: 1;
     filter: drop-shadow(0 0 8px rgba(200, 180, 255, 0.6));
+    transition: filter 0.3s ease;
+  }
+
+  .sealed-rune:hover .rune-icon {
+    filter: drop-shadow(0 0 12px rgba(220, 200, 255, 0.9)) brightness(1.2);
   }
 
   .rune-glow {
     position: absolute;
-    inset: -5px;
+    inset: -6px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(160, 120, 220, 0.4), transparent 70%);
-    opacity: 0.5;
+    background: radial-gradient(circle, rgba(160, 120, 220, 0.35), rgba(120, 80, 200, 0.1) 50%, transparent 70%);
+    opacity: 0.4;
     transition: opacity 0.3s ease;
     pointer-events: none;
+    animation: glow-pulse 4s ease-in-out infinite;
+  }
+
+  @keyframes glow-pulse {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.1); }
   }
 
   .sealed-rune.entering {
@@ -3749,17 +3972,99 @@
     }
   }
 
-  /* Anchored/Wandering/Conjured Runes */
+  /* Dock Drag Reorder */
+  .dock-drag-ghost {
+    animation: none !important;
+    border-color: rgba(255, 200, 255, 0.9);
+    box-shadow: 0 0 30px rgba(180, 120, 255, 0.7),
+                0 0 60px rgba(140, 80, 220, 0.4),
+                inset 0 0 15px rgba(200, 160, 255, 0.3);
+    filter: brightness(1.3);
+    opacity: 0.9;
+    transform: scale(1);
+    transition: none;
+  }
+
+  .dock-drag-ghost.active {
+    transform: scale(1.15);
+    filter: brightness(1.4) drop-shadow(0 0 12px rgba(200, 160, 255, 0.8));
+  }
+
+  .dock-drag-placeholder {
+    box-sizing: border-box;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 2px dashed rgba(180, 140, 255, 0.5);
+    background: radial-gradient(circle, rgba(120, 80, 200, 0.2), transparent 70%);
+    animation: placeholder-pulse 1s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes placeholder-pulse {
+    0%, 100% { border-color: rgba(180, 140, 255, 0.3); transform: scale(0.9); }
+    50% { border-color: rgba(220, 180, 255, 0.7); transform: scale(1); }
+  }
+
+  .dock-tray.reordering .sealed-rune {
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .dock-particle {
+    position: fixed;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(200, 160, 255, 0.8);
+    pointer-events: none;
+    z-index: 10002;
+    animation: dock-particle-fade 0.6s ease-out forwards;
+    transform: translate(-50%, -50%);
+  }
+
+  .dock-particle.burst {
+    animation: dock-particle-burst 0.5s ease-out forwards;
+  }
+
+  @keyframes dock-particle-fade {
+    0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, calc(-50% - 20px)) scale(0); }
+  }
+
+  @keyframes dock-particle-burst {
+    0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0); }
+  }
+
+  /* Anchored/Wandering Runes */
   .anchored-rune,
   .wandering-rune {
     z-index: 9989;
-    animation: none;
+  }
+
+  .anchored-rune {
+    animation: anchored-breathe 4s ease-in-out infinite;
   }
 
   .wandering-rune {
     transition: none !important;
+    animation: none;
   }
 
+  .rune-dragging {
+    animation: none !important;
+    transform: scale(1.2) !important;
+    filter: brightness(1.4) drop-shadow(0 0 18px rgba(200, 160, 255, 0.9));
+    z-index: 10000 !important;
+    cursor: grabbing !important;
+  }
+
+  @keyframes anchored-breathe {
+    0%, 100% { box-shadow: 0 0 12px rgba(120, 80, 200, 0.3), inset 0 0 8px rgba(160, 120, 240, 0.1); transform: scale(1); }
+    50% { box-shadow: 0 0 20px rgba(140, 100, 220, 0.5), inset 0 0 12px rgba(180, 140, 255, 0.2); transform: scale(1.05); }
+  }
+
+  /* ── Conjured Constellation ── */
   .conjured-runes {
     position: fixed;
     top: 0;
@@ -3773,6 +4078,53 @@
   .conjured-runes .sealed-rune {
     position: fixed;
     pointer-events: auto;
+    animation: conjured-glow 3s ease-in-out infinite;
+  }
+
+  .conjured-runes .sealed-rune:nth-child(3n+1) { animation-duration: 2.8s; }
+  .conjured-runes .sealed-rune:nth-child(3n+2) { animation-duration: 3.4s; }
+
+  @keyframes conjured-glow {
+    0%, 100% {
+      box-shadow: 0 0 10px rgba(120, 80, 200, 0.3), 0 0 25px rgba(100, 60, 180, 0.15);
+      filter: brightness(1) drop-shadow(0 0 6px rgba(160, 120, 240, 0.4));
+    }
+    50% {
+      box-shadow: 0 0 18px rgba(160, 120, 240, 0.5), 0 0 40px rgba(140, 100, 220, 0.25);
+      filter: brightness(1.15) drop-shadow(0 0 12px rgba(200, 160, 255, 0.6));
+    }
+  }
+
+  .conjure-sigil {
+    position: fixed;
+    width: 120px;
+    height: 120px;
+    pointer-events: none;
+    animation: sigil-rotate 60s linear infinite;
+    opacity: 0.8;
+  }
+
+  .conjure-sigil svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  @keyframes sigil-rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .conjure-orbit-ring {
+    position: fixed;
+    border-radius: 50%;
+    border: 1px solid rgba(140, 100, 220, 0.08);
+    pointer-events: none;
+    animation: orbit-ring-pulse 6s ease-in-out infinite;
+  }
+
+  @keyframes orbit-ring-pulse {
+    0%, 100% { border-color: rgba(140, 100, 220, 0.06); box-shadow: none; }
+    50% { border-color: rgba(160, 120, 240, 0.12); box-shadow: 0 0 30px rgba(140, 100, 220, 0.05); }
   }
 
   /* Seal Mode Section */
@@ -3839,6 +4191,31 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
     opacity: 0.8;
+  }
+
+  /* Seal Settings */
+  .seal-settings {
+    margin-top: 8px;
+    padding: 6px 8px;
+    background: rgba(40, 30, 60, 0.5);
+    border: 1px solid rgba(100, 80, 140, 0.2);
+    border-radius: 6px;
+  }
+
+  .seal-setting-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 0;
+    font-size: 11px;
+    color: rgba(200, 180, 235, 0.8);
+    cursor: pointer;
+  }
+
+  .seal-setting-row input[type="checkbox"] {
+    accent-color: #9b7fd4;
+    width: 14px;
+    height: 14px;
   }
 
   /* Formation Grid */

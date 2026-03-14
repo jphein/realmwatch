@@ -19,11 +19,13 @@ const PANELS = {
   'spellbook':      { name: 'Spellbook', anchor: 'sw', priority: 3, icon: '\uD83D\uDCD6' },
   'realm-codex':    { name: 'Codex', anchor: 'nw', priority: 4, icon: '\u2630' },
   'quest-log':      { name: 'Quest Log', anchor: 'se', priority: 6, icon: '\u2619' },
-  'minimap':        { name: 'Minimap', anchor: 'se', priority: 2, icon: '\uD83E\uDDED' },
   'cartographer':   { name: 'Cartographer', anchor: 'e', priority: 7, icon: '\uD83E\uDDED' },
   'energy-panel':   { name: 'Energy', anchor: 'w', priority: 8, icon: '\u26A1' },
   'node-list':      { name: 'Census', anchor: 'w', priority: 9, icon: '\uD83D\uDCDC' },
   'debug-panel':    { name: 'Arcane Mirror', anchor: 's', priority: 10, icon: '\uD83D\uDD2E' },
+  'latency-panel':  { name: 'Arcane Pulse', anchor: 'e', priority: 11, icon: '\uD83C\uDFD3' },
+  'firewall-panel': { name: 'Realm Wards', anchor: 'w', priority: 12, icon: '\uD83D\uDEE1' },
+  'node-chat-dialog': { name: 'Oracle Commune', anchor: 'se', priority: 13, icon: '\uD83D\uDCAC' },
 };
 
 // Arcane Formations (presets)
@@ -32,15 +34,15 @@ const FORMATIONS = {
     name: 'Scrying Focus',
     icon: '\uD83D\uDC41',
     desc: 'Clear sight upon the realm',
-    visible: ['minimap'],
-    anchors: { 'minimap': 'se' },
+    visible: [],
+    anchors: {},
   },
   'wardens-watch': {
     name: "Warden's Watch",
     icon: '\uD83D\uDEE1',
     desc: 'Monitor the realm vitals',
-    visible: ['realm-panel', 'energy-panel', 'minimap'],
-    anchors: { 'realm-panel': 'ne', 'energy-panel': 'nw', 'minimap': 'se' },
+    visible: ['realm-panel', 'energy-panel'],
+    anchors: { 'realm-panel': 'ne', 'energy-panel': 'nw' },
   },
   'grand-arcanum': {
     name: 'Grand Arcanum',
@@ -67,6 +69,8 @@ const SEAL_MODES = {
 };
 let _mode = 'auto'; // 'auto' or 'manual'
 let _sealMode = 'dock'; // 'dock', 'anchored', 'wander', 'conjure'
+let _autoSnap = true;    // Snap panels to anchor points after drag
+let _showAnchors = true; // Show anchor overlay during drag
 let _currentFormation = null;
 let _dragging = null;
 let _dragOffset = { x: 0, y: 0 };
@@ -74,6 +78,9 @@ let _anchorOverlay = null;
 let _particleCanvas = null;
 let _sealedDock = null;
 let _wanderingRunes = []; // For wander mode animation
+let _conjureAngle = 0;   // Conjure orbit animation
+let _conjureRaf = 0;     // rAF handle for conjure orbit
+let _anchoredDrag = null; // For dragging anchored/conjured runes
 
 // ── Initialization ──
 export function initPanelManager() {
@@ -90,11 +97,13 @@ function _createSealedDock() {
   _sealedDock.id = 'sealed-dock';
   _sealedDock.className = 'sealed-dock';
 
-  // Mystical dock label
-  const label = document.createElement('div');
-  label.className = 'dock-label';
-  label.textContent = '\u2726 Sealed Runes \u2726'; // ✦ Sealed Runes ✦
-  _sealedDock.appendChild(label);
+  // Swipe handle / grip bar
+  const handle = document.createElement('div');
+  handle.className = 'dock-handle';
+  const grip = document.createElement('div');
+  grip.className = 'dock-grip';
+  handle.appendChild(grip);
+  _sealedDock.appendChild(handle);
 
   // Container for sealed panel icons
   const tray = document.createElement('div');
@@ -102,6 +111,187 @@ function _createSealedDock() {
   _sealedDock.appendChild(tray);
 
   document.body.appendChild(_sealedDock);
+  _attachDockDragHandlers(tray);
+  _attachDrawerGesture(_sealedDock, handle);
+}
+
+function _updateDockBadge() {
+  const tray = _sealedDock?.querySelector('.dock-tray');
+  if (!tray) return;
+  // Check if tray content overflows (hidden runes exist)
+  requestAnimationFrame(() => {
+    const overflows = tray.scrollHeight > tray.clientHeight + 5;
+    _sealedDock.classList.toggle('has-overflow', overflows);
+    if (!overflows) _sealedDock.classList.remove('dock-expanded');
+  });
+}
+
+function _attachDrawerGesture(dock, handle) {
+  let _touch = null; // { startY, startBottom, expanded }
+
+  const expand = () => { dock.classList.add('dock-expanded'); };
+  const collapse = () => { dock.classList.remove('dock-expanded'); };
+  const isExpanded = () => dock.classList.contains('dock-expanded');
+
+  // Tap handle to toggle
+  handle.addEventListener('click', () => {
+    if (isExpanded()) collapse(); else expand();
+  });
+
+  // Swipe gesture on entire dock — skip rune touches (handled by drag)
+  dock.addEventListener('touchstart', e => {
+    if (e.target.closest('.sealed-rune')) return;
+    const t = e.touches[0];
+    _touch = { startY: t.clientY, expanded: isExpanded() };
+  }, { passive: true });
+
+  dock.addEventListener('touchmove', e => {
+    if (!_touch || _dockDrag) return;
+    const dy = _touch.startY - e.touches[0].clientY; // positive = swipe up
+    if (Math.abs(dy) > 20) {
+      if (dy > 0 && !_touch.expanded) expand();
+      else if (dy < 0 && _touch.expanded) collapse();
+      _touch = null; // consumed
+    }
+  }, { passive: true });
+
+  dock.addEventListener('touchend', () => { _touch = null; }, { passive: true });
+}
+
+// ── Dock Rune Drag-to-Reorder ──
+let _dockDrag = null; // { rune, ghost, placeholder, startX, startY, offsetX, offsetY }
+
+function _attachDockDragHandlers(tray) {
+  // Track pending drag — only commit to drag after movement threshold
+  let _pending = null; // { rune, pointerId, startX, startY, offsetX, offsetY }
+
+  tray.addEventListener('pointerdown', e => {
+    const rune = e.target.closest('.sealed-rune');
+    if (!rune || !tray.contains(rune)) return;
+    // Don't preventDefault or setPointerCapture yet — let click fire for taps
+    const rect = rune.getBoundingClientRect();
+    _pending = {
+      rune, pointerId: e.pointerId,
+      startX: e.clientX, startY: e.clientY,
+      offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top,
+    };
+  });
+
+  tray.addEventListener('pointermove', e => {
+    // Promote pending to active drag once threshold exceeded
+    if (_pending && !_dockDrag && e.pointerId === _pending.pointerId) {
+      const dx = Math.abs(e.clientX - _pending.startX);
+      const dy = Math.abs(e.clientY - _pending.startY);
+      if (dx < 10 && dy < 10) return; // not past threshold yet
+      // Commit to drag — now capture and create visuals
+      const p = _pending;
+      _pending = null;
+      p.rune.setPointerCapture(e.pointerId);
+
+      const rect = p.rune.getBoundingClientRect();
+      const ghost = p.rune.cloneNode(true);
+      ghost.className = 'sealed-rune dock-drag-ghost active';
+      ghost.style.cssText = `
+        position: fixed; z-index: 10001; pointer-events: none;
+        left: ${rect.left}px; top: ${rect.top}px;
+        width: ${rect.width}px; height: ${rect.height}px;
+        transition: none;
+      `;
+      document.body.appendChild(ghost);
+
+      const placeholder = document.createElement('div');
+      placeholder.className = 'dock-drag-placeholder';
+      tray.insertBefore(placeholder, p.rune);
+      p.rune.style.visibility = 'hidden';
+
+      _dockDrag = {
+        rune: p.rune, ghost, placeholder, tray,
+        pointerId: e.pointerId,
+        offsetX: p.offsetX, offsetY: p.offsetY,
+      };
+    }
+
+    if (!_dockDrag || e.pointerId !== _dockDrag.pointerId) return;
+    e.preventDefault();
+    const d = _dockDrag;
+
+    d.ghost.style.left = (e.clientX - d.offsetX) + 'px';
+    d.ghost.style.top = (e.clientY - d.offsetY) + 'px';
+
+    // Find insertion point — works for both single-row flex and multi-row grid
+    const siblings = [...d.tray.querySelectorAll('.sealed-rune:not([style*="visibility: hidden"])')];
+    let insertBefore = null;
+    for (const sib of siblings) {
+      const sr = sib.getBoundingClientRect();
+      if (!sr.width) continue; // skip display:none runes
+      // If pointer is above this row, insert before
+      if (e.clientY < sr.top) { insertBefore = sib; break; }
+      // If pointer is within this row, check X
+      if (e.clientY < sr.bottom && e.clientX < sr.left + sr.width / 2) {
+        insertBefore = sib; break;
+      }
+    }
+
+    if (insertBefore) {
+      d.tray.insertBefore(d.placeholder, insertBefore);
+    } else {
+      d.tray.appendChild(d.placeholder);
+    }
+    d.placeholder.after(d.rune);
+
+    _spawnDockParticle(e.clientX, e.clientY);
+  });
+
+  const endDockDrag = (e) => {
+    // Clear pending on any pointer up (tap — let click fire naturally)
+    if (_pending && e.pointerId === _pending.pointerId) {
+      _pending = null;
+      return;
+    }
+    if (!_dockDrag || e.pointerId !== _dockDrag.pointerId) return;
+    const d = _dockDrag;
+    _dockDrag = null;
+
+    const targetRect = d.placeholder.getBoundingClientRect();
+    d.ghost.style.transition = 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
+    d.ghost.style.left = targetRect.left + 'px';
+    d.ghost.style.top = targetRect.top + 'px';
+
+    setTimeout(() => {
+      d.placeholder.replaceWith(d.rune);
+      d.rune.style.visibility = '';
+      d.ghost.remove();
+      d.tray.classList.remove('reordering');
+      _spawnDockBurst(targetRect.left + targetRect.width / 2, targetRect.top + targetRect.height / 2);
+      _saveFormation();
+    }, 300);
+  };
+
+  tray.addEventListener('pointerup', endDockDrag);
+  tray.addEventListener('pointercancel', endDockDrag);
+}
+
+function _spawnDockParticle(x, y) {
+  const p = document.createElement('div');
+  p.className = 'dock-particle';
+  p.style.left = x + 'px';
+  p.style.top = y + 'px';
+  document.body.appendChild(p);
+  setTimeout(() => p.remove(), 600);
+}
+
+function _spawnDockBurst(cx, cy) {
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2;
+    const p = document.createElement('div');
+    p.className = 'dock-particle burst';
+    p.style.left = cx + 'px';
+    p.style.top = cy + 'px';
+    p.style.setProperty('--dx', Math.cos(angle) * 30 + 'px');
+    p.style.setProperty('--dy', Math.sin(angle) * 30 + 'px');
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 500);
+  }
 }
 
 function _createAnchorOverlay() {
@@ -151,25 +341,23 @@ function _attachDragHandlers() {
     const header = panel.querySelector('.panel-header');
     if (!header || !PANELS[panel.id]) return;
 
+    // Add seal button to header
+    const sealBtn = document.createElement('button');
+    sealBtn.className = 'panel-seal-btn';
+    sealBtn.innerHTML = '◈';
+    sealBtn.title = 'Seal panel to dock';
+    sealBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      _toggleMinimize(panel);
+    });
+    header.appendChild(sealBtn);
+
     header.style.cursor = 'grab';
     header.addEventListener('mousedown', e => _startDrag(e, panel));
     header.addEventListener('touchstart', e => _startDrag(e, panel), { passive: false });
 
-    // Double-click to minimize/restore
+    // Double-click to minimize/restore (kept as backup)
     header.addEventListener('dblclick', () => _toggleMinimize(panel));
-
-    // Double-tap for mobile (dblclick doesn't fire reliably on touch)
-    let lastTap = 0;
-    header.addEventListener('touchend', e => {
-      const now = Date.now();
-      if (now - lastTap < 300) {
-        e.preventDefault();
-        _toggleMinimize(panel);
-        lastTap = 0; // Reset to avoid triple-tap triggering again
-      } else {
-        lastTap = now;
-      }
-    });
   });
 
   document.addEventListener('mousemove', _onDrag);
@@ -182,7 +370,7 @@ let _dragStartPos = null;
 let _dragThreshold = 10; // pixels before drag actually starts
 
 function _startDrag(e, panel) {
-  if (e.target.closest('.panel-close, .panel-min-icon, button, input, select')) return;
+  if (e.target.closest('.panel-close, .panel-seal-btn, button, input, select')) return;
   e.preventDefault();
 
   const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -211,7 +399,7 @@ function _onDrag(e) {
       _dragging.style.transition = 'none';
       _dragging.style.position = 'fixed';
       _dragging.style.zIndex = '9999';
-      _anchorOverlay.classList.add('visible');
+      if (_autoSnap && _showAnchors) _anchorOverlay.classList.add('visible');
       _startParticleTrail(clientX, clientY);
     }
   }
@@ -242,16 +430,18 @@ function _endDrag() {
   if (!_dragging) return;
 
   const panel = _dragging;
-  const rect = panel.getBoundingClientRect();
-  const centerX = rect.left + rect.width / 2;
-  const centerY = rect.top + rect.height / 2;
 
-  // Find nearest anchor and snap
-  const anchor = _findNearestAnchor(centerX, centerY);
-  _snapToAnchor(panel, anchor);
-
-  // Flash rune effect
-  _flashAnchorRune(anchor);
+  if (_autoSnap) {
+    const rect = panel.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const anchor = _findNearestAnchor(centerX, centerY);
+    _snapToAnchor(panel, anchor);
+    _flashAnchorRune(anchor);
+  } else {
+    // Free placement — just keep where it was dropped
+    panel.dataset.anchor = '';
+  }
 
   // Cleanup
   panel.classList.remove('panel-dragging');
@@ -261,8 +451,6 @@ function _endDrag() {
   _stopParticleTrail();
 
   _dragging = null;
-
-  // Save formation
   _saveFormation();
 }
 
@@ -315,11 +503,11 @@ function _toggleMinimize(panel) {
 
   if (isMinimized) {
     _unsealPanel(panel);
+    _saveFormation();
   } else {
     _sealPanel(panel);
+    // _saveFormation is called from _finalizeSeal after animation completes
   }
-
-  _saveFormation();
 }
 
 function _sealPanel(panel) {
@@ -328,13 +516,15 @@ function _sealPanel(panel) {
 
   const rect = panel.getBoundingClientRect();
 
-  // Store original position for restoration
+  // Store original position for restoration (computed rect as fallback for CSS-positioned panels)
   panel.dataset.originalAnchor = panel.dataset.anchor || def.anchor;
-  panel.dataset.originalLeft = panel.style.left;
-  panel.dataset.originalTop = panel.style.top;
+  panel.dataset.originalLeft = panel.style.left || (rect.left + 'px');
+  panel.dataset.originalTop = panel.style.top || (rect.top + 'px');
   panel.dataset.originalRight = panel.style.right;
   panel.dataset.originalBottom = panel.style.bottom;
   panel.dataset.originalTransform = panel.style.transform;
+  panel.dataset.originalWidth = rect.width;
+  panel.dataset.originalHeight = rect.height;
 
   // Create sealed rune
   const rune = _createRune(panel.id, def);
@@ -370,24 +560,46 @@ function _createRune(panelId, def) {
   rune.appendChild(icon);
   rune.appendChild(glow);
 
-  // Click to unseal
+  // Click to unseal (dock mode uses this; anchored/conjured use drag handler)
   const panel = document.getElementById(panelId);
-  rune.addEventListener('click', () => _toggleMinimize(panel));
+  rune.addEventListener('click', (e) => {
+    if (rune._dragManaged) return; // Handled by _makeRuneDraggable
+    _toggleMinimize(panel);
+  });
 
   return rune;
 }
 
+function _insertRuneInOrder(tray, rune) {
+  const panel = document.getElementById(rune.dataset.panelId);
+  const rightIds = (panel?.dataset.dockRight || '').split(',').filter(Boolean);
+  const leftIds = (panel?.dataset.dockLeft || '').split(',').filter(Boolean);
+
+  // Try first available right neighbor
+  for (const id of rightIds) {
+    const sib = tray.querySelector(`.sealed-rune[data-panel-id="${id}"]`);
+    if (sib) { tray.insertBefore(rune, sib); return; }
+  }
+  // Try last available left neighbor
+  for (let i = leftIds.length - 1; i >= 0; i--) {
+    const sib = tray.querySelector(`.sealed-rune[data-panel-id="${leftIds[i]}"]`);
+    if (sib) { sib.after(rune); return; }
+  }
+  tray.appendChild(rune);
+}
+
 function _sealToDock(panel, rune, rect) {
   const tray = _sealedDock.querySelector('.dock-tray');
-  tray.appendChild(rune);
+  _insertRuneInOrder(tray, rune);
   _sealedDock.classList.add('has-runes');
   // Force dock visible on mobile (CSS transition may not fire)
   _sealedDock.style.bottom = '0';
 
   requestAnimationFrame(() => {
-    const dockRect = _sealedDock.getBoundingClientRect();
-    const targetX = dockRect.left + dockRect.width / 2;
-    const targetY = dockRect.top + 40;
+    // Target the rune's actual position in the tray (not dock center)
+    const runeRect = rune.getBoundingClientRect();
+    const targetX = runeRect.left + runeRect.width / 2;
+    const targetY = runeRect.top + runeRect.height / 2;
 
     panel.style.transition = 'all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
     panel.style.transform = `translate(${targetX - rect.left - rect.width/2}px, ${targetY - rect.top - rect.height/2}px) scale(0)`;
@@ -408,6 +620,7 @@ function _sealAnchored(panel, rune, rect) {
   rune.style.left = (rect.left + rect.width / 2 - 25) + 'px';
   rune.style.top = (rect.top + rect.height / 2 - 25) + 'px';
   document.body.appendChild(rune);
+  _makeRuneDraggable(rune);
 
   panel.style.transition = 'all 0.4s ease-out';
   panel.style.transform = 'scale(0)';
@@ -418,6 +631,58 @@ function _sealAnchored(panel, rune, rect) {
     rune.classList.add('entering');
     setTimeout(() => rune.classList.remove('entering'), 500);
   }, 400);
+}
+
+// ── Draggable Runes (anchored + conjured modes) ──
+function _makeRuneDraggable(rune) {
+  rune._dragManaged = true;
+  let startX, startY, origLeft, origTop, moved;
+
+  function onDown(e) {
+    // Skip if rune is in the dock tray — dock has its own drag system
+    if (rune.closest('.dock-tray')) return;
+    if (e.button && e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const pt = e.touches ? e.touches[0] : e;
+    startX = pt.clientX; startY = pt.clientY;
+    origLeft = parseFloat(rune.style.left) || 0;
+    origTop = parseFloat(rune.style.top) || 0;
+    moved = false;
+    rune.classList.add('rune-dragging');
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onUp);
+  }
+
+  function onMove(e) {
+    e.preventDefault();
+    const pt = e.touches ? e.touches[0] : e;
+    const dx = pt.clientX - startX, dy = pt.clientY - startY;
+    if (!moved && Math.abs(dx) + Math.abs(dy) < 5) return;
+    moved = true;
+    rune.style.left = (origLeft + dx) + 'px';
+    rune.style.top = (origTop + dy) + 'px';
+    rune.style.transition = 'none';
+  }
+
+  function onUp() {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    document.removeEventListener('touchmove', onMove);
+    document.removeEventListener('touchend', onUp);
+    rune.classList.remove('rune-dragging');
+    rune.style.transition = '';
+    // If not moved, treat as click (unseal)
+    if (!moved) {
+      const panel = document.getElementById(rune.dataset.panelId);
+      if (panel) _toggleMinimize(panel);
+    }
+  }
+
+  rune.addEventListener('mousedown', onDown);
+  rune.addEventListener('touchstart', onDown, { passive: false });
 }
 
 function _sealWandering(panel, rune, rect) {
@@ -454,15 +719,14 @@ function _sealWandering(panel, rune, rect) {
 }
 
 function _sealConjured(panel, rune, rect) {
-  // Add to a conjured container that auto-arranges
+  // Add to conjured constellation
   let conjured = document.getElementById('conjured-runes');
   if (!conjured) {
-    conjured = document.createElement('div');
-    conjured.id = 'conjured-runes';
-    conjured.className = 'conjured-runes';
-    document.body.appendChild(conjured);
+    conjured = _createConjuredContainer();
   }
+  rune.style.position = 'fixed';
   conjured.appendChild(rune);
+  _makeRuneDraggable(rune);
 
   panel.style.transition = 'all 0.4s ease-out';
   panel.style.transform = 'scale(0)';
@@ -473,7 +737,32 @@ function _sealConjured(panel, rune, rect) {
     rune.classList.add('entering');
     setTimeout(() => rune.classList.remove('entering'), 500);
     _arrangeConjuredRunes();
+    _startConjureOrbit();
   }, 400);
+}
+
+function _createConjuredContainer() {
+  const conjured = document.createElement('div');
+  conjured.id = 'conjured-runes';
+  conjured.className = 'conjured-runes';
+  // Central sigil
+  const sigil = document.createElement('div');
+  sigil.className = 'conjure-sigil';
+  sigil.innerHTML = `<svg viewBox="0 0 120 120" width="120" height="120">
+    <circle cx="60" cy="60" r="55" fill="none" stroke="rgba(160,120,220,0.15)" stroke-width="1"/>
+    <circle cx="60" cy="60" r="40" fill="none" stroke="rgba(160,120,220,0.1)" stroke-width="0.5" stroke-dasharray="4 4"/>
+    <circle cx="60" cy="60" r="25" fill="none" stroke="rgba(160,120,220,0.08)" stroke-width="0.5"/>
+    <polygon points="60,10 107,82 13,82" fill="none" stroke="rgba(180,140,255,0.12)" stroke-width="0.5"/>
+    <polygon points="60,110 13,38 107,38" fill="none" stroke="rgba(180,140,255,0.12)" stroke-width="0.5"/>
+    <circle cx="60" cy="60" r="4" fill="rgba(200,170,255,0.3)"/>
+  </svg>`;
+  conjured.appendChild(sigil);
+  // Orbit ring (visual only)
+  const ring = document.createElement('div');
+  ring.className = 'conjure-orbit-ring';
+  conjured.appendChild(ring);
+  document.body.appendChild(conjured);
+  return conjured;
 }
 
 function _finalizeSeal(panel) {
@@ -482,6 +771,8 @@ function _finalizeSeal(panel) {
   panel.style.transition = '';
   panel.style.transform = '';
   panel.style.opacity = '';
+  _saveFormation();
+  _updateDockBadge();
 }
 
 function _animateWandering() {
@@ -526,25 +817,82 @@ function _arrangeConjuredRunes() {
   const conjured = document.getElementById('conjured-runes');
   if (!conjured) return;
 
-  const runes = [...conjured.children];
+  const runes = [...conjured.querySelectorAll('.sealed-rune')];
   const count = runes.length;
   if (count === 0) return;
 
-  // Arrange in a circle - center of viewport on mobile, top-right on desktop
+  // Position constellation: bottom-right on desktop, center on mobile
   const isMobile = window.innerWidth < 600;
-  const centerX = isMobile ? window.innerWidth / 2 : window.innerWidth - 120;
-  const centerY = isMobile ? window.innerHeight / 2 : 120;
-  const radius = isMobile ? Math.min(60, count * 20) : 40 + count * 15;
+  const centerX = isMobile ? window.innerWidth / 2 : window.innerWidth - 140;
+  const centerY = isMobile ? window.innerHeight / 2 : window.innerHeight - 140;
+  const radius = Math.max(55, 35 + count * 12);
 
+  // Position sigil and orbit ring at center
+  const sigil = conjured.querySelector('.conjure-sigil');
+  const ring = conjured.querySelector('.conjure-orbit-ring');
+  if (sigil) {
+    sigil.style.left = (centerX - 60) + 'px';
+    sigil.style.top = (centerY - 60) + 'px';
+  }
+  if (ring) {
+    ring.style.left = (centerX - radius - 8) + 'px';
+    ring.style.top = (centerY - radius - 8) + 'px';
+    ring.style.width = (radius * 2 + 16) + 'px';
+    ring.style.height = (radius * 2 + 16) + 'px';
+  }
+
+  // Store constellation data on each rune for orbit animation
   runes.forEach((rune, i) => {
+    rune.dataset.orbitIndex = i;
+    rune.dataset.orbitTotal = count;
+    rune.dataset.orbitCx = centerX;
+    rune.dataset.orbitCy = centerY;
+    rune.dataset.orbitR = radius;
+    // Initial position
     const angle = (i / count) * Math.PI * 2 - Math.PI / 2;
     const x = centerX + Math.cos(angle) * radius - 25;
     const y = centerY + Math.sin(angle) * radius - 25;
-
-    rune.style.transition = 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
+    rune.style.transition = 'all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)';
     rune.style.left = x + 'px';
     rune.style.top = y + 'px';
+    // Stagger glow intensity by position
+    rune.style.animationDelay = -(i * 0.7) + 's';
   });
+}
+
+function _startConjureOrbit() {
+  if (_conjureRaf) return;
+  _conjureAngle = 0;
+  function tick() {
+    const conjured = document.getElementById('conjured-runes');
+    if (!conjured || _sealMode !== 'conjure') { _conjureRaf = 0; return; }
+    const runes = [...conjured.querySelectorAll('.sealed-rune')];
+    if (runes.length === 0) { _conjureRaf = 0; return; }
+    _conjureAngle += 0.003; // Slow orbit
+    runes.forEach(rune => {
+      if (rune.classList.contains('rune-dragging')) return;
+      const i = parseInt(rune.dataset.orbitIndex) || 0;
+      const n = parseInt(rune.dataset.orbitTotal) || 1;
+      const cx = parseFloat(rune.dataset.orbitCx) || window.innerWidth / 2;
+      const cy = parseFloat(rune.dataset.orbitCy) || window.innerHeight / 2;
+      const r = parseFloat(rune.dataset.orbitR) || 60;
+      // Each rune has its own orbit offset + slight wobble
+      const baseAngle = (i / n) * Math.PI * 2 - Math.PI / 2;
+      const angle = baseAngle + _conjureAngle;
+      const wobble = Math.sin(_conjureAngle * 3 + i * 1.7) * 4;
+      const x = cx + Math.cos(angle) * (r + wobble) - 25;
+      const y = cy + Math.sin(angle) * (r + wobble) - 25;
+      rune.style.transition = 'none';
+      rune.style.left = x + 'px';
+      rune.style.top = y + 'px';
+    });
+    _conjureRaf = requestAnimationFrame(tick);
+  }
+  _conjureRaf = requestAnimationFrame(tick);
+}
+
+function _stopConjureOrbit() {
+  if (_conjureRaf) { cancelAnimationFrame(_conjureRaf); _conjureRaf = 0; }
 }
 
 function _migrateSealedRunes(newMode) {
@@ -586,6 +934,7 @@ function _migrateSealedRunes(newMode) {
       rune.style.left = rect.left + 'px';
       rune.style.top = rect.top + 'px';
       document.body.appendChild(rune);
+      _makeRuneDraggable(rune);
       _sealedDock.classList.remove('has-runes');
       _sealedDock.style.bottom = '-80px'; // Hide dock
     } else if (newMode === 'wander') {
@@ -606,15 +955,11 @@ function _migrateSealedRunes(newMode) {
       _sealedDock.style.bottom = '-80px'; // Hide dock
     } else if (newMode === 'conjure') {
       let conjured = document.getElementById('conjured-runes');
-      if (!conjured) {
-        conjured = document.createElement('div');
-        conjured.id = 'conjured-runes';
-        conjured.className = 'conjured-runes';
-        document.body.appendChild(conjured);
-      }
+      if (!conjured) conjured = _createConjuredContainer();
       rune.classList.remove('anchored-rune', 'wandering-rune');
       rune.style.position = 'fixed';
       conjured.appendChild(rune);
+      _makeRuneDraggable(rune);
       _sealedDock.classList.remove('has-runes');
       _sealedDock.style.bottom = '-80px'; // Hide dock
     }
@@ -625,9 +970,17 @@ function _migrateSealedRunes(newMode) {
     _animateWandering();
   }
 
-  // Arrange conjured if needed
+  // Stop conjure orbit if leaving conjure mode
+  if (newMode !== 'conjure') {
+    _stopConjureOrbit();
+    const old = document.getElementById('conjured-runes');
+    if (old) old.remove();
+  }
+
+  // Arrange conjured and start orbit if entering conjure mode
   if (newMode === 'conjure') {
     _arrangeConjuredRunes();
+    _startConjureOrbit();
   }
 }
 
@@ -640,14 +993,25 @@ function _unsealPanel(panel) {
     // Remove from wandering list if present
     _wanderingRunes = _wanderingRunes.filter(wr => wr.el !== rune);
 
+    // Remember full dock context so re-sealing puts it back in the same slot
+    const allRight = [], allLeft = [];
+    let s = rune.nextElementSibling;
+    while (s) { if (s.classList.contains('sealed-rune')) allRight.push(s.dataset.panelId); s = s.nextElementSibling; }
+    s = rune.previousElementSibling;
+    while (s) { if (s.classList.contains('sealed-rune')) allLeft.unshift(s.dataset.panelId); s = s.previousElementSibling; }
+    panel.dataset.dockRight = allRight.join(',');
+    panel.dataset.dockLeft = allLeft.join(',');
+
     rune.classList.add('exiting');
     setTimeout(() => {
       rune.remove();
+      _updateDockBadge();
       // Hide dock if now empty
       const tray = _sealedDock?.querySelector('.dock-tray');
       if (tray && tray.children.length === 0) {
         _sealedDock.classList.remove('has-runes');
         _sealedDock.style.bottom = '-80px';
+        _sealedDock.classList.remove('dock-expanded');
       }
       // Re-arrange conjured if applicable
       _arrangeConjuredRunes();
@@ -658,28 +1022,65 @@ function _unsealPanel(panel) {
   panel.classList.remove('panel-sealed');
   panel.style.display = '';
 
-  // Restore original position
-  const anchorId = panel.dataset.originalAnchor;
-  const anchor = ANCHORS.find(a => a.id === anchorId);
+  // Re-check visibility toggle so spellbook checkbox stays in sync
+  const _visMap = {
+    'realm-panel': 'vis-statuspanel', 'legend': 'vis-legend', 'spellbook': 'vis-spellbook',
+    'realm-codex': 'vis-codex', 'quest-log': 'vis-questlog', 'node-list': 'vis-nodelist',
+    'cartographer': 'vis-cartographer', 'energy-panel': 'vis-energy',
+    'debug-panel': 'vis-debug', 'latency-panel': 'vis-latency',
+    'firewall-panel': 'vis-firewall',
+  };
+  const _visCb = document.getElementById(_visMap[panel.id]);
+  if (_visCb && !_visCb.checked) _visCb.checked = true;
 
-  if (anchor) {
-    _snapToAnchor(panel, anchor);
-  } else {
-    panel.style.left = panel.dataset.originalLeft || '';
-    panel.style.top = panel.dataset.originalTop || '';
-    panel.style.right = panel.dataset.originalRight || '';
-    panel.style.bottom = panel.dataset.originalBottom || '';
+  // Restore to exact saved position, clamped to viewport
+  const savedLeft = panel.dataset.originalLeft;
+  const savedTop = panel.dataset.originalTop;
+  const savedRight = panel.dataset.originalRight;
+  const savedBottom = panel.dataset.originalBottom;
+
+  if (savedLeft || savedTop) {
+    let x = parseFloat(savedLeft) || 0;
+    let y = parseFloat(savedTop) || 0;
+    const pw = parseFloat(panel.dataset.originalWidth) || 200;
+    const ph = parseFloat(panel.dataset.originalHeight) || 100;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const pad = 20;
+
+    // Clamp so at least pad pixels are visible on each edge
+    x = Math.max(pad - pw + 60, Math.min(vw - 60, x));
+    y = Math.max(pad, Math.min(vh - 40, y));
+
+    panel.style.left = x + 'px';
+    panel.style.top = y + 'px';
+    panel.style.right = 'auto';
+    panel.style.bottom = 'auto';
+    panel.style.transform = '';
+    if (panel.dataset.originalAnchor) panel.dataset.anchor = panel.dataset.originalAnchor;
+  } else if (savedRight || savedBottom) {
+    panel.style.left = savedLeft || '';
+    panel.style.top = savedTop || '';
+    panel.style.right = savedRight || '';
+    panel.style.bottom = savedBottom || '';
     panel.style.transform = panel.dataset.originalTransform || '';
+    if (panel.dataset.originalAnchor) panel.dataset.anchor = panel.dataset.originalAnchor;
+  } else {
+    // No saved position — snap to anchor
+    const anchorId = panel.dataset.originalAnchor;
+    const anchor = ANCHORS.find(a => a.id === anchorId);
+    if (anchor) _snapToAnchor(panel, anchor);
   }
 
-  // Conjuration animation
+  // Conjuration animation — save base transform, animate scale, restore
+  const baseTransform = panel.style.transform || '';
   panel.style.opacity = '0';
-  panel.style.transform = (panel.style.transform || '') + ' scale(0.5)';
+  panel.style.transform = (baseTransform ? baseTransform + ' ' : '') + 'scale(0.5)';
 
   requestAnimationFrame(() => {
     panel.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
     panel.style.opacity = '1';
-    panel.style.transform = panel.style.transform.replace(' scale(0.5)', '');
+    panel.style.transform = baseTransform;
 
     setTimeout(() => {
       panel.style.transition = '';
@@ -844,23 +1245,23 @@ export function applyFormation(formationId) {
     }
   });
 
-  // Show and position visible panels
+  // Show and position visible panels (non-minimized first)
   if (visible) {
     visible.forEach(id => {
+      if (minimized.includes(id)) return; // handled below in dock order
       const panel = document.getElementById(id);
       if (!panel) return;
-
-      // Check if this panel should be minimized
-      if (minimized.includes(id)) {
-        _restoreSealedToDoc(panel);
-      } else {
-        panel.style.display = '';
-
-        if (anchors && anchors[id]) {
-          const anchor = ANCHORS.find(a => a.id === anchors[id]);
-          if (anchor) _snapToAnchor(panel, anchor);
-        }
+      panel.style.display = '';
+      if (anchors && anchors[id]) {
+        const anchor = ANCHORS.find(a => a.id === anchors[id]);
+        if (anchor) _snapToAnchor(panel, anchor);
       }
+    });
+    // Restore sealed panels in saved dock order
+    minimized.forEach(id => {
+      const panel = document.getElementById(id);
+      if (!panel) return;
+      _restoreSealedToDoc(panel, anchors?.[id] || PANELS[id]?.anchor);
     });
   }
 
@@ -874,9 +1275,12 @@ export function applyFormation(formationId) {
 }
 
 // Restore a sealed panel to the dock without animation (for page load)
-function _restoreSealedToDoc(panel) {
+function _restoreSealedToDoc(panel, anchorId) {
   const def = PANELS[panel.id];
   if (!def) return;
+
+  // Store anchor so _unsealPanel can position correctly
+  panel.dataset.originalAnchor = anchorId || def.anchor;
 
   // Create rune in dock
   const tray = _sealedDock.querySelector('.dock-tray');
@@ -894,7 +1298,10 @@ function _restoreSealedToDoc(panel) {
 
   rune.appendChild(icon);
   rune.appendChild(glow);
-  rune.addEventListener('click', () => _toggleMinimize(panel));
+  rune.addEventListener('click', () => {
+    if (rune._dragManaged) return;
+    _toggleMinimize(panel);
+  });
   tray.appendChild(rune);
 
   // Mark panel as sealed
@@ -903,6 +1310,7 @@ function _restoreSealedToDoc(panel) {
 
   // Show dock
   _sealedDock.classList.add('has-runes');
+  _updateDockBadge();
 }
 
 function _autoArrangePanels(panelIds) {
@@ -986,16 +1394,23 @@ function _saveFormation() {
     const panel = document.getElementById(id);
     if (!panel) return;
 
-    if (panel.style.display !== 'none') {
+    const isSealed = panel.classList.contains('panel-sealed');
+    if (panel.style.display !== 'none' || isSealed) {
       state.visible.push(id);
       if (panel.dataset.anchor) {
         state.anchors[id] = panel.dataset.anchor;
       }
-      if (panel.classList.contains('panel-sealed')) {
-        state.minimized.push(id);
-      }
     }
   });
+
+  // Save minimized list in dock DOM order (preserves user's drag reorder)
+  const tray = _sealedDock?.querySelector('.dock-tray');
+  if (tray) {
+    tray.querySelectorAll('.sealed-rune').forEach(rune => {
+      const pid = rune.dataset.panelId;
+      if (pid) state.minimized.push(pid);
+    });
+  }
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
@@ -1079,6 +1494,35 @@ function _injectFormationUI() {
   });
 
   body.appendChild(sealGrid);
+
+  // ── Drag Settings ──
+  const settingsWrap = document.createElement('div');
+  settingsWrap.className = 'seal-settings';
+
+  // Auto-snap toggle
+  const snapRow = document.createElement('label');
+  snapRow.className = 'seal-setting-row';
+  const snapCb = document.createElement('input');
+  snapCb.type = 'checkbox';
+  snapCb.checked = _autoSnap;
+  snapCb.addEventListener('change', () => { _autoSnap = snapCb.checked; });
+  snapRow.appendChild(snapCb);
+  snapRow.appendChild(document.createTextNode(' Auto-snap to anchors'));
+  settingsWrap.appendChild(snapRow);
+
+  // Show anchors toggle
+  const anchorRow = document.createElement('label');
+  anchorRow.className = 'seal-setting-row';
+  const anchorCb = document.createElement('input');
+  anchorCb.type = 'checkbox';
+  anchorCb.checked = _showAnchors;
+  anchorCb.addEventListener('change', () => { _showAnchors = anchorCb.checked; });
+  anchorRow.appendChild(anchorCb);
+  anchorRow.appendChild(document.createTextNode(' Show anchor overlay'));
+  settingsWrap.appendChild(anchorRow);
+
+  body.appendChild(settingsWrap);
+
   section.appendChild(header);
   section.appendChild(body);
 
@@ -1104,5 +1548,28 @@ function _flashSaveEffect() {
   }, 1500);
 }
 
+// Register a panel created after initPanelManager (e.g. lazy dialogs)
+export function registerPanel(panel) {
+  if (!panel || !PANELS[panel.id]) return;
+  const header = panel.querySelector('.panel-header');
+  if (!header) return;
+
+  // Add seal button
+  const sealBtn = document.createElement('button');
+  sealBtn.className = 'panel-seal-btn';
+  sealBtn.innerHTML = '◈';
+  sealBtn.title = 'Seal panel to dock';
+  sealBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    _toggleMinimize(panel);
+  });
+  header.appendChild(sealBtn);
+
+  header.style.cursor = 'grab';
+  header.addEventListener('mousedown', e => _startDrag(e, panel));
+  header.addEventListener('touchstart', e => _startDrag(e, panel), { passive: false });
+  header.addEventListener('dblclick', () => _toggleMinimize(panel));
+}
+
 // ── Exports ──
-export { FORMATIONS, PANELS, ANCHORS };
+export { FORMATIONS, PANELS, ANCHORS, _saveFormation as saveFormation, _unsealPanel as unsealPanel };

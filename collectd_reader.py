@@ -198,18 +198,36 @@ def get_host_summary(hostname):
     if ifaces:
         summary["interfaces"] = ifaces
 
-    # Ping data (gatekeeper)
+    # Ping data (gatekeeper) — latency, droprate, stddev
     ping_dir = os.path.join(host_dir, "ping")
     if os.path.isdir(ping_dir):
         pings = {}
+        drops = {}
+        stddevs = {}
         for f in os.listdir(ping_dir):
-            if f.startswith("ping-") and f.endswith(".rrd"):
+            if not f.endswith(".rrd"):
+                continue
+            if f.startswith("ping_droprate-"):
+                target = f.replace("ping_droprate-", "").replace(".rrd", "")
+                d = _rrd_last(os.path.join(ping_dir, f))
+                if d and d["values"] and d["values"][0] is not None:
+                    drops[target] = round(d["values"][0], 2)
+            elif f.startswith("ping_stddev-"):
+                target = f.replace("ping_stddev-", "").replace(".rrd", "")
+                d = _rrd_last(os.path.join(ping_dir, f))
+                if d and d["values"] and d["values"][0] is not None:
+                    stddevs[target] = round(d["values"][0], 2)
+            elif f.startswith("ping-"):
                 target = f.replace("ping-", "").replace(".rrd", "")
                 d = _rrd_last(os.path.join(ping_dir, f))
                 if d and d["values"] and d["values"][0] is not None:
                     pings[target] = round(d["values"][0], 1)
         if pings:
             summary["ping"] = pings
+        if drops:
+            summary["ping_drop"] = drops
+        if stddevs:
+            summary["ping_stddev"] = stddevs
 
     # Disk (katana)
     df_root = os.path.join(host_dir, "df-root")
