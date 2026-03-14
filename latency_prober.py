@@ -1,0 +1,189 @@
+"""Background latency prober — pings wired node IPs from katana every 30s.
+
+Produces a latency map: {node_id: rtt_ms} consumed by layout modes.
+Uses fping for batch pinging (falls back to sequential ping if unavailable).
+"""
+
+import json
+import os
+import re
+import subprocess
+import threading
+import time
+
+_TOPOLOGY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "topology.json")
+_FPING_TIMEOUT = 500  # ms
+_PROBE_INTERVAL = 30  # seconds
+
+# Module-level state (thread-safe via reference replacement)
+_latency_map = {}      # {node_id: rtt_ms}
+_ip_to_node = {}       # {ip: node_id}
+_node_to_ip = {}       # {node_id: ip}
+_wired_ips = []        # list of IPs to probe (excludes WiFi)
+_running = False
+_wifi_nodes = set()    # updated externally via set_wifi_nodes()
+
+
+def set_wifi_nodes(wifi_dict):
+    """Called by map_server/sse_broker to update the set of WiFi node IDs.
+    wifi_dict: {hostname: {ap, signal, snr, ...}} from status.wifi
+    """
+    global _wifi_nodes
+    _wifi_nodes = set(wifi_dict.keys()) if wifi_dict else set()
+
+
+def _load_topology():
+    """Load node IPs from topology.json, filtering out WiFi clients."""
+    global _ip_to_node, _node_to_ip, _wired_ips
+    try:
+        with open(_TOPOLOGY_FILE) as f:
+            topo = json.load(f)
+        ip_map = {}
+        node_map = {}
+        for n in topo.get("nodes", []):
+            ip = n.get("ip")
+            nid = n["id"]
+            if not ip or ip.endswith(".x"):
+                continue
+            # Skip WiFi clients
+            if nid in _wifi_nodes:
+                continue
+            ip_map[ip] = nid
+            node_map[nid] = ip
+        _ip_to_node = ip_map
+        _node_to_ip = node_map
+        _wired_ips = list(ip_map.keys())
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"latency_prober: topology load error: {e}")
+
+
+def _probe_fping():
+    """Run fping against all wired IPs, return {ip: rtt_ms}."""
+    if not _wired_ips:
+        return {}
+    try:
+        result = subprocess.run(
+            ["fping", "-c1", "-t", str(_FPING_TIMEOUT), "-q"] + _wired_ips,
+            capture_output=True, text=True, timeout=10
+        )
+        # fping outputs to stderr: "10.0.6.1 : xmt/rcv/%loss = 1/1/0%, min/avg/max = 0.12/0.12/0.12"
+        latencies = {}
+        for line in result.stderr.splitlines():
+            m = re.match(r'^(\S+)\s+:.*min/avg/max\s*=\s*[\d.]+/([\d.]+)/[\d.]+', line)
+            if m:
+                latencies[m.group(1)] = round(float(m.group(2)), 2)
+        return latencies
+    except FileNotFoundError:
+        return _probe_ping_fallback()
+    except (subprocess.TimeoutExpired, OSError):
+        return {}
+
+
+def _probe_ping_fallback():
+    """Sequential ping fallback if fping is not installed."""
+    latencies = {}
+    for ip in _wired_ips[:30]:  # cap at 30 to avoid taking forever
+        try:
+            result = subprocess.run(
+                ["ping", "-c", "1", "-W", "1", ip],
+                capture_output=True, text=True, timeout=3
+            )
+            for line in result.stdout.splitlines():
+                m = re.search(r'time[=<]([\d.]+)', line)
+                if m:
+                    latencies[ip] = round(float(m.group(1)), 2)
+                    break
+        except (subprocess.TimeoutExpired, OSError):
+            pass
+    return latencies
+
+
+def _probe_loop():
+    """Background thread: reload topology + probe every PROBE_INTERVAL seconds."""
+    global _latency_map
+    while _running:
+        _load_topology()
+        ip_latencies = _probe_fping()
+        # Convert {ip: rtt} → {node_id: rtt}
+        new_map = {}
+        for ip, rtt in ip_latencies.items():
+            nid = _ip_to_node.get(ip)
+            if nid:
+                new_map[nid] = rtt
+        _latency_map = new_map  # atomic reference swap
+        time.sleep(_PROBE_INTERVAL)
+
+
+def get_latency_map():
+    """Return current {node_id: rtt_ms} map. Thread-safe (reads atomic reference)."""
+    return _latency_map
+
+
+def get_subnet(node_id):
+    """Return VLAN number from node IP (3rd octet), or None."""
+    ip = _node_to_ip.get(node_id)
+    if not ip:
+        return None
+    parts = ip.split(".")
+    if len(parts) == 4:
+        return int(parts[2])
+    return None
+
+
+def estimate_latency(a, b, wifi_map=None):
+    """Estimate latency between two nodes in ms.
+
+    Uses measured RTT from katana as base, with heuristics for
+    same-subnet, cross-subnet, and WiFi nodes.
+    """
+    rtt_a = _latency_map.get(a)
+    rtt_b = _latency_map.get(b)
+    wifi_map = wifi_map or {}
+
+    a_wifi = a in _wifi_nodes or a in wifi_map
+    b_wifi = b in _wifi_nodes or b in wifi_map
+
+    # Both WiFi on same AP
+    if a_wifi and b_wifi:
+        ap_a = wifi_map.get(a, {}).get("ap")
+        ap_b = wifi_map.get(b, {}).get("ap")
+        if ap_a and ap_a == ap_b:
+            return 10.0
+        return 25.0  # different APs
+
+    # One WiFi: use SNR-based estimate
+    if a_wifi or b_wifi:
+        wifi_node = a if a_wifi else b
+        wired_rtt = rtt_b if a_wifi else rtt_a
+        snr = wifi_map.get(wifi_node, {}).get("snr", 30)
+        wifi_ms = max(5, min(40, 5 + (60 - snr) * 0.5))
+        return wifi_ms + (wired_rtt or 0.5)
+
+    # Both wired
+    if rtt_a is None and rtt_b is None:
+        return None  # no data
+    if rtt_a is None:
+        return rtt_b
+    if rtt_b is None:
+        return rtt_a
+
+    sub_a = get_subnet(a)
+    sub_b = get_subnet(b)
+    if sub_a and sub_b and sub_a == sub_b:
+        return max(rtt_a, rtt_b)  # same switch
+    return rtt_a + rtt_b  # cross-subnet
+
+
+def start():
+    """Start the background probing thread."""
+    global _running
+    if _running:
+        return
+    _running = True
+    t = threading.Thread(target=_probe_loop, daemon=True, name="latency-prober")
+    t.start()
+
+
+def stop():
+    global _running
+    _running = False
