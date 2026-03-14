@@ -4,3 +4,11 @@
 // Import order matters: topology must come before app
 export * from './topology.js';
 export * from './app.js';
+import { initPanelManager } from './panel-manager.js';
+
+// Initialize panel manager after DOM is fully ready
+if (document.readyState === 'complete') {
+  initPanelManager();
+} else {
+  window.addEventListener('load', initPanelManager);
+}
