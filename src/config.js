@@ -11,6 +11,9 @@ export function setPerfTier(t) { _perfTier = t; }
 export let _mapTilt = 0;
 export function setMapTilt(v) { _mapTilt = v; }
 
+// SSE connection
+export const SSE_URL = '/sse';
+
 export const _PERF = {
   get moteCap()       { return _perfTier === 'low' ? 80  : _perfTier === 'medium' ? 180 : 400; },
   get topoFilters()   { return _perfTier !== 'low'; },

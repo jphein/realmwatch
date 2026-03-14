@@ -1,6 +1,6 @@
 // ── Main application module (terrain, UI, events, navigation, panels, effects, persistence) ──
 // Imports from extracted modules
-import { WORLD_W, WORLD_H, WORLD_SCALE, _isMobile, _cpuCores, _perfTier, setPerfTier, _PERF, _mapTilt, setMapTilt } from './config.js';
+import { WORLD_W, WORLD_H, WORLD_SCALE, _isMobile, _cpuCores, _perfTier, setPerfTier, _PERF, _mapTilt, setMapTilt, SSE_URL } from './config.js';
 import { scaleLabel, scaleColor, fmtBytes, fmtRate, scalePct } from './utils.js';
 import { tips, _topology, infraNodes, isTS, CONN_TYPE_TO_CLASS, _tsHostMap, _vlanLabels, _connPaths, _nodeDOM, getNodeDOM, getNodeCenter, updateLinePositions, _getNodePos, _computePathD, refreshTopology, setTopologyRefreshHook } from './topology.js';
 
@@ -555,9 +555,12 @@ export function updateUI(d) {
   if (d.collectd && DOM.codexCd) DOM.codexCd.textContent = Object.keys(d.collectd).length;
   if (DOM.codexNodes) DOM.codexNodes.textContent = _topology.nodes ? _topology.nodes.length : '?';
 
-  updateConnectionTraffic(d.collectd);
-  _lastTopoCollectd = d.collectd;
-  if (_topoEnabled) renderTopoLayer(d.collectd);
+  // When SSE is active, traffic updates come via the 'traffic' event -- skip here
+  if (!_sseTrafficMap) {
+    updateConnectionTraffic(d.collectd);
+    _lastTopoCollectd = d.collectd;
+    if (_topoEnabled) renderTopoLayer(d.collectd);
+  }
   updateNodeListStatus(d);
   updateCensusSubLabels(d);
   firePulse();
@@ -591,7 +594,8 @@ const trafficScaleVal = document.getElementById('traffic-scale-val');
 trafficSlider.addEventListener('input', () => {
   trafficScale = parseFloat(trafficSlider.value);
   trafficScaleVal.textContent = trafficScale.toFixed(1) + 'x';
-  if (lastStatus && lastStatus.collectd) updateConnectionTraffic(lastStatus.collectd);
+  if (_sseTrafficMap) updateConnectionTrafficSSE(_sseTrafficMap);
+  else if (lastStatus && lastStatus.collectd) updateConnectionTraffic(lastStatus.collectd);
   scheduleSave();
 });
 
@@ -659,6 +663,11 @@ const connColors = {
   'conn-active': [100,180,255], 'conn-ap': [100,180,255], 'conn-wan': [255,180,50],
   'conn-infra': [96,160,192], 'conn-bridge': [160,100,220], 'conn-vlan': [255,160,60],
   'conn-mesh': [120,220,120],
+};
+// VLAN-specific base colors (match CSS [data-vlan] custom properties)
+const vlanColors = {
+  '6': [140,180,255], '8': [255,200,100], '10': [100,220,160],
+  '11': [200,140,255], '0': [100,220,220],
 };
 
 export function getNodeTraffic(collectd, nodeKey) {
@@ -749,7 +758,8 @@ export function updateConnectionTraffic(collectd) {
     if (dir !== cache.dir) { line.style.setProperty('--dir', dir); cache.dir = dir; }
     // Stroke color
     if (cache.connType) {
-      const [r,g,b] = connColors[cache.connType];
+      const vlan = line.dataset.vlan;
+      const [r,g,b] = (vlan && vlanColors[vlan]) || connColors[cache.connType] || [100,180,255];
       const alpha = +(0.15 + intensity * 0.5).toFixed(2);
       const bright = 1 + intensity * 0.3;
       const stroke = `rgba(${Math.min(255,r*bright)|0},${Math.min(255,g*bright)|0},${Math.min(255,b*bright)|0},${alpha})`;
@@ -798,6 +808,108 @@ export function updateConnectionTraffic(collectd) {
       n._lastTrafficScale = s;
     }
   }
+}
+
+/**
+ * SSE-optimized traffic update -- receives pre-computed {nodeId: {rx, tx, total, intensity}}.
+ * Skips hostname matching + interface scan + log math (done server-side).
+ * Still applies local trafficScale, stroke colors, node icon scaling, and top-N glow.
+ */
+export function updateConnectionTrafficSSE(trafficMap) {
+  if (!trafficMap) return;
+  const trafficData = [];
+
+  _connLinesWithData.forEach(line => {
+    const cache = _connCache.get(line) || { connType: null, sw: 0, speed: 0, dir: '', tier: '', stroke: '', animated: false, glow: false };
+    const toNode = line.dataset.to;
+    const fromNode = line.dataset.from;
+    const toT = trafficMap[toNode];
+    const fromT = fromNode ? trafficMap[fromNode] : null;
+    const traffic = (toT && fromT)
+      ? (toT.total > fromT.total ? toT : fromT)
+      : (toT || fromT);
+    const baseW = _connBaseWidths.get(line) || 1.5;
+
+    if (!traffic || traffic.total === 0) {
+      if (cache.tier || cache.sw !== baseW || cache.animated || cache.glow) {
+        line.style.setProperty('--sw', baseW);
+        line.style.removeProperty('--speed');
+        line.style.removeProperty('--dir');
+        line.removeAttribute('stroke');
+        if (cache.tier) line.classList.remove(cache.tier);
+        if (cache.animated) { line.classList.remove('conn-animated'); cache.animated = false; }
+        if (cache.glow) { line.classList.remove('conn-glow'); cache.glow = false; }
+        cache.sw = baseW; cache.speed = 0; cache.dir = ''; cache.tier = ''; cache.stroke = '';
+      }
+      return;
+    }
+
+    if (!cache.animated) { line.classList.add('conn-animated'); cache.animated = true; }
+    const intensity = Math.min(1, traffic.intensity * trafficScale);
+    const sw = +(baseW + intensity * 8 * trafficScale).toFixed(1);
+    const speed = +Math.max(2, 20 - intensity * 18).toFixed(1);
+    const dir = traffic.rx > traffic.tx ? 'reverse' : 'normal';
+    const tier = intensity > 0.65 ? 'conn-traffic-high' : intensity > 0.35 ? 'conn-traffic-med' : intensity > 0.15 ? 'conn-traffic-low' : '';
+
+    if (sw !== cache.sw) { line.style.setProperty('--sw', sw); cache.sw = sw; }
+    if (speed !== cache.speed) { line.style.setProperty('--speed', speed + 's'); cache.speed = speed; }
+    if (dir !== cache.dir) { line.style.setProperty('--dir', dir); cache.dir = dir; }
+
+    if (cache.connType) {
+      const vlan = line.dataset.vlan;
+      const [r,g,b] = (vlan && vlanColors[vlan]) || connColors[cache.connType] || [100,180,255];
+      const alpha = +(0.15 + intensity * 0.5).toFixed(2);
+      const bright = 1 + intensity * 0.3;
+      const stroke = `rgba(${Math.min(255,r*bright)|0},${Math.min(255,g*bright)|0},${Math.min(255,b*bright)|0},${alpha})`;
+      if (stroke !== cache.stroke) { line.setAttribute('stroke', stroke); cache.stroke = stroke; }
+    }
+
+    if (tier !== cache.tier) {
+      if (cache.tier) line.classList.remove(cache.tier);
+      if (tier) line.classList.add(tier);
+      cache.tier = tier;
+    }
+
+    if (intensity > 0.3) trafficData.push({ line, cache, intensity });
+  });
+
+  trafficData.sort((a, b) => b.intensity - a.intensity);
+  const topLines = new Set(trafficData.slice(0, TOP_GLOW_COUNT).map(d => d.line));
+  trafficData.forEach(({ line, cache }) => {
+    const shouldGlow = topLines.has(line);
+    if (shouldGlow !== cache.glow) {
+      if (shouldGlow) line.classList.add('conn-glow');
+      else line.classList.remove('conn-glow');
+      cache.glow = shouldGlow;
+    }
+  });
+
+  for (const tipKey of Object.keys(_nodeDOM)) {
+    const n = _nodeDOM[tipKey];
+    if (!n.el) continue;
+    const icon = n._icon || (n._icon = n.el.querySelector('.node-icon'));
+    if (!icon) continue;
+    const t = trafficMap[tipKey];
+    if (!t || t.total === 0) {
+      if (n._lastTrafficScale) { icon.style.transform = ''; icon.style.filter = ''; n._lastTrafficScale = 0; }
+      continue;
+    }
+    const intensity = Math.min(1, t.intensity * trafficScale);
+    const s = 1 + intensity * 0.5;
+    if (Math.abs(s - (n._lastTrafficScale || 1)) > 0.01) {
+      icon.style.transform = `scale(${s.toFixed(2)})`;
+      icon.style.filter = intensity > 0.3 ? `brightness(${(1 + intensity * 0.4).toFixed(2)})` : '';
+      n._lastTrafficScale = s;
+    }
+  }
+}
+
+function _trafficToCollectd(trafficMap) {
+  const fake = {};
+  for (const [nodeId, t] of Object.entries(trafficMap)) {
+    fake[nodeId] = { hostname: nodeId, interfaces: { best: { rx_bps: t.rx, tx_bps: t.tx } } };
+  }
+  return fake;
 }
 
 // ── Topographic Heightmap Layer (optimized) ──
@@ -1212,36 +1324,164 @@ let _gridHue = 0;
   applyGridStyle();
 })();
 
+// ── Arcane Ambiance Controls (Compass, Sparkles, Vignette, Glow) ──
+(function initAmbianceControls() {
+  const compassEl = document.getElementById('compass-rose');
+  const sparkleLayer = document.getElementById('sparkle-layer');
+  const vignetteEl = document.getElementById('map-vignette');
+  const mapWorld = document.getElementById('map-world');
 
-// ── Event rendering ──
-let lastEventTs = 0;
-const EVENTS_POLL_MS = 3000;  // Poll events every 3s (was 1s)
+  let compassEnabled = true, compassOpacity = 0.7, compassScale = 1.0;
+  let sparklesEnabled = true, sparkleOpacity = 0.7, sparkleDensity = 0.5;
+  let vignetteEnabled = true, vignetteOpacity = 0.3;
+  let ambientGlow = 0.3;
+  let sparkleTimer = null;
 
-let _isFirstPoll = true;
-
-async function pollEvents() {
-  try {
-    const r = await fetch(`/events?since=${lastEventTs}`);
-    if (!r.ok) throw new Error(r.status);
-    const events = await r.json();
-
-    if (_isFirstPoll && events.length > 0) {
-      // On first poll, restore bubbles from recent events (process newest first per node)
-      // Sort by timestamp descending so we only restore the most recent per node
-      const sorted = [...events].sort((a, b) => (b.ts || 0) - (a.ts || 0));
-      sorted.forEach(evt => renderEvent(evt, true));
-      _isFirstPoll = false;
-    } else {
-      // Normal polling: render live events
-      events.forEach(evt => renderEvent(evt, false));
+  function applyCompass() {
+    if (compassEl) {
+      compassEl.style.display = compassEnabled ? '' : 'none';
+      compassEl.style.setProperty('--compass-opacity', compassOpacity);
+      compassEl.style.opacity = compassOpacity;
+      compassEl.style.transform = `scale(${compassScale})`;
     }
-  } catch (e) { /* silent */ }
-  setTimeout(pollEvents, EVENTS_POLL_MS);
-}
-pollEvents();
+  }
 
-// Refresh topology every 90s to pick up new/removed nodes (e.g. unknown WiFi clients)
-setInterval(refreshTopology, 90000);
+  function applySparkles() {
+    if (sparkleLayer) {
+      sparkleLayer.style.display = sparklesEnabled ? '' : 'none';
+      sparkleLayer.style.opacity = sparkleOpacity;
+    }
+    if (sparkleTimer) { clearInterval(sparkleTimer); sparkleTimer = null; }
+    if (sparklesEnabled && sparkleDensity > 0 && sparkleLayer) {
+      const ms = Math.max(80, 600 / sparkleDensity);
+      sparkleTimer = setInterval(spawnSparkle, ms);
+    }
+  }
+
+  function spawnSparkle() {
+    if (!sparkleLayer) return;
+    // Cap max sparkles for performance
+    if (sparkleLayer.children.length > 60) return;
+    const el = document.createElement('div');
+    const isLarge = Math.random() < 0.15;
+    el.className = isLarge ? 'sparkle sparkle-large' : 'sparkle';
+    el.style.left = (Math.random() * 4800) + 'px';
+    el.style.top = (Math.random() * 3300) + 'px';
+    const dur = 2 + Math.random() * 4;
+    const size = isLarge ? (4 + Math.random() * 4) : (2 + Math.random() * 3);
+    el.style.setProperty('--sparkle-dur', dur + 's');
+    el.style.width = size + 'px';
+    el.style.height = size + 'px';
+    sparkleLayer.appendChild(el);
+    el.addEventListener('animationend', () => el.remove());
+  }
+
+  function applyVignette() {
+    if (vignetteEl) {
+      vignetteEl.style.display = vignetteEnabled ? '' : 'none';
+      vignetteEl.style.opacity = vignetteOpacity;
+    }
+  }
+
+  function applyGlow() {
+    if (mapWorld) mapWorld.style.setProperty('--ambient-glow', ambientGlow);
+  }
+
+  // Wire layer toggles
+  const visCb = { compass: 'vis-compass', sparkles: 'vis-sparkles', vignette: 'vis-vignette' };
+  const layerSl = { compass: 'layer-compass-slider', sparkles: 'layer-sparkles-slider', vignette: 'layer-vignette-slider' };
+
+  const compassCb = document.getElementById(visCb.compass);
+  if (compassCb) compassCb.addEventListener('change', () => { compassEnabled = compassCb.checked; applyCompass(); scheduleSave(); });
+  const compassLayerSl = document.getElementById(layerSl.compass);
+  if (compassLayerSl) compassLayerSl.addEventListener('input', () => { compassOpacity = parseFloat(compassLayerSl.value); applyCompass(); scheduleSave(); });
+
+  const sparklesCb = document.getElementById(visCb.sparkles);
+  if (sparklesCb) sparklesCb.addEventListener('change', () => { sparklesEnabled = sparklesCb.checked; applySparkles(); scheduleSave(); });
+  const sparklesLayerSl = document.getElementById(layerSl.sparkles);
+  if (sparklesLayerSl) sparklesLayerSl.addEventListener('input', () => { sparkleOpacity = parseFloat(sparklesLayerSl.value); applySparkles(); scheduleSave(); });
+
+  const vignetteCb = document.getElementById(visCb.vignette);
+  if (vignetteCb) vignetteCb.addEventListener('change', () => { vignetteEnabled = vignetteCb.checked; applyVignette(); scheduleSave(); });
+  const vignetteLayerSl = document.getElementById(layerSl.vignette);
+  if (vignetteLayerSl) vignetteLayerSl.addEventListener('input', () => { vignetteOpacity = parseFloat(vignetteLayerSl.value); applyVignette(); scheduleSave(); });
+
+  // Wire spellbook sliders
+  const compassScaleSl = document.getElementById('compass-scale-slider');
+  const compassScaleVal = document.getElementById('compass-scale-val');
+  if (compassScaleSl) compassScaleSl.addEventListener('input', () => {
+    compassScale = parseFloat(compassScaleSl.value);
+    if (compassScaleVal) compassScaleVal.textContent = compassScale.toFixed(1);
+    applyCompass(); scheduleSave();
+  });
+
+  const sparkleDensitySl = document.getElementById('sparkle-density-slider');
+  const sparkleDensityVal = document.getElementById('sparkle-density-val');
+  if (sparkleDensitySl) sparkleDensitySl.addEventListener('input', () => {
+    sparkleDensity = parseFloat(sparkleDensitySl.value);
+    if (sparkleDensityVal) sparkleDensityVal.textContent = sparkleDensity.toFixed(2);
+    applySparkles(); scheduleSave();
+  });
+
+  const ambientGlowSl = document.getElementById('ambient-glow-slider');
+  const ambientGlowVal = document.getElementById('ambient-glow-val');
+  if (ambientGlowSl) ambientGlowSl.addEventListener('input', () => {
+    ambientGlow = parseFloat(ambientGlowSl.value);
+    if (ambientGlowVal) ambientGlowVal.textContent = ambientGlow.toFixed(2);
+    applyGlow(); scheduleSave();
+  });
+
+  const vignetteSl = document.getElementById('vignette-slider');
+  const vignetteValEl = document.getElementById('vignette-val');
+  if (vignetteSl) vignetteSl.addEventListener('input', () => {
+    vignetteOpacity = parseFloat(vignetteSl.value);
+    if (vignetteLayerSl) vignetteLayerSl.value = vignetteOpacity;
+    if (vignetteValEl) vignetteValEl.textContent = vignetteOpacity.toFixed(2);
+    applyVignette(); scheduleSave();
+  });
+
+  // Export for save/restore
+  window._ambianceControls = {
+    getState: () => ({
+      compass: compassEnabled, compassOp: compassOpacity, compassSc: compassScale,
+      sparkles: sparklesEnabled, sparkleOp: sparkleOpacity, sparkleDen: sparkleDensity,
+      vignette: vignetteEnabled, vignetteOp: vignetteOpacity, glow: ambientGlow,
+    }),
+    setState: (s) => {
+      if (s.compass !== undefined) compassEnabled = s.compass;
+      if (s.compassOp !== undefined) compassOpacity = s.compassOp;
+      if (s.compassSc !== undefined) compassScale = s.compassSc;
+      if (s.sparkles !== undefined) sparklesEnabled = s.sparkles;
+      if (s.sparkleOp !== undefined) sparkleOpacity = s.sparkleOp;
+      if (s.sparkleDen !== undefined) sparkleDensity = s.sparkleDen;
+      if (s.vignette !== undefined) vignetteEnabled = s.vignette;
+      if (s.vignetteOp !== undefined) vignetteOpacity = s.vignetteOp;
+      if (s.glow !== undefined) ambientGlow = s.glow;
+      // Sync UI
+      if (compassCb) compassCb.checked = compassEnabled;
+      if (compassLayerSl) compassLayerSl.value = compassOpacity;
+      if (compassScaleSl) compassScaleSl.value = compassScale;
+      if (compassScaleVal) compassScaleVal.textContent = compassScale.toFixed(1);
+      if (sparklesCb) sparklesCb.checked = sparklesEnabled;
+      if (sparklesLayerSl) sparklesLayerSl.value = sparkleOpacity;
+      if (sparkleDensitySl) sparkleDensitySl.value = sparkleDensity;
+      if (sparkleDensityVal) sparkleDensityVal.textContent = sparkleDensity.toFixed(2);
+      if (vignetteCb) vignetteCb.checked = vignetteEnabled;
+      if (vignetteLayerSl) vignetteLayerSl.value = vignetteOpacity;
+      if (vignetteSl) vignetteSl.value = vignetteOpacity;
+      if (vignetteValEl) vignetteValEl.textContent = vignetteOpacity.toFixed(2);
+      if (ambientGlowSl) ambientGlowSl.value = ambientGlow;
+      if (ambientGlowVal) ambientGlowVal.textContent = ambientGlow.toFixed(2);
+      applyCompass(); applySparkles(); applyVignette(); applyGlow();
+    }
+  };
+
+  // Apply initial state
+  applyCompass(); applySparkles(); applyVignette(); applyGlow();
+})();
+
+// ── Event rendering (SSE replaces polling — see initSSE below) ──
+let lastEventTs = 0;
 
 const _pageLoadTs = Date.now() / 1000;
 const BUBBLE_RESTORE_AGE = 600;  // Restore bubbles for events up to 10 min old
@@ -1460,10 +1700,24 @@ export function addLogEntry(evt, nodeEl) {
     textContent = `<div class="log-text" style="font-style:italic;color:#708060">A pulse of energy ripples outward.</div>`;
   }
 
-  entry.innerHTML = `<button class="log-dismiss" title="Dismiss">\u2715</button><div class="log-time">${timeStr}</div><div class="log-speaker">${name}</div>${textContent}`;
+  const communeHint = evt.node ? '<span class="log-commune" title="Click to commune with this node">\u{1F52E}</span>' : '';
+  entry.innerHTML = `<button class="panel-close panel-close--danger" title="Dismiss">\u2715</button><div class="log-time">${timeStr}</div><div class="log-speaker">${name}${communeHint}</div>${textContent}`;
+  entry._nodeId = evt.node;
+
+  // Click entry to navigate to node and open oracle chat
+  entry.addEventListener('click', (e) => {
+    // Don't navigate if clicking dismiss button or quest checkbox
+    if (e.target.closest('.panel-close') || e.target.closest('.quest-check')) return;
+    const nodeId = entry._nodeId;
+    if (!nodeId) return;
+    const tn = _topology?.nodes.find(nd => nd.id === nodeId);
+    if (tn) panToNode(tn.x, tn.y);
+    openNodeChat(nodeId, evt.text, false);
+  });
 
   // Dismiss button — also removes matching speech bubble and persists
-  entry.querySelector('.log-dismiss').addEventListener('click', () => {
+  entry.querySelector('.panel-close').addEventListener('click', (e) => {
+    e.stopPropagation();
     entry.classList.add('log-entry-dismiss');
     if (evt.text) {
       // Dismiss matching bubble
@@ -1594,6 +1848,7 @@ export function updateBubblePositions() {
 
 // Register hook so topology refresh updates bubble positions
 setTopologyRefreshHook(updateBubblePositions);
+setTopologyRefreshHook(() => { _searchIndex = null; }); // Rebuild search on topology change
 
 function _dismissBubble(bubble) {
   bubble.style.animation = 'bubbleOut 0.3s ease-in forwards';
@@ -1620,7 +1875,7 @@ export function showSpeechBubble(nodeEl, evt, isAlert) {
 
   // Close button
   const closeBtn = document.createElement('button');
-  closeBtn.className = 'bubble-close';
+  closeBtn.className = 'panel-close';
   closeBtn.innerHTML = '\u00D7';
   closeBtn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -1710,25 +1965,7 @@ export function showOffline() {
   if (_pulseLabel) { _pulseLabel.textContent = 'OFFLINE'; _pulseLabel.style.color = '#604040'; }
 }
 
-// ── Polling ──
-const STATUS_URL = '/status';
-let POLL_MS = 5000;
-
-async function poll() {
-  try {
-    const r = await fetch(STATUS_URL);
-    if (!r.ok) throw new Error(r.status);
-    const d = await r.json();
-    updateUI(d);
-    _dbgPollN++;
-    if (!liveOk) { liveOk = true; console.log('Realm Map: live data connected'); }
-  } catch (e) {
-    _dbgErrN++;
-    showOffline();
-  }
-  setTimeout(poll, updateSpeedMs);
-}
-poll();
+// ── Polling removed — SSE replaces it (see initSSE below) ──
 
 // ── Pan & zoom ──
 const canvas = document.getElementById('map-canvas');
@@ -1738,7 +1975,12 @@ let dragging = false, lastX, lastY;
 
 let _lastGlobeTilt = 0;
 
-export function applyTransform() {
+// rAF-batched transform: multiple wheel/touch events per frame collapse into one DOM write
+let _transformRafId = 0;
+let _minimapTimer = 0;
+
+function _applyTransformNow() {
+  _transformRafId = 0;
   if (_mapTilt > 0) {
     world.style.transformStyle = 'preserve-3d';
     const cx = WORLD_W / 2, cy = WORLD_H / 2;
@@ -1755,7 +1997,13 @@ export function applyTransform() {
     world.style.transformStyle = '';
     world.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
   }
-  updateMinimap();
+  // Debounce minimap: update 100ms after last transform (not during zoom burst)
+  clearTimeout(_minimapTimer);
+  _minimapTimer = setTimeout(updateMinimap, 100);
+}
+
+export function applyTransform() {
+  if (!_transformRafId) _transformRafId = requestAnimationFrame(_applyTransformNow);
 }
 
 // Spherical dome: nodes at center pop toward viewer, edges recede
@@ -3287,6 +3535,7 @@ const _SECTION_DEFAULTS = {
   scale:         { 'master-scale': 1.0, 'node-scale': 1.0, 'text-scale': 1.0, 'bubble-scale': 1.0 },
   'ley-lines':   { 'traffic-scale': 1.0, 'fx-leylines': 0.4, 'fx-leyglow': 1.0 },
   'arcane-grid': { 'grid-opacity': 0.4, 'grid-scale': 1.0, 'grid-hue': 0 },
+  ambiance:      { 'compass-scale': 1.0, 'sparkle-density': 0.5, 'ambient-glow': 0.3, 'vignette': 0.3 },
   topographic:   { 'topo-opacity': 0.6, 'topo-spread': 120, 'topo-contour': 12, 'topo-rw': 0.4, 'topo-rd': 0.6 },
   layout:        { 'layout-attract': 4.0, 'layout-repulse': 80, 'layout-edge': 80, 'layout-spacing': 8, 'layout-tilt': 0 },
 };
@@ -3420,10 +3669,16 @@ const _panelEntries = [
   { id: '_panel:quest-log',    icon: '&#9753;',    label: 'Quest Log',     sub: 'Events, quests, speech',      kind: 'Panel', sel: '#quest-log' },
   { id: '_panel:node-list',    icon: '&#9873;',    label: 'Realm Census',  sub: 'All nodes by region',         kind: 'Panel', sel: '#node-list' },
   { id: '_panel:minimap',      icon: '&#9678;',    label: 'Minimap',       sub: 'Overview navigation',         kind: 'Panel', sel: '#minimap' },
+  { id: '_panel:cartographer', icon: '&#128506;',  label: 'Cartographer',  sub: 'Map layout modes',            kind: 'Panel', sel: '#cartographer' },
+  { id: '_panel:energy-panel', icon: '&#9889;',    label: 'Realm Energy',  sub: 'Energy & data flow',          kind: 'Panel', sel: '#energy-panel' },
+  { id: '_panel:debug-panel',  icon: '&#128302;',  label: 'Arcane Mirror', sub: 'Debug panel, diagnostics',    kind: 'Panel', sel: '#debug-panel' },
 ];
+
+// Build comprehensive search index from topology + panels + all settings/controls
 function _buildSearchIndex() {
   if (!_topology || _searchIndex) return;
   _searchIndex = [
+    // Topology nodes
     ..._topology.nodes.map(n => ({
       id: n.id,
       icon: n.icon,
@@ -3433,6 +3688,7 @@ function _buildSearchIndex() {
       type: n.type || 'core',
       _text: [n.label, n.sublabel, n.ip, n.id, n.type].filter(Boolean).join(' ').toLowerCase(),
     })),
+    // Panel entries
     ..._panelEntries.map(p => ({
       id: p.id,
       icon: p.icon,
@@ -3444,6 +3700,181 @@ function _buildSearchIndex() {
       _text: [p.label, p.sub, p.kind].join(' ').toLowerCase(),
     })),
   ];
+  // Scan all panels for controls: sliders, toggles, selects, buttons
+  _indexPanelControls();
+}
+
+// Panel icon lookup for search results
+const _panelIcons = {
+  'spellbook': '&#128214;', 'legend': '&#128506;', 'realm-codex': '&#128220;',
+  'realm-panel': '&#9876;', 'cartographer': '&#128506;', 'energy-panel': '&#9889;',
+  'debug-panel': '&#128302;', 'quest-log': '&#9753;', 'node-list': '&#9873;',
+};
+const _panelNames = {
+  'spellbook': 'Spellbook', 'legend': 'Legend', 'realm-codex': 'Realm Codex',
+  'realm-panel': 'Realm Vitals', 'cartographer': 'Cartographer', 'energy-panel': 'Energy',
+  'debug-panel': 'Arcane Mirror', 'quest-log': 'Quest Log', 'node-list': 'Census',
+};
+
+function _indexPanelControls() {
+  const panelIds = ['spellbook', 'legend', 'realm-codex', 'realm-panel', 'cartographer', 'energy-panel'];
+  for (const panelId of panelIds) {
+    const panel = document.getElementById(panelId);
+    if (!panel) continue;
+    const icon = _panelIcons[panelId] || '&#9881;';
+    const panelName = _panelNames[panelId] || panelId;
+
+    // Index sliders (type="range")
+    panel.querySelectorAll('input[type="range"]').forEach(slider => {
+      const label = _findControlLabel(slider);
+      if (!label) return;
+      const section = _findSectionName(slider);
+      const sub = section ? `${panelName} \u203A ${section}` : panelName;
+      _searchIndex.push({
+        id: `_ctrl:${slider.id || label}`,
+        icon, label, sub, ip: '', type: 'Slider',
+        _el: slider,
+        _text: [label, sub, 'slider', panelName, section].filter(Boolean).join(' ').toLowerCase(),
+      });
+    });
+
+    // Index checkboxes / toggles
+    panel.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      const label = _findControlLabel(cb);
+      if (!label) return;
+      const section = _findSectionName(cb);
+      const sub = section ? `${panelName} \u203A ${section}` : panelName;
+      _searchIndex.push({
+        id: `_ctrl:${cb.id || label}`,
+        icon, label, sub, ip: '', type: 'Toggle',
+        _el: cb,
+        _text: [label, sub, 'toggle', 'switch', panelName, section].filter(Boolean).join(' ').toLowerCase(),
+      });
+    });
+
+    // Index selects
+    panel.querySelectorAll('select').forEach(sel => {
+      const label = _findControlLabel(sel);
+      if (!label) return;
+      const section = _findSectionName(sel);
+      const optTexts = [...sel.options].map(o => o.textContent).join(' ');
+      const sub = section ? `${panelName} \u203A ${section}` : panelName;
+      _searchIndex.push({
+        id: `_ctrl:${sel.id || label}`,
+        icon, label, sub, ip: '', type: 'Select',
+        _el: sel,
+        _text: [label, sub, 'select', optTexts, panelName, section].filter(Boolean).join(' ').toLowerCase(),
+      });
+    });
+
+    // Index number inputs
+    panel.querySelectorAll('input[type="number"]').forEach(input => {
+      const label = _findControlLabel(input);
+      if (!label) return;
+      const section = _findSectionName(input);
+      const sub = section ? `${panelName} \u203A ${section}` : panelName;
+      _searchIndex.push({
+        id: `_ctrl:${input.id || label}`,
+        icon, label, sub, ip: '', type: 'Setting',
+        _el: input,
+        _text: [label, sub, 'setting', panelName, section].filter(Boolean).join(' ').toLowerCase(),
+      });
+    });
+
+    // Index preset buttons
+    panel.querySelectorAll('.preset-btn').forEach(btn => {
+      const label = btn.textContent.trim();
+      const section = _findSectionName(btn);
+      const sub = section ? `${panelName} \u203A ${section}` : panelName;
+      _searchIndex.push({
+        id: `_ctrl:preset-${btn.dataset.preset || label}`,
+        icon, label: `Preset: ${label}`, sub, ip: '', type: 'Action',
+        _el: btn,
+        _text: [label, 'preset', sub, panelName, section].filter(Boolean).join(' ').toLowerCase(),
+      });
+    });
+  }
+
+  // Index cartographer layout modes
+  document.querySelectorAll('.carto-mode').forEach(btn => {
+    const name = btn.querySelector('.carto-name')?.textContent || '';
+    const iconEl = btn.querySelector('.carto-icon')?.innerHTML || '';
+    _searchIndex.push({
+      id: `_ctrl:layout-${btn.dataset.layout}`,
+      icon: iconEl || '&#128506;', label: `Layout: ${name}`, sub: 'Cartographer', ip: '', type: 'Layout',
+      _el: btn,
+      _text: [name, 'layout', 'cartographer', 'map', btn.dataset.layout].join(' ').toLowerCase(),
+    });
+  });
+
+  // Index codex tool entries
+  document.querySelectorAll('.codex-tool code').forEach(code => {
+    const toolName = code.textContent;
+    const desc = code.parentElement?.querySelector('span')?.textContent || '';
+    const group = code.closest('.codex-tools')?.previousElementSibling?.textContent?.replace(/\d+ tools/, '').trim() || '';
+    _searchIndex.push({
+      id: `_ctrl:tool-${toolName}`,
+      icon: '&#128220;', label: toolName, sub: `${group} \u203A ${desc}`.substring(0, 60), ip: '', type: 'Tool',
+      _el: code.closest('.codex-tool'),
+      _text: [toolName, desc, group, 'tool', 'codex', 'mcp'].join(' ').toLowerCase(),
+    });
+  });
+
+  // Index legend items
+  document.querySelectorAll('#legend .legend-item').forEach(item => {
+    const label = item.textContent.trim();
+    const section = _findSectionName(item);
+    _searchIndex.push({
+      id: `_ctrl:legend-${label}`,
+      icon: '&#128506;', label, sub: `Legend \u203A ${section || ''}`, ip: '', type: 'Legend',
+      _el: item,
+      _text: [label, 'legend', section, 'ley line', 'node type'].filter(Boolean).join(' ').toLowerCase(),
+    });
+  });
+}
+
+// Walk up DOM to find the nearest label text for a control
+function _findControlLabel(el) {
+  // Check for <label> wrapping or preceding the control
+  const parent = el.closest('.traffic-control, .layer-row, .cfg-row');
+  if (parent) {
+    const lbl = parent.querySelector('label');
+    if (lbl) {
+      // Strip value spans
+      const clone = lbl.cloneNode(true);
+      clone.querySelectorAll('.tc-val, .topo-switch').forEach(v => v.remove());
+      return clone.textContent.trim();
+    }
+    const name = parent.querySelector('.layer-name');
+    if (name) return name.textContent.trim();
+  }
+  // Fallback: check closest label element
+  const wrapper = el.closest('label');
+  if (wrapper) {
+    const clone = wrapper.cloneNode(true);
+    clone.querySelectorAll('input, select, .tc-val, .topo-switch-track').forEach(v => v.remove());
+    return clone.textContent.trim();
+  }
+  return '';
+}
+
+// Walk up DOM to find containing section name
+function _findSectionName(el) {
+  const section = el.closest('.legend-section');
+  if (section) {
+    const header = section.querySelector('.legend-section-header');
+    if (header) {
+      const clone = header.cloneNode(true);
+      clone.querySelectorAll('.legend-chevron, .section-reset').forEach(v => v.remove());
+      return clone.textContent.trim();
+    }
+  }
+  const codexSection = el.closest('.codex-section');
+  if (codexSection) {
+    const h4 = codexSection.querySelector('h4');
+    if (h4) return h4.textContent.replace(/\d+ tools/, '').trim();
+  }
+  return '';
 }
 
 function _searchRealm(query) {
@@ -3464,7 +3895,7 @@ function _searchRealm(query) {
     if (match) scored.push({ entry, score });
   }
   scored.sort((a, b) => b.score - a.score);
-  return scored.slice(0, 12).map(s => s.entry);
+  return scored.slice(0, 16).map(s => s.entry);
 }
 
 function _highlightMatch(text, query) {
@@ -3492,7 +3923,9 @@ function _renderSearchResults(results, query) {
     _searchResults.classList.add('open');
     return;
   }
-  const typeName = { core: 'Core', infra: 'Infra', tower: 'Tower', bridge: 'Bridge', cluster: 'IoT', tailscale: 'Astral' };
+  const typeName = { core: 'Core', infra: 'Infra', tower: 'Tower', bridge: 'Bridge', cluster: 'IoT', tailscale: 'Astral',
+    Panel: 'Panel', Slider: 'Slider', Toggle: 'Toggle', Select: 'Setting', Setting: 'Setting',
+    Action: 'Action', Layout: 'Layout', Tool: 'Tool', Legend: 'Legend' };
   // Safe: all data sourced from server-side topology.json (trusted)
   const frag = document.createDocumentFragment();
   for (let i = 0; i < results.length; i++) {
@@ -3501,6 +3934,7 @@ function _renderSearchResults(results, query) {
     item.className = 'sr-item';
     item.dataset.idx = i;
     item.dataset.nodeId = r.id;
+    item.dataset.kind = r.type || '';
 
     const iconEl = document.createElement('div');
     iconEl.className = 'sr-icon';
@@ -3531,33 +3965,105 @@ function _renderSearchResults(results, query) {
   _searchResults.classList.add('open');
 }
 
+// Restore a panel: un-minimize, un-hide, re-check vis checkbox
+function _restorePanel(panelEl) {
+  if (!panelEl) return;
+  if (panelEl.classList.contains('panel-minimized')) {
+    panelEl.classList.remove('panel-minimized');
+    panelEl.style.animation = '';
+  }
+  panelEl.style.display = '';
+  // Re-check vis checkbox if it exists
+  const id = panelEl.id;
+  const visMap = {
+    'realm-panel': 'vis-statuspanel', 'legend': 'vis-legend', 'spellbook': 'vis-spellbook',
+    'realm-codex': 'vis-codex', 'quest-log': 'vis-questlog', 'node-list': 'vis-nodelist',
+    'minimap': 'vis-minimap', 'cartographer': 'vis-cartographer', 'energy-panel': 'vis-energy',
+    'debug-panel': 'vis-debug',
+  };
+  const visId = visMap[id] || ('vis-' + id);
+  const visCb = document.getElementById(visId);
+  if (visCb && !visCb.checked) { visCb.checked = true; visCb.dispatchEvent(new Event('change')); }
+}
+
+// Flash-highlight an element with a golden glow
+function _flashElement(el) {
+  if (!el) return;
+  el.style.transition = 'box-shadow 0.3s, outline 0.3s';
+  el.style.boxShadow = '0 0 20px rgba(240,216,144,0.5)';
+  el.style.outline = '2px solid rgba(240,216,144,0.6)';
+  el.style.outlineOffset = '2px';
+  setTimeout(() => {
+    el.style.boxShadow = '';
+    el.style.outline = '';
+    el.style.outlineOffset = '';
+  }, 1500);
+}
+
 function _navigateToSearchResult(nodeId) {
+  _searchInput.blur();
+  _searchResults.classList.remove('open');
+
+  // Control results: open panel → tab → section → scroll to control
+  if (nodeId.startsWith('_ctrl:')) {
+    const entry = _searchIndex?.find(e => e.id === nodeId);
+    const el = entry?._el;
+    if (!el) return;
+
+    // Find and restore the parent panel
+    const panel = el.closest('.panel, #persona-editor, #debug-panel');
+    if (panel) {
+      _restorePanel(panel);
+      // Also un-hide codex/legend bodies
+      const body = panel.querySelector('#codex-body');
+      if (body) body.style.display = '';
+    }
+
+    // Switch spellbook tab if control is inside a spell-page
+    const spellPage = el.closest('.spell-page');
+    if (spellPage) {
+      const pageIdx = parseInt(spellPage.dataset.spellPage);
+      if (!isNaN(pageIdx)) _showSpellPage(pageIdx);
+    }
+
+    // Expand collapsed legend-section
+    const section = el.closest('.legend-section');
+    if (section && section.classList.contains('collapsed')) {
+      section.classList.remove('collapsed');
+    }
+
+    // Expand collapsed codex-tools
+    const codexTools = el.closest('.codex-tools');
+    if (codexTools && !codexTools.classList.contains('open')) {
+      codexTools.classList.add('open');
+      const h4 = codexTools.previousElementSibling;
+      if (h4) h4.classList.add('open');
+    }
+
+    // Scroll to element and flash it
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      _flashElement(el.closest('.traffic-control, .layer-row, .cfg-row, .codex-tool, .legend-item, .carto-mode, .preset-btn') || el);
+      // Focus interactive elements
+      if (el.tagName === 'SELECT' || el.tagName === 'INPUT') el.focus();
+      if (el.tagName === 'BUTTON') el.click();
+    });
+    return;
+  }
+
   // Panel results: restore panel, scroll into view, and flash it
   if (nodeId.startsWith('_panel:')) {
     const entry = _searchIndex?.find(e => e.id === nodeId);
     const panelEl = entry?.sel ? document.querySelector(entry.sel) : null;
     if (panelEl) {
-      // Un-minimize if minimized
-      if (panelEl.classList.contains('panel-minimized')) {
-        panelEl.classList.remove('panel-minimized');
-        panelEl.style.animation = '';
-      }
-      // Un-hide if toggled off via vis- checkbox
-      panelEl.style.display = '';
-      // Also re-check any corresponding vis- checkbox
-      const visId = 'vis-' + entry.sel.replace('#', '');
-      const visCb = document.getElementById(visId);
-      if (visCb && !visCb.checked) visCb.checked = true;
-
+      _restorePanel(panelEl);
       panelEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      panelEl.style.transition = 'box-shadow 0.3s';
-      panelEl.style.boxShadow = '0 0 20px rgba(240,216,144,0.5)';
-      setTimeout(() => { panelEl.style.boxShadow = ''; }, 1200);
+      _flashElement(panelEl);
     }
-    _searchInput.blur();
-    _searchResults.classList.remove('open');
     return;
   }
+
+  // Node results: pan to node and highlight
   const nodeEl = document.querySelector(`[data-tip="${CSS.escape(nodeId)}"]`);
   if (!nodeEl) return;
   const nodeLeft = parseInt(nodeEl.style.left) || 0;
@@ -3567,8 +4073,6 @@ function _navigateToSearchResult(nodeId) {
   panY = canvas.clientHeight / 2 - nodeTop * scale;
   applyTransform();
   showHighlight(nodeEl, { color: 'rgba(240,216,144,0.5)' });
-  _searchInput.blur();
-  _searchResults.classList.remove('open');
 }
 
 if (_searchInput) {
@@ -3847,16 +4351,7 @@ function updateEnergyPanel(data) {
   }
 }
 
-function fetchEnergy() {
-  fetch('/energy')
-    .then(r => r.json())
-    .then(updateEnergyPanel)
-    .catch(() => {});
-}
-
-// Poll energy every 30 seconds
-fetchEnergy();
-setInterval(fetchEnergy, 30000);
+// ── Energy polling removed — SSE replaces it (see initSSE below) ──
 
 // ── Auto-Arrange Layout (force-directed, non-blocking) ──
 // Stores topology.json original positions for reset
@@ -3926,7 +4421,7 @@ export function autoArrangeLayout(mode) {
   const nodeData = _topology.nodes.map(n => ({ type: n.type }));
   const connData = _connIdx.map(c => [c[0], c[1]]); // just indices
 
-  _layoutWorker = new Worker('layout-worker.js');
+  _layoutWorker = new Worker('layout-worker.js?v=2');
   _layoutWorker.onmessage = function(e) {
     const msg = e.data;
     if (msg.type === 'progress') {
@@ -4345,6 +4840,62 @@ function animateMotes() {
 animateMotes();
 
 // ── Layout persistence (localStorage) ──
+// ── SSE Connection (replaces poll + pollEvents + refreshTopology + fetchEnergy) ──
+let _sseTrafficMap = null;
+
+(function initSSE() {
+  const sse = new EventSource(SSE_URL);
+  let sseConnected = false;
+  let _sseRestoreMode = true;
+
+  sse.addEventListener('traffic', e => {
+    const traffic = JSON.parse(e.data);
+    _sseTrafficMap = traffic;
+    updateConnectionTrafficSSE(traffic);
+    const fakeCollectd = _trafficToCollectd(traffic);
+    _lastTopoCollectd = fakeCollectd;
+    if (_topoEnabled) renderTopoLayer(fakeCollectd);
+  });
+
+  sse.addEventListener('realm-event', e => {
+    const evt = JSON.parse(e.data);
+    renderEvent(evt, _sseRestoreMode);
+  });
+
+  sse.addEventListener('topology', e => {
+    // Topology changes are rare. Re-use existing refreshTopology() which has DOM-preservation logic.
+    refreshTopology();
+  });
+
+  sse.addEventListener('status', e => {
+    const d = JSON.parse(e.data);
+    _sseRestoreMode = false;
+    updateUI(d);
+    if (!liveOk) { liveOk = true; console.log('Realm Map: SSE live data connected'); }
+  });
+
+  sse.addEventListener('energy', e => {
+    const data = JSON.parse(e.data);
+    updateEnergyPanel(data);
+  });
+
+  sse.addEventListener('open', () => {
+    if (!sseConnected) {
+      sseConnected = true;
+      _sseRestoreMode = true;
+      console.log('Realm Map: SSE connected');
+    }
+  });
+
+  sse.addEventListener('error', () => {
+    if (sseConnected) {
+      sseConnected = false;
+      console.warn('Realm Map: SSE disconnected, reconnecting...');
+      showOffline();
+    }
+  });
+})();
+
 const LAYOUT_KEY = 'realm-map-layout-v2';
 const SETTINGS_KEY = 'realm-map-settings-v3';
 
@@ -4361,11 +4912,14 @@ const _PERSIST_SLIDERS = [
   'layer-vlanlabels', 'layer-bubbles',
   'panel-titlebar', 'panel-search', 'panel-vitals', 'panel-legend',
   'panel-codex', 'panel-spellbook', 'panel-questlog', 'panel-minimap', 'panel-cartographer', 'panel-energy', 'panel-nodelist', 'panel-mirror',
+  'layer-compass', 'layer-sparkles', 'layer-vignette',
+  'compass-scale', 'sparkle-density', 'ambient-glow', 'vignette',
 ];
 const _PERSIST_CHECKBOXES = [
   'topo-toggle-cb', 'grid-toggle-cb', 'grid-pulse-cb',
   'vis-terrain', 'vis-terrain-orig', 'vis-topo', 'vis-grid', 'vis-connections', 'vis-nodes', 'vis-labels',
   'vis-sublabels', 'vis-regions', 'vis-vlanlabels', 'vis-bubbles',
+  'vis-compass', 'vis-sparkles', 'vis-vignette',
   'vis-titlebar', 'vis-search', 'vis-statuspanel', 'vis-legend', 'vis-spellbook',
   'vis-codex', 'vis-questlog', 'vis-minimap', 'vis-cartographer', 'vis-energy', 'vis-nodelist', 'vis-debug',
 ];
@@ -4813,19 +5367,18 @@ function _createChatDialog() {
   const dialog = document.createElement('div');
   dialog.id = 'node-chat-dialog';
   dialog.className = 'panel';
-  dialog.style.cssText = 'position:fixed;right:20px;top:100px;width:360px;max-height:500px;z-index:1000;display:none;--panel-accent:rgba(192,128,255,0.5);';
   dialog.innerHTML = `
-    <div class="panel-header" style="cursor:move">
-      <span class="panel-hdr-icon">&#128172;</span>
+    <div class="panel-header">
+      <span class="panel-hdr-icon">&#128302;</span>
       <span class="panel-hdr-title" id="chat-dialog-title">Oracle Commune</span>
-      <button class="bubble-close" id="chat-close">&times;</button>
+      <button class="panel-close" id="chat-close">&times;</button>
     </div>
-    <div id="chat-messages" style="max-height:300px;overflow-y:auto;padding:8px;font-size:13px;"></div>
-    <div style="padding:8px;border-top:1px solid rgba(255,255,255,0.1);">
-      <textarea id="chat-input" placeholder="Ask the oracle..." style="width:100%;height:50px;resize:none;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);border-radius:4px;color:#e0e0e0;padding:6px;font-size:13px;"></textarea>
-      <div style="display:flex;gap:8px;margin-top:6px;">
-        <button id="chat-send" style="flex:1;padding:6px;background:rgba(160,128,255,0.3);border:1px solid rgba(160,128,255,0.5);border-radius:4px;color:#e0e0e0;cursor:pointer;">Send</button>
-        <button id="chat-clear" style="padding:6px 12px;background:rgba(100,100,100,0.3);border:1px solid rgba(100,100,100,0.5);border-radius:4px;color:#a0a0a0;cursor:pointer;">Clear</button>
+    <div id="chat-messages"></div>
+    <div class="chat-input-area">
+      <textarea id="chat-input" placeholder="Speak to the oracle..."></textarea>
+      <div class="chat-actions">
+        <button id="chat-send" class="chat-btn chat-btn-send">Commune</button>
+        <button id="chat-clear" class="chat-btn chat-btn-clear">Clear</button>
       </div>
     </div>
   `;
@@ -4833,7 +5386,7 @@ function _createChatDialog() {
 
   // Close button
   dialog.querySelector('#chat-close').addEventListener('click', () => {
-    dialog.style.display = 'none';
+    dialog.classList.remove('open');
   });
 
   // Send button
@@ -4856,7 +5409,7 @@ function _createChatDialog() {
         body: JSON.stringify({ session: _chatNodeId ? `node-${_chatNodeId}` : null })
       });
       _chatHistory = [];
-      dialog.querySelector('#chat-messages').innerHTML = '<div style="color:#808080;font-style:italic;">Session cleared.</div>';
+      dialog.querySelector('#chat-messages').innerHTML = '<div class="chat-msg-system">Session cleared. The oracle awaits.</div>';
     } catch (e) { /* silent */ }
   });
 
@@ -4889,7 +5442,7 @@ async function openNodeChat(nodeId, contextText, autoChat = true) {
   const nodeName = node?.querySelector('.node-label')?.textContent || nodeId;
   dialog.querySelector('#chat-dialog-title').textContent = `Commune: ${nodeName}`;
 
-  dialog.style.display = 'block';
+  dialog.classList.add('open');
 
   // Load history for this node's session
   await _loadChatHistory(nodeId);
@@ -4928,32 +5481,18 @@ async function _loadChatHistory(nodeId) {
 function _renderChatHistory() {
   const messagesEl = _chatDialog.querySelector('#chat-messages');
   if (_chatHistory.length === 0) {
-    messagesEl.innerHTML = '<div style="color:#808080;font-style:italic;">No messages yet. Click a bubble or ask a question to begin.</div>';
+    messagesEl.innerHTML = '<div class="chat-msg-system">No messages yet. Click a speech bubble or ask a question to commune.</div>';
     return;
   }
   messagesEl.innerHTML = _chatHistory.map(m => {
     const isUser = m.role === 'user';
     const isSystem = m.role === 'system';
-    let bg, align, label;
-    if (isSystem) {
-      bg = 'rgba(255,200,100,0.15)';
-      align = 'center';
-      label = 'Context';
-    } else if (isUser) {
-      bg = 'rgba(100,140,200,0.2)';
-      align = 'right';
-      label = 'You';
-    } else {
-      bg = 'rgba(160,128,255,0.2)';
-      align = 'left';
-      label = 'Oracle';
-    }
-    return `<div style="text-align:${align};margin:6px 0;">
-      <div style="display:inline-block;max-width:${isSystem ? '95%' : '85%'};padding:6px 10px;background:${bg};border-radius:8px;text-align:left;${isSystem ? 'font-style:italic;' : ''}">
-        <div style="font-size:10px;color:#a0a0a0;margin-bottom:2px;">${label}</div>
-        <div>${m.content}</div>
-      </div>
-    </div>`;
+    let cls, label;
+    if (isSystem) { cls = 'chat-msg-system'; label = ''; }
+    else if (isUser) { cls = 'chat-msg chat-msg-user'; label = 'You'; }
+    else { cls = 'chat-msg chat-msg-oracle'; label = 'Oracle'; }
+    if (isSystem) return `<div class="${cls}">${m.content}</div>`;
+    return `<div class="${cls}"><span class="chat-msg-label">${label}</span>${m.content}</div>`;
   }).join('');
   messagesEl.scrollTop = messagesEl.scrollHeight;
 }
@@ -4971,11 +5510,11 @@ async function sendChatMessage() {
   _chatHistory.push({ role: 'user', content: message });
   _renderChatHistory();
 
-  // Add loading indicator
+  // Add typing indicator
   const messagesEl = _chatDialog.querySelector('#chat-messages');
   const loadingEl = document.createElement('div');
-  loadingEl.style.cssText = 'text-align:left;margin:6px 0;color:#a0a0a0;font-style:italic;';
-  loadingEl.textContent = 'Oracle is contemplating...';
+  loadingEl.className = 'chat-typing';
+  loadingEl.innerHTML = '<span class="chat-typing-dot"></span><span class="chat-typing-dot"></span><span class="chat-typing-dot"></span>';
   messagesEl.appendChild(loadingEl);
   messagesEl.scrollTop = messagesEl.scrollHeight;
 
