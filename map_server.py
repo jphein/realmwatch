@@ -18,7 +18,9 @@ if os.path.exists(_env_path):
 import subprocess
 import threading
 import time
+import queue
 from http.server import HTTPServer, SimpleHTTPRequestHandler
+from socketserver import ThreadingMixIn
 from engine import LitRPGEngine
 from collectd_reader import get_all_summaries
 import notion_sync
@@ -155,6 +157,14 @@ def build_status():
     return status
 
 
+from sse_broker import SSEBroker
+_sse_broker = SSEBroker(build_status, _get_energy_data)
+
+
+class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
+    daemon_threads = True
+
+
 class RealmHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=MAP_DIR, **kwargs)
@@ -261,6 +271,31 @@ class RealmHandler(SimpleHTTPRequestHandler):
             # Fetch energy data from HA
             energy = _get_energy_data()
             self._json_response(energy)
+
+        elif self.path.startswith("/sse"):
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("X-Accel-Buffering", "no")
+            self.end_headers()
+            client_q = _sse_broker.add_client()
+            try:
+                self.wfile.write(b": connected\n\n")
+                self.wfile.flush()
+                while True:
+                    try:
+                        event_type, payload = client_q.get(timeout=15)
+                        self.wfile.write(f"event: {event_type}\ndata: {payload}\n\n".encode())
+                        self.wfile.flush()
+                    except queue.Empty:
+                        self.wfile.write(b": keepalive\n\n")
+                        self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError, OSError):
+                pass
+            finally:
+                _sse_broker.remove_client(client_q)
+            return
 
         elif self.path == "/debug":
             c = realm_db._conn()
@@ -582,4 +617,5 @@ if __name__ == "__main__":
     ha_bridge.start_ha_bridge()
     wled_bridge.start_wled_bridge()
     event_generator.start_event_generator(push_event)
-    HTTPServer(("", PORT), RealmHandler).serve_forever()
+    _sse_broker.start()
+    ThreadingHTTPServer(("", PORT), RealmHandler).serve_forever()
