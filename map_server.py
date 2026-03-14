@@ -139,6 +139,22 @@ def get_events_since(since_ts):
     return realm_db.get_events_since(since_ts)
 
 
+def build_status():
+    """Build the full status blob (shared by /status endpoint and SSE broker)."""
+    status = engine.get_status()
+    status["tailscale"] = engine.get_tailscale_status()
+    status["adult"] = engine.adult_observation(status)
+    status["host"] = engine.get_host_config()
+    status["collectd"] = get_all_summaries()
+    status["wifi"] = ap_scanner.get_wifi_signal()
+    status["ha"] = ha_bridge.get_ha_states()
+    status["wled"] = wled_bridge.get_wled_states()
+    topo_nodes = _load_topology().get("nodes", [])
+    status["roles"] = {n["id"]: node_roles.get_role(n["id"], n) for n in topo_nodes}
+    status["groups"] = node_roles.get_ha_map()
+    return status
+
+
 class RealmHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=MAP_DIR, **kwargs)
@@ -154,18 +170,7 @@ class RealmHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/status":
-            status = engine.get_status()
-            status["tailscale"] = engine.get_tailscale_status()
-            status["adult"] = engine.adult_observation(status)
-            status["host"] = engine.get_host_config()
-            status["collectd"] = get_all_summaries()
-            status["wifi"] = ap_scanner.get_wifi_signal()
-            status["ha"] = ha_bridge.get_ha_states()
-            status["wled"] = wled_bridge.get_wled_states()
-            topo_nodes = _load_topology().get("nodes", [])
-            status["roles"] = {n["id"]: node_roles.get_role(n["id"], n) for n in topo_nodes}
-            status["groups"] = node_roles.get_ha_map()
-            self._json_response(status)
+            self._json_response(build_status())
 
         elif self.path.startswith("/events"):
             since = 0
