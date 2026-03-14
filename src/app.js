@@ -1841,6 +1841,9 @@ export function showOffline() {
 // ── Pan & zoom ──
 const canvas = document.getElementById('map-canvas');
 const world = document.getElementById('map-world');
+// Cache canvas rect — getBoundingClientRect on every wheel event forces synchronous layout
+let _canvasRect = canvas.getBoundingClientRect();
+window.addEventListener('resize', () => { _canvasRect = canvas.getBoundingClientRect(); });
 export let scale = 1, panX = 0, panY = 0;
 let dragging = false, lastX, lastY;
 
@@ -1849,19 +1852,8 @@ let _lastGlobeTilt = 0;
 // rAF-batched transform: multiple wheel/touch events per frame collapse into one DOM write
 let _transformRafId = 0;
 let _minimapTimer = 0;
-let _animPauseTimer = 0;
-const _connSvgEl = document.getElementById('connections');
-
 function _applyTransformNow() {
   _transformRafId = 0;
-  // Pause connection animations during transform burst (resume 200ms after last)
-  if (_connSvgEl && !_connSvgEl.classList.contains('anim-paused')) {
-    _connSvgEl.classList.add('anim-paused');
-  }
-  clearTimeout(_animPauseTimer);
-  _animPauseTimer = setTimeout(() => {
-    if (_connSvgEl) _connSvgEl.classList.remove('anim-paused');
-  }, 200);
   if (_mapTilt > 0) {
     world.style.transformStyle = 'preserve-3d';
     const cx = WORLD_W / 2, cy = WORLD_H / 2;
@@ -2020,8 +2012,7 @@ canvas.addEventListener('touchmove', e => {
     );
     const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
     const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-    const rect = canvas.getBoundingClientRect();
-    const mx = midX - rect.left, my = midY - rect.top;
+    const mx = midX - _canvasRect.left, my = midY - _canvasRect.top;
     const oldScale = scale;
     scale = Math.max(0.1, Math.min(3, scale * (newDist / _pinchDist)));
     panX = mx - (mx - panX) * (scale / oldScale);
@@ -2042,8 +2033,7 @@ canvas.addEventListener('touchend', () => {
 
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
-  const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const mx = e.clientX - _canvasRect.left, my = e.clientY - _canvasRect.top;
   const oldScale = scale;
   const delta = e.deltaY > 0 ? 0.9 : 1.1;
   scale = Math.max(0.1, Math.min(3, scale * delta));
