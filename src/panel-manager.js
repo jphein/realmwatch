@@ -556,7 +556,7 @@ function _injectFormationUI() {
   const spellbook = document.getElementById('spellbook');
   if (!spellbook) return;
 
-  const enchantPage = spellbook.querySelector('.spell-page[data-spell="0"]');
+  const enchantPage = spellbook.querySelector('.spell-page[data-spell-page="0"]');
   if (!enchantPage) return;
 
   // Create formation section using safe DOM methods
