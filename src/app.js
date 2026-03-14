@@ -300,7 +300,7 @@ const DOM = {
 let lastStatus = null;
 let liveOk = false;
 let _lastReportTs = 0;
-let _dbgPollN = 0, _dbgErrN = 0, _dbgRefreshTimer = null;
+let _dbgRefreshTimer = null;
 
 function updateGauges(d) {
   const { forge, mana, essence } = d;
@@ -648,14 +648,10 @@ bubbleScaleSlider.addEventListener('input', () => {
 });
 
 // ── Update speed slider ──
-let updateSpeedMs = 10000;  // Default 10s (was 5s) for better performance
+// TODO: Repurpose slider — SSE replaced polling, so this no longer controls refresh rate.
+// Could send desired tick rate to SSE broker or adjust client-side animation speed.
 const updateSpeedSlider = document.getElementById('update-speed-slider');
 const updateSpeedVal = document.getElementById('update-speed-val');
-updateSpeedSlider.addEventListener('input', () => {
-  updateSpeedMs = parseInt(updateSpeedSlider.value) * 1000;
-  updateSpeedVal.textContent = updateSpeedSlider.value + 's';
-  scheduleSave();
-});
 
 // ── Connection traffic animation ──
 // Color bases for each connection type (r,g,b)
@@ -3108,8 +3104,7 @@ async function handleControlAction(e) {
       if (action === 'wled-power' || action === 'ha-switch') {
         el.classList.toggle('active');
       }
-      // Refresh stats after a delay
-      setTimeout(() => pollStatus(), 1000);
+      // SSE will push updated status within ~10s
     } else {
       statusEl.textContent = 'Failed';
       statusEl.style.color = '#c04040';
@@ -4842,10 +4837,10 @@ animateMotes();
 // ── Layout persistence (localStorage) ──
 // ── SSE Connection (replaces poll + pollEvents + refreshTopology + fetchEnergy) ──
 let _sseTrafficMap = null;
+let _sseConnected = false;
 
 (function initSSE() {
   const sse = new EventSource(SSE_URL);
-  let sseConnected = false;
   let _sseRestoreMode = true;
 
   sse.addEventListener('traffic', e => {
@@ -4880,16 +4875,16 @@ let _sseTrafficMap = null;
   });
 
   sse.addEventListener('open', () => {
-    if (!sseConnected) {
-      sseConnected = true;
+    if (!_sseConnected) {
+      _sseConnected = true;
       _sseRestoreMode = true;
       console.log('Realm Map: SSE connected');
     }
   });
 
   sse.addEventListener('error', () => {
-    if (sseConnected) {
-      sseConnected = false;
+    if (_sseConnected) {
+      _sseConnected = false;
       console.warn('Realm Map: SSE disconnected, reconnecting...');
       showOffline();
     }
@@ -5645,7 +5640,7 @@ loadArcaneConfig();
 const _dbgPanel = document.getElementById('debug-panel');
 const _dbgBody = document.getElementById('debug-body');
 const _dbgSearch = document.getElementById('debug-search');
-const _dbgPollCount = document.getElementById('debug-poll-count');
+const _dbgSseStatus = document.getElementById('debug-poll-count');
 let _dbgTab = 'all';
 let _dbgDbInfo = null;
 
@@ -5747,14 +5742,14 @@ function _dbgRefresh() {
   const tab = _dbgTab;
   let html = '';
 
-  if (_dbgPollCount) _dbgPollCount.textContent = `polls:${_dbgPollN} err:${_dbgErrN}`;
+  if (_dbgSseStatus) _dbgSseStatus.textContent = _sseConnected ? 'sse:live' : 'sse:off';
 
   // Status overview
   if (tab === 'all' || tab === 'status') {
     const s = d ? {
       realm_scale: d.realm_scale, forge_cpu: d.forge?.usage, mana_mem: d.mana?.usage,
       gpu: d.gpu?.usage, uptime: d.adult?.uptime, load: d.adult?.load1,
-      host: d.host?.hostname, poll_ms: updateSpeedMs,
+      host: d.host?.hostname, sse: _sseConnected ? 'live' : 'off',
     } : { status: 'no data yet' };
     html += _dbgSection('Status', 'status', _dbgTree(s, 0, filter));
   }
@@ -5820,7 +5815,7 @@ function _dbgRefresh() {
     const count = logBody ? logBody.children.length : 0;
     let body = _dbgKV('log entries', count);
     body += _dbgKV('last event ts', lastEventTs ? new Date(lastEventTs * 1000).toLocaleTimeString() : 'none');
-    body += _dbgKV('events poll ms', EVENTS_POLL_MS);
+    body += _dbgKV('delivery', 'SSE (real-time)');
     html += _dbgSection(`Events (${count})`, 'events', body);
   }
 
