@@ -1,5 +1,7 @@
 # Latency-Aware Layout Modes — Design Spec
 
+**Status**: Implemented
+
 ## Overview
 
 Three new Cartographer layout modes that use live latency measurements for wired node spacing and golden ratio phyllotaxis for WiFi node arrangement. A background latency prober on the map server pings all wired IPs from katana every 30s, building a latency map that the layout worker consumes.
