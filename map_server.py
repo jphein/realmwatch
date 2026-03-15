@@ -401,6 +401,9 @@ class RealmHandler(SimpleHTTPRequestHandler):
             energy = _get_energy_data()
             self._json_response(energy)
 
+        elif self.path == "/player":
+            self._json_response(realm_db.get_player_stats())
+
         elif self.path.startswith("/sse"):
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
@@ -641,6 +644,20 @@ window.location.href = '/';
                     self._json_response({"ok": True, "id": quest_id, "status": status})
                 else:
                     self._json_response({"error": "quest not found"}, 404)
+            except Exception as e:
+                self._json_response({"error": str(e)}, 500)
+
+        elif self.path == "/player/reward":
+            try:
+                req = json.loads(body)
+                source = req.get("source", "")
+                source_id = req.get("id", "")
+                if source not in ("quest", "sub", "event") or not source_id:
+                    self._json_response({"error": "missing or invalid source/id"}, 400)
+                    return
+                result = realm_db.grant_reward(source, str(source_id))
+                result["ok"] = True
+                self._json_response(result)
             except Exception as e:
                 self._json_response({"error": str(e)}, 500)
 
