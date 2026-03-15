@@ -202,6 +202,65 @@ function _createSealedDock() {
   handle.appendChild(grip);
   _sealedDock.appendChild(handle);
 
+  // Player stats HUD bar
+  const hud = document.createElement('div');
+  hud.className = 'dock-hud';
+
+  const hudLevel = document.createElement('div');
+  hudLevel.className = 'hud-level';
+  const levelNum = document.createElement('span');
+  levelNum.className = 'hud-level-num';
+  levelNum.textContent = '1';
+  hudLevel.appendChild(levelNum);
+  hud.appendChild(hudLevel);
+
+  const hudXp = document.createElement('div');
+  hudXp.className = 'hud-xp';
+  const xpBar = document.createElement('div');
+  xpBar.className = 'hud-xp-bar';
+  const xpFill = document.createElement('div');
+  xpFill.className = 'hud-xp-fill';
+  xpFill.style.width = '0%';
+  xpBar.appendChild(xpFill);
+  hudXp.appendChild(xpBar);
+  const xpText = document.createElement('span');
+  xpText.className = 'hud-xp-text';
+  xpText.textContent = '0/100';
+  hudXp.appendChild(xpText);
+  hud.appendChild(hudXp);
+
+  const sep1 = document.createElement('div');
+  sep1.className = 'hud-sep';
+  hud.appendChild(sep1);
+
+  const hudGold = document.createElement('div');
+  hudGold.className = 'hud-currency hud-gold';
+  const coinIcon = document.createElement('span');
+  coinIcon.className = 'hud-coin-icon';
+  hudGold.appendChild(coinIcon);
+  const goldNum = document.createElement('span');
+  goldNum.className = 'hud-gold-num';
+  goldNum.textContent = '0';
+  hudGold.appendChild(goldNum);
+  hud.appendChild(hudGold);
+
+  const sep2 = document.createElement('div');
+  sep2.className = 'hud-sep';
+  hud.appendChild(sep2);
+
+  const hudGems = document.createElement('div');
+  hudGems.className = 'hud-currency hud-gems';
+  const gemIcon = document.createElement('span');
+  gemIcon.className = 'hud-gem-icon';
+  hudGems.appendChild(gemIcon);
+  const gemsNum = document.createElement('span');
+  gemsNum.className = 'hud-gems-num';
+  gemsNum.textContent = '0';
+  hudGems.appendChild(gemsNum);
+  hud.appendChild(hudGems);
+
+  _sealedDock.appendChild(hud);
+
   // Container for sealed panel icons
   const tray = document.createElement('div');
   tray.className = 'dock-tray';
@@ -1768,6 +1827,57 @@ export function registerPanel(panel) {
   header.addEventListener('touchstart', e => _startDrag(e, panel), { passive: false });
   header.addEventListener('dblclick', () => _toggleMinimize(panel));
 }
+
+// ── Dock HUD ──
+
+function _animateCount(el, from, to, duration) {
+  const start = performance.now();
+  const delta = to - from;
+  function tick(now) {
+    const t = Math.min((now - start) / duration, 1);
+    el.textContent = Math.round(from + delta * t);
+    if (t < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+function updateDockHUD(stats, animate) {
+  const dock = document.getElementById('sealed-dock');
+  if (!dock) return;
+  const levelEl = dock.querySelector('.hud-level-num');
+  const xpFill = dock.querySelector('.hud-xp-fill');
+  const xpText = dock.querySelector('.hud-xp-text');
+  const goldEl = dock.querySelector('.hud-gold-num');
+  const gemsEl = dock.querySelector('.hud-gems-num');
+  if (!levelEl) return;
+
+  const xpRange = stats.xp_next - stats.xp_level_start;
+  const pct = xpRange > 0 ? Math.min(100, (stats.xp_in_level / xpRange) * 100) : 0;
+
+  if (animate) {
+    const oldLevel = parseInt(levelEl.textContent) || 1;
+    const oldGold = parseInt(goldEl.textContent) || 0;
+    const oldGems = parseInt(gemsEl.textContent) || 0;
+    if (stats.level !== oldLevel) levelEl.textContent = stats.level;
+    _animateCount(goldEl, oldGold, stats.gold, 600);
+    _animateCount(gemsEl, oldGems, stats.gems, 600);
+    // Pulse effect
+    const hud = dock.querySelector('.dock-hud');
+    if (hud) {
+      hud.classList.add('hud-pulse');
+      setTimeout(() => hud.classList.remove('hud-pulse'), 800);
+    }
+  } else {
+    levelEl.textContent = stats.level;
+    goldEl.textContent = stats.gold;
+    gemsEl.textContent = stats.gems;
+  }
+
+  xpFill.style.width = pct + '%';
+  xpText.textContent = stats.xp_in_level + '/' + (stats.xp_next - stats.xp_level_start);
+}
+
+window.updateDockHUD = updateDockHUD;
 
 // ── Exports ──
 export { FORMATIONS, PANELS, ANCHORS, _saveFormation as saveFormation, _unsealPanel as unsealPanel };
