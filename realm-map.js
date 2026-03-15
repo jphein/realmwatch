@@ -121,6 +121,7 @@
   }
   __name(_computeFanAngles, "_computeFanAngles");
   var _obstacles = [];
+  var _nodeSizeCache = /* @__PURE__ */ new Map();
   function _buildObstacles() {
     _obstacles = [];
     if (!_topology) return;
@@ -129,18 +130,21 @@
       if (!el.el) continue;
       const left = parseInt(el.el.style.left) || 0;
       const top = parseInt(el.el.style.top) || 0;
-      const w = el.el.offsetWidth;
-      const h = el.el.offsetHeight;
-      const icon = el.el.querySelector(".node-icon");
+      let sz = _nodeSizeCache.get(n.id);
+      if (!sz) {
+        sz = { w: el.el.offsetWidth, h: el.el.offsetHeight };
+        _nodeSizeCache.set(n.id, sz);
+      }
+      const icon = el._icon || (el._icon = el.el.querySelector(".node-icon"));
       let iconScale = 1;
       if (icon && icon.style.transform) {
         const m = icon.style.transform.match(/scale\(([^)]+)\)/);
         if (m) iconScale = parseFloat(m[1]) || 1;
       }
-      const cx = left + w / 2;
-      const cy = top + h / 2;
-      const rx = w / 2 * Math.max(1, iconScale) + 20;
-      const ry = h / 2 * Math.max(1, iconScale) + 15;
+      const cx = left + sz.w / 2;
+      const cy = top + sz.h / 2;
+      const rx = sz.w / 2 * Math.max(1, iconScale) + 20;
+      const ry = sz.h / 2 * Math.max(1, iconScale) + 15;
       _obstacles.push({ id: n.id, x: cx, y: cy, rx, ry });
     }
   }
@@ -324,8 +328,10 @@
       if (n.tip) tips[n.id] = { title: n.tip.title, stats: [...n.tip.stats || []] };
       else {
         const auto = [];
+        if (n._hostname) auto.push(["Hostname", n._hostname]);
         if (n.type) auto.push(["Type", n.type]);
         if (n.ip) auto.push(["IP", n.ip]);
+        if (n._vendor) auto.push(["Vendor", n._vendor]);
         tips[n.id] = { title: n.label || n.id, stats: auto };
       }
       if (n.ip || n.ssh) infraNodes[n.id] = { name: n.label, ip: n.ip || "", collectdHost: n.collectd || null, sshHost: n.ssh || null, tsHost: n.tsHost || null };
@@ -432,6 +438,7 @@
       _connPaths.length = 0;
       _vlanLabels.length = 0;
       Object.keys(_nodeDOM).forEach((k) => delete _nodeDOM[k]);
+      _nodeSizeCache.clear();
       renderTopology(topo);
       if (Object.keys(savedPos).length > 0) {
         let restored = false;
@@ -458,6 +465,249 @@
     }
   }
   __name(refreshTopology, "refreshTopology");
+  function _renderNode(n) {
+    const world2 = document.getElementById("map-world");
+    const div = document.createElement("div");
+    const tc = TYPE_TO_CLASS[n.type] || "";
+    div.className = "realm-node" + (tc ? " " + tc : "") + (n.collectd ? " collectd-monitored" : "");
+    if (n._clusterChild) div.classList.add("cluster-child");
+    div.setAttribute("style", `left:${n.x}px;top:${n.y}px;`);
+    div.dataset.tip = n.id;
+    const icon = document.createElement("div");
+    icon.className = "node-icon";
+    const is = n.iconStyle || {};
+    let ic = "";
+    for (const [k, v] of Object.entries(is)) ic += `${k.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase())}:${v};`;
+    icon.setAttribute("style", ic);
+    if (n.pulse) {
+      const p = document.createElement("div");
+      p.className = "pulse-ring";
+      if (n.pulseStyle?.borderColor) p.style.borderColor = n.pulseStyle.borderColor;
+      icon.appendChild(p);
+    }
+    if (n.badge) {
+      const b = document.createElement("span");
+      b.className = "cluster-badge";
+      b.textContent = n.badge;
+      icon.appendChild(b);
+    }
+    icon.insertAdjacentHTML("beforeend", n.icon || "&#9670;");
+    div.appendChild(icon);
+    const lbl = document.createElement("div");
+    lbl.className = "node-label";
+    if (n.labelStyle) {
+      let ls = "";
+      for (const [k, v] of Object.entries(n.labelStyle)) ls += `${k.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase())}:${v};`;
+      lbl.setAttribute("style", ls);
+    }
+    lbl.textContent = n.label;
+    div.appendChild(lbl);
+    const sub = document.createElement("div");
+    sub.className = "node-sublabel";
+    sub.textContent = n.sublabel || "";
+    div.appendChild(sub);
+    world2.appendChild(div);
+    if (n.tip) tips[n.id] = { title: n.tip.title, stats: [...n.tip.stats || []] };
+    else {
+      const auto = [];
+      if (n.type) auto.push(["Type", n.type]);
+      if (n.ip) auto.push(["IP", n.ip]);
+      tips[n.id] = { title: n.label || n.id, stats: auto };
+    }
+    if (n.ip) infraNodes[n.id] = { name: n.label, ip: n.ip, collectdHost: n.collectd || null, sshHost: null, tsHost: null };
+    delete _nodeDOM[n.id];
+    return div;
+  }
+  __name(_renderNode, "_renderNode");
+  function _renderConn(conn) {
+    const connSvg = document.querySelector("#connections");
+    const fp = _getNodePos(conn.from), tp = _getNodePos(conn.to);
+    if (!fp || !tp) return null;
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", _computePathD(fp, tp, 0, 0, conn.from, conn.to));
+    path.setAttribute("class", "conn-line " + (CONN_TYPE_TO_CLASS[conn.type] || "conn-active"));
+    if (conn._clusterChild) path.classList.add("conn-cluster-child");
+    path.dataset.from = conn.from;
+    path.dataset.to = conn.to;
+    path.dataset.fromNode = conn.from;
+    path.dataset.toNode = conn.to;
+    connSvg.appendChild(path);
+    _connPaths.push(path);
+    return path;
+  }
+  __name(_renderConn, "_renderConn");
+  var _expandedClusters = /* @__PURE__ */ new Set();
+  var _clusterChildIds = {};
+  function isClusterExpandable(nodeId) {
+    const n = _topology?.nodes.find((nd) => nd.id === nodeId);
+    return n?.type === "cluster" && n.members?.length > 0;
+  }
+  __name(isClusterExpandable, "isClusterExpandable");
+  function isClusterExpanded(nodeId) {
+    return _expandedClusters.has(nodeId);
+  }
+  __name(isClusterExpanded, "isClusterExpanded");
+  function toggleClusterExpand(clusterId) {
+    if (_expandedClusters.has(clusterId)) collapseCluster(clusterId);
+    else expandCluster(clusterId);
+  }
+  __name(toggleClusterExpand, "toggleClusterExpand");
+  function expandCluster(clusterId) {
+    const cluster = _topology?.nodes.find((n) => n.id === clusterId);
+    if (!cluster?.members?.length) return;
+    const center = _getNodePos(clusterId);
+    if (!center) return;
+    const members = cluster.members;
+    const childIds = [];
+    const apGroups = {};
+    const noAp = [];
+    members.forEach((m) => {
+      var _a;
+      if (m.ap && _topology.nodes.find((n) => n.id === m.ap)) {
+        (apGroups[_a = m.ap] || (apGroups[_a] = [])).push(m);
+      } else {
+        noAp.push(m);
+      }
+    });
+    const allPlacements = [];
+    for (const [apId, group] of Object.entries(apGroups)) {
+      const apPos = _getNodePos(apId);
+      if (!apPos) {
+        noAp.push(...group);
+        continue;
+      }
+      const midX = (apPos.x + center.x) / 2;
+      const midY = (apPos.y + center.y) / 2;
+      const fanRadius = Math.max(60, group.length * 18);
+      const baseAngle = Math.atan2(center.y - apPos.y, center.x - apPos.x);
+      group.forEach((m, i) => {
+        const spread = (i - (group.length - 1) / 2) * 0.35;
+        const a = baseAngle + spread;
+        allPlacements.push({
+          member: m,
+          tx: Math.round(midX + Math.cos(a) * fanRadius),
+          ty: Math.round(midY + Math.sin(a) * fanRadius),
+          apId
+        });
+      });
+    }
+    const orbitRadius = Math.max(80, noAp.length * 22);
+    noAp.forEach((m, i) => {
+      const angle = i / Math.max(noAp.length, 1) * Math.PI * 2 - Math.PI / 2;
+      allPlacements.push({
+        member: m,
+        tx: Math.round(center.x + Math.cos(angle) * orbitRadius),
+        ty: Math.round(center.y + Math.sin(angle) * orbitRadius),
+        apId: null
+      });
+    });
+    let idx = 0;
+    allPlacements.forEach(({ member: m, tx, ty, apId }) => {
+      const nodeId = `${clusterId}::${m.mac || idx}`;
+      idx++;
+      const nodeData = {
+        id: nodeId,
+        type: "device",
+        _clusterChild: true,
+        _parentCluster: clusterId,
+        x: center.x,
+        y: center.y,
+        _targetX: tx,
+        _targetY: ty,
+        icon: "&#9670;",
+        label: m.label,
+        sublabel: (m.hw ? m.hw : "") + (m.hw && m.ip ? " \u2022 " : "") + (m.ip || ""),
+        ip: m.ip || "",
+        iconStyle: {
+          width: "30px",
+          height: "30px",
+          fontSize: "13px",
+          background: "radial-gradient(circle, #1a1520, #0f0d12)",
+          borderColor: "rgba(96,192,96,0.35)",
+          boxShadow: "0 0 10px rgba(96,192,96,0.2)"
+        },
+        tip: {
+          title: m.label,
+          stats: [
+            ["Hostname", m.hw || "Unknown"],
+            ["IP", m.ip || "N/A"],
+            ["MAC", m.mac || "N/A"],
+            ["AP", apId || "Unknown"]
+          ]
+        }
+      };
+      _topology.nodes.push(nodeData);
+      _renderNode(nodeData);
+      const connTarget = apId || clusterId;
+      const conn = { from: nodeId, to: connTarget, type: "active", _clusterChild: true };
+      _topology.connections.push(conn);
+      _renderConn(conn);
+      childIds.push(nodeId);
+    });
+    _clusterChildIds[clusterId] = childIds;
+    _expandedClusters.add(clusterId);
+    const clusterEl = document.querySelector(`[data-tip="${clusterId}"]`);
+    if (clusterEl) clusterEl.classList.add("cluster-expanded");
+    requestAnimationFrame(() => {
+      childIds.forEach((nid) => {
+        const nd = _topology.nodes.find((n) => n.id === nid);
+        if (!nd) return;
+        const el = document.querySelector(`[data-tip="${nid}"]`);
+        if (!el) return;
+        el.style.transition = "left 0.45s cubic-bezier(0.34,1.56,0.64,1), top 0.45s cubic-bezier(0.34,1.56,0.64,1)";
+        nd.x = nd._targetX;
+        nd.y = nd._targetY;
+        el.style.left = nd.x + "px";
+        el.style.top = nd.y + "px";
+      });
+      setTimeout(() => {
+        _buildObstacles();
+        updateLinePositions();
+      }, 470);
+    });
+  }
+  __name(expandCluster, "expandCluster");
+  function collapseCluster(clusterId) {
+    const childIds = _clusterChildIds[clusterId];
+    if (!childIds) return;
+    const center = _getNodePos(clusterId);
+    childIds.forEach((nid) => {
+      const el = document.querySelector(`[data-tip="${nid}"]`);
+      if (!el) return;
+      el.style.transition = "left 0.25s ease-in, top 0.25s ease-in, opacity 0.2s ease";
+      if (center) {
+        el.style.left = center.x + "px";
+        el.style.top = center.y + "px";
+      }
+      el.style.opacity = "0";
+    });
+    setTimeout(() => {
+      const removeSet = new Set(childIds);
+      _topology.nodes = _topology.nodes.filter((n) => !removeSet.has(n.id));
+      _topology.connections = _topology.connections.filter((c) => !removeSet.has(c.from) && !removeSet.has(c.to));
+      childIds.forEach((nid) => {
+        const el = document.querySelector(`[data-tip="${nid}"]`);
+        if (el) el.remove();
+        delete tips[nid];
+        delete _nodeDOM[nid];
+        delete infraNodes[nid];
+      });
+      for (let i = _connPaths.length - 1; i >= 0; i--) {
+        const p = _connPaths[i];
+        if (p && (removeSet.has(p.dataset.fromNode) || removeSet.has(p.dataset.toNode))) {
+          p.remove();
+          _connPaths.splice(i, 1);
+        }
+      }
+      _buildObstacles();
+      updateLinePositions();
+    }, 300);
+    delete _clusterChildIds[clusterId];
+    _expandedClusters.delete(clusterId);
+    const clusterEl = document.querySelector(`[data-tip="${clusterId}"]`);
+    if (clusterEl) clusterEl.classList.remove("cluster-expanded");
+  }
+  __name(collapseCluster, "collapseCluster");
   loadTopology();
   _lastNodeCount = (_topology?.nodes || []).length;
 
@@ -521,7 +771,8 @@
     "debug-panel": { name: "Arcane Mirror", anchor: "s", priority: 10, icon: "\u{1F52E}" },
     "latency-panel": { name: "Arcane Pulse", anchor: "e", priority: 11, icon: "\u{1F3D3}" },
     "firewall-panel": { name: "Realm Wards", anchor: "w", priority: 12, icon: "\u{1F6E1}" },
-    "node-chat-dialog": { name: "Oracle Commune", anchor: "se", priority: 13, icon: "\u{1F4AC}" }
+    "wifi-panel": { name: "Aether Towers", anchor: "w", priority: 13, icon: "\u{1F4E1}" },
+    "node-chat-dialog": { name: "Oracle Commune", anchor: "se", priority: 14, icon: "\u{1F4AC}" }
   };
   var FORMATIONS = {
     "scrying-focus": {
@@ -851,7 +1102,7 @@
         _dragging.style.transition = "none";
         _dragging.style.position = "fixed";
         _dragging.style.zIndex = "9999";
-        if (_autoSnap && _showAnchors) _anchorOverlay.classList.add("visible");
+        if (_autoSnap && _showAnchors && !document.body.classList.contains("panel-mode-auto")) _anchorOverlay.classList.add("visible");
         _startParticleTrail(clientX, clientY);
       }
     }
@@ -874,7 +1125,7 @@
     _dragStartPos = null;
     if (!_dragging) return;
     const panel = _dragging;
-    if (_autoSnap) {
+    if (_autoSnap && !document.body.classList.contains("panel-mode-auto")) {
       const rect = panel.getBoundingClientRect();
       const centerX = rect.left + rect.width / 2;
       const centerY = rect.top + rect.height / 2;
@@ -975,8 +1226,12 @@
     icon.textContent = def.icon;
     const glow = document.createElement("span");
     glow.className = "rune-glow";
+    const label = document.createElement("span");
+    label.className = "rune-label";
+    label.textContent = def.name;
     rune.appendChild(icon);
     rune.appendChild(glow);
+    rune.appendChild(label);
     const panel = document.getElementById(panelId);
     rune.addEventListener("click", (e) => {
       if (rune._dragManaged) return;
@@ -1168,6 +1423,7 @@
     panel.style.opacity = "";
     _saveFormation();
     _updateDockBadge();
+    document.dispatchEvent(new CustomEvent("panel-layout-change", { detail: { action: "seal", id: panel.id } }));
   }
   __name(_finalizeSeal, "_finalizeSeal");
   function _animateWandering() {
@@ -1395,7 +1651,8 @@
       "energy-panel": "vis-energy",
       "debug-panel": "vis-debug",
       "latency-panel": "vis-latency",
-      "firewall-panel": "vis-firewall"
+      "firewall-panel": "vis-firewall",
+      "wifi-panel": "vis-wifi"
     };
     const _visCb = document.getElementById(_visMap[panel.id]);
     if (_visCb && !_visCb.checked) _visCb.checked = true;
@@ -1426,7 +1683,7 @@
       panel.style.bottom = savedBottom || "";
       panel.style.transform = panel.dataset.originalTransform || "";
       if (panel.dataset.originalAnchor) panel.dataset.anchor = panel.dataset.originalAnchor;
-    } else {
+    } else if (!document.body.classList.contains("panel-mode-auto")) {
       const anchorId = panel.dataset.originalAnchor;
       const anchor = ANCHORS.find((a) => a.id === anchorId);
       if (anchor) _snapToAnchor(panel, anchor);
@@ -1443,6 +1700,7 @@
       }, 400);
     });
     _spawnRestoreParticles(panel);
+    document.dispatchEvent(new CustomEvent("panel-layout-change", { detail: { action: "unseal", id: panel.id } }));
   }
   __name(_unsealPanel, "_unsealPanel");
   var _particles = [];
@@ -1453,7 +1711,7 @@
     _trailActive = true;
     _trailX = x;
     _trailY = y;
-    _animateParticles();
+    if (!_particleLoopRunning) _animateParticles();
   }
   __name(_startParticleTrail, "_startParticleTrail");
   function _updateParticleTrail(x, y) {
@@ -1480,19 +1738,24 @@
     _trailActive = false;
   }
   __name(_stopParticleTrail, "_stopParticleTrail");
+  var _particleLoopRunning = false;
   function _animateParticles() {
-    if (!_trailActive && _particles.length === 0) return;
+    if (!_trailActive && _particles.length === 0) {
+      _particleLoopRunning = false;
+      return;
+    }
+    _particleLoopRunning = true;
     const ctx = _particleCanvas.getContext("2d");
     ctx.clearRect(0, 0, _particleCanvas.width, _particleCanvas.height);
-    for (let i = _particles.length - 1; i >= 0; i--) {
+    let writeIdx = 0;
+    for (let i = 0, len = _particles.length; i < len; i++) {
       const p = _particles[i];
       p.x += p.vx;
       p.y += p.vy;
       p.life -= 0.02;
-      if (p.life <= 0) {
-        _particles.splice(i, 1);
-        continue;
-      }
+      if (p.life <= 0) continue;
+      if (writeIdx !== i) _particles[writeIdx] = p;
+      writeIdx++;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
       ctx.fillStyle = `hsla(${p.hue}, 80%, 60%, ${p.life * 0.8})`;
@@ -1502,6 +1765,7 @@
       ctx.fillStyle = `hsla(${p.hue}, 80%, 70%, ${p.life * 0.3})`;
       ctx.fill();
     }
+    _particles.length = writeIdx;
     requestAnimationFrame(_animateParticles);
   }
   __name(_animateParticles, "_animateParticles");
@@ -1528,7 +1792,7 @@
         hue: 280
       });
     }
-    _animateParticles();
+    if (!_particleLoopRunning) _animateParticles();
   }
   __name(_spawnSealParticles, "_spawnSealParticles");
   function _spawnRestoreParticles(panel) {
@@ -1548,7 +1812,7 @@
         hue: 50 + Math.random() * 30
       });
     }
-    _animateParticles();
+    if (!_particleLoopRunning) _animateParticles();
   }
   __name(_spawnRestoreParticles, "_spawnRestoreParticles");
   function applyFormation(formationId) {
@@ -1616,8 +1880,12 @@
     icon.textContent = def.icon;
     const glow = document.createElement("span");
     glow.className = "rune-glow";
+    const label = document.createElement("span");
+    label.className = "rune-label";
+    label.textContent = def.name;
     rune.appendChild(icon);
     rune.appendChild(glow);
+    rune.appendChild(label);
     rune.addEventListener("click", () => {
       if (rune._dragManaged) return;
       _toggleMinimize(panel);
@@ -1680,7 +1948,7 @@
         }, delay);
       }
     }
-    _animateParticles();
+    if (!_particleLoopRunning) _animateParticles();
   }
   __name(_spawnConjurationCircle, "_spawnConjurationCircle");
   function _saveFormation() {
@@ -2224,7 +2492,20 @@
     return row;
   }
   __name(_makeLatencyRow, "_makeLatencyRow");
-  var _vlanIfaceMap = { "6": "br-lan.6", "8": "br-lan.8", "10": "br-lan.10", "11": "br-lan.11" };
+  var _vlanIfaceMap = {
+    "3": "br-lan.3",
+    "4": "br-lan.4",
+    "5": "br-lan.5",
+    "6": "br-lan.6",
+    "7": "br-lan.7",
+    "8": "br-lan.8",
+    "9": "br-lan.9",
+    "10": "br-lan.10",
+    "11": "br-lan.11",
+    "12": "br-lan.12",
+    "20": "br-lan.20",
+    "38": "br-lan.38"
+  };
   var _fwData = null;
   var _fwFetchTimer = null;
   function _fetchFirewall() {
@@ -2237,29 +2518,34 @@
     });
   }
   __name(_fetchFirewall, "_fetchFirewall");
+  var _fwVlanCache = null;
+  function _buildFwVlanCache(panel) {
+    _fwVlanCache = [];
+    panel.querySelectorAll(".fw-vlan").forEach((row) => {
+      _fwVlanCache.push({
+        iface: _vlanIfaceMap[row.dataset.vlan],
+        rx: row.querySelector(".fw-rx-val"),
+        tx: row.querySelector(".fw-tx-val")
+      });
+    });
+  }
+  __name(_buildFwVlanCache, "_buildFwVlanCache");
   function updateFirewallPanel(d) {
     const panel = document.getElementById("firewall-panel");
     if (!panel || panel.style.display === "none") return;
     const gk = d.collectd?.["gatekeeper"];
     const ifaces = gk?.interfaces || {};
-    panel.querySelectorAll(".fw-vlan").forEach((row) => {
-      const vlan = row.dataset.vlan;
-      const iface = _vlanIfaceMap[vlan];
-      const data = ifaces[iface];
-      const rxEl = row.querySelector(".fw-rx-val");
-      const txEl = row.querySelector(".fw-tx-val");
-      if (data) {
-        rxEl.textContent = fmtRate(data.rx_bps);
-        txEl.textContent = fmtRate(data.tx_bps);
-      } else {
-        rxEl.textContent = "--";
-        txEl.textContent = "--";
-      }
-    });
+    if (!_fwVlanCache) _buildFwVlanCache(panel);
+    for (const c of _fwVlanCache) {
+      const data = ifaces[c.iface];
+      c.rx.textContent = data ? fmtRate(data.rx_bps) : "--";
+      c.tx.textContent = data ? fmtRate(data.tx_bps) : "--";
+    }
   }
   __name(updateFirewallPanel, "updateFirewallPanel");
   function _renderFirewallPanel() {
     if (!_fwData) return;
+    _fwVlanCache = null;
     const panel = document.getElementById("firewall-panel");
     if (!panel) return;
     const { zones, wan, suggestions } = _fwData;
@@ -2309,7 +2595,7 @@
           reachEl.className = "fw-reach";
           row.appendChild(reachEl);
         }
-        const labels = { wan: "WAN", lan: "IoT", iot: "Family", family: "Guest", admin: "Admin", vpn: "VPN" };
+        const labels = { wan: "WAN", lan: "IoT", iot: "Guest", family: "Family", admin: "Admin", vpn: "VPN", wanguard: "WAN Guard" };
         reachEl.innerHTML = "\u2192 " + z.can_reach.map((r) => labels[r] || r).join(", ");
       } else if (reachEl) {
         reachEl.innerHTML = "";
@@ -2343,6 +2629,68 @@
     _fetchFirewall();
     _fwFetchTimer = setInterval(_fetchFirewall, 6e4);
   }, 3e3);
+  var _VLAN_NAMES = { 6: "Admin", 8: "Family", 10: "IoT", 11: "Guest" };
+  var _VLAN_COLORS = { 6: "#f0d890", 8: "#c0a060", 10: "#60c060", 11: "#64a0dc" };
+  function _fetchWifiAPs() {
+    const panel = document.getElementById("wifi-panel");
+    if (!panel || panel.style.display === "none") return;
+    fetch("/wifi/aps").then((r) => r.json()).then((data) => {
+      _renderWifiPanel(data);
+    }).catch(() => {
+      const body = document.getElementById("wifi-body");
+      if (body) body.innerHTML = '<div class="wifi-loading">Towers unreachable</div>';
+    });
+  }
+  __name(_fetchWifiAPs, "_fetchWifiAPs");
+  function _renderWifiPanel(data) {
+    const body = document.getElementById("wifi-body");
+    const badge = document.getElementById("wifi-ap-count");
+    if (!body) return;
+    const apIds = Object.keys(data);
+    if (badge) badge.textContent = apIds.length + " towers";
+    if (!apIds.length) {
+      body.innerHTML = '<div class="wifi-loading">No towers found</div>';
+      return;
+    }
+    let html = "";
+    for (const [apId, ap] of Object.entries(data)) {
+      const ssidHtml = (ap.ssids || []).map((s) => {
+        const vlan = s.vlan;
+        const vlanName = _VLAN_NAMES[vlan] || s.network || "?";
+        const color = _VLAN_COLORS[vlan] || "#a89870";
+        return `<div class="wifi-ssid">
+        <span class="wifi-ssid-name">${s.ssid}</span>
+        <span class="wifi-ssid-vlan" style="color:${color}">${vlanName}${vlan ? " <small>v" + vlan + "</small>" : ""}</span>
+      </div>`;
+      }).join("");
+      html += `<div class="wifi-ap" data-ap="${apId}">
+      <div class="wifi-ap-header">
+        <span class="wifi-ap-icon">&#128225;</span>
+        <span class="wifi-ap-name">${ap.label || apId}</span>
+        <span class="wifi-ap-clients">${ap.clients || 0} &#128246;</span>
+      </div>
+      <div class="wifi-ap-ip">${ap.ip || ""}</div>
+      ${ssidHtml || '<div class="wifi-ssid wifi-ssid-none">No SSIDs detected</div>'}
+    </div>`;
+    }
+    body.innerHTML = html;
+    body.querySelectorAll(".wifi-ap").forEach((el) => {
+      el.addEventListener("click", () => {
+        const nodeId = el.dataset.ap;
+        const nodeEl = document.querySelector(`[data-tip="${nodeId}"]`);
+        if (nodeEl) {
+          const x = parseInt(nodeEl.style.left) || 0;
+          const y = parseInt(nodeEl.style.top) || 0;
+          panToNode(x, y);
+        }
+      });
+    });
+  }
+  __name(_renderWifiPanel, "_renderWifiPanel");
+  setTimeout(() => {
+    _fetchWifiAPs();
+    setInterval(_fetchWifiAPs, 12e4);
+  }, 4e3);
   function updateCoreSublabels(d) {
     const { forge, mana, essence, astral } = d;
     const gpu = forge.gpu;
@@ -2601,34 +2949,48 @@
   var nodeScale = 1;
   var nodeScaleSlider = document.getElementById("node-scale-slider");
   var nodeScaleVal = document.getElementById("node-scale-val");
+  var _nodeScaleRaf = false;
   nodeScaleSlider.addEventListener("input", () => {
     nodeScale = parseFloat(nodeScaleSlider.value) * masterScale;
     nodeScaleVal.textContent = nodeScale.toFixed(1) + "x";
-    document.querySelectorAll(".realm-node").forEach((node) => {
-      node.style.transform = `scale(${nodeScale})`;
-    });
-    updateLinePositions();
+    if (!_nodeScaleRaf) {
+      _nodeScaleRaf = true;
+      requestAnimationFrame(() => {
+        _nodeScaleRaf = false;
+        document.querySelectorAll(".realm-node").forEach((node) => {
+          node.style.transform = `scale(${nodeScale})`;
+        });
+        updateLinePositions();
+      });
+    }
     scheduleSave();
   });
   var textScale = 1;
   var textScaleSlider = document.getElementById("text-scale-slider");
   var textScaleVal = document.getElementById("text-scale-val");
+  var _textScaleRaf = false;
   textScaleSlider.addEventListener("input", () => {
     textScale = parseFloat(textScaleSlider.value) * masterScale;
     textScaleVal.textContent = textScale.toFixed(1) + "x";
-    document.documentElement.style.setProperty("--text-scale", textScale);
-    document.querySelectorAll(".node-label").forEach((el) => {
-      el.style.transform = `scale(${textScale})`;
-    });
-    document.querySelectorAll(".node-sublabel").forEach((el) => {
-      el.style.transform = `scale(${textScale})`;
-    });
-    document.querySelectorAll(".vlan-label").forEach((el) => {
-      el.style.transform = `translate(-50%, -100%) scale(${textScale})`;
-    });
-    document.querySelectorAll(".region-label").forEach((el) => {
-      el.style.transform = `rotate(${el.dataset.rotate || 0}deg) scale(${textScale})`;
-    });
+    if (!_textScaleRaf) {
+      _textScaleRaf = true;
+      requestAnimationFrame(() => {
+        _textScaleRaf = false;
+        document.documentElement.style.setProperty("--text-scale", textScale);
+        document.querySelectorAll(".node-label").forEach((el) => {
+          el.style.transform = `scale(${textScale})`;
+        });
+        document.querySelectorAll(".node-sublabel").forEach((el) => {
+          el.style.transform = `scale(${textScale})`;
+        });
+        document.querySelectorAll(".vlan-label").forEach((el) => {
+          el.style.transform = `translate(-50%, -100%) scale(${textScale})`;
+        });
+        document.querySelectorAll(".region-label").forEach((el) => {
+          el.style.transform = `rotate(${el.dataset.rotate || 0}deg) scale(${textScale})`;
+        });
+      });
+    }
     scheduleSave();
   });
   var bubbleScale = 1;
@@ -2980,7 +3342,7 @@
       if (b.halo && b.fillOp > 0) {
         inner += `<path d="${b.pathD}" fill="none" stroke="${b.col}" stroke-width="25" opacity="${b.fillOp}" stroke-linecap="round" stroke-linejoin="round"/>`;
       }
-      const filterAttr = b.useFilter ? ' filter="url(#topo-shimmer)" class="topo-idx"' : "";
+      const filterAttr = b.useFilter ? ' class="topo-idx"' : "";
       inner += `<path d="${b.pathD}" fill="none" stroke="${b.col}" stroke-width="${b.sw}" opacity="${b.op}" stroke-linecap="round"${filterAttr}/>`;
       const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       svg.setAttribute("viewBox", VB);
@@ -3219,7 +3581,7 @@
     __name(applySparkles, "applySparkles");
     function spawnSparkle() {
       if (!sparkleLayer) return;
-      if (sparkleLayer.children.length > 60) return;
+      if (sparkleLayer.children.length > 30) return;
       const el = document.createElement("div");
       const isLarge = Math.random() < 0.15;
       el.className = isLarge ? "sparkle sparkle-large" : "sparkle";
@@ -3366,20 +3728,18 @@
   var lastEventTs = 0;
   var _pageLoadTs = Date.now() / 1e3;
   var BUBBLE_RESTORE_AGE = 600;
-  var _restoredBubbleNodes = /* @__PURE__ */ new Set();
   function renderEvent(evt, isRestore = false) {
     lastEventTs = Math.max(lastEventTs, evt.ts || 0);
     const nodeEl = document.querySelector(`[data-tip="${evt.node}"]`);
     addLogEntry(evt, nodeEl);
+    if (evt.text && _dismissedQuests.includes(evt.text)) return;
     const evtAge = _pageLoadTs - (evt.ts || 0);
     const isStale = evtAge > 30 && !evt._local;
     if (!nodeEl) return;
     let showBubble = false;
+    const isPersistent = ["quest", "alert", "oracle_query", "oracle_response"].includes(evt.type);
     if (isRestore) {
-      if (evtAge < BUBBLE_RESTORE_AGE && !_restoredBubbleNodes.has(evt.node)) {
-        showBubble = true;
-        _restoredBubbleNodes.add(evt.node);
-      }
+      showBubble = isPersistent || evtAge < BUBBLE_RESTORE_AGE;
     } else if (!isStale) {
       showBubble = true;
     }
@@ -3395,6 +3755,7 @@
     } else if (evt.type === "quest") {
       showSpeechBubble(nodeEl, evt);
       if (!isRestore) showHighlight(nodeEl, { color: "rgba(192,144,255,0.5)" });
+      _refreshQuestCards();
     } else if (evt.type === "oracle_query") {
       showSpeechBubble(nodeEl, { ...evt, text: "\u2728 " + evt.text, color: "#c080ff" });
       if (!isRestore) showHighlight(nodeEl, { color: "rgba(192,128,255,0.6)" });
@@ -3407,13 +3768,22 @@
   var logCount = 0;
   var MAX_LOG = 80;
   var activeTab = "all";
+  var _questCards = document.createElement("div");
+  _questCards.className = "quest-cards";
+  _questCards.style.display = "none";
+  var _logBodyEl = document.getElementById("quest-log-body");
+  if (_logBodyEl) _logBodyEl.parentNode.insertBefore(_questCards, _logBodyEl);
   document.querySelectorAll(".log-tab").forEach((tab) => {
     tab.addEventListener("click", () => {
       document.querySelectorAll(".log-tab").forEach((t) => t.classList.remove("active"));
       tab.classList.add("active");
       activeTab = tab.dataset.tab;
+      _questCards.style.display = activeTab === "quest" ? "" : "none";
+      if (_logBodyEl) _logBodyEl.style.display = activeTab === "quest" ? "none" : "";
       document.querySelectorAll(".log-entry").forEach((entry) => {
-        if (activeTab === "all") {
+        if (activeTab === "quest") {
+          entry.style.display = "none";
+        } else if (activeTab === "all") {
           entry.style.display = "";
         } else if (activeTab === "notion") {
           entry.style.display = entry.classList.contains("notion-quest") ? "" : "none";
@@ -3574,6 +3944,10 @@
           _dismissedQuests.push(evt.text);
           _saveDismissed();
         }
+        if (evt.type === "quest") {
+          fetch("/quest-delete", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: evt.text }) }).catch(() => {
+          });
+        }
       }
       entry.addEventListener("animationend", () => {
         entry.remove();
@@ -3641,19 +4015,156 @@
     localStorage.setItem("realm-completed-quests", JSON.stringify(_completedQuests));
   }
   __name(_saveCompleted, "_saveCompleted");
-  var _initialQuests = [
-    { type: "quest", node: "katana", text: "Chart every node in the Digital Dominion \u2014 ensure all devices report their presence to the Citadel", duration: 12 },
-    { type: "quest", node: "hp-switch", text: "Awaken all Guardian Towers \u2014 bring collectd scrying to every AP in the realm", duration: 12 },
-    { type: "quest", node: "gatekeeper", text: "Unite the Enchanted Quarters \u2014 connect all IoT clusters through proper VLAN gateways", duration: 12 },
-    { type: "quest", node: "gs308t", text: "Map the Hub Stone \u2014 monitor all 8 switch ports and track inter-bridge traffic", duration: 12 },
-    { type: "quest", node: "hp-switch", text: "Bridge the realms \u2014 verify GigaBeam and CPE710 links carry full VLAN trunks", duration: 12 }
-  ];
+  var _ACTION_ICONS = {
+    pan: "\u{1F5FA}\uFE0F",
+    panel: "\u{1F4CB}",
+    highlight: "\u2728",
+    chat: "\u{1F4AC}",
+    scan: "\u{1F50D}",
+    link: "\u{1F517}"
+  };
+  function _executeQuestAction(action) {
+    if (action.type === "pan" && action.node) {
+      const tn = _topology?.nodes.find((n) => n.id === action.node);
+      if (tn) {
+        panToNode(tn.x, tn.y);
+        showHighlight(getNodeDOM(tn.id), { color: "rgba(192,144,255,0.6)" });
+      }
+    } else if (action.type === "panel" && action.panel) {
+      const panelEl = document.getElementById(action.panel);
+      if (panelEl) {
+        _unsealPanel(panelEl);
+        panelEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    } else if (action.type === "highlight" && action.nodes) {
+      action.nodes.forEach((nid) => {
+        const tn = _topology?.nodes.find((n) => n.id === nid);
+        if (tn) showHighlight(getNodeDOM(nid), { color: action.color || "rgba(192,144,255,0.5)" });
+      });
+    } else if (action.type === "chat" && action.node) {
+      const tn = _topology?.nodes.find((n) => n.id === action.node);
+      if (tn) panToNode(tn.x, tn.y);
+      openNodeChat(action.node, action.prompt || "", false);
+    } else if (action.type === "scan") {
+      fetch(action.endpoint || "/scan").catch(() => {
+      });
+      addLogEntry({ type: "system", node: "katana", text: "Initiating realm scan...", ts: Date.now() / 1e3 });
+    }
+  }
+  __name(_executeQuestAction, "_executeQuestAction");
+  function _renderQuestCards(quests) {
+    _questCards.innerHTML = "";
+    if (!quests.length) {
+      _questCards.innerHTML = '<div style="padding:16px;text-align:center;color:#706040;font-size:11px;font-style:italic">No active quests. The realm is at peace.</div>';
+      return;
+    }
+    quests.forEach((quest) => {
+      const card = document.createElement("div");
+      const children = quest.children || [];
+      const doneCount = children.filter((c) => c.status === "completed").length;
+      const total = children.length;
+      const allDone = total > 0 && doneCount === total;
+      const pct = total > 0 ? Math.round(doneCount / total * 100) : 0;
+      card.className = "quest-card" + (allDone ? " quest-card--done" : "");
+      const header = document.createElement("div");
+      header.className = "quest-card-header";
+      header.innerHTML = `<span class="quest-card-icon">\u25B6</span><span class="quest-card-title">${quest.title}</span>` + (total > 0 ? `<span class="quest-card-progress">${doneCount}/${total}</span>` : "");
+      header.addEventListener("click", () => card.classList.toggle("quest-card--open"));
+      card.appendChild(header);
+      if (total > 0) {
+        const bar = document.createElement("div");
+        bar.className = "quest-card-bar";
+        bar.innerHTML = `<div class="quest-card-bar-fill" style="width:${pct}%"></div>`;
+        card.appendChild(bar);
+      }
+      if (quest.description) {
+        const desc = document.createElement("div");
+        desc.className = "quest-card-desc";
+        desc.textContent = quest.description;
+        card.appendChild(desc);
+      }
+      if (quest.actions?.length) {
+        const actionsRow = document.createElement("div");
+        actionsRow.className = "quest-actions";
+        actionsRow.style.padding = "2px 10px 6px 34px";
+        quest.actions.forEach((action) => {
+          const btn = document.createElement("button");
+          btn.className = `quest-action quest-action--${action.type}`;
+          btn.innerHTML = `${_ACTION_ICONS[action.type] || ""} ${action.label}`;
+          btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            _executeQuestAction(action);
+          });
+          actionsRow.appendChild(btn);
+        });
+        card.appendChild(actionsRow);
+      }
+      const body = document.createElement("div");
+      body.className = "quest-card-body";
+      children.forEach((sub) => {
+        const subEl = document.createElement("div");
+        const isDone = sub.status === "completed";
+        subEl.className = "quest-sub" + (isDone ? " quest-sub--done" : "");
+        const check = document.createElement("span");
+        check.className = "quest-sub-check";
+        check.innerHTML = isDone ? "\u2611" : "\u2610";
+        check.addEventListener("click", () => {
+          const newStatus = isDone ? "active" : "completed";
+          fetch("/quest-update", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: sub.id, status: newStatus })
+          }).then(() => _refreshQuestCards()).catch(() => {
+          });
+          subEl.classList.toggle("quest-sub--done");
+          subEl.classList.add("quest-sub--completing");
+          check.innerHTML = isDone ? "\u2610" : "\u2611";
+        });
+        const content = document.createElement("div");
+        content.className = "quest-sub-content";
+        content.innerHTML = `<div class="quest-sub-title">${sub.title}</div>` + (sub.node ? `<div class="quest-sub-node">\u2694 ${sub.node}</div>` : "");
+        if (sub.actions?.length) {
+          const subActions = document.createElement("div");
+          subActions.className = "quest-actions";
+          sub.actions.forEach((action) => {
+            const btn = document.createElement("button");
+            btn.className = `quest-action quest-action--${action.type}`;
+            btn.innerHTML = `${_ACTION_ICONS[action.type] || ""} ${action.label}`;
+            btn.addEventListener("click", (e) => {
+              e.stopPropagation();
+              _executeQuestAction(action);
+            });
+            subActions.appendChild(btn);
+          });
+          content.appendChild(subActions);
+        }
+        subEl.appendChild(check);
+        subEl.appendChild(content);
+        body.appendChild(subEl);
+      });
+      card.appendChild(body);
+      _questCards.appendChild(card);
+    });
+  }
+  __name(_renderQuestCards, "_renderQuestCards");
+  function _refreshQuestCards() {
+    fetch("/quests").then((r) => r.json()).then((quests) => _renderQuestCards(quests)).catch(() => {
+    });
+  }
+  __name(_refreshQuestCards, "_refreshQuestCards");
+  function _loadQuestLog() {
+    _refreshQuestCards();
+    fetch("/events?limit=50").then((r) => r.json()).then((events) => {
+      events.filter((e) => e.text && !_dismissedQuests.includes(e.text)).forEach((e, i) => {
+        setTimeout(() => addLogEntry(e), i * 50);
+      });
+    }).catch(() => {
+    });
+  }
+  __name(_loadQuestLog, "_loadQuestLog");
   setTimeout(() => {
     addLogEntry({ type: "system", node: "katana", text: "The Realm Map has been inscribed.", ts: Date.now() / 1e3 });
-    const activeQuests = _initialQuests.filter((q) => !_dismissedQuests.includes(q.text));
-    activeQuests.forEach((q, i) => {
-      setTimeout(() => renderEvent({ ...q, ts: Date.now() / 1e3, _local: true }), i * 150);
-    });
+    _loadQuestLog();
   }, 800);
   var _activeBubbles = /* @__PURE__ */ new Set();
   function _positionBubble(bubble) {
@@ -3696,12 +4207,11 @@
   }
   __name(_dismissBubble, "_dismissBubble");
   function showSpeechBubble(nodeEl, evt, isAlert) {
+    const dismissList = [];
     for (const b of _activeBubbles) {
-      if (b._nodeEl === nodeEl) {
-        _dismissBubble(b);
-        break;
-      }
+      if (b._nodeId === evt.node) dismissList.push(b);
     }
+    for (const b of dismissList) _dismissBubble(b);
     const bubble = document.createElement("div");
     const isQuest = evt.type === "quest";
     const isNotion = evt._source === "notion";
@@ -3795,9 +4305,6 @@
   var canvas = document.getElementById("map-canvas");
   var world = document.getElementById("map-world");
   var _canvasRect = canvas.getBoundingClientRect();
-  window.addEventListener("resize", () => {
-    _canvasRect = canvas.getBoundingClientRect();
-  });
   var scale = 1;
   var panX = 0;
   var panY = 0;
@@ -3805,17 +4312,52 @@
   var lastX;
   var lastY;
   var _lastGlobeTilt = 0;
+  var _zoomActive = false;
+  var _zoomIdleTimer = 0;
+  var _zoomWillChangeRaf = 0;
+  function _enterZoomMode() {
+    if (!_zoomActive) {
+      _zoomActive = true;
+      world.classList.add("zooming");
+      _zoomWillChangeRaf = requestAnimationFrame(() => {
+        _zoomWillChangeRaf = 0;
+        if (_zoomActive) world.style.willChange = "transform";
+      });
+    }
+    clearTimeout(_zoomIdleTimer);
+    _zoomIdleTimer = setTimeout(_exitZoomMode, 400);
+  }
+  __name(_enterZoomMode, "_enterZoomMode");
+  var _zoomVeil = document.createElement("div");
+  _zoomVeil.id = "zoom-veil";
+  document.getElementById("map-canvas").appendChild(_zoomVeil);
+  function _exitZoomMode() {
+    _zoomActive = false;
+    if (_zoomWillChangeRaf) {
+      cancelAnimationFrame(_zoomWillChangeRaf);
+      _zoomWillChangeRaf = 0;
+    }
+    world.style.willChange = "";
+    _zoomVeil.classList.add("active");
+    requestAnimationFrame(() => {
+      world.classList.remove("zooming");
+      _updateSparkleRect();
+      requestAnimationFrame(() => {
+        _zoomVeil.classList.add("fade");
+        setTimeout(() => {
+          _zoomVeil.classList.remove("active", "fade");
+        }, 250);
+      });
+    });
+  }
+  __name(_exitZoomMode, "_exitZoomMode");
   var _transformRafId = 0;
-  var _willChangeTimer = 0;
   function _applyTransformNow() {
     _transformRafId = 0;
-    if (world.style.willChange !== "transform") world.style.willChange = "transform";
-    clearTimeout(_willChangeTimer);
-    _willChangeTimer = setTimeout(() => {
-      world.style.willChange = "";
-    }, 300);
     if (_mapTilt > 0) {
+      canvas.classList.add("tilted");
       world.style.transformStyle = "preserve-3d";
+      world.style.zoom = "";
       const cx = WORLD_W / 2, cy = WORLD_H / 2;
       world.style.transform = `translate(${panX}px, ${panY}px) scale(${scale}) translate(${cx}px, ${cy}px) rotateX(${_mapTilt}deg) translate(${-cx}px, ${-cy}px)`;
       if (_mapTilt !== _lastGlobeTilt) {
@@ -3823,11 +4365,13 @@
         _lastGlobeTilt = _mapTilt;
       }
     } else {
+      canvas.classList.remove("tilted");
       if (_lastGlobeTilt !== 0) {
         _clearGlobeZ();
         _lastGlobeTilt = 0;
       }
       world.style.transformStyle = "";
+      world.style.zoom = "";
       world.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
     }
   }
@@ -3936,20 +4480,28 @@
     dragging = true;
     lastX = e.clientX;
     lastY = e.clientY;
+    _enterZoomMode();
   });
   window.addEventListener("mousemove", (e) => {
     if (!dragging) return;
+    _enterZoomMode();
     panX += e.clientX - lastX;
     panY += e.clientY - lastY;
     lastX = e.clientX;
     lastY = e.clientY;
     applyTransform();
   });
-  window.addEventListener("mouseup", () => dragging = false);
+  window.addEventListener("mouseup", () => {
+    if (dragging) {
+      dragging = false;
+      saveSettings();
+    }
+  });
   var _touchPanning = false;
   var _lastTouch = null;
   var _pinchDist = null;
   canvas.addEventListener("touchstart", (e) => {
+    _enterZoomMode();
     if (e.touches.length === 2) {
       _pinchDist = Math.hypot(
         e.touches[1].clientX - e.touches[0].clientX,
@@ -3962,6 +4514,7 @@
     }
   }, { passive: true });
   canvas.addEventListener("touchmove", (e) => {
+    _enterZoomMode();
     if (e.touches.length === 2 && _pinchDist !== null) {
       e.preventDefault();
       const newDist = Math.hypot(
@@ -3986,12 +4539,15 @@
     }
   }, { passive: false });
   canvas.addEventListener("touchend", () => {
+    if (_touchPanning || _pinchDist) saveSettings();
     _touchPanning = false;
     _lastTouch = null;
     _pinchDist = null;
   }, { passive: true });
+  var _zoomSaveTimer = null;
   canvas.addEventListener("wheel", (e) => {
     e.preventDefault();
+    _enterZoomMode();
     const mx = e.clientX - _canvasRect.left, my = e.clientY - _canvasRect.top;
     const oldScale = scale;
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
@@ -3999,6 +4555,8 @@
     panX = mx - (mx - panX) * (scale / oldScale);
     panY = my - (my - panY) * (scale / oldScale);
     applyTransform();
+    clearTimeout(_zoomSaveTimer);
+    _zoomSaveTimer = setTimeout(saveSettings, 800);
   }, { passive: false });
   var tooltip = document.getElementById("tooltip");
   var _tipNode = null;
@@ -4031,7 +4589,9 @@
     tooltip.style.display = "none";
   });
   centerMap();
-  window.addEventListener("resize", centerMap);
+  window.addEventListener("resize", () => {
+    _canvasRect = canvas.getBoundingClientRect();
+  });
   var currentEditNode = null;
   var peOverlay = document.getElementById("pe-overlay");
   var peEditor = document.getElementById("persona-editor");
@@ -5593,7 +6153,8 @@
       "energy-panel": "vis-energy",
       "debug-panel": "vis-debug",
       "latency-panel": "vis-latency",
-      "firewall-panel": "vis-firewall"
+      "firewall-panel": "vis-firewall",
+      "wifi-panel": "vis-wifi"
     };
     const visId = visMap[id] || "vis-" + id;
     const visCb = document.getElementById(visId);
@@ -6168,7 +6729,8 @@
       ["vis-nodelist", "#node-list"],
       ["vis-debug", "#debug-panel"],
       ["vis-latency", "#latency-panel"],
-      ["vis-firewall", "#firewall-panel"]
+      ["vis-firewall", "#firewall-panel"],
+      ["vis-wifi", "#wifi-panel"]
     ];
     for (const [id, sel, multiSel] of toggles) {
       const cb = document.getElementById(id);
@@ -6202,6 +6764,9 @@
         if (!_restoring) _saveFormation();
       });
     }
+    document.querySelectorAll(".panel-mode-btn").forEach((btn) => {
+      btn.addEventListener("click", () => setPanelMode(btn.dataset.mode));
+    });
     const opacityLayers = [
       ["layer-terrain-orig-slider", "#terrain-original", false],
       ["layer-terrain-slider", "#terrain-dynamic", false],
@@ -6226,7 +6791,8 @@
       ["panel-nodelist-slider", "#node-list", false],
       ["panel-mirror-slider", "#debug-panel", false],
       ["panel-latency-slider", "#latency-panel", false],
-      ["panel-firewall-slider", "#firewall-panel", false]
+      ["panel-firewall-slider", "#firewall-panel", false],
+      ["panel-wifi-slider", "#wifi-panel", false]
     ];
     for (const [sliderId, sel, isMulti, multiSel] of opacityLayers) {
       const sl = document.getElementById(sliderId);
@@ -6253,6 +6819,25 @@
   document.body.appendChild(moteCanvas);
   var moteCtx = moteCanvas.getContext("2d");
   var motes = [];
+  var _fpsEl = document.createElement("div");
+  _fpsEl.style.cssText = "position:fixed;top:4px;right:4px;z-index:9999;font:11px monospace;color:#0f0;background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:3px;pointer-events:none;display:none";
+  document.body.appendChild(_fpsEl);
+  var _fpsFrames = 0;
+  var _fpsLast = performance.now();
+  var _fpsMotes = 0;
+  function _fpsUpdate() {
+    _fpsFrames++;
+    const now = performance.now();
+    if (now - _fpsLast >= 1e3) {
+      _fpsEl.textContent = `${_fpsFrames} fps | ${_fpsMotes} motes`;
+      _fpsFrames = 0;
+      _fpsLast = now;
+    }
+  }
+  __name(_fpsUpdate, "_fpsUpdate");
+  window.addEventListener("keydown", (e) => {
+    if (e.ctrlKey && e.shiftKey && e.key === "F") _fpsEl.style.display = _fpsEl.style.display === "none" ? "" : "none";
+  });
   function resizeMoteCanvas() {
     moteCanvas.width = window.innerWidth;
     moteCanvas.height = window.innerHeight;
@@ -6369,21 +6954,51 @@
   }
   __name(_spawnLeyLineSparkles, "_spawnLeyLineSparkles");
   var _sparkleTimer = 0;
+  var _PI2 = Math.PI * 2;
+  var _moteSkipFrame = false;
+  var _motePaused = false;
+  document.addEventListener("visibilitychange", () => {
+    _motePaused = document.hidden;
+    document.body.classList.toggle("reduce-motion", document.hidden);
+  });
+  var _sparkleRectWorld = document.getElementById("map-world");
+  function _updateSparkleRect() {
+    if (_sparkleRectWorld) _sparkleRect = _sparkleRectWorld.getBoundingClientRect();
+  }
+  __name(_updateSparkleRect, "_updateSparkleRect");
+  window.addEventListener("resize", _updateSparkleRect);
+  _updateSparkleRect();
   function animateMotes() {
+    if (_motePaused) {
+      requestAnimationFrame(animateMotes);
+      return;
+    }
+    if (_zoomActive) {
+      requestAnimationFrame(animateMotes);
+      return;
+    }
+    _moteSkipFrame = !_moteSkipFrame;
+    if (_moteSkipFrame) {
+      requestAnimationFrame(animateMotes);
+      return;
+    }
     const cw = moteCanvas.width, ch = moteCanvas.height;
-    moteCtx.clearRect(0, 0, cw, ch);
     _sparkleTimer++;
     const spawnDiv = _PERF.sparkleDiv;
     if (_sparkleTimer % (2 * spawnDiv) === 0) _spawnAmbientSparkles();
-    if (_sparkleTimer % (8 * spawnDiv) === 0) {
-      const mapEl = document.getElementById("map-world");
-      if (mapEl) _sparkleRect = mapEl.getBoundingClientRect();
-      _spawnNodeSparkles();
-    }
+    if (_sparkleTimer % (8 * spawnDiv) === 0) _spawnNodeSparkles();
     if (_sparkleTimer % (6 * spawnDiv) === 0) _spawnLeyLineSparkles();
+    if (motes.length === 0) {
+      _fpsUpdate();
+      requestAnimationFrame(animateMotes);
+      return;
+    }
+    moteCtx.clearRect(0, 0, cw, ch);
     const doGlow = _PERF.moteGlow;
     const doStar = _PERF.moteStarCross;
     let writeIdx = 0;
+    const colorBuckets = {};
+    const glowBuckets = {};
     for (let i = 0, len = motes.length; i < len; i++) {
       const m = motes[i];
       m.x += m.vx + Math.sin(m.wobble) * 0.3;
@@ -6399,15 +7014,13 @@
       if (m.twinkle) a *= 0.5 + 0.5 * Math.sin(m.wobble * 3);
       if (a < 0.01) continue;
       const sz = m.size * m.life * _sparkleGlowSize;
-      moteCtx.beginPath();
-      moteCtx.arc(m.x, m.y, sz, 0, Math.PI * 2);
-      moteCtx.fillStyle = `rgba(${r},${g},${b},${a.toFixed(2)})`;
-      moteCtx.fill();
+      const aq = (a * 15 + 0.5 | 0) / 15;
+      const key = `${r},${g},${b},${aq.toFixed(2)}`;
+      (colorBuckets[key] || (colorBuckets[key] = [])).push(m.x, m.y, sz);
       if (doGlow) {
-        moteCtx.beginPath();
-        moteCtx.arc(m.x, m.y, sz * 2.5, 0, Math.PI * 2);
-        moteCtx.fillStyle = `rgba(${r},${g},${b},${(a * 0.12).toFixed(3)})`;
-        moteCtx.fill();
+        const gaq = (a * 0.12 * 15 + 0.5 | 0) / 15;
+        const gkey = `${r},${g},${b},${gaq.toFixed(3)}`;
+        (glowBuckets[gkey] || (glowBuckets[gkey] = [])).push(m.x, m.y, sz * 2.5);
       }
       if (doStar && m.twinkle && a > 0.3 && sz > 1.5) {
         moteCtx.strokeStyle = `rgba(${r},${g},${b},${(a * 0.4).toFixed(2)})`;
@@ -6422,6 +7035,30 @@
       }
     }
     motes.length = writeIdx;
+    if (doGlow) {
+      for (const key in glowBuckets) {
+        const arr = glowBuckets[key];
+        moteCtx.fillStyle = `rgba(${key})`;
+        moteCtx.beginPath();
+        for (let j = 0; j < arr.length; j += 3) {
+          moteCtx.moveTo(arr[j] + arr[j + 2], arr[j + 1]);
+          moteCtx.arc(arr[j], arr[j + 1], arr[j + 2], 0, _PI2);
+        }
+        moteCtx.fill();
+      }
+    }
+    for (const key in colorBuckets) {
+      const arr = colorBuckets[key];
+      moteCtx.fillStyle = `rgba(${key})`;
+      moteCtx.beginPath();
+      for (let j = 0; j < arr.length; j += 3) {
+        moteCtx.moveTo(arr[j] + arr[j + 2], arr[j + 1]);
+        moteCtx.arc(arr[j], arr[j + 1], arr[j + 2], 0, _PI2);
+      }
+      moteCtx.fill();
+    }
+    _fpsMotes = writeIdx;
+    _fpsUpdate();
     requestAnimationFrame(animateMotes);
   }
   __name(animateMotes, "animateMotes");
@@ -6433,13 +7070,19 @@
   (/* @__PURE__ */ __name((function initSSE() {
     const sse = new EventSource(SSE_URL);
     let _sseRestoreMode = true;
+    let _trafficRafPending = false;
     sse.addEventListener("traffic", (e) => {
-      const traffic = JSON.parse(e.data);
-      _sseTrafficMap = traffic;
-      updateConnectionTrafficSSE(traffic);
-      const fakeCollectd = _trafficToCollectd(traffic);
-      _lastTopoCollectd = fakeCollectd;
-      if (_topoEnabled) renderTopoLayer(fakeCollectd);
+      _sseTrafficMap = JSON.parse(e.data);
+      if (!_trafficRafPending) {
+        _trafficRafPending = true;
+        requestAnimationFrame(() => {
+          _trafficRafPending = false;
+          updateConnectionTrafficSSE(_sseTrafficMap);
+          const fakeCollectd = _trafficToCollectd(_sseTrafficMap);
+          _lastTopoCollectd = fakeCollectd;
+          if (_topoEnabled) renderTopoLayer(fakeCollectd);
+        });
+      }
     });
     sse.addEventListener("realm-event", (e) => {
       const evt = JSON.parse(e.data);
@@ -6456,6 +7099,11 @@
       if (!liveOk) {
         liveOk = true;
         console.log("Realm Map: SSE live data connected");
+        const loadEl = document.getElementById("realm-loading");
+        if (loadEl) {
+          loadEl.classList.add("dismissed");
+          setTimeout(() => loadEl.remove(), 1e3);
+        }
       }
     });
     sse.addEventListener("energy", (e) => {
@@ -6483,6 +7131,241 @@
   }), "initSSE"))();
   var LAYOUT_KEY = "realm-map-layout-v2";
   var SETTINGS_KEY = "realm-map-settings-v3";
+  var _PANEL_IDS = [
+    "realm-panel",
+    "legend",
+    "spellbook",
+    "quest-log",
+    "realm-codex",
+    "node-list",
+    "energy-panel",
+    "latency-panel",
+    "firewall-panel",
+    "wifi-panel",
+    "cartographer",
+    "debug-panel"
+  ];
+  var _MODE_DESCS = {
+    manual: "Panels stay where you place them.",
+    auto: "Panels auto-size and tile to fill the viewport beautifully.",
+    focus: "Unfocused panels fade. Hover to summon."
+  };
+  var _panelMode = "manual";
+  function setPanelMode(mode) {
+    const prev = _panelMode;
+    _panelMode = mode;
+    document.body.classList.remove("panel-mode-manual", "panel-mode-auto", "panel-mode-focus", "dynamic-panels");
+    document.body.classList.add("panel-mode-" + mode);
+    if (mode === "auto") document.body.classList.add("dynamic-panels");
+    document.querySelectorAll(".panel-mode-btn").forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
+    const desc = document.getElementById("panel-mode-desc");
+    if (desc) desc.textContent = _MODE_DESCS[mode] || "";
+    if (mode === "auto" && prev !== "auto") {
+      saveLayout();
+    }
+    if (prev === "auto" && mode !== "auto") {
+      _PANEL_IDS.forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.style.left = "";
+        el.style.top = "";
+        el.style.right = "";
+        el.style.bottom = "";
+        el.style.width = "";
+        el.style.height = "";
+        el.style.maxHeight = "";
+        el.style.transform = "";
+      });
+      try {
+        const raw = localStorage.getItem(LAYOUT_KEY);
+        if (raw) {
+          const layout = JSON.parse(raw);
+          if (layout.panels) {
+            Object.entries(layout.panels).forEach(([id, pos]) => {
+              const el = document.getElementById(id);
+              if (!el || !pos.left) return;
+              el.style.left = pos.left;
+              el.style.top = pos.top;
+              el.style.right = "auto";
+              el.style.bottom = "auto";
+              el.style.transform = "none";
+              if (pos.width) el.style.width = pos.width;
+              if (pos.height) {
+                el.style.height = pos.height;
+                el.style.maxHeight = "none";
+              }
+            });
+          }
+        }
+      } catch (e) {
+      }
+      _PANEL_IDS.forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el || el.style.display === "none" || el.classList.contains("panel-sealed")) return;
+        const rect = el.getBoundingClientRect();
+        const vw = window.innerWidth, vh = window.innerHeight;
+        let moved = false;
+        let l = rect.left, t = rect.top;
+        if (rect.right < 40) {
+          l = 20;
+          moved = true;
+        }
+        if (rect.left > vw - 40) {
+          l = vw - rect.width - 20;
+          moved = true;
+        }
+        if (rect.bottom < 40) {
+          t = 60;
+          moved = true;
+        }
+        if (rect.top > vh - 40) {
+          t = vh - rect.height - 20;
+          moved = true;
+        }
+        if (moved) {
+          el.style.left = Math.round(Math.max(0, l)) + "px";
+          el.style.top = Math.round(Math.max(56, t)) + "px";
+          el.style.right = "auto";
+          el.style.bottom = "auto";
+        }
+      });
+    }
+    if (mode === "auto") autoArrangePanels();
+    saveSettings();
+  }
+  __name(setPanelMode, "setPanelMode");
+  var _lastActivePanel = null;
+  document.addEventListener("mousedown", (e) => {
+    const p = e.target.closest(".panel, #debug-panel");
+    if (p && _PANEL_IDS.includes(p.id)) _lastActivePanel = p.id;
+  }, true);
+  function _measurePanelWeight(el) {
+    const importance = {
+      "realm-panel": 3,
+      "quest-log": 5,
+      "realm-codex": 5,
+      "firewall-panel": 4,
+      "wifi-panel": 3,
+      "node-list": 4,
+      "latency-panel": 3,
+      "spellbook": 3,
+      "energy-panel": 2,
+      "cartographer": 2,
+      "legend": 2,
+      "debug-panel": 4
+    };
+    const base = importance[el.id] || 3;
+    const scrollChild = el.querySelector('[class*="-body"], .quest-cards, .spell-page:not([style*="display: none"]), .spell-page:not([style*="display:none"])');
+    let contentRatio = 1;
+    if (scrollChild) {
+      const sh = scrollChild.scrollHeight || 100;
+      const ch = scrollChild.clientHeight || 100;
+      contentRatio = Math.min(3, sh / Math.max(ch, 1));
+    }
+    const focusBoost = _lastActivePanel === el.id ? 1.5 : 1;
+    return base * (0.5 + contentRatio * 0.5) * focusBoost;
+  }
+  __name(_measurePanelWeight, "_measurePanelWeight");
+  function autoArrangePanels() {
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const gap = 10;
+    const topBar = 56;
+    const pad = gap;
+    const ax = pad, ay = topBar + pad;
+    const aw = vw - pad * 2, ah = vh - topBar - pad * 2;
+    const items = [];
+    _PANEL_IDS.forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el || el.style.display === "none" || el.classList.contains("panel-sealed")) return;
+      items.push({ id, el, weight: _measurePanelWeight(el) });
+    });
+    if (!items.length) return;
+    items.sort((a, b) => b.weight - a.weight);
+    const rects = /* @__PURE__ */ new Map();
+    function _treemapSlice(itemList, bx, by, bw, bh, horizontal) {
+      if (itemList.length === 0) return;
+      if (itemList.length === 1) {
+        rects.set(itemList[0].id, { x: bx, y: by, w: bw, h: bh, el: itemList[0].el });
+        return;
+      }
+      const total = itemList.reduce((s, it) => s + it.weight, 0) || 1;
+      let cumul = 0;
+      let bestSplit = 1, bestAspectScore = Infinity;
+      for (let i = 0; i < itemList.length - 1; i++) {
+        cumul += itemList[i].weight;
+        const frac2 = cumul / total;
+        let a1w, a1h, a2w, a2h;
+        if (horizontal) {
+          a1w = bw * frac2;
+          a1h = bh;
+          a2w = bw * (1 - frac2);
+          a2h = bh;
+        } else {
+          a1w = bw;
+          a1h = bh * frac2;
+          a2w = bw;
+          a2h = bh * (1 - frac2);
+        }
+        const r1 = Math.max(a1w, a1h) / Math.max(Math.min(a1w, a1h), 1);
+        const r2 = Math.max(a2w, a2h) / Math.max(Math.min(a2w, a2h), 1);
+        const balance = Math.abs((i + 1) / itemList.length - 0.5);
+        const score = r1 + r2 + balance * 2;
+        if (score < bestAspectScore) {
+          bestAspectScore = score;
+          bestSplit = i + 1;
+        }
+      }
+      const left = itemList.slice(0, bestSplit);
+      const right = itemList.slice(bestSplit);
+      const leftWeight = left.reduce((s, it) => s + it.weight, 0);
+      const frac = leftWeight / total;
+      if (horizontal) {
+        const lw = Math.max(80, Math.round(bw * frac - gap / 2));
+        const rw = Math.max(80, bw - lw - gap);
+        _treemapSlice(left, bx, by, lw, bh, !horizontal);
+        _treemapSlice(right, bx + lw + gap, by, rw, bh, !horizontal);
+      } else {
+        const lh = Math.max(50, Math.round(bh * frac - gap / 2));
+        const rh = Math.max(50, bh - lh - gap);
+        _treemapSlice(left, bx, by, bw, lh, !horizontal);
+        _treemapSlice(right, bx, by + lh + gap, bw, rh, !horizontal);
+      }
+    }
+    __name(_treemapSlice, "_treemapSlice");
+    _treemapSlice(items, ax, ay, aw, ah, aw >= ah);
+    rects.forEach((r, id) => {
+      const el = r.el;
+      el.style.position = "fixed";
+      el.style.left = Math.round(r.x) + "px";
+      el.style.top = Math.round(r.y) + "px";
+      el.style.width = Math.round(Math.max(100, r.w)) + "px";
+      el.style.height = Math.round(Math.max(60, r.h)) + "px";
+      el.style.maxHeight = "none";
+      el.style.right = "auto";
+      el.style.bottom = "auto";
+      const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+      for (let s = 0; s < 3; s++) {
+        setTimeout(() => {
+          spawnMote(cx + (Math.random() - 0.5) * r.w * 0.5, cy + (Math.random() - 0.5) * r.h * 0.3, [192, 144, 255]);
+        }, s * 70);
+      }
+    });
+  }
+  __name(autoArrangePanels, "autoArrangePanels");
+  var _autoLayoutTimer;
+  document.addEventListener("panel-layout-change", () => {
+    if (_panelMode === "auto") {
+      clearTimeout(_autoLayoutTimer);
+      _autoLayoutTimer = setTimeout(autoArrangePanels, 350);
+    }
+  });
+  var _autoResizeTimer;
+  window.addEventListener("resize", () => {
+    if (_panelMode === "auto") {
+      clearTimeout(_autoResizeTimer);
+      _autoResizeTimer = setTimeout(autoArrangePanels, 200);
+    }
+  });
   var _PERSIST_SLIDERS = [
     "master-scale",
     "traffic-scale",
@@ -6538,6 +7421,7 @@
     "panel-mirror",
     "panel-latency",
     "panel-firewall",
+    "panel-wifi",
     "layer-compass",
     "layer-sparkles",
     "layer-vignette",
@@ -6576,7 +7460,8 @@
     "vis-nodelist",
     "vis-debug",
     "vis-latency",
-    "vis-firewall"
+    "vis-firewall",
+    "vis-wifi"
   ];
   var _saveTimer = null;
   function saveSettings() {
@@ -6590,10 +7475,11 @@
       quality: null,
       collapsed: [],
       spellPage: _spellPage,
-      scroll: vp ? { x: vp.scrollLeft, y: vp.scrollTop } : null,
+      zoom: { scale, panX, panY },
       selectedNode: currentEditNode,
       peTab: activePeTab?.dataset.peTab || "stats",
-      mirrorTab: activeTab
+      mirrorTab: activeTab,
+      panelMode: _panelMode
     };
     _PERSIST_SLIDERS.forEach((id) => {
       const sl = document.getElementById(id + "-slider");
@@ -6656,12 +7542,11 @@
       });
     }
     if (s.spellPage != null) _showSpellPage(s.spellPage);
-    if (s.scroll) {
-      const vp = document.getElementById("map-viewport");
-      if (vp) {
-        vp.scrollLeft = s.scroll.x;
-        vp.scrollTop = s.scroll.y;
-      }
+    if (s.zoom) {
+      scale = s.zoom.scale ?? 1;
+      panX = s.zoom.panX ?? 0;
+      panY = s.zoom.panY ?? 0;
+      applyTransform();
     }
     if (s.selectedNode) {
       openPersonaEditor(s.selectedNode);
@@ -6670,6 +7555,9 @@
     if (s.mirrorTab) {
       const tab = document.querySelector(`.log-tab[data-tab="${s.mirrorTab}"]`);
       if (tab) tab.click();
+    }
+    if (s.panelMode && _MODE_DESCS[s.panelMode]) {
+      setPanelMode(s.panelMode);
     }
     _restoring = false;
   }
@@ -6705,10 +7593,13 @@
   __name(restoreSettings, "restoreSettings");
   function saveLayout() {
     const layout = { panels: {}, nodes: {} };
-    ["realm-panel", "legend", "spellbook", "quest-log", "realm-codex", "node-list", "debug-panel", "cartographer", "energy-panel", "latency-panel", "firewall-panel"].forEach((id) => {
+    ["realm-panel", "legend", "spellbook", "quest-log", "realm-codex", "node-list", "debug-panel", "cartographer", "energy-panel", "latency-panel", "firewall-panel", "wifi-panel"].forEach((id) => {
       const el = document.getElementById(id);
       if (el && el.style.left) {
-        layout.panels[id] = { left: el.style.left, top: el.style.top };
+        const p = { left: el.style.left, top: el.style.top };
+        if (el.style.width) p.width = el.style.width;
+        if (el.style.height) p.height = el.style.height;
+        layout.panels[id] = p;
       }
     });
     document.querySelectorAll(".realm-node").forEach((n) => {
@@ -6737,6 +7628,13 @@
           el.style.right = "auto";
           el.style.bottom = "auto";
           el.style.transform = "none";
+          if (pos.width) {
+            el.style.width = pos.width;
+          }
+          if (pos.height) {
+            el.style.height = pos.height;
+            el.style.maxHeight = "none";
+          }
         }
       });
       applied = true;
@@ -6843,22 +7741,92 @@
       if (_skipDrag(e.target)) return;
       e.preventDefault();
       startDrag(e.clientX, e.clientY);
+      const onMove = /* @__PURE__ */ __name((ev) => moveDrag(ev.clientX, ev.clientY), "onMove");
+      const onUp = /* @__PURE__ */ __name(() => {
+        endDrag();
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("mouseup", onUp);
+      }, "onUp");
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseup", onUp);
     });
-    window.addEventListener("mousemove", (e) => moveDrag(e.clientX, e.clientY));
-    window.addEventListener("mouseup", endDrag);
     handle.addEventListener("touchstart", (e) => {
       if (_skipDrag(e.target)) return;
       if (e.touches.length !== 1) return;
       e.preventDefault();
       startDrag(e.touches[0].clientX, e.touches[0].clientY);
+      const onMove = /* @__PURE__ */ __name((ev) => {
+        if (ev.touches.length) moveDrag(ev.touches[0].clientX, ev.touches[0].clientY);
+      }, "onMove");
+      const onEnd = /* @__PURE__ */ __name(() => {
+        endDrag();
+        window.removeEventListener("touchmove", onMove);
+        window.removeEventListener("touchend", onEnd);
+      }, "onEnd");
+      window.addEventListener("touchmove", onMove, { passive: true });
+      window.addEventListener("touchend", onEnd, { passive: true });
     }, { passive: false });
-    window.addEventListener("touchmove", (e) => {
-      if (!isDragging || !e.touches.length) return;
-      moveDrag(e.touches[0].clientX, e.touches[0].clientY);
-    }, { passive: true });
-    window.addEventListener("touchend", endDrag, { passive: true });
   }
   __name(makeDraggable, "makeDraggable");
+  function makeResizable(el, moteColor) {
+    if (!el) return;
+    const grip = document.createElement("div");
+    grip.className = "panel-resize-grip";
+    grip.innerHTML = "&#9698;";
+    el.appendChild(grip);
+    let isResizing = false, startX, startY, startW, startH;
+    function startResize(cx, cy, e) {
+      e.preventDefault();
+      e.stopPropagation();
+      isResizing = true;
+      startX = cx;
+      startY = cy;
+      const rect = el.getBoundingClientRect();
+      startW = rect.width;
+      startH = rect.height;
+      el.style.transition = "none";
+      grip.classList.add("active");
+      document.body.style.userSelect = "none";
+    }
+    __name(startResize, "startResize");
+    function doResize(cx, cy) {
+      if (!isResizing) return;
+      const w = Math.max(140, startW + (cx - startX));
+      const h = Math.max(80, startH + (cy - startY));
+      el.style.width = Math.round(w) + "px";
+      el.style.height = Math.round(h) + "px";
+      el.style.maxHeight = "none";
+      if (moteColor && Math.random() < 0.35) {
+        spawnMote(cx + (Math.random() - 0.5) * 12, cy + (Math.random() - 0.5) * 12, moteColor);
+      }
+    }
+    __name(doResize, "doResize");
+    function endResize() {
+      if (!isResizing) return;
+      isResizing = false;
+      grip.classList.remove("active");
+      document.body.style.userSelect = "";
+      scheduleSave();
+      if (_panelMode === "auto") {
+        clearTimeout(_autoLayoutTimer);
+        _autoLayoutTimer = setTimeout(autoArrangePanels, 300);
+      }
+    }
+    __name(endResize, "endResize");
+    grip.addEventListener("mousedown", (e) => startResize(e.clientX, e.clientY, e));
+    window.addEventListener("mousemove", (e) => doResize(e.clientX, e.clientY));
+    window.addEventListener("mouseup", endResize);
+    grip.addEventListener("touchstart", (e) => {
+      if (e.touches.length !== 1) return;
+      startResize(e.touches[0].clientX, e.touches[0].clientY, e);
+    }, { passive: false });
+    window.addEventListener("touchmove", (e) => {
+      if (!isResizing || !e.touches.length) return;
+      doResize(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: true });
+    window.addEventListener("touchend", endResize, { passive: true });
+  }
+  __name(makeResizable, "makeResizable");
   makeDraggable(document.getElementById("realm-panel"), ".panel-header", [240, 216, 144]);
   makeDraggable(document.getElementById("legend"), ".panel-header", [100, 180, 255]);
   makeDraggable(document.getElementById("spellbook"), ".panel-header", [192, 160, 255]);
@@ -6870,6 +7838,20 @@
   makeDraggable(document.getElementById("node-list"), "#node-list-header", [192, 144, 96]);
   makeDraggable(document.getElementById("latency-panel"), ".panel-header", [100, 180, 255]);
   makeDraggable(document.getElementById("firewall-panel"), ".panel-header", [220, 160, 80]);
+  makeDraggable(document.getElementById("wifi-panel"), ".panel-header", [100, 200, 255]);
+  makeResizable(document.getElementById("realm-panel"), [240, 216, 144]);
+  makeResizable(document.getElementById("legend"), [100, 180, 255]);
+  makeResizable(document.getElementById("spellbook"), [192, 160, 255]);
+  makeResizable(document.getElementById("quest-log"), [160, 255, 96]);
+  makeResizable(document.getElementById("realm-codex"), [144, 96, 192]);
+  makeResizable(document.getElementById("cartographer"), [192, 144, 96]);
+  makeResizable(document.getElementById("energy-panel"), [96, 192, 96]);
+  makeResizable(document.getElementById("node-list"), [192, 144, 96]);
+  makeResizable(document.getElementById("latency-panel"), [100, 180, 255]);
+  makeResizable(document.getElementById("firewall-panel"), [220, 160, 80]);
+  makeResizable(document.getElementById("wifi-panel"), [100, 200, 255]);
+  makeResizable(document.getElementById("debug-panel"), [120, 80, 200]);
+  makeResizable(document.getElementById("persona-editor"), [240, 200, 100]);
   (function() {
     let dragNode = null, dragOffsetX = 0, dragOffsetY = 0, hasMoved = false;
     let _longPressTimer = null;
@@ -6968,6 +7950,10 @@
           } else {
             _lastNodeTapTime = now;
             _lastNodeTapped = tappedNode;
+            const tipKey = tappedNode.dataset.tip;
+            if (tipKey && isClusterExpandable(tipKey)) {
+              toggleClusterExpand(tipKey);
+            }
           }
         }
         dragNode = null;
@@ -6999,14 +7985,6 @@
   })();
   restoreLayout();
   restoreSettings();
-  var _scrollSaveTimer = null;
-  var _mapVp = document.getElementById("map-viewport");
-  if (_mapVp) {
-    _mapVp.addEventListener("scroll", () => {
-      clearTimeout(_scrollSaveTimer);
-      _scrollSaveTimer = setTimeout(saveSettings, 1e3);
-    }, { passive: true });
-  }
   var _chatDialog = null;
   var _chatNodeId = null;
   var _chatHistory = [];
@@ -7057,6 +8035,7 @@
     });
     registerPanel(dialog);
     makeDraggable(dialog, ".panel-header", [160, 120, 255]);
+    makeResizable(dialog, [160, 120, 255]);
     _chatDialog = dialog;
     return dialog;
   }

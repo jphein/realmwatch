@@ -2,6 +2,240 @@
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
+  /* ═══════════════════════════════════════════════════════════
+     ARCANE LOADING SCREEN — pure CSS, compositor-only animations
+     ═══════════════════════════════════════════════════════════ */
+  #realm-loading {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.8s;
+    will-change: opacity;
+  }
+  #realm-loading.dismissed {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  /* Semi-opaque backdrop with subtle grain texture */
+  .rl-backdrop {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 45%, rgba(20,12,35,0.88) 0%, rgba(8,5,18,0.94) 50%, rgba(3,2,8,0.97) 100%);
+  }
+  .rl-backdrop::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    opacity: 0.5;
+  }
+
+  /* Outer rotating circle — slow, majestic */
+  .rl-circle-outer {
+    position: absolute;
+    width: 320px;
+    height: 320px;
+    border-radius: 50%;
+    border: 1px solid rgba(240,216,144,0.12);
+    animation: rlRotateSlow 25s linear infinite;
+    /* Dashed runic ring */
+    background:
+      radial-gradient(circle, transparent 57%, transparent 57.5%),
+      conic-gradient(
+        from 0deg,
+        rgba(240,216,144,0.0) 0deg,
+        rgba(240,216,144,0.08) 3deg,
+        rgba(240,216,144,0.0) 6deg,
+        rgba(240,216,144,0.0) 15deg,
+        rgba(240,216,144,0.06) 18deg,
+        rgba(240,216,144,0.0) 21deg,
+        rgba(240,216,144,0.0) 30deg,
+        rgba(180,140,255,0.07) 33deg,
+        rgba(180,140,255,0.0) 36deg,
+        rgba(240,216,144,0.0) 45deg,
+        rgba(240,216,144,0.05) 48deg,
+        rgba(240,216,144,0.0) 51deg,
+        rgba(240,216,144,0.0) 60deg
+      );
+    background-size: 100% 100%, 100% 100%;
+  }
+  .rl-circle-outer::before {
+    content: '';
+    position: absolute;
+    inset: 12px;
+    border-radius: 50%;
+    border: 1px dashed rgba(240,216,144,0.08);
+  }
+  .rl-circle-outer::after {
+    content: '';
+    position: absolute;
+    inset: -20px;
+    border-radius: 50%;
+    border: 1px solid rgba(180,140,255,0.06);
+    animation: rlRotateSlow 40s linear infinite reverse;
+  }
+
+  /* Inner circle — counter-rotates, slightly faster */
+  .rl-circle-inner {
+    position: absolute;
+    inset: 40px;
+    border-radius: 50%;
+    border: 1px solid rgba(240,216,144,0.1);
+    animation: rlRotateSlow 15s linear infinite reverse;
+  }
+  .rl-circle-inner::before {
+    content: '';
+    position: absolute;
+    inset: 20px;
+    border-radius: 50%;
+    border: 1px dotted rgba(180,140,255,0.1);
+    animation: rlRotateSlow 10s linear infinite;
+  }
+
+  /* Central sigil — pulses gently */
+  .rl-sigil {
+    position: relative;
+    z-index: 2;
+    animation: rlSigilPulse 3s ease-in-out infinite, rlRotateSlow 60s linear infinite;
+  }
+  .rl-sigil svg {
+    filter: drop-shadow(0 0 20px rgba(240,216,144,0.15));
+  }
+
+  /* Orbiting rune glyphs */
+  .rl-runes {
+    position: absolute;
+    width: 280px;
+    height: 280px;
+    animation: rlRotateSlow 20s linear infinite;
+  }
+  .rl-runes span {
+    position: absolute;
+    font-size: 14px;
+    color: rgba(240,216,144,0.2);
+    font-family: serif;
+    /* Place each rune around the circle */
+    left: 50%;
+    top: 50%;
+    transform:
+      rotate(calc(var(--i) * 45deg))
+      translateY(-140px)
+      rotate(calc(var(--i) * -45deg));
+    animation: rlRuneFlicker 4s ease-in-out infinite;
+    animation-delay: calc(var(--i) * 0.5s);
+  }
+
+  /* Title text */
+  .rl-text {
+    position: relative;
+    z-index: 2;
+    margin-top: 200px;
+    font-family: 'Cinzel Decorative', 'Cinzel', serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: rgba(240,216,144,0.7);
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    text-shadow: 0 0 30px rgba(240,216,144,0.2), 0 0 60px rgba(180,140,255,0.1);
+    animation: rlTextReveal 2s ease-out forwards;
+    opacity: 0;
+  }
+
+  /* Subtitle with animated dots */
+  .rl-sub {
+    position: relative;
+    z-index: 2;
+    margin-top: 16px;
+    font-family: 'MedievalSharp', 'Cinzel', serif;
+    font-size: 14px;
+    color: rgba(180,160,120,0.5);
+    letter-spacing: 3px;
+    animation: rlTextReveal 2s ease-out 0.6s forwards;
+    opacity: 0;
+  }
+  .rl-dots span {
+    animation: rlDotBlink 1.4s ease-in-out infinite;
+  }
+  .rl-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .rl-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  /* Floating mote particles */
+  .rl-motes {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .rl-motes i {
+    position: absolute;
+    left: calc(var(--x) * 1%);
+    top: calc(var(--y) * 1%);
+    width: calc(var(--s) * 3px);
+    height: calc(var(--s) * 3px);
+    border-radius: 50%;
+    background: rgba(240,216,144,0.6);
+    box-shadow: 0 0 calc(var(--s) * 6px) rgba(240,216,144,0.3);
+    animation: rlMoteFloat var(--d) ease-in-out infinite;
+    opacity: 0;
+    animation-delay: calc(var(--x) * 0.02s);
+  }
+  /* Color variety — some motes are cooler tones */
+  .rl-motes i:nth-child(3n) {
+    background: rgba(160,180,255,0.5);
+    box-shadow: 0 0 calc(var(--s) * 6px) rgba(160,180,255,0.25);
+  }
+  .rl-motes i:nth-child(5n) {
+    background: rgba(180,140,255,0.5);
+    box-shadow: 0 0 calc(var(--s) * 6px) rgba(180,140,255,0.2);
+  }
+
+  /* ── Keyframes (all compositor-only: transform + opacity) ── */
+  @keyframes rlRotateSlow {
+    to { transform: rotate(360deg); }
+  }
+  @keyframes rlSigilPulse {
+    0%, 100% { opacity: 0.6; transform: scale(1) rotate(0deg); }
+    50% { opacity: 1; transform: scale(1.05) rotate(3deg); }
+  }
+  @keyframes rlRuneFlicker {
+    0%, 100% { opacity: 0.15; }
+    30% { opacity: 0.4; }
+    60% { opacity: 0.1; }
+    80% { opacity: 0.35; }
+  }
+  @keyframes rlTextReveal {
+    0% { opacity: 0; transform: translateY(12px); letter-spacing: 12px; }
+    100% { opacity: 1; transform: translateY(0); letter-spacing: 6px; }
+  }
+  @keyframes rlMoteFloat {
+    0% { opacity: 0; transform: translateY(0) scale(0.5); }
+    15% { opacity: 0.8; }
+    50% { transform: translateY(-30px) translateX(10px) scale(1); opacity: 0.6; }
+    85% { opacity: 0.3; }
+    100% { opacity: 0; transform: translateY(-60px) translateX(-5px) scale(0.3); }
+  }
+  @keyframes rlDotBlink {
+    0%, 50%, 100% { opacity: 0.3; }
+    25% { opacity: 1; }
+  }
+
+  /* Mobile adjustments */
+  @media (max-width: 768px) {
+    .rl-circle-outer { width: 220px; height: 220px; }
+    .rl-runes { width: 200px; height: 200px; }
+    .rl-runes span { transform: rotate(calc(var(--i) * 45deg)) translateY(-100px) rotate(calc(var(--i) * -45deg)); }
+    .rl-text { margin-top: 140px; font-size: 20px; letter-spacing: 4px; }
+    .rl-sub { font-size: 12px; }
+    .rl-sigil svg { width: 80px; height: 80px; }
+  }
+
   html {
     background: #0a0a12;
   }
@@ -34,6 +268,8 @@
     overflow: hidden;
     cursor: grab;
     background: #0a0a12;
+  }
+  #map-canvas.tilted {
     perspective: 2000px;
     perspective-origin: 50% 50%;
   }
@@ -46,28 +282,70 @@
     transform-origin: 0 0;
     background: transparent;
     transform-style: flat;
-    contain: layout style;
+    contain: layout style paint;
   }
+
+  /* Arcane veil — covers repaint jank when zoom mode exits */
+  #zoom-veil {
+    position: absolute;
+    inset: 0;
+    z-index: 999;
+    pointer-events: none;
+    opacity: 0;
+    background: radial-gradient(ellipse at center,
+      rgba(20,15,40,0.6) 0%,
+      rgba(10,8,25,0.85) 60%,
+      rgba(5,4,15,0.95) 100%);
+    mix-blend-mode: normal;
+  }
+  #zoom-veil.active {
+    opacity: 1;
+  }
+  #zoom-veil.fade {
+    opacity: 0;
+    transition: opacity 0.2s ease-out;
+  }
+
+  /* During zoom/pan: strip all heavy layers from the rendering tree entirely.
+     display:none removes from layout+paint (unlike visibility:hidden which still composites).
+     This lets the browser only tile-render the bare node icons during interaction. */
+  #map-world.zooming #topo-svg,
+  #map-world.zooming #arcane-grid,
+  #map-world.zooming #terrain,
+  #map-world.zooming #connections,
+  #map-world.zooming .pulse-ring,
+  #map-world.zooming .sparkle-layer,
+  #map-world.zooming .speech-bubble { display: none !important; }
+  #map-world.zooming .node-label,
+  #map-world.zooming .node-sublabel,
+  #map-world.zooming .region-label,
+  #map-world.zooming .vlan-label { display: none !important; }
+  /* Kill ALL node pseudo-elements and shadows during zoom — not just collectd */
+  #map-world.zooming .node-icon::before,
+  #map-world.zooming .node-icon::after { display: none !important; }
+  #map-world.zooming .node-icon { box-shadow: none !important; transition: none !important; }
+  /* Freeze any remaining node hover/transition effects */
+  #map-world.zooming .realm-node { transition: none !important; pointer-events: none; }
 
   /* Topographic contour SVG overlay — sized larger than map to avoid edge cutoff */
   #topo-svg {
     position: absolute;
-    left: -500px; top: -500px;
-    width: calc(100% + 1000px);
-    height: calc(100% + 1000px);
+    left: -200px; top: -200px;
+    width: calc(100% + 400px);
+    height: calc(100% + 400px);
     z-index: 1;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.5s ease;
-    overflow: visible;
+    overflow: hidden;
   }
   #topo-svg.active { opacity: var(--topo-opacity, 0.6); }
 
-  /* Arcane Grid overlay — extends beyond world bounds for infinite feel */
+  /* Arcane Grid overlay */
   #arcane-grid {
     position: absolute;
-    left: -100%; top: -100%;
-    width: 300%; height: 300%;
+    left: 0; top: 0;
+    width: 100%; height: 100%;
     z-index: 0;
     opacity: 0;
     pointer-events: none;
@@ -79,8 +357,8 @@
     animation: grid-pulse 8s ease-in-out infinite;
   }
   @keyframes grid-pulse {
-    0%, 100% { filter: brightness(1) hue-rotate(0deg); }
-    50% { filter: brightness(1.15) hue-rotate(10deg); }
+    0%, 100% { opacity: var(--grid-opacity, 0.4); }
+    50% { opacity: calc(var(--grid-opacity, 0.4) * 1.35); }
   }
   #arcane-grid-content {
     transform-origin: 2400px 1650px;
@@ -103,8 +381,8 @@
     transform: scale(var(--compass-scale, 1));
   }
   @keyframes compass-breathe {
-    0%, 100% { filter: brightness(1) drop-shadow(0 0 8px rgba(240,216,144,0.15)); }
-    50% { filter: brightness(1.1) drop-shadow(0 0 16px rgba(240,216,144,0.3)); }
+    0%, 100% { opacity: var(--compass-opacity, 0.7); }
+    50% { opacity: calc(var(--compass-opacity, 0.7) * 1.15); }
   }
 
   /* ── Sparkle Particles ── */
@@ -120,7 +398,6 @@
     position: absolute;
     border-radius: 50%;
     background: radial-gradient(circle, rgba(255,248,220,0.95) 0%, rgba(240,216,144,0) 70%);
-    box-shadow: 0 0 6px 1px rgba(240,216,144,0.5), 0 0 12px rgba(200,180,120,0.2);
     animation: sparkle-twinkle var(--sparkle-dur, 3s) ease-in-out forwards;
     pointer-events: none;
   }
@@ -133,7 +410,6 @@
   }
   .sparkle-large {
     background: radial-gradient(circle, rgba(255,248,220,0.9) 0%, rgba(200,160,255,0.3) 40%, transparent 70%);
-    box-shadow: 0 0 10px 2px rgba(240,216,144,0.6), 0 0 20px rgba(180,140,255,0.2);
   }
 
   /* ── Map Vignette ── */
@@ -154,12 +430,7 @@
     transition: opacity 0.4s ease;
   }
 
-  /* ── Ambient Node Glow ── */
-  .node-icon {
-    filter: drop-shadow(0 0 calc(var(--ambient-glow, 0) * 8px) rgba(240,216,144,0.4))
-            drop-shadow(0 0 calc(var(--ambient-glow, 0) * 16px) rgba(180,140,255,0.15));
-    transition: filter 0.4s ease;
-  }
+  /* ── Ambient Node Glow (merged into .node-icon box-shadow — no filter for GPU perf) ── */
 
   .topo-band {
     position: absolute;
@@ -435,11 +706,7 @@
     padding: 6px 10px 8px;
     max-height: 50vh;
     overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(100,160,220,0.2) transparent;
   }
-  .latency-body::-webkit-scrollbar { width: 4px; }
-  .latency-body::-webkit-scrollbar-thumb { background: rgba(100,160,220,0.2); border-radius: 2px; }
   .latency-group-title {
     font-size: 8px;
     color: rgba(100,160,220,0.5);
@@ -505,12 +772,99 @@
     width: 210px;
     z-index: 50;
   }
+
+  /* ── WiFi / Aether Towers Panel ── */
+  #wifi-panel {
+    position: fixed;
+    left: 20px;
+    top: 500px;
+    width: 220px;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+  }
+  .wifi-body {
+    padding: 6px 10px 8px;
+    max-height: 50vh;
+    overflow-y: auto;
+    flex: 1 1 0;
+    min-height: 0;
+  }
+  .wifi-loading {
+    font-size: 10px;
+    color: #706050;
+    font-style: italic;
+    text-align: center;
+    padding: 12px 0;
+  }
+  .wifi-ap {
+    padding: 6px 8px;
+    margin-bottom: 6px;
+    border: 1px solid rgba(100,200,255,0.1);
+    border-radius: 6px;
+    background: rgba(100,200,255,0.03);
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .wifi-ap:hover {
+    border-color: rgba(100,200,255,0.3);
+    background: rgba(100,200,255,0.06);
+  }
+  .wifi-ap:last-child { margin-bottom: 0; }
+  .wifi-ap-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+  }
+  .wifi-ap-icon { font-size: 13px; flex-shrink: 0; }
+  .wifi-ap-name {
+    font-family: 'MedievalSharp', cursive;
+    color: #e0d0c0;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .wifi-ap-clients {
+    font-size: 9px;
+    color: #64a0dc;
+    flex-shrink: 0;
+  }
+  .wifi-ap-ip {
+    font-size: 9px;
+    color: #504030;
+    margin: 1px 0 3px 19px;
+    font-family: 'Consolas', 'Fira Code', monospace;
+  }
+  .wifi-ssid {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2px 0 2px 19px;
+    font-size: 10px;
+  }
+  .wifi-ssid-name {
+    color: #a89870;
+    font-family: 'Consolas', 'Fira Code', monospace;
+  }
+  .wifi-ssid-vlan {
+    font-size: 9px;
+    font-family: 'MedievalSharp', cursive;
+  }
+  .wifi-ssid-vlan small {
+    opacity: 0.5;
+    font-size: 8px;
+  }
+  .wifi-ssid-none {
+    color: #504030;
+    font-style: italic;
+    font-size: 9px;
+  }
   .firewall-body {
     padding: 8px 12px 10px;
     max-height: 55vh;
     overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(220,180,80,0.2) transparent;
   }
   .fw-section-title {
     font-size: 9px;
@@ -524,6 +878,10 @@
     border-bottom: 1px solid rgba(120,100,60,0.15);
   }
   .fw-vlan:last-of-type { border-bottom: none; }
+  .fw-vlan-secondary { opacity: 0.8; }
+  .fw-vlan-wan { border-left: 2px solid rgba(255,100,130,0.3); padding-left: 4px; }
+  .fw-vlan-reserved { opacity: 0.5; padding: 3px 0; }
+  .fw-vlan-reserved .fw-vlan-name { font-style: italic; }
   .fw-vlan-header {
     display: flex;
     align-items: center;
@@ -546,6 +904,19 @@
     border: 1px solid rgba(180,160,120,0.2);
     border-radius: 3px;
   }
+  .fw-vlan-status {
+    font-size: 8px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .fw-status-active    { color: rgba(100,220,140,0.9); border: 1px solid rgba(100,220,140,0.3); }
+  .fw-status-planned   { color: rgba(100,180,220,0.9); border: 1px solid rgba(100,180,220,0.3); }
+  .fw-status-standby   { color: rgba(220,180,100,0.9); border: 1px solid rgba(220,180,100,0.3); }
+  .fw-status-inactive  { color: rgba(160,140,120,0.6); border: 1px solid rgba(160,140,120,0.2); }
+  .fw-status-reserved  { color: rgba(140,140,160,0.6); border: 1px solid rgba(140,140,160,0.2); }
+  .fw-status-deprecated { color: rgba(180,100,100,0.6); border: 1px solid rgba(180,100,100,0.2); }
   .fw-vlan-desc {
     font-size: 9px;
     color: rgba(160,140,100,0.5);
@@ -667,12 +1038,12 @@
     position: absolute;
     text-align: center;
     cursor: pointer;
-    transition: transform 0.3s ease, filter 0.3s ease, opacity 0.5s ease;
+    transition: transform 0.3s ease, opacity 0.5s ease;
     z-index: 10;
+    contain: layout style;
   }
   .realm-node:hover {
     transform: scale(1.15);
-    filter: brightness(1.3);
     z-index: 20;
   }
 
@@ -685,10 +1056,13 @@
     justify-content: center;
     font-size: 28px;
     margin: 0 auto 6px;
-    box-shadow: 0 0 20px rgba(255,200,50,0.3);
+    box-shadow:
+      0 0 20px rgba(255,200,50,0.3),
+      0 0 calc(var(--ambient-glow, 0) * 8px) rgba(240,216,144,0.4),
+      0 0 calc(var(--ambient-glow, 0) * 16px) rgba(180,140,255,0.15);
     border: 2px solid rgba(212,197,160,0.4);
     position: relative;
-    transition: transform 1.5s ease, filter 1.5s ease;
+    transition: transform 1.5s ease;
   }
 
   /* Collectd-monitored nodes: arcane scrying frame */
@@ -704,7 +1078,7 @@
     border-radius: 50%;
     border: 3px solid transparent;
     background: conic-gradient(
-      from var(--frame-angle, 0deg),
+      from 0deg,
       rgba(100,200,255,0.8),
       rgba(160,100,255,0.6),
       rgba(100,255,180,0.7),
@@ -715,7 +1089,7 @@
     -webkit-mask-composite: destination-out;
     mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0) border-box;
     mask-composite: subtract;
-    animation: arcaneFrame 4s linear infinite;
+    animation: arcaneFrameRotate 4s linear infinite;
     pointer-events: none;
   }
   /* Fallback for browsers that don't support mask-composite (Android Chrome) */
@@ -734,24 +1108,19 @@
     inset: -6px;
     border-radius: 50%;
     background: conic-gradient(
-      from var(--frame-angle, 0deg),
+      from 0deg,
       transparent 0%,
       rgba(100,200,255,0.15) 25%,
       transparent 50%,
       rgba(160,100,255,0.1) 75%,
       transparent 100%
     );
-    animation: arcaneFrame 4s linear infinite;
+    animation: arcaneFrameRotate 4s linear infinite;
     pointer-events: none;
-    filter: blur(4px);
+    opacity: 0.8;
   }
-  @keyframes arcaneFrame {
-    to { --frame-angle: 360deg; }
-  }
-  @property --frame-angle {
-    syntax: '<angle>';
-    initial-value: 0deg;
-    inherits: false;
+  @keyframes arcaneFrameRotate {
+    to { transform: rotate(360deg); }
   }
 
   .node-label {
@@ -823,6 +1192,38 @@
     border: 1px solid rgba(0,0,0,0.5);
     font-family: 'Cinzel', serif;
     z-index: 2;
+  }
+
+  /* Expanded cluster state */
+  .realm-node.cluster-node.cluster-expanded .node-icon {
+    box-shadow: 0 0 18px rgba(96,192,96,0.5), 0 0 40px rgba(96,192,96,0.15);
+    border-color: rgba(96,192,96,0.7);
+  }
+  .realm-node.cluster-node.cluster-expanded .cluster-badge {
+    background: linear-gradient(135deg, #40a060, #60c080);
+  }
+  .realm-node.cluster-node { cursor: pointer; }
+
+  /* Cluster child nodes (expanded members) */
+  .realm-node.cluster-child { z-index: 5; }
+  .realm-node.cluster-child .cluster-child-icon {
+    width: 28px; height: 28px; font-size: 12px;
+    background: radial-gradient(circle, #1a1520, #0f0d12);
+    border: 1px solid rgba(96,192,96,0.3);
+    box-shadow: 0 0 8px rgba(96,192,96,0.15);
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    color: rgba(96,192,96,0.7);
+  }
+  .realm-node.cluster-child .node-label {
+    font-size: 9px; white-space: nowrap;
+    max-width: 80px; overflow: hidden; text-overflow: ellipsis;
+  }
+  .realm-node.cluster-child .node-sublabel { font-size: 8px; opacity: 0.6; }
+
+  /* Cluster child connector lines */
+  .conn-cluster-child {
+    stroke: rgba(96,192,96,0.2); stroke-width: 1; stroke-dasharray: 4 3;
   }
 
   /* Bridge nodes (point-to-point) */
@@ -949,17 +1350,24 @@
     fill: none;
     stroke-dasharray: var(--dash, 8 4);
     stroke-width: var(--sw, 1.5);
-    transition: stroke-width 1.5s ease, stroke-opacity 1.5s ease, stroke 1.5s ease;
   }
   /* Only animate when traffic is active (class added by JS) */
   .conn-line.conn-animated {
     animation: dashFlow var(--speed, 20s) linear infinite var(--dir, normal);
   }
   /* ── VLAN Ley-Line Hues ── */
+  .conn-line[data-vlan="3"]  { --vr:180; --vg:120; --vb:100; } /* Backup WAN — Ember Brown */
+  .conn-line[data-vlan="4"]  { --vr:120; --vg:110; --vb:100; } /* Old Treelink — Faded Stone */
+  .conn-line[data-vlan="5"]  { --vr:160; --vg:100; --vb:180; } /* Althea — Mystic Violet */
   .conn-line[data-vlan="6"]  { --vr:140; --vg:180; --vb:255; } /* Admin — Arcane Blue */
-  .conn-line[data-vlan="8"]  { --vr:255; --vg:200; --vb:100; } /* Family — Hearthfire Gold */
+  .conn-line[data-vlan="7"]  { --vr:255; --vg:160; --vb:100; } /* Test Lab — Forge Orange */
+  .conn-line[data-vlan="8"]  { --vr:200; --vg:140; --vb:255; } /* Guest — Wanderer Purple */
+  .conn-line[data-vlan="9"]  { --vr:100; --vg:180; --vb:180; } /* VPN Exit — Tunnel Teal */
   .conn-line[data-vlan="10"] { --vr:100; --vg:220; --vb:160; } /* IoT — Enchanted Green */
-  .conn-line[data-vlan="11"] { --vr:200; --vg:140; --vb:255; } /* Guest — Wanderer Purple */
+  .conn-line[data-vlan="11"] { --vr:255; --vg:200; --vb:100; } /* Family — Hearthfire Gold */
+  .conn-line[data-vlan="12"] { --vr:140; --vg:140; --vb:160; } /* Backup Fiber — Dormant Grey */
+  .conn-line[data-vlan="20"] { --vr:140; --vg:140; --vb:160; } /* AT&T — Dormant Grey */
+  .conn-line[data-vlan="38"] { --vr:255; --vg:100; --vb:130; } /* Treelink WAN — Portal Red */
   .conn-line[data-vlan="0"]  { --vr:100; --vg:220; --vb:220; } /* Tailscale — Astral Cyan */
 
   /* ── Tier Saturation: type controls opacity, VLAN controls hue ── */
@@ -1005,7 +1413,6 @@
     --sw: 2.5;
     --dash: 12 4 2 4;
     --speed: 8s;
-    filter: url(#bridge-beam-glow);
     animation: dashFlow 8s linear infinite, bridgePulse 3s ease-in-out infinite;
   }
   .conn-bridge-inner {
@@ -1013,7 +1420,6 @@
     stroke-width: 1;
     stroke-dasharray: 2 6;
     fill: none;
-    filter: url(#bridge-beam-glow);
     animation: dashFlow 5s linear infinite reverse, bridgePulse 3s ease-in-out infinite 1.5s;
     pointer-events: none;
   }
@@ -1043,7 +1449,7 @@
   .conn-traffic-low    { stroke-opacity: 0.7; }
   .conn-traffic-med    { stroke-opacity: 0.85; }
   .conn-traffic-high   { stroke-opacity: 1; }
-  .conn-glow           { filter: drop-shadow(0 0 6px rgba(140,200,255,0.6)) drop-shadow(0 0 2px rgba(200,230,255,0.4)); }
+  .conn-glow           { stroke-opacity: 1; stroke-width: calc(var(--sw, 2) + 2); }
 
   @keyframes dashFlow {
     to { stroke-dashoffset: -240; }
@@ -1051,6 +1457,17 @@
   @keyframes dashFlowReverse {
     to { stroke-dashoffset: 240; }
   }
+
+  /* Pause all connection/node animations when tab hidden or zooming */
+  .reduce-motion .conn-animated,
+  .reduce-motion .conn-portal,
+  .reduce-motion .conn-bridge,
+  .reduce-motion .conn-bridge-inner,
+  .reduce-motion .pulse-ring { animation-play-state: paused; }
+  #map-world.zooming .conn-animated,
+  #map-world.zooming .conn-portal,
+  #map-world.zooming .conn-bridge,
+  #map-world.zooming .conn-bridge-inner { animation-play-state: paused; }
 
   /* Pulse animation for online nodes */
   .pulse-ring {
@@ -1220,7 +1637,6 @@
     max-height: min(420px, 60vh);
     overflow-y: auto;
     display: none;
-    backdrop-filter: blur(8px);
     box-shadow: 0 8px 32px rgba(0,0,0,0.5);
   }
   #search-results.open { display: block; }
@@ -1251,22 +1667,17 @@
   .sr-item[data-kind="Panel"] .sr-type { color: #f0d890; background: rgba(240,216,144,0.1); }
   .sr-item[data-kind="Legend"] .sr-type { color: #80b0ff; background: rgba(128,176,255,0.1); }
   .sr-empty { padding: 16px; text-align: center; font-size: 11px; color: #504030; font-style: italic; }
-  #search-results::-webkit-scrollbar { width: 4px; }
-  #search-results::-webkit-scrollbar-track { background: transparent; }
-  #search-results::-webkit-scrollbar-thumb { background: rgba(160,140,100,0.2); border-radius: 2px; }
-
   /* ── Unified Panel Chrome ── */
   .panel {
     position: relative;
     background:
       radial-gradient(ellipse at 25% 0%, rgba(50,40,25,0.07) 0%, transparent 50%),
-      rgba(10,10,25,0.90);
+      rgba(10,10,25,0.96);
     border: 1px solid rgba(80,64,40,0.35);
     border-radius: 10px;
     box-shadow:
       0 4px 24px rgba(0,0,0,0.45),
       inset 0 1px 0 rgba(212,197,160,0.05);
-    backdrop-filter: blur(4px);
     --panel-accent: rgba(240,216,144,0.5);
   }
   .panel::before {
@@ -1300,7 +1711,7 @@
     font-size: 16px;
     flex-shrink: 0;
     line-height: 1;
-    filter: drop-shadow(0 0 4px var(--panel-accent, rgba(240,216,144,0.3)));
+    text-shadow: 0 0 4px var(--panel-accent, rgba(240,216,144,0.3));
   }
   .panel-hdr-title {
     font-family: 'Cinzel', serif;
@@ -1368,6 +1779,35 @@
   }
   @media (pointer: coarse) {
     .panel-close { width: 30px; height: 30px; font-size: 16px; line-height: 28px; }
+  }
+
+  /* ── Panel Resize Grip ── */
+  .panel-resize-grip {
+    position: absolute;
+    bottom: 0; right: 0;
+    width: 18px; height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: nwse-resize;
+    color: rgba(192,160,96,0.2);
+    font-size: 12px;
+    line-height: 1;
+    z-index: 10;
+    transition: color 0.3s, text-shadow 0.3s;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .panel-resize-grip:hover {
+    color: rgba(240,216,144,0.6);
+    text-shadow: 0 0 8px rgba(240,216,144,0.3);
+  }
+  .panel-resize-grip.active {
+    color: rgba(240,216,144,0.9);
+    text-shadow: 0 0 14px rgba(240,216,144,0.5), 0 0 28px rgba(192,144,255,0.2);
+  }
+  @media (pointer: coarse) {
+    .panel-resize-grip { width: 28px; height: 28px; font-size: 16px; }
   }
 
   /* ── Panel Seal Button ── */
@@ -1454,11 +1894,6 @@
     padding: 10px 16px 0;
     text-shadow: 0 0 12px rgba(240,216,144,0.2);
   }
-  #spellbook { scrollbar-width: thin; scrollbar-color: rgba(120,90,40,0.3) transparent; }
-  #spellbook::-webkit-scrollbar { width: 4px; }
-  #spellbook::-webkit-scrollbar-thumb { background: rgba(120,90,40,0.3); border-radius: 2px; }
-  #spellbook::-webkit-scrollbar-thumb:hover { background: rgba(192,160,96,0.4); }
-
   /* ── Spell Tab Bar ── */
   .spell-tab-bar {
     display: flex;
@@ -1567,6 +2002,85 @@
   }
   .preset-btn:hover::before { opacity: 1; }
   .preset-btn:active { transform: scale(0.96) translateY(0); }
+
+  /* ── Panel Layout Mode Buttons ── */
+  .panel-layout-modes {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    padding: 2px 0 6px;
+  }
+  .panel-mode-btn {
+    background: linear-gradient(145deg, rgba(30,24,14,0.8), rgba(20,16,10,0.9));
+    border: 1px solid rgba(120,90,40,0.2);
+    border-radius: 6px;
+    color: #a89870;
+    font-family: 'MedievalSharp', cursive;
+    font-size: 10px;
+    padding: 6px 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    text-align: center;
+    user-select: none;
+  }
+  .panel-mode-btn:hover {
+    background: linear-gradient(145deg, rgba(50,40,20,0.8), rgba(30,24,14,0.9));
+    border-color: rgba(192,144,255,0.35);
+    color: #e0d0c0;
+    box-shadow: 0 0 12px rgba(192,144,255,0.1);
+  }
+  .panel-mode-btn.active {
+    background: linear-gradient(145deg, rgba(40,30,50,0.9), rgba(25,18,35,0.95));
+    border-color: rgba(192,144,255,0.5);
+    color: #e0c8ff;
+    box-shadow: 0 0 16px rgba(192,144,255,0.15), inset 0 1px 0 rgba(192,144,255,0.1);
+  }
+  .panel-mode-btn:active { transform: scale(0.96); }
+  .panel-mode-desc {
+    font-size: 9px;
+    color: #706050;
+    font-style: italic;
+    text-align: center;
+    padding: 0 4px 2px;
+    transition: color 0.3s;
+  }
+
+  /* ── Focus Mode: unfocused panels dim, hover reveals ── */
+  body.panel-mode-focus .panel,
+  body.panel-mode-focus #debug-panel,
+  body.panel-mode-focus #node-chat-dialog.open {
+    opacity: 0.35;
+    transition: opacity 0.4s ease, z-index 0s, transform 0.2s ease;
+  }
+  body.panel-mode-focus .panel:hover,
+  body.panel-mode-focus #debug-panel:hover,
+  body.panel-mode-focus #node-chat-dialog.open:hover {
+    opacity: 1;
+    z-index: 100 !important;
+    transform: scale(1.01);
+    box-shadow:
+      0 0 30px rgba(192,144,255,0.12),
+      0 4px 24px rgba(0,0,0,0.5),
+      inset 0 1px 0 rgba(212,197,160,0.08);
+  }
+  /* Keep spellbook fully visible in focus mode so user can change modes */
+  body.panel-mode-focus #spellbook { opacity: 0.6; }
+  body.panel-mode-focus #spellbook:hover { opacity: 1; }
+
+  /* ── Auto/Enchant Mode: smooth magical transitions ── */
+  body.panel-mode-auto .panel,
+  body.panel-mode-auto #debug-panel {
+    transition: left 0.5s cubic-bezier(0.34,1.56,0.64,1),
+                top 0.5s cubic-bezier(0.34,1.56,0.64,1),
+                width 0.4s cubic-bezier(0.25,0.46,0.45,0.94),
+                height 0.4s cubic-bezier(0.25,0.46,0.45,0.94),
+                max-height 0.4s ease,
+                opacity 0.3s ease;
+  }
+  body.panel-mode-auto .panel .panel-resize-grip {
+    display: none; /* hide manual resize grip in enchant mode */
+  }
 
   /* ── Section Reset Button ── */
   .section-reset {
@@ -1829,11 +2343,8 @@
     max-height: 90vh;
     max-height: 90dvh;
     overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: #3a3020 transparent;
+
   }
-  #realm-panel::-webkit-scrollbar { width: 5px; }
-  #realm-panel::-webkit-scrollbar-thumb { background: #3a3020; border-radius: 3px; }
   #realm-panel h3 {
     font-family: 'Cinzel', serif;
     font-size: 14px;
@@ -1922,7 +2433,7 @@
   /* Speech bubbles */
   .speech-bubble {
     position: absolute;
-    background: rgba(10,10,25,0.95);
+    background: rgba(10,10,25,0.97);
     border: 1px solid rgba(240,216,144,0.5);
     border-radius: 10px;
     padding: 10px 30px 10px 14px;
@@ -1932,9 +2443,7 @@
     min-width: 120px;
     z-index: 30;
     pointer-events: auto;
-    animation: bubbleIn 0.4s ease-out forwards;
     box-shadow: 0 0 20px rgba(0,0,0,0.5), 0 0 16px rgba(240,216,144,0.1);
-    backdrop-filter: blur(4px);
     touch-action: pan-x pan-y;
   }
   .speech-bubble .bubble-text {
@@ -1988,29 +2497,21 @@
     color: #a080e0;
   }
   @keyframes bubbleIn {
-    0%   { opacity: 0; transform: translateY(16px) scale(calc(var(--bubble-scale, 1) * 0.7)); filter: blur(4px) brightness(2); }
-    40%  { opacity: 0.8; transform: translateY(-4px) scale(calc(var(--bubble-scale, 1) * 1.03)); filter: blur(0) brightness(1.3); }
+    0%   { opacity: 0; transform: translateY(16px) scale(calc(var(--bubble-scale, 1) * 0.7)); }
+    40%  { opacity: 0.8; transform: translateY(-4px) scale(calc(var(--bubble-scale, 1) * 1.03)); }
     70%  { transform: translateY(2px) scale(calc(var(--bubble-scale, 1) * 0.98)); }
-    100% { opacity: 1; transform: translateY(0) scale(var(--bubble-scale, 1)); filter: blur(0) brightness(1); }
+    100% { opacity: 1; transform: translateY(0) scale(var(--bubble-scale, 1)); }
   }
   @keyframes bubbleOut {
-    0%   { opacity: 1; transform: scale(var(--bubble-scale, 1)); filter: blur(0); }
-    100% { opacity: 0; transform: scale(calc(var(--bubble-scale, 1) * 0.8)) translateY(8px); filter: blur(3px); }
+    0%   { opacity: 1; transform: scale(var(--bubble-scale, 1)); }
+    100% { opacity: 0; transform: scale(calc(var(--bubble-scale, 1) * 0.8)) translateY(8px); }
   }
   .speech-bubble {
     transform: scale(var(--bubble-scale, 1));
     transform-origin: bottom center;
     animation: bubbleIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   }
-  .speech-bubble.quest-bubble {
-    animation: bubbleIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards, questShimmer 2s ease-in-out 0.6s;
-  }
-  @keyframes questShimmer {
-    0%   { box-shadow: 0 0 20px rgba(0,0,0,0.5), 0 0 16px rgba(192,144,255,0.15); }
-    30%  { box-shadow: 0 0 20px rgba(0,0,0,0.5), 0 0 30px rgba(192,144,255,0.4), 0 0 60px rgba(140,80,220,0.15); }
-    60%  { box-shadow: 0 0 20px rgba(0,0,0,0.5), 0 0 20px rgba(100,200,255,0.3), 0 0 40px rgba(100,180,255,0.1); }
-    100% { box-shadow: 0 0 20px rgba(0,0,0,0.5), 0 0 16px rgba(192,144,255,0.15); }
-  }
+  /* quest-bubble inherits base bubbleIn animation — no override needed */
 
   /* Node highlight flash */
   .node-highlight {
@@ -2061,14 +2562,11 @@
     flex: 1;
     overflow-y: auto;
     padding: 8px 12px;
-    scrollbar-width: thin;
-    scrollbar-color: #3a3020 transparent;
+
     font-size: 11px;
     line-height: 1.5;
     color: #b0a080;
   }
-  #codex-body::-webkit-scrollbar { width: 5px; }
-  #codex-body::-webkit-scrollbar-thumb { background: #3a3020; border-radius: 3px; }
   .codex-section {
     margin-bottom: 12px;
     padding-bottom: 10px;
@@ -2207,7 +2705,8 @@
     border-radius: 12px;
     box-shadow: 0 8px 40px rgba(0,0,0,0.8), 0 0 60px rgba(240,216,144,0.08);
     overflow: hidden;
-    backdrop-filter: blur(6px);
+    overflow-y: auto;
+    /* backdrop-filter removed for perf */
   }
   #persona-editor.open { display: flex; flex-direction: column; }
   .pe-overlay {
@@ -2227,6 +2726,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-shrink: 0;
   }
   .pe-header .panel-close {
     width: 24px; height: 24px;
@@ -2234,11 +2734,10 @@
     line-height: 22px;
   }
   .pe-body {
-    flex: 1;
+    flex: 1 1 0;
+    min-height: 0;
     overflow-y: auto;
     padding: 14px 18px;
-    scrollbar-width: thin;
-    scrollbar-color: #3a3020 transparent;
   }
   .pe-field-row {
     display: flex; gap: 10px;
@@ -2348,6 +2847,7 @@
     display: flex;
     border-bottom: 1px solid rgba(212,197,160,0.2);
     padding: 0;
+    flex-shrink: 0;
   }
   .pe-tab {
     flex: 1;
@@ -2397,8 +2897,7 @@
     padding: 0 18px 14px;
     overflow-y: auto;
     max-height: 55vh;
-    scrollbar-width: thin;
-    scrollbar-color: #3a3020 transparent;
+
   }
   /* Control Panel */
   .pe-control-body {
@@ -2705,8 +3204,7 @@
     color: #a0d060;
     white-space: pre-wrap;
     word-break: break-all;
-    scrollbar-width: thin;
-    scrollbar-color: #3a3020 transparent;
+
   }
   .pe-shell-bar {
     display: flex;
@@ -2763,6 +3261,7 @@
     align-items: center;
     cursor: pointer;
     user-select: none;
+    flex-shrink: 0;
   }
   #quest-log-header .log-count {
     font-size: 10px;
@@ -2773,11 +3272,8 @@
     flex: 1;
     overflow-y: auto;
     padding: 6px 0;
-    scrollbar-width: thin;
-    scrollbar-color: #3a3020 transparent;
+
   }
-  #quest-log-body::-webkit-scrollbar { width: 5px; }
-  #quest-log-body::-webkit-scrollbar-thumb { background: #3a3020; border-radius: 3px; }
   /* ── Quest Log: Chat-Bubble Entries ── */
   .log-entry {
     margin: 4px 8px;
@@ -2866,6 +3362,154 @@
   .log-entry.notion-quest .quest-check { color: #a080e0; }
   .log-entry.notion-quest .quest-check:hover { color: #c0a0ff; }
   .log-entry.notion-quest.quest-done .quest-check { color: #60c060; }
+  /* ── Quest Cards (structured quests with sub-quests) ── */
+  .quest-cards { padding: 4px 0; flex: 1; overflow-y: auto; }
+  .quest-card {
+    margin: 6px 8px;
+    border-radius: 10px;
+    border: 1px solid rgba(192,144,255,0.15);
+    background: rgba(192,144,255,0.04);
+    overflow: hidden;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .quest-card:hover {
+    border-color: rgba(192,144,255,0.3);
+    box-shadow: 0 0 16px rgba(192,144,255,0.08);
+  }
+  .quest-card.quest-card--done {
+    opacity: 0.5;
+    border-color: rgba(96,192,96,0.2);
+  }
+  .quest-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px 6px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .quest-card-header:hover { background: rgba(192,144,255,0.06); }
+  .quest-card-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+    transition: transform 0.3s;
+  }
+  .quest-card.quest-card--open .quest-card-icon { transform: rotate(90deg); }
+  .quest-card-title {
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    color: #e0c8ff;
+    flex: 1;
+    line-height: 1.3;
+  }
+  .quest-card-progress {
+    font-family: 'MedievalSharp', cursive;
+    font-size: 10px;
+    color: #a080c0;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .quest-card-bar {
+    height: 3px;
+    margin: 0 10px 0;
+    background: rgba(192,144,255,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .quest-card-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #c090ff, #80e0a0);
+    border-radius: 2px;
+    transition: width 0.6s ease;
+  }
+  .quest-card-desc {
+    font-size: 10px;
+    color: #908070;
+    padding: 2px 10px 6px 34px;
+    line-height: 1.4;
+  }
+  .quest-card-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease;
+  }
+  .quest-card.quest-card--open .quest-card-body { max-height: 800px; }
+  .quest-sub {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 5px 10px 5px 28px;
+    border-top: 1px solid rgba(192,144,255,0.06);
+    transition: background 0.2s;
+    cursor: default;
+  }
+  .quest-sub:hover { background: rgba(192,144,255,0.04); }
+  .quest-sub.quest-sub--done { opacity: 0.5; }
+  .quest-sub.quest-sub--done .quest-sub-title { text-decoration: line-through; }
+  .quest-sub-check {
+    cursor: pointer;
+    font-size: 13px;
+    color: #c090ff;
+    flex-shrink: 0;
+    margin-top: 1px;
+    transition: color 0.3s;
+    user-select: none;
+  }
+  .quest-sub-check:hover { color: #e0b0ff; }
+  .quest-sub--done .quest-sub-check { color: #60c060; }
+  .quest-sub-content { flex: 1; min-width: 0; }
+  .quest-sub-title {
+    font-size: 11px;
+    color: #c8b898;
+    line-height: 1.3;
+  }
+  .quest-sub-node {
+    font-size: 9px;
+    color: #807060;
+    margin-top: 1px;
+  }
+  .quest-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+  }
+  .quest-action {
+    font-family: 'MedievalSharp', cursive;
+    font-size: 9px;
+    color: #c0a8e0;
+    background: rgba(192,144,255,0.1);
+    border: 1px solid rgba(192,144,255,0.2);
+    border-radius: 10px;
+    padding: 2px 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    user-select: none;
+  }
+  .quest-action:hover {
+    background: rgba(192,144,255,0.2);
+    border-color: rgba(192,144,255,0.4);
+    color: #e0d0ff;
+    box-shadow: 0 0 8px rgba(192,144,255,0.15);
+  }
+  .quest-action:active { transform: scale(0.95); }
+  .quest-action--pan { color: #a0d0ff; background: rgba(100,180,255,0.1); border-color: rgba(100,180,255,0.2); }
+  .quest-action--pan:hover { background: rgba(100,180,255,0.2); border-color: rgba(100,180,255,0.4); color: #c0e0ff; }
+  .quest-action--panel { color: #f0d890; background: rgba(240,216,144,0.1); border-color: rgba(240,216,144,0.2); }
+  .quest-action--panel:hover { background: rgba(240,216,144,0.2); border-color: rgba(240,216,144,0.4); color: #fff0c0; }
+  .quest-action--highlight { color: #a0e0a0; background: rgba(96,220,96,0.08); border-color: rgba(96,220,96,0.2); }
+  .quest-action--highlight:hover { background: rgba(96,220,96,0.15); border-color: rgba(96,220,96,0.3); color: #c0ffc0; }
+  .quest-action--chat { color: #f0a0c0; background: rgba(240,120,160,0.08); border-color: rgba(240,120,160,0.2); }
+  .quest-action--chat:hover { background: rgba(240,120,160,0.15); border-color: rgba(240,120,160,0.3); color: #ffc0d8; }
+  .quest-action--scan { color: #80d0d0; background: rgba(80,200,200,0.08); border-color: rgba(80,200,200,0.2); }
+  .quest-action--scan:hover { background: rgba(80,200,200,0.15); border-color: rgba(80,200,200,0.3); color: #a0f0f0; }
+  @keyframes questComplete {
+    0% { background: rgba(96,220,96,0.15); }
+    100% { background: rgba(96,220,96,0); }
+  }
+  .quest-sub--completing { animation: questComplete 0.8s ease; }
+
   /* Oracle response bubbles in log — right-aligned like chat */
   .log-entry.log-oracle_response {
     background: rgba(160,120,255,0.05);
@@ -2946,6 +3590,7 @@
     display: flex;
     border-bottom: 1px solid rgba(212,197,160,0.1);
     padding: 0 4px;
+    flex-shrink: 0;
   }
   .log-tab {
     flex: 1;
@@ -3151,11 +3796,8 @@
     flex: 1;
     overflow-y: auto;
     padding: 4px 0;
-    scrollbar-width: thin;
-    scrollbar-color: #3a3020 transparent;
+
   }
-  #node-list-body::-webkit-scrollbar { width: 5px; }
-  #node-list-body::-webkit-scrollbar-thumb { background: #3a3020; border-radius: 3px; }
   .nl-group {
     padding: 4px 12px 2px;
   }
@@ -3272,8 +3914,6 @@
   #debug-body {
     overflow-y: auto; overflow-x: hidden; flex: 1 1 0; padding: 6px 8px; min-height: 0;
   }
-  #debug-body::-webkit-scrollbar { width: 5px; }
-  #debug-body::-webkit-scrollbar-thumb { background: rgba(120,80,200,0.3); border-radius: 3px; }
   .dbg-section { margin-bottom: 8px; }
   .dbg-section-title {
     font-family: 'Cinzel',serif; font-size: 11px; color: #a080d0; cursor: pointer;
@@ -3348,15 +3988,11 @@
   #chat-messages {
     flex: 1;
     min-height: 100px;
-    max-height: 300px;
     overflow-y: auto;
     padding: 12px 14px;
     font-size: 13px;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(160,120,255,0.3) transparent;
+
   }
-  #chat-messages::-webkit-scrollbar { width: 4px; }
-  #chat-messages::-webkit-scrollbar-thumb { background: rgba(160,120,255,0.3); border-radius: 2px; }
 
   .chat-msg {
     padding: 8px 10px;
@@ -3439,8 +4075,7 @@
     font-size: 13px;
     font-family: 'MedievalSharp', cursive;
     transition: border-color 0.3s, box-shadow 0.3s;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(160,120,255,0.2) transparent;
+
   }
   #chat-input:focus {
     outline: none;
@@ -3564,24 +4199,32 @@
   /* ══════════════════════════════════════════════
      ── Unified Magical Scrollbars ──
      ══════════════════════════════════════════════ */
+  /* ── Unified Realm Scrollbars ── */
   ::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
+    width: 6px;
+    height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: transparent;
+    background: rgba(20,16,10,0.3);
+    border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(168,152,112,0.25);
+    background: linear-gradient(180deg, rgba(192,160,96,0.3), rgba(140,110,60,0.25));
     border-radius: 3px;
-    transition: background 0.2s;
+    border: 1px solid rgba(192,160,96,0.1);
+    transition: background 0.3s, border-color 0.3s;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(200,170,100,0.4);
+    background: linear-gradient(180deg, rgba(220,190,120,0.5), rgba(180,140,80,0.4));
+    border-color: rgba(220,190,120,0.2);
   }
+  ::-webkit-scrollbar-thumb:active {
+    background: linear-gradient(180deg, rgba(240,210,140,0.6), rgba(200,160,100,0.5));
+  }
+  ::-webkit-scrollbar-corner { background: transparent; }
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(168,152,112,0.25) transparent;
+    scrollbar-color: rgba(192,160,96,0.3) rgba(20,16,10,0.3);
   }
 
   /* ══════════════════════════════════════════════
@@ -3593,6 +4236,82 @@
   }
   #pulse-label.connecting {
     animation: connectingPulse 2s ease-in-out infinite;
+  }
+
+  /* ══════════════════════════════════════════════
+     ── Dynamic Panel Sizing (desktop only) ──
+     ══════════════════════════════════════════════
+     When body.dynamic-panels is set, panels auto-size
+     to content with min/max constraints instead of
+     fixed widths. Toggle in Spellbook > Enchant.
+     ══════════════════════════════════════════════ */
+  @media (min-width: 769px) {
+    body.dynamic-panels #quest-log {
+      width: auto;
+      min-width: 260px;
+      max-width: min(420px, calc(100vw - 40px));
+    }
+    body.dynamic-panels #realm-codex {
+      width: auto;
+      min-width: 260px;
+      max-width: min(400px, calc(100vw - 40px));
+      max-height: min(70vh, 700px);
+    }
+    body.dynamic-panels #node-list {
+      width: auto;
+      min-width: 220px;
+      max-width: min(340px, calc(100vw - 40px));
+      max-height: min(65vh, 600px);
+    }
+    body.dynamic-panels #energy-panel {
+      width: auto;
+      min-width: 140px;
+      max-width: 220px;
+    }
+    body.dynamic-panels #latency-panel {
+      width: auto;
+      min-width: 180px;
+      max-width: min(300px, calc(100vw - 40px));
+      max-height: min(55vh, 500px);
+    }
+    body.dynamic-panels #firewall-panel {
+      width: auto;
+      min-width: 180px;
+      max-width: min(300px, calc(100vw - 40px));
+    }
+    body.dynamic-panels #debug-panel {
+      width: auto;
+      min-width: 360px;
+      max-width: min(550px, calc(100vw - 20px));
+      height: auto;
+      min-height: 200px;
+      max-height: 60vh;
+    }
+    body.dynamic-panels #spellbook {
+      width: auto;
+      min-width: 240px;
+      max-width: min(360px, calc(100vw - 40px));
+    }
+    body.dynamic-panels #cartographer {
+      width: auto;
+      min-width: 170px;
+      max-width: 260px;
+    }
+    body.dynamic-panels #realm-panel {
+      min-width: 180px;
+      max-width: 280px;
+    }
+    body.dynamic-panels #node-chat-dialog {
+      width: auto;
+      min-width: 320px;
+      max-width: min(480px, calc(100vw - 40px));
+    }
+    /* Smooth transition when toggling */
+    body.dynamic-panels .panel,
+    body.dynamic-panels #debug-panel,
+    body.dynamic-panels #node-chat-dialog {
+      transition: width 0.3s ease, max-height 0.3s ease, min-width 0.3s ease;
+    }
   }
 
   /* ══════════════════════════════════════════════
@@ -3824,11 +4543,12 @@
 
   .dock-tray {
     display: flex;
-    gap: 8px;
-    align-items: center;
+    gap: 12px;
+    align-items: flex-start;
     justify-content: center;
     min-height: 44px;
     flex-wrap: nowrap;
+    padding-bottom: 16px;
   }
 
   /* Hide runes past the 5th on mobile */
@@ -3842,12 +4562,13 @@
     .dock-expanded .dock-tray {
       display: grid;
       grid-template-columns: repeat(5, 50px);
-      gap: 12px;
+      gap: 18px 12px;
       justify-content: center;
       justify-items: center;
       max-height: 50vh;
       overflow-y: auto;
       scrollbar-width: none;
+      padding-bottom: 20px;
     }
     .dock-expanded .dock-tray::-webkit-scrollbar { display: none; }
   }
@@ -3919,6 +4640,68 @@
 
   .sealed-rune:hover .rune-icon {
     filter: drop-shadow(0 0 12px rgba(220, 200, 255, 0.9)) brightness(1.2);
+  }
+
+  /* ── Dock rune labels: inscribed arcane text ── */
+  .rune-label {
+    position: absolute;
+    bottom: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-family: 'Cinzel', serif;
+    font-size: 8.5px;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    color: rgba(180, 155, 220, 0.7);
+    text-shadow:
+      0 0 6px rgba(140, 100, 220, 0.5),
+      0 0 12px rgba(120, 80, 200, 0.2);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s ease, color 0.3s ease;
+    z-index: 2;
+  }
+
+  /* Labels only visible in the dock tray */
+  .dock-tray .sealed-rune .rune-label {
+    opacity: 1;
+    animation: label-etch 0.6s ease-out backwards;
+  }
+  .dock-tray .sealed-rune:nth-child(1) .rune-label { animation-delay: 0.05s; }
+  .dock-tray .sealed-rune:nth-child(2) .rune-label { animation-delay: 0.1s; }
+  .dock-tray .sealed-rune:nth-child(3) .rune-label { animation-delay: 0.15s; }
+  .dock-tray .sealed-rune:nth-child(4) .rune-label { animation-delay: 0.2s; }
+  .dock-tray .sealed-rune:nth-child(5) .rune-label { animation-delay: 0.25s; }
+  .dock-tray .sealed-rune:nth-child(6) .rune-label { animation-delay: 0.3s; }
+  .dock-tray .sealed-rune:nth-child(7) .rune-label { animation-delay: 0.35s; }
+  .dock-tray .sealed-rune:nth-child(8) .rune-label { animation-delay: 0.4s; }
+  .dock-tray .sealed-rune:nth-child(9) .rune-label { animation-delay: 0.45s; }
+  .dock-tray .sealed-rune:nth-child(10) .rune-label { animation-delay: 0.5s; }
+  .dock-tray .sealed-rune:nth-child(11) .rune-label { animation-delay: 0.55s; }
+  .dock-tray .sealed-rune:nth-child(12) .rune-label { animation-delay: 0.6s; }
+  .dock-tray .sealed-rune:nth-child(13) .rune-label { animation-delay: 0.65s; }
+  .dock-tray .sealed-rune:hover .rune-label {
+    color: rgba(220, 195, 255, 0.95);
+    text-shadow:
+      0 0 8px rgba(180, 140, 255, 0.7),
+      0 0 20px rgba(140, 100, 220, 0.4),
+      0 1px 0 rgba(80, 40, 160, 0.5);
+  }
+
+  @keyframes label-etch {
+    0% {
+      opacity: 0;
+      letter-spacing: 0.3em;
+      filter: blur(3px);
+    }
+    60% {
+      filter: blur(0);
+    }
+    100% {
+      opacity: 1;
+      letter-spacing: 0.08em;
+    }
   }
 
   .rune-glow {

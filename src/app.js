@@ -2,7 +2,7 @@
 // Imports from extracted modules
 import { WORLD_W, WORLD_H, WORLD_SCALE, _isMobile, _cpuCores, _perfTier, setPerfTier, _PERF, _mapTilt, setMapTilt, SSE_URL } from './config.js';
 import { scaleLabel, scaleColor, fmtBytes, fmtRate, scalePct } from './utils.js';
-import { tips, _topology, infraNodes, isTS, CONN_TYPE_TO_CLASS, _tsHostMap, _vlanLabels, _connPaths, _nodeDOM, getNodeDOM, getNodeCenter, updateLinePositions, _getNodePos, _computePathD, refreshTopology, setTopologyRefreshHook } from './topology.js';
+import { tips, _topology, infraNodes, isTS, CONN_TYPE_TO_CLASS, _tsHostMap, _vlanLabels, _connPaths, _nodeDOM, getNodeDOM, getNodeCenter, updateLinePositions, _getNodePos, _computePathD, refreshTopology, setTopologyRefreshHook, isClusterExpandable, toggleClusterExpand } from './topology.js';
 import { saveFormation, unsealPanel, registerPanel } from './panel-manager.js';
 
 // ── Dynamic Biome Terrain (generated from topology VLANs/zones) ──
@@ -441,7 +441,11 @@ function _makeLatencyRow(id, rtt, n, maxRtt) {
 }
 
 // ── Firewall Panel ──
-const _vlanIfaceMap = { '6': 'br-lan.6', '8': 'br-lan.8', '10': 'br-lan.10', '11': 'br-lan.11' };
+const _vlanIfaceMap = {
+  '3': 'br-lan.3', '4': 'br-lan.4', '5': 'br-lan.5', '6': 'br-lan.6',
+  '7': 'br-lan.7', '8': 'br-lan.8', '9': 'br-lan.9', '10': 'br-lan.10',
+  '11': 'br-lan.11', '12': 'br-lan.12', '20': 'br-lan.20', '38': 'br-lan.38',
+};
 let _fwData = null;
 let _fwFetchTimer = null;
 
@@ -451,31 +455,34 @@ function _fetchFirewall() {
   }).catch(() => {});
 }
 
+let _fwVlanCache = null;  // Cached firewall VLAN DOM refs
+function _buildFwVlanCache(panel) {
+  _fwVlanCache = [];
+  panel.querySelectorAll('.fw-vlan').forEach(row => {
+    _fwVlanCache.push({
+      iface: _vlanIfaceMap[row.dataset.vlan],
+      rx: row.querySelector('.fw-rx-val'),
+      tx: row.querySelector('.fw-tx-val'),
+    });
+  });
+}
 function updateFirewallPanel(d) {
   const panel = document.getElementById('firewall-panel');
   if (!panel || panel.style.display === 'none') return;
   const gk = d.collectd?.['gatekeeper'];
   const ifaces = gk?.interfaces || {};
+  if (!_fwVlanCache) _buildFwVlanCache(panel);
 
-  // VLAN traffic from collectd (live rates)
-  panel.querySelectorAll('.fw-vlan').forEach(row => {
-    const vlan = row.dataset.vlan;
-    const iface = _vlanIfaceMap[vlan];
-    const data = ifaces[iface];
-    const rxEl = row.querySelector('.fw-rx-val');
-    const txEl = row.querySelector('.fw-tx-val');
-    if (data) {
-      rxEl.textContent = fmtRate(data.rx_bps);
-      txEl.textContent = fmtRate(data.tx_bps);
-    } else {
-      rxEl.textContent = '--';
-      txEl.textContent = '--';
-    }
-  });
+  for (const c of _fwVlanCache) {
+    const data = ifaces[c.iface];
+    c.rx.textContent = data ? fmtRate(data.rx_bps) : '--';
+    c.tx.textContent = data ? fmtRate(data.tx_bps) : '--';
+  }
 }
 
 function _renderFirewallPanel() {
   if (!_fwData) return;
+  _fwVlanCache = null;  // Invalidate — panel DOM is about to be rebuilt
   const panel = document.getElementById('firewall-panel');
   if (!panel) return;
   const { zones, wan, suggestions } = _fwData;
@@ -534,7 +541,7 @@ function _renderFirewallPanel() {
         reachEl.className = 'fw-reach';
         row.appendChild(reachEl);
       }
-      const labels = { wan: 'WAN', lan: 'IoT', iot: 'Family', family: 'Guest', admin: 'Admin', vpn: 'VPN' };
+      const labels = { wan: 'WAN', lan: 'IoT', iot: 'Guest', family: 'Family', admin: 'Admin', vpn: 'VPN', wanguard: 'WAN Guard' };
       reachEl.innerHTML = '\u2192 ' + z.can_reach.map(r => labels[r] || r).join(', ');
     } else if (reachEl) {
       reachEl.innerHTML = '';
@@ -571,6 +578,69 @@ function _renderFirewallPanel() {
 
 // Fetch firewall data on load and every 60s
 setTimeout(() => { _fetchFirewall(); _fwFetchTimer = setInterval(_fetchFirewall, 60000); }, 3000);
+
+// ── WiFi / Aether Towers Panel ──
+const _VLAN_NAMES = { 6: 'Admin', 8: 'Family', 10: 'IoT', 11: 'Guest' };
+const _VLAN_COLORS = { 6: '#f0d890', 8: '#c0a060', 10: '#60c060', 11: '#64a0dc' };
+
+function _fetchWifiAPs() {
+  const panel = document.getElementById('wifi-panel');
+  if (!panel || panel.style.display === 'none') return;
+  fetch('/wifi/aps').then(r => r.json()).then(data => {
+    _renderWifiPanel(data);
+  }).catch(() => {
+    const body = document.getElementById('wifi-body');
+    if (body) body.innerHTML = '<div class="wifi-loading">Towers unreachable</div>';
+  });
+}
+
+function _renderWifiPanel(data) {
+  const body = document.getElementById('wifi-body');
+  const badge = document.getElementById('wifi-ap-count');
+  if (!body) return;
+  const apIds = Object.keys(data);
+  if (badge) badge.textContent = apIds.length + ' towers';
+  if (!apIds.length) { body.innerHTML = '<div class="wifi-loading">No towers found</div>'; return; }
+
+  let html = '';
+  for (const [apId, ap] of Object.entries(data)) {
+    const ssidHtml = (ap.ssids || []).map(s => {
+      const vlan = s.vlan;
+      const vlanName = _VLAN_NAMES[vlan] || s.network || '?';
+      const color = _VLAN_COLORS[vlan] || '#a89870';
+      return `<div class="wifi-ssid">
+        <span class="wifi-ssid-name">${s.ssid}</span>
+        <span class="wifi-ssid-vlan" style="color:${color}">${vlanName}${vlan ? ' <small>v' + vlan + '</small>' : ''}</span>
+      </div>`;
+    }).join('');
+    html += `<div class="wifi-ap" data-ap="${apId}">
+      <div class="wifi-ap-header">
+        <span class="wifi-ap-icon">&#128225;</span>
+        <span class="wifi-ap-name">${ap.label || apId}</span>
+        <span class="wifi-ap-clients">${ap.clients || 0} &#128246;</span>
+      </div>
+      <div class="wifi-ap-ip">${ap.ip || ''}</div>
+      ${ssidHtml || '<div class="wifi-ssid wifi-ssid-none">No SSIDs detected</div>'}
+    </div>`;
+  }
+  body.innerHTML = html;
+
+  // Click AP to pan to it on map
+  body.querySelectorAll('.wifi-ap').forEach(el => {
+    el.addEventListener('click', () => {
+      const nodeId = el.dataset.ap;
+      const nodeEl = document.querySelector(`[data-tip="${nodeId}"]`);
+      if (nodeEl) {
+        const x = parseInt(nodeEl.style.left) || 0;
+        const y = parseInt(nodeEl.style.top) || 0;
+        panToNode(x, y);
+      }
+    });
+  });
+}
+
+// Fetch on load and every 2 minutes
+setTimeout(() => { _fetchWifiAPs(); setInterval(_fetchWifiAPs, 120000); }, 4000);
 
 function updateCoreSublabels(d) {
   const { forge, mana, essence, astral } = d;
@@ -856,13 +926,20 @@ trafficSlider.addEventListener('input', () => {
 let nodeScale = 1.0;
 const nodeScaleSlider = document.getElementById('node-scale-slider');
 const nodeScaleVal = document.getElementById('node-scale-val');
+let _nodeScaleRaf = false;
 nodeScaleSlider.addEventListener('input', () => {
   nodeScale = parseFloat(nodeScaleSlider.value) * masterScale;
   nodeScaleVal.textContent = nodeScale.toFixed(1) + 'x';
-  document.querySelectorAll('.realm-node').forEach(node => {
-    node.style.transform = `scale(${nodeScale})`;
-  });
-  updateLinePositions();
+  if (!_nodeScaleRaf) {
+    _nodeScaleRaf = true;
+    requestAnimationFrame(() => {
+      _nodeScaleRaf = false;
+      document.querySelectorAll('.realm-node').forEach(node => {
+        node.style.transform = `scale(${nodeScale})`;
+      });
+      updateLinePositions();
+    });
+  }
   scheduleSave();
 });
 
@@ -870,22 +947,29 @@ nodeScaleSlider.addEventListener('input', () => {
 let textScale = 1.0;
 const textScaleSlider = document.getElementById('text-scale-slider');
 const textScaleVal = document.getElementById('text-scale-val');
+let _textScaleRaf = false;
 textScaleSlider.addEventListener('input', () => {
   textScale = parseFloat(textScaleSlider.value) * masterScale;
   textScaleVal.textContent = textScale.toFixed(1) + 'x';
-  document.documentElement.style.setProperty('--text-scale', textScale);
-  document.querySelectorAll('.node-label').forEach(el => {
-    el.style.transform = `scale(${textScale})`;
-  });
-  document.querySelectorAll('.node-sublabel').forEach(el => {
-    el.style.transform = `scale(${textScale})`;
-  });
-  document.querySelectorAll('.vlan-label').forEach(el => {
-    el.style.transform = `translate(-50%, -100%) scale(${textScale})`;
-  });
-  document.querySelectorAll('.region-label').forEach(el => {
-    el.style.transform = `rotate(${el.dataset.rotate || 0}deg) scale(${textScale})`;
-  });
+  if (!_textScaleRaf) {
+    _textScaleRaf = true;
+    requestAnimationFrame(() => {
+      _textScaleRaf = false;
+      document.documentElement.style.setProperty('--text-scale', textScale);
+      document.querySelectorAll('.node-label').forEach(el => {
+        el.style.transform = `scale(${textScale})`;
+      });
+      document.querySelectorAll('.node-sublabel').forEach(el => {
+        el.style.transform = `scale(${textScale})`;
+      });
+      document.querySelectorAll('.vlan-label').forEach(el => {
+        el.style.transform = `translate(-50%, -100%) scale(${textScale})`;
+      });
+      document.querySelectorAll('.region-label').forEach(el => {
+        el.style.transform = `rotate(${el.dataset.rotate || 0}deg) scale(${textScale})`;
+      });
+    });
+  }
   scheduleSave();
 });
 
@@ -1226,7 +1310,7 @@ _topoWorker.onmessage = function(e) {
     if (b.halo && b.fillOp > 0) {
       inner += `<path d="${b.pathD}" fill="none" stroke="${b.col}" stroke-width="25" opacity="${b.fillOp}" stroke-linecap="round" stroke-linejoin="round"/>`;
     }
-    const filterAttr = b.useFilter ? ' filter="url(#topo-shimmer)" class="topo-idx"' : '';
+    const filterAttr = b.useFilter ? ' class="topo-idx"' : '';
     inner += `<path d="${b.pathD}" fill="none" stroke="${b.col}" stroke-width="${b.sw}" opacity="${b.op}" stroke-linecap="round"${filterAttr}/>`;
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', VB);
@@ -1485,7 +1569,7 @@ let _gridHue = 0;
   function spawnSparkle() {
     if (!sparkleLayer) return;
     // Cap max sparkles for performance
-    if (sparkleLayer.children.length > 60) return;
+    if (sparkleLayer.children.length > 30) return;
     const el = document.createElement('div');
     const isLarge = Math.random() < 0.15;
     el.className = isLarge ? 'sparkle sparkle-large' : 'sparkle';
@@ -1615,8 +1699,11 @@ function renderEvent(evt, isRestore = false) {
   lastEventTs = Math.max(lastEventTs, evt.ts || 0);
   const nodeEl = document.querySelector(`[data-tip="${evt.node}"]`);
 
-  // Always log to quest log
+  // Always log to quest log (addLogEntry checks dismissed internally)
   addLogEntry(evt, nodeEl);
+
+  // Skip bubble for dismissed events
+  if (evt.text && _dismissedQuests.includes(evt.text)) return;
 
   // For restored events, only show bubble (no highlight flash)
   // For live events, show both bubble and highlight
@@ -1625,16 +1712,14 @@ function renderEvent(evt, isRestore = false) {
 
   if (!nodeEl) return;
 
-  // Determine if we should show a bubble
+  // One bubble per node — latest event always wins (showSpeechBubble dismisses the old one).
+  // On restore: SSE replays chronologically, so last event per node is the most recent.
+  // Just let each event overwrite — showSpeechBubble handles the dedup.
   let showBubble = false;
+  const isPersistent = ['quest', 'alert', 'oracle_query', 'oracle_response'].includes(evt.type);
   if (isRestore) {
-    // On restore: show bubble only for recent events, one per node (most recent wins)
-    if (evtAge < BUBBLE_RESTORE_AGE && !_restoredBubbleNodes.has(evt.node)) {
-      showBubble = true;
-      _restoredBubbleNodes.add(evt.node);
-    }
+    showBubble = isPersistent || evtAge < BUBBLE_RESTORE_AGE;
   } else if (!isStale) {
-    // Live event: always show bubble
     showBubble = true;
   }
 
@@ -1651,6 +1736,7 @@ function renderEvent(evt, isRestore = false) {
   } else if (evt.type === 'quest') {
     showSpeechBubble(nodeEl, evt);
     if (!isRestore) showHighlight(nodeEl, { color: 'rgba(192,144,255,0.5)' });
+    _refreshQuestCards(); // Refresh structured quest view
   } else if (evt.type === 'oracle_query') {
     showSpeechBubble(nodeEl, { ...evt, text: '\u2728 ' + evt.text, color: '#c080ff' });
     if (!isRestore) showHighlight(nodeEl, { color: 'rgba(192,128,255,0.6)' });
@@ -1665,14 +1751,26 @@ let logCount = 0;
 const MAX_LOG = 80;
 let activeTab = 'all';
 
+// Quest cards container (injected before log body)
+const _questCards = document.createElement('div');
+_questCards.className = 'quest-cards';
+_questCards.style.display = 'none';
+const _logBodyEl = document.getElementById('quest-log-body');
+if (_logBodyEl) _logBodyEl.parentNode.insertBefore(_questCards, _logBodyEl);
+
 // Tab switching
 document.querySelectorAll('.log-tab').forEach(tab => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.log-tab').forEach(t => t.classList.remove('active'));
     tab.classList.add('active');
     activeTab = tab.dataset.tab;
+    // Quest cards only visible on quest tab
+    _questCards.style.display = activeTab === 'quest' ? '' : 'none';
+    if (_logBodyEl) _logBodyEl.style.display = activeTab === 'quest' ? 'none' : '';
     document.querySelectorAll('.log-entry').forEach(entry => {
-      if (activeTab === 'all') {
+      if (activeTab === 'quest') {
+        entry.style.display = 'none';
+      } else if (activeTab === 'all') {
         entry.style.display = '';
       } else if (activeTab === 'notion') {
         entry.style.display = entry.classList.contains('notion-quest') ? '' : 'none';
@@ -1845,6 +1943,10 @@ export function addLogEntry(evt, nodeEl) {
         _dismissedQuests.push(evt.text);
         _saveDismissed();
       }
+      // Delete quest from DB
+      if (evt.type === 'quest') {
+        fetch('/quest-delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: evt.text }) }).catch(() => {});
+      }
     }
     entry.addEventListener('animationend', () => {
       entry.remove();
@@ -1914,21 +2016,159 @@ const _completedQuests = JSON.parse(localStorage.getItem('realm-completed-quests
 function _saveDismissed() { localStorage.setItem('realm-dismissed-quests', JSON.stringify(_dismissedQuests)); }
 function _saveCompleted() { localStorage.setItem('realm-completed-quests', JSON.stringify(_completedQuests)); }
 
-// Initial quest entries — rendered as full events (log + speech bubble + highlight)
-const _initialQuests = [
-  { type: 'quest', node: 'katana', text: 'Chart every node in the Digital Dominion \u2014 ensure all devices report their presence to the Citadel', duration: 12 },
-  { type: 'quest', node: 'hp-switch', text: 'Awaken all Guardian Towers \u2014 bring collectd scrying to every AP in the realm', duration: 12 },
-  { type: 'quest', node: 'gatekeeper', text: 'Unite the Enchanted Quarters \u2014 connect all IoT clusters through proper VLAN gateways', duration: 12 },
-  { type: 'quest', node: 'gs308t', text: 'Map the Hub Stone \u2014 monitor all 8 switch ports and track inter-bridge traffic', duration: 12 },
-  { type: 'quest', node: 'hp-switch', text: 'Bridge the realms \u2014 verify GigaBeam and CPE710 links carry full VLAN trunks', duration: 12 },
-];
+// ── Quest Card System (structured quests with interactive actions) ──
+const _ACTION_ICONS = {
+  pan: '\uD83D\uDDFA\uFE0F', panel: '\uD83D\uDCCB', highlight: '\u2728',
+  chat: '\uD83D\uDCAC', scan: '\uD83D\uDD0D', link: '\uD83D\uDD17',
+};
+
+function _executeQuestAction(action) {
+  if (action.type === 'pan' && action.node) {
+    const tn = _topology?.nodes.find(n => n.id === action.node);
+    if (tn) { panToNode(tn.x, tn.y); showHighlight(getNodeDOM(tn.id), { color: 'rgba(192,144,255,0.6)' }); }
+  } else if (action.type === 'panel' && action.panel) {
+    const panelEl = document.getElementById(action.panel);
+    if (panelEl) { unsealPanel(panelEl); panelEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+  } else if (action.type === 'highlight' && action.nodes) {
+    action.nodes.forEach(nid => {
+      const tn = _topology?.nodes.find(n => n.id === nid);
+      if (tn) showHighlight(getNodeDOM(nid), { color: action.color || 'rgba(192,144,255,0.5)' });
+    });
+  } else if (action.type === 'chat' && action.node) {
+    const tn = _topology?.nodes.find(n => n.id === action.node);
+    if (tn) panToNode(tn.x, tn.y);
+    openNodeChat(action.node, action.prompt || '', false);
+  } else if (action.type === 'scan') {
+    fetch(action.endpoint || '/scan').catch(() => {});
+    addLogEntry({ type: 'system', node: 'katana', text: 'Initiating realm scan...', ts: Date.now()/1000 });
+  }
+}
+
+function _renderQuestCards(quests) {
+  _questCards.innerHTML = '';
+  if (!quests.length) {
+    _questCards.innerHTML = '<div style="padding:16px;text-align:center;color:#706040;font-size:11px;font-style:italic">No active quests. The realm is at peace.</div>';
+    return;
+  }
+  quests.forEach(quest => {
+    const card = document.createElement('div');
+    const children = quest.children || [];
+    const doneCount = children.filter(c => c.status === 'completed').length;
+    const total = children.length;
+    const allDone = total > 0 && doneCount === total;
+    const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+    card.className = 'quest-card' + (allDone ? ' quest-card--done' : '');
+
+    // Header (click to expand)
+    const header = document.createElement('div');
+    header.className = 'quest-card-header';
+    header.innerHTML = `<span class="quest-card-icon">\u25B6</span>` +
+      `<span class="quest-card-title">${quest.title}</span>` +
+      (total > 0 ? `<span class="quest-card-progress">${doneCount}/${total}</span>` : '');
+    header.addEventListener('click', () => card.classList.toggle('quest-card--open'));
+    card.appendChild(header);
+
+    // Progress bar
+    if (total > 0) {
+      const bar = document.createElement('div');
+      bar.className = 'quest-card-bar';
+      bar.innerHTML = `<div class="quest-card-bar-fill" style="width:${pct}%"></div>`;
+      card.appendChild(bar);
+    }
+
+    // Description
+    if (quest.description) {
+      const desc = document.createElement('div');
+      desc.className = 'quest-card-desc';
+      desc.textContent = quest.description;
+      card.appendChild(desc);
+    }
+
+    // Main quest actions
+    if (quest.actions?.length) {
+      const actionsRow = document.createElement('div');
+      actionsRow.className = 'quest-actions';
+      actionsRow.style.padding = '2px 10px 6px 34px';
+      quest.actions.forEach(action => {
+        const btn = document.createElement('button');
+        btn.className = `quest-action quest-action--${action.type}`;
+        btn.innerHTML = `${_ACTION_ICONS[action.type] || ''} ${action.label}`;
+        btn.addEventListener('click', (e) => { e.stopPropagation(); _executeQuestAction(action); });
+        actionsRow.appendChild(btn);
+      });
+      card.appendChild(actionsRow);
+    }
+
+    // Collapsible body with sub-quests
+    const body = document.createElement('div');
+    body.className = 'quest-card-body';
+    children.forEach(sub => {
+      const subEl = document.createElement('div');
+      const isDone = sub.status === 'completed';
+      subEl.className = 'quest-sub' + (isDone ? ' quest-sub--done' : '');
+
+      const check = document.createElement('span');
+      check.className = 'quest-sub-check';
+      check.innerHTML = isDone ? '\u2611' : '\u2610';
+      check.addEventListener('click', () => {
+        const newStatus = isDone ? 'active' : 'completed';
+        fetch('/quest-update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: sub.id, status: newStatus }),
+        }).then(() => _refreshQuestCards()).catch(() => {});
+        // Immediate visual feedback
+        subEl.classList.toggle('quest-sub--done');
+        subEl.classList.add('quest-sub--completing');
+        check.innerHTML = isDone ? '\u2610' : '\u2611';
+      });
+
+      const content = document.createElement('div');
+      content.className = 'quest-sub-content';
+      content.innerHTML = `<div class="quest-sub-title">${sub.title}</div>` +
+        (sub.node ? `<div class="quest-sub-node">\u2694 ${sub.node}</div>` : '');
+
+      // Sub-quest actions
+      if (sub.actions?.length) {
+        const subActions = document.createElement('div');
+        subActions.className = 'quest-actions';
+        sub.actions.forEach(action => {
+          const btn = document.createElement('button');
+          btn.className = `quest-action quest-action--${action.type}`;
+          btn.innerHTML = `${_ACTION_ICONS[action.type] || ''} ${action.label}`;
+          btn.addEventListener('click', (e) => { e.stopPropagation(); _executeQuestAction(action); });
+          subActions.appendChild(btn);
+        });
+        content.appendChild(subActions);
+      }
+
+      subEl.appendChild(check);
+      subEl.appendChild(content);
+      body.appendChild(subEl);
+    });
+    card.appendChild(body);
+    _questCards.appendChild(card);
+  });
+}
+
+function _refreshQuestCards() {
+  fetch('/quests').then(r => r.json()).then(quests => _renderQuestCards(quests)).catch(() => {});
+}
+
+// Load quest log from DB on startup
+function _loadQuestLog() {
+  // 1) Structured quest cards
+  _refreshQuestCards();
+  // 2) Recent events for the flat log (All/Speech/Reports tabs)
+  fetch('/events?limit=50').then(r => r.json()).then(events => {
+    events.filter(e => e.text && !_dismissedQuests.includes(e.text)).forEach((e, i) => {
+      setTimeout(() => addLogEntry(e), i * 50);
+    });
+  }).catch(() => {});
+}
 setTimeout(() => {
   addLogEntry({ type: 'system', node: 'katana', text: 'The Realm Map has been inscribed.', ts: Date.now()/1000 });
-  const activeQuests = _initialQuests.filter(q => !_dismissedQuests.includes(q.text));
-  // All quests appear together with staggered animations
-  activeQuests.forEach((q, i) => {
-    setTimeout(() => renderEvent({ ...q, ts: Date.now()/1000, _local: true }), i * 150);
-  });
+  _loadQuestLog();
 }, 800);
 
 // Track active speech bubbles for repositioning during drag
@@ -1969,10 +2209,12 @@ function _dismissBubble(bubble) {
 }
 
 export function showSpeechBubble(nodeEl, evt, isAlert) {
-  // Remove existing bubble on same node to avoid stacking
+  // One bubble per node, period — latest event wins
+  const dismissList = [];
   for (const b of _activeBubbles) {
-    if (b._nodeEl === nodeEl) { _dismissBubble(b); break; }
+    if (b._nodeId === evt.node) dismissList.push(b);
   }
+  for (const b of dismissList) _dismissBubble(b);
 
   const bubble = document.createElement('div');
   const isQuest = evt.type === 'quest';
@@ -1983,7 +2225,7 @@ export function showSpeechBubble(nodeEl, evt, isAlert) {
   if (isNotion) cls += ' notion-bubble';
   bubble.className = cls;
   bubble._nodeEl = nodeEl;
-  bubble._nodeId = evt.node;  // Store node ID for re-finding after topology refresh
+  bubble._nodeId = evt.node;
   const name = nodeEl.querySelector('.node-label')?.textContent || evt.node;
 
   // Close button
@@ -2085,23 +2327,67 @@ const canvas = document.getElementById('map-canvas');
 const world = document.getElementById('map-world');
 // Cache canvas rect — getBoundingClientRect on every wheel event forces synchronous layout
 let _canvasRect = canvas.getBoundingClientRect();
-window.addEventListener('resize', () => { _canvasRect = canvas.getBoundingClientRect(); });
 export let scale = 1, panX = 0, panY = 0;
 let dragging = false, lastX, lastY;
 
 let _lastGlobeTilt = 0;
 
+// During active zoom/pan, strip heavy layers (display:none) then promote world to
+// a single GPU layer (will-change:transform). With heavy layers gone, the texture
+// is just 87 small icons — well within VRAM.  Sequence matters:
+//   Frame 0: add .zooming (display:none strips layers from paint tree)
+//   Frame 1: set will-change:transform (browser rasterizes the now-lightweight world)
+//   Frame 2+: GPU scales the cached raster — zero main-thread paint work
+let _zoomActive = false;
+let _zoomIdleTimer = 0;
+let _zoomWillChangeRaf = 0;
+function _enterZoomMode() {
+  if (!_zoomActive) {
+    _zoomActive = true;
+    world.classList.add('zooming');
+    // Delay will-change by one frame so display:none takes effect first
+    _zoomWillChangeRaf = requestAnimationFrame(() => {
+      _zoomWillChangeRaf = 0;
+      if (_zoomActive) world.style.willChange = 'transform';
+    });
+  }
+  clearTimeout(_zoomIdleTimer);
+  _zoomIdleTimer = setTimeout(_exitZoomMode, 400);
+}
+// Arcane veil: covers the repaint jank when heavy layers restore after zoom
+const _zoomVeil = document.createElement('div');
+_zoomVeil.id = 'zoom-veil';
+document.getElementById('map-canvas').appendChild(_zoomVeil);
+
+function _exitZoomMode() {
+  _zoomActive = false;
+  if (_zoomWillChangeRaf) { cancelAnimationFrame(_zoomWillChangeRaf); _zoomWillChangeRaf = 0; }
+  world.style.willChange = '';
+  // Show veil instantly, then restore layers behind it, then fade veil out
+  _zoomVeil.classList.add('active');
+  requestAnimationFrame(() => {
+    // Heavy layers restored here (browser paints behind the opaque veil)
+    world.classList.remove('zooming');
+    _updateSparkleRect();
+    // Next frame: start fade-out (repaint is done, veil dissolves to reveal)
+    requestAnimationFrame(() => {
+      _zoomVeil.classList.add('fade');
+      // Clean up after transition ends
+      setTimeout(() => {
+        _zoomVeil.classList.remove('active', 'fade');
+      }, 250);
+    });
+  });
+}
+
 // rAF-batched transform: multiple wheel/touch events per frame collapse into one DOM write
 let _transformRafId = 0;
-let _willChangeTimer = 0;
 function _applyTransformNow() {
   _transformRafId = 0;
-  // Promote to GPU layer on demand, release 300ms after last transform
-  if (world.style.willChange !== 'transform') world.style.willChange = 'transform';
-  clearTimeout(_willChangeTimer);
-  _willChangeTimer = setTimeout(() => { world.style.willChange = ''; }, 300);
   if (_mapTilt > 0) {
+    canvas.classList.add('tilted');
     world.style.transformStyle = 'preserve-3d';
+    world.style.zoom = '';
     const cx = WORLD_W / 2, cy = WORLD_H / 2;
     world.style.transform = `translate(${panX}px, ${panY}px) scale(${scale}) translate(${cx}px, ${cy}px) rotateX(${_mapTilt}deg) translate(${-cx}px, ${-cy}px)`;
     if (_mapTilt !== _lastGlobeTilt) {
@@ -2109,11 +2395,15 @@ function _applyTransformNow() {
       _lastGlobeTilt = _mapTilt;
     }
   } else {
+    canvas.classList.remove('tilted');
     if (_lastGlobeTilt !== 0) {
       _clearGlobeZ();
       _lastGlobeTilt = 0;
     }
     world.style.transformStyle = '';
+    world.style.zoom = '';
+    // transform: scale() is compositor-only (no layout reflow).
+    // During zoom, will-change: transform caches the raster so GPU just scales the bitmap.
     world.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
   }
 }
@@ -2222,19 +2512,22 @@ export function panToNode(x, y) {
 canvas.addEventListener('mousedown', e => {
   dragging = true;
   lastX = e.clientX; lastY = e.clientY;
+  _enterZoomMode();  // Activate immediately — prevents repaint gap between zoom→pan
 });
 window.addEventListener('mousemove', e => {
   if (!dragging) return;
+  _enterZoomMode();  // Lock raster for pan too
   panX += e.clientX - lastX;
   panY += e.clientY - lastY;
   lastX = e.clientX; lastY = e.clientY;
   applyTransform();
 });
-window.addEventListener('mouseup', () => dragging = false);
+window.addEventListener('mouseup', () => { if (dragging) { dragging = false; saveSettings(); } });
 
 // ── Touch: pan & pinch-to-zoom ──
 let _touchPanning = false, _lastTouch = null, _pinchDist = null;
 canvas.addEventListener('touchstart', e => {
+  _enterZoomMode();  // Activate immediately on touch
   if (e.touches.length === 2) {
     _pinchDist = Math.hypot(
       e.touches[1].clientX - e.touches[0].clientX,
@@ -2247,6 +2540,7 @@ canvas.addEventListener('touchstart', e => {
   }
 }, { passive: true });
 canvas.addEventListener('touchmove', e => {
+  _enterZoomMode();  // Lock raster BEFORE transform changes
   if (e.touches.length === 2 && _pinchDist !== null) {
     e.preventDefault();
     const newDist = Math.hypot(
@@ -2271,11 +2565,14 @@ canvas.addEventListener('touchmove', e => {
   }
 }, { passive: false });
 canvas.addEventListener('touchend', () => {
+  if (_touchPanning || _pinchDist) saveSettings();
   _touchPanning = false; _lastTouch = null; _pinchDist = null;
 }, { passive: true });
 
+let _zoomSaveTimer = null;
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
+  _enterZoomMode();  // Lock raster BEFORE transform changes
   const mx = e.clientX - _canvasRect.left, my = e.clientY - _canvasRect.top;
   const oldScale = scale;
   const delta = e.deltaY > 0 ? 0.9 : 1.1;
@@ -2283,6 +2580,8 @@ canvas.addEventListener('wheel', e => {
   panX = mx - (mx - panX) * (scale / oldScale);
   panY = my - (my - panY) * (scale / oldScale);
   applyTransform();
+  clearTimeout(_zoomSaveTimer);
+  _zoomSaveTimer = setTimeout(saveSettings, 800);
 }, { passive: false });
 
 // ── Tooltips (delegated — survives topology refresh) ──
@@ -2319,9 +2618,10 @@ document.getElementById('map-world').addEventListener('mouseout', e => {
 
 // Minimap removed — seal/dock system and search provide navigation
 
-// Init
+// Init — centerMap sets default; restoreSettings (later) overrides with saved zoom/pan
 centerMap();
-window.addEventListener('resize', centerMap);
+// On resize, preserve current zoom — just refresh the canvas rect cache
+window.addEventListener('resize', () => { _canvasRect = canvas.getBoundingClientRect(); });
 
 // ── Persona Editor ──
 let currentEditNode = null;
@@ -3916,6 +4216,7 @@ function _restorePanel(panelEl) {
     'cartographer': 'vis-cartographer', 'energy-panel': 'vis-energy',
     'debug-panel': 'vis-debug', 'latency-panel': 'vis-latency',
     'firewall-panel': 'vis-firewall',
+    'wifi-panel': 'vis-wifi',
   };
   const visId = visMap[id] || ('vis-' + id);
   const visCb = document.getElementById(visId);
@@ -4533,6 +4834,7 @@ document.getElementById('layout-reset-btn')?.addEventListener('click', resetToOr
     ['vis-debug',        '#debug-panel'],
     ['vis-latency',      '#latency-panel'],
     ['vis-firewall',     '#firewall-panel'],
+    ['vis-wifi',         '#wifi-panel'],
   ];
   for (const [id, sel, multiSel] of toggles) {
     const cb = document.getElementById(id);
@@ -4568,6 +4870,11 @@ document.getElementById('layout-reset-btn')?.addEventListener('click', resetToOr
     });
   }
 
+  // Wire up panel mode buttons (logic at module scope below)
+  document.querySelectorAll('.panel-mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => setPanelMode(btn.dataset.mode));
+  });
+
   // Layer opacity sliders: [sliderId, target selector or multi-selector, isMulti]
   const opacityLayers = [
     ['layer-terrain-orig-slider', '#terrain-original', false],
@@ -4594,6 +4901,7 @@ document.getElementById('layout-reset-btn')?.addEventListener('click', resetToOr
     ['panel-mirror-slider',       '#debug-panel',       false],
     ['panel-latency-slider',      '#latency-panel',     false],
     ['panel-firewall-slider',     '#firewall-panel',    false],
+    ['panel-wifi-slider',        '#wifi-panel',        false],
   ];
   for (const [sliderId, sel, isMulti, multiSel] of opacityLayers) {
     const sl = document.getElementById(sliderId);
@@ -4620,6 +4928,24 @@ moteCanvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;p
 document.body.appendChild(moteCanvas);
 const moteCtx = moteCanvas.getContext('2d');
 let motes = [];
+
+// FPS counter (toggle with Ctrl+Shift+F)
+const _fpsEl = document.createElement('div');
+_fpsEl.style.cssText = 'position:fixed;top:4px;right:4px;z-index:9999;font:11px monospace;color:#0f0;background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:3px;pointer-events:none;display:none';
+document.body.appendChild(_fpsEl);
+let _fpsFrames = 0, _fpsLast = performance.now(), _fpsMotes = 0;
+function _fpsUpdate() {
+  _fpsFrames++;
+  const now = performance.now();
+  if (now - _fpsLast >= 1000) {
+    _fpsEl.textContent = `${_fpsFrames} fps | ${_fpsMotes} motes`;
+    _fpsFrames = 0;
+    _fpsLast = now;
+  }
+}
+window.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.shiftKey && e.key === 'F') _fpsEl.style.display = _fpsEl.style.display === 'none' ? '' : 'none';
+});
 
 function resizeMoteCanvas() {
   moteCanvas.width = window.innerWidth;
@@ -4729,24 +5055,58 @@ function _spawnLeyLineSparkles() {
 }
 
 let _sparkleTimer = 0;
-function animateMotes() {
-  const cw = moteCanvas.width, ch = moteCanvas.height;
-  moteCtx.clearRect(0, 0, cw, ch);
+const _PI2 = Math.PI * 2;
+let _moteSkipFrame = false;  // Halve frame rate when idle
+let _motePaused = false;
+document.addEventListener('visibilitychange', () => {
+  _motePaused = document.hidden;
+  // Disable connection animations when tab hidden (79 SVG repaints per frame)
+  document.body.classList.toggle('reduce-motion', document.hidden);
+});
 
-  // Refresh cached rect once per spawn cycle (not every frame)
+// Cache sparkle rect on resize instead of in animation loop
+const _sparkleRectWorld = document.getElementById('map-world');
+function _updateSparkleRect() {
+  if (_sparkleRectWorld) _sparkleRect = _sparkleRectWorld.getBoundingClientRect();
+}
+window.addEventListener('resize', _updateSparkleRect);
+_updateSparkleRect();
+
+function animateMotes() {
+  // Skip entirely when tab hidden
+  if (_motePaused) { requestAnimationFrame(animateMotes); return; }
+
+  // Skip during active zoom
+  if (_zoomActive) { requestAnimationFrame(animateMotes); return; }
+
+  // 30fps cap — skip entire frame (spawn + physics + render) every other tick.
+  // Must be before ALL work to actually halve CPU/GPU cost.
+  _moteSkipFrame = !_moteSkipFrame;
+  if (_moteSkipFrame) { requestAnimationFrame(animateMotes); return; }
+
+  const cw = moteCanvas.width, ch = moteCanvas.height;
+
+  // Spawn cycle
   _sparkleTimer++;
   const spawnDiv = _PERF.sparkleDiv;
   if (_sparkleTimer % (2 * spawnDiv) === 0) _spawnAmbientSparkles();
-  if (_sparkleTimer % (8 * spawnDiv) === 0) {
-    const mapEl = document.getElementById('map-world');
-    if (mapEl) _sparkleRect = mapEl.getBoundingClientRect();
-    _spawnNodeSparkles();
-  }
+  if (_sparkleTimer % (8 * spawnDiv) === 0) _spawnNodeSparkles();
   if (_sparkleTimer % (6 * spawnDiv) === 0) _spawnLeyLineSparkles();
 
+  if (motes.length === 0) {
+    _fpsUpdate();
+    requestAnimationFrame(animateMotes);
+    return;
+  }
+
+  moteCtx.clearRect(0, 0, cw, ch);
   const doGlow = _PERF.moteGlow;
   const doStar = _PERF.moteStarCross;
   let writeIdx = 0;
+
+  // Batch by color to reduce fillStyle changes (major canvas perf win)
+  const colorBuckets = {};
+  const glowBuckets = {};
 
   for (let i = 0, len = motes.length; i < len; i++) {
     const m = motes[i];
@@ -4754,27 +5114,23 @@ function animateMotes() {
     m.y += m.vy + Math.cos(m.wobble) * 0.2;
     m.wobble += m.wobbleSpeed;
     m.life -= m.decay;
-    if (m.life <= 0) continue; // dead — skip (swap-and-pop compaction below)
-    // Keep alive mote in compacted position
+    if (m.life <= 0) continue;
     if (writeIdx !== i) motes[writeIdx] = m;
     writeIdx++;
-    // Skip offscreen
     if (m.x < -10 || m.x > cw + 10 || m.y < -10 || m.y > ch + 10) continue;
     const [r, g, b] = m.color;
     let a = m.life * 0.8;
     if (m.twinkle) a *= 0.5 + 0.5 * Math.sin(m.wobble * 3);
     if (a < 0.01) continue;
     const sz = m.size * m.life * _sparkleGlowSize;
-    moteCtx.beginPath();
-    moteCtx.arc(m.x, m.y, sz, 0, Math.PI * 2);
-    moteCtx.fillStyle = `rgba(${r},${g},${b},${a.toFixed(2)})`;
-    moteCtx.fill();
-    // Glow halo (skip on low tier)
+    // Quantize alpha to reduce unique fillStyle strings (16 buckets)
+    const aq = ((a * 15 + 0.5) | 0) / 15;
+    const key = `${r},${g},${b},${aq.toFixed(2)}`;
+    (colorBuckets[key] || (colorBuckets[key] = [])).push(m.x, m.y, sz);
     if (doGlow) {
-      moteCtx.beginPath();
-      moteCtx.arc(m.x, m.y, sz * 2.5, 0, Math.PI * 2);
-      moteCtx.fillStyle = `rgba(${r},${g},${b},${(a * 0.12).toFixed(3)})`;
-      moteCtx.fill();
+      const gaq = ((a * 0.12 * 15 + 0.5) | 0) / 15;
+      const gkey = `${r},${g},${b},${gaq.toFixed(3)}`;
+      (glowBuckets[gkey] || (glowBuckets[gkey] = [])).push(m.x, m.y, sz * 2.5);
     }
     // Star-cross (high tier only)
     if (doStar && m.twinkle && a > 0.3 && sz > 1.5) {
@@ -4787,8 +5143,34 @@ function animateMotes() {
       moteCtx.stroke();
     }
   }
-  // Compact: truncate dead motes in one shot (no splice shifting)
   motes.length = writeIdx;
+
+  // Draw glow halos first (behind), then main dots — batched by color
+  if (doGlow) {
+    for (const key in glowBuckets) {
+      const arr = glowBuckets[key];
+      moteCtx.fillStyle = `rgba(${key})`;
+      moteCtx.beginPath();
+      for (let j = 0; j < arr.length; j += 3) {
+        moteCtx.moveTo(arr[j] + arr[j+2], arr[j+1]);
+        moteCtx.arc(arr[j], arr[j+1], arr[j+2], 0, _PI2);
+      }
+      moteCtx.fill();
+    }
+  }
+  for (const key in colorBuckets) {
+    const arr = colorBuckets[key];
+    moteCtx.fillStyle = `rgba(${key})`;
+    moteCtx.beginPath();
+    for (let j = 0; j < arr.length; j += 3) {
+      moteCtx.moveTo(arr[j] + arr[j+2], arr[j+1]);
+      moteCtx.arc(arr[j], arr[j+1], arr[j+2], 0, _PI2);
+    }
+    moteCtx.fill();
+  }
+
+  _fpsMotes = writeIdx;
+  _fpsUpdate();
   requestAnimationFrame(animateMotes);
 }
 animateMotes();
@@ -4804,13 +5186,19 @@ let _wifiMap = null;
   const sse = new EventSource(SSE_URL);
   let _sseRestoreMode = true;
 
+  let _trafficRafPending = false;
   sse.addEventListener('traffic', e => {
-    const traffic = JSON.parse(e.data);
-    _sseTrafficMap = traffic;
-    updateConnectionTrafficSSE(traffic);
-    const fakeCollectd = _trafficToCollectd(traffic);
-    _lastTopoCollectd = fakeCollectd;
-    if (_topoEnabled) renderTopoLayer(fakeCollectd);
+    _sseTrafficMap = JSON.parse(e.data);
+    if (!_trafficRafPending) {
+      _trafficRafPending = true;
+      requestAnimationFrame(() => {
+        _trafficRafPending = false;
+        updateConnectionTrafficSSE(_sseTrafficMap);
+        const fakeCollectd = _trafficToCollectd(_sseTrafficMap);
+        _lastTopoCollectd = fakeCollectd;
+        if (_topoEnabled) renderTopoLayer(fakeCollectd);
+      });
+    }
   });
 
   sse.addEventListener('realm-event', e => {
@@ -4828,7 +5216,16 @@ let _wifiMap = null;
     _sseRestoreMode = false;
     updateUI(d);
     if (d.wifi) _wifiMap = d.wifi;
-    if (!liveOk) { liveOk = true; console.log('Realm Map: SSE live data connected'); }
+    if (!liveOk) {
+      liveOk = true;
+      console.log('Realm Map: SSE live data connected');
+      // Dismiss the arcane loading screen
+      const loadEl = document.getElementById('realm-loading');
+      if (loadEl) {
+        loadEl.classList.add('dismissed');
+        setTimeout(() => loadEl.remove(), 1000);
+      }
+    }
   });
 
   sse.addEventListener('energy', e => {
@@ -4861,6 +5258,238 @@ let _wifiMap = null;
 const LAYOUT_KEY = 'realm-map-layout-v2';
 const SETTINGS_KEY = 'realm-map-settings-v3';
 
+// ── Panel Layout Modes (module-scope for persistence access) ──
+const _PANEL_IDS = ['realm-panel','legend','spellbook','quest-log','realm-codex','node-list',
+  'energy-panel','latency-panel','firewall-panel','wifi-panel','cartographer','debug-panel'];
+const _MODE_DESCS = {
+  manual: 'Panels stay where you place them.',
+  auto: 'Panels auto-size and tile to fill the viewport beautifully.',
+  focus: 'Unfocused panels fade. Hover to summon.',
+};
+let _panelMode = 'manual';
+
+function setPanelMode(mode) {
+  const prev = _panelMode;
+  _panelMode = mode;
+  document.body.classList.remove('panel-mode-manual', 'panel-mode-auto', 'panel-mode-focus', 'dynamic-panels');
+  document.body.classList.add('panel-mode-' + mode);
+  if (mode === 'auto') document.body.classList.add('dynamic-panels');
+  document.querySelectorAll('.panel-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  const desc = document.getElementById('panel-mode-desc');
+  if (desc) desc.textContent = _MODE_DESCS[mode] || '';
+
+  // Entering enchant: persist current layout so we can restore it later
+  if (mode === 'auto' && prev !== 'auto') {
+    saveLayout();
+  }
+
+  // Leaving enchant: strip treemap inline styles, restore saved layout
+  if (prev === 'auto' && mode !== 'auto') {
+    _PANEL_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.style.left = ''; el.style.top = '';
+      el.style.right = ''; el.style.bottom = '';
+      el.style.width = ''; el.style.height = '';
+      el.style.maxHeight = ''; el.style.transform = '';
+    });
+    // Re-apply saved layout (user's manual positions)
+    try {
+      const raw = localStorage.getItem(LAYOUT_KEY);
+      if (raw) {
+        const layout = JSON.parse(raw);
+        if (layout.panels) {
+          Object.entries(layout.panels).forEach(([id, pos]) => {
+            const el = document.getElementById(id);
+            if (!el || !pos.left) return;
+            el.style.left = pos.left;
+            el.style.top = pos.top;
+            el.style.right = 'auto';
+            el.style.bottom = 'auto';
+            el.style.transform = 'none';
+            if (pos.width) el.style.width = pos.width;
+            if (pos.height) { el.style.height = pos.height; el.style.maxHeight = 'none'; }
+          });
+        }
+      }
+    } catch (e) { /* ignore */ }
+    // Clamp any panel still off-screen
+    _PANEL_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el || el.style.display === 'none' || el.classList.contains('panel-sealed')) return;
+      const rect = el.getBoundingClientRect();
+      const vw = window.innerWidth, vh = window.innerHeight;
+      let moved = false;
+      let l = rect.left, t = rect.top;
+      if (rect.right < 40) { l = 20; moved = true; }
+      if (rect.left > vw - 40) { l = vw - rect.width - 20; moved = true; }
+      if (rect.bottom < 40) { t = 60; moved = true; }
+      if (rect.top > vh - 40) { t = vh - rect.height - 20; moved = true; }
+      if (moved) {
+        el.style.left = Math.round(Math.max(0, l)) + 'px';
+        el.style.top = Math.round(Math.max(56, t)) + 'px';
+        el.style.right = 'auto';
+        el.style.bottom = 'auto';
+      }
+    });
+  }
+
+  if (mode === 'auto') autoArrangePanels();
+  saveSettings();
+}
+
+// Track last-interacted panel for enchant focus boost
+let _lastActivePanel = null;
+document.addEventListener('mousedown', e => {
+  const p = e.target.closest('.panel, #debug-panel');
+  if (p && _PANEL_IDS.includes(p.id)) _lastActivePanel = p.id;
+}, true);
+
+function _measurePanelWeight(el) {
+  // Base importance — panels the user monitors most get higher base
+  const importance = {
+    'realm-panel': 3, 'quest-log': 5, 'realm-codex': 5, 'firewall-panel': 4, 'wifi-panel': 3,
+    'node-list': 4, 'latency-panel': 3, 'spellbook': 3, 'energy-panel': 2,
+    'cartographer': 2, 'legend': 2, 'debug-panel': 4,
+  };
+  const base = importance[el.id] || 3;
+
+  // Content volume — measure how much scrollable content is hidden
+  // Find the scrollable child (the panel body)
+  const scrollChild = el.querySelector('[class*="-body"], .quest-cards, .spell-page:not([style*="display: none"]), .spell-page:not([style*="display:none"])');
+  let contentRatio = 1;
+  if (scrollChild) {
+    const sh = scrollChild.scrollHeight || 100;
+    const ch = scrollChild.clientHeight || 100;
+    // Ratio > 1 means content is clipped — panel wants more space
+    contentRatio = Math.min(3, sh / Math.max(ch, 1));
+  }
+
+  // Boost for last-interacted panel (user intent)
+  const focusBoost = (_lastActivePanel === el.id) ? 1.5 : 1;
+
+  // Final weight: importance × content need × focus
+  return base * (0.5 + contentRatio * 0.5) * focusBoost;
+}
+
+function autoArrangePanels() {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const gap = 10;
+  const topBar = 56;
+  const pad = gap; // outer padding
+  const ax = pad, ay = topBar + pad;
+  const aw = vw - pad * 2, ah = vh - topBar - pad * 2;
+
+  // Collect visible panels with measured weights
+  const items = [];
+  _PANEL_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el || el.style.display === 'none' || el.classList.contains('panel-sealed')) return;
+    items.push({ id, el, weight: _measurePanelWeight(el) });
+  });
+  if (!items.length) return;
+
+  // Sort descending by weight (treemap needs this)
+  items.sort((a, b) => b.weight - a.weight);
+
+  // ── Treemap Layout ──
+  // Recursive slice-and-dice: splits weighted panels into the bounding box,
+  // alternating horizontal/vertical cuts. Heavier panels get proportionally
+  // more area. Split point optimizes for balanced aspect ratios.
+  const rects = new Map();
+
+  function _treemapSlice(itemList, bx, by, bw, bh, horizontal) {
+    if (itemList.length === 0) return;
+    if (itemList.length === 1) {
+      rects.set(itemList[0].id, { x: bx, y: by, w: bw, h: bh, el: itemList[0].el });
+      return;
+    }
+
+    const total = itemList.reduce((s, it) => s + it.weight, 0) || 1;
+
+    // Find split point — try to keep aspect ratios close to golden
+    // Split where cumulative weight crosses ~half
+    let cumul = 0;
+    let bestSplit = 1, bestAspectScore = Infinity;
+    for (let i = 0; i < itemList.length - 1; i++) {
+      cumul += itemList[i].weight;
+      const frac = cumul / total;
+      // Compute aspect ratios for both halves
+      let a1w, a1h, a2w, a2h;
+      if (horizontal) {
+        a1w = bw * frac; a1h = bh; a2w = bw * (1 - frac); a2h = bh;
+      } else {
+        a1w = bw; a1h = bh * frac; a2w = bw; a2h = bh * (1 - frac);
+      }
+      // Penalize extreme aspect ratios in either half
+      const r1 = Math.max(a1w, a1h) / Math.max(Math.min(a1w, a1h), 1);
+      const r2 = Math.max(a2w, a2h) / Math.max(Math.min(a2w, a2h), 1);
+      // Also penalize uneven panel counts (prefer balanced splits)
+      const balance = Math.abs((i + 1) / itemList.length - 0.5);
+      const score = r1 + r2 + balance * 2;
+      if (score < bestAspectScore) { bestAspectScore = score; bestSplit = i + 1; }
+    }
+
+    const left = itemList.slice(0, bestSplit);
+    const right = itemList.slice(bestSplit);
+    const leftWeight = left.reduce((s, it) => s + it.weight, 0);
+    const frac = leftWeight / total;
+
+    if (horizontal) {
+      const lw = Math.max(80, Math.round(bw * frac - gap / 2));
+      const rw = Math.max(80, bw - lw - gap);
+      _treemapSlice(left, bx, by, lw, bh, !horizontal);
+      _treemapSlice(right, bx + lw + gap, by, rw, bh, !horizontal);
+    } else {
+      const lh = Math.max(50, Math.round(bh * frac - gap / 2));
+      const rh = Math.max(50, bh - lh - gap);
+      _treemapSlice(left, bx, by, bw, lh, !horizontal);
+      _treemapSlice(right, bx, by + lh + gap, bw, rh, !horizontal);
+    }
+  }
+
+  // Start horizontal if viewport is landscape, vertical if portrait
+  _treemapSlice(items, ax, ay, aw, ah, aw >= ah);
+
+  // Apply positions
+  rects.forEach((r, id) => {
+    const el = r.el;
+    el.style.position = 'fixed';
+    el.style.left = Math.round(r.x) + 'px';
+    el.style.top = Math.round(r.y) + 'px';
+    el.style.width = Math.round(Math.max(100, r.w)) + 'px';
+    el.style.height = Math.round(Math.max(60, r.h)) + 'px';
+    el.style.maxHeight = 'none';
+    el.style.right = 'auto';
+    el.style.bottom = 'auto';
+    // Sparkle burst
+    const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+    for (let s = 0; s < 3; s++) {
+      setTimeout(() => {
+        spawnMote(cx + (Math.random() - 0.5) * r.w * 0.5, cy + (Math.random() - 0.5) * r.h * 0.3, [192, 144, 255]);
+      }, s * 70);
+    }
+  });
+}
+
+// Re-arrange on panel seal/unseal in auto mode
+let _autoLayoutTimer;
+document.addEventListener('panel-layout-change', () => {
+  if (_panelMode === 'auto') {
+    clearTimeout(_autoLayoutTimer);
+    _autoLayoutTimer = setTimeout(autoArrangePanels, 350);
+  }
+});
+
+// Re-arrange on window resize in auto mode
+let _autoResizeTimer;
+window.addEventListener('resize', () => {
+  if (_panelMode === 'auto') {
+    clearTimeout(_autoResizeTimer);
+    _autoResizeTimer = setTimeout(autoArrangePanels, 200);
+  }
+});
+
 // All slider/toggle IDs to persist
 const _PERSIST_SLIDERS = [
   'master-scale', 'traffic-scale', 'node-scale', 'text-scale', 'bubble-scale', 'update-speed',
@@ -4873,7 +5502,7 @@ const _PERSIST_SLIDERS = [
   'layer-regions', 'layer-nodes', 'layer-labels', 'layer-sublabels',
   'layer-vlanlabels', 'layer-bubbles',
   'panel-titlebar', 'panel-search', 'panel-vitals', 'panel-legend',
-  'panel-codex', 'panel-spellbook', 'panel-questlog', 'panel-cartographer', 'panel-energy', 'panel-nodelist', 'panel-mirror', 'panel-latency', 'panel-firewall',
+  'panel-codex', 'panel-spellbook', 'panel-questlog', 'panel-cartographer', 'panel-energy', 'panel-nodelist', 'panel-mirror', 'panel-latency', 'panel-firewall', 'panel-wifi',
   'layer-compass', 'layer-sparkles', 'layer-vignette',
   'compass-scale', 'sparkle-density', 'ambient-glow', 'vignette',
 ];
@@ -4883,7 +5512,7 @@ const _PERSIST_CHECKBOXES = [
   'vis-sublabels', 'vis-regions', 'vis-vlanlabels', 'vis-bubbles',
   'vis-compass', 'vis-sparkles', 'vis-vignette',
   'vis-titlebar', 'vis-search', 'vis-statuspanel', 'vis-legend', 'vis-spellbook',
-  'vis-codex', 'vis-questlog', 'vis-cartographer', 'vis-energy', 'vis-nodelist', 'vis-debug', 'vis-latency', 'vis-firewall',
+  'vis-codex', 'vis-questlog', 'vis-cartographer', 'vis-energy', 'vis-nodelist', 'vis-debug', 'vis-latency', 'vis-firewall', 'vis-wifi',
 ];
 
 // Debounce server saves (avoid hammering on every slider move)
@@ -4895,10 +5524,11 @@ export function saveSettings() {
   const activePeTab = document.querySelector('.pe-tab.active');
   const s = {
     sliders: {}, checkboxes: {}, quality: null, collapsed: [], spellPage: _spellPage,
-    scroll: vp ? { x: vp.scrollLeft, y: vp.scrollTop } : null,
+    zoom: { scale, panX, panY },
     selectedNode: currentEditNode,
     peTab: activePeTab?.dataset.peTab || 'stats',
     mirrorTab: activeTab,
+    panelMode: _panelMode,
   };
   _PERSIST_SLIDERS.forEach(id => {
     const sl = document.getElementById(id + '-slider');
@@ -4953,10 +5583,12 @@ function _applySettings(s) {
     });
   }
   if (s.spellPage != null) _showSpellPage(s.spellPage);
-  // Restore map scroll position
-  if (s.scroll) {
-    const vp = document.getElementById('map-viewport');
-    if (vp) { vp.scrollLeft = s.scroll.x; vp.scrollTop = s.scroll.y; }
+  // Restore map zoom & pan position
+  if (s.zoom) {
+    scale = s.zoom.scale ?? 1;
+    panX = s.zoom.panX ?? 0;
+    panY = s.zoom.panY ?? 0;
+    applyTransform();
   }
   // Restore selected node + PE tab
   if (s.selectedNode) {
@@ -4967,6 +5599,10 @@ function _applySettings(s) {
   if (s.mirrorTab) {
     const tab = document.querySelector(`.log-tab[data-tab="${s.mirrorTab}"]`);
     if (tab) tab.click();
+  }
+  // Restore panel layout mode
+  if (s.panelMode && _MODE_DESCS[s.panelMode]) {
+    setPanelMode(s.panelMode);
   }
   // Seal state is managed by panel-manager.js via realm-panel-formation
   _restoring = false;
@@ -5003,10 +5639,13 @@ export function restoreSettings() {
 export function saveLayout() {
   const layout = { panels: {}, nodes: {} };
   // Save panel positions
-  ['realm-panel','legend','spellbook','quest-log','realm-codex','node-list','debug-panel','cartographer','energy-panel','latency-panel','firewall-panel'].forEach(id => {
+  ['realm-panel','legend','spellbook','quest-log','realm-codex','node-list','debug-panel','cartographer','energy-panel','latency-panel','firewall-panel','wifi-panel'].forEach(id => {
     const el = document.getElementById(id);
     if (el && el.style.left) {
-      layout.panels[id] = { left: el.style.left, top: el.style.top };
+      const p = { left: el.style.left, top: el.style.top };
+      if (el.style.width) p.width = el.style.width;
+      if (el.style.height) p.height = el.style.height;
+      layout.panels[id] = p;
     }
   });
   // Save node positions
@@ -5037,6 +5676,8 @@ function _applyLayout(layout) {
         el.style.right = 'auto';
         el.style.bottom = 'auto';
         el.style.transform = 'none';
+        if (pos.width) { el.style.width = pos.width; }
+        if (pos.height) { el.style.height = pos.height; el.style.maxHeight = 'none'; }
       }
     });
     applied = true;
@@ -5134,27 +5775,93 @@ function makeDraggable(el, handleSelector, moteColor) {
 
   const _skipDrag = t => t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.tagName === 'BUTTON' || t.closest('button');
 
-  // Mouse
+  // Mouse — attach move/up only while dragging
   handle.addEventListener('mousedown', e => {
     if (_skipDrag(e.target)) return;
     e.preventDefault();
     startDrag(e.clientX, e.clientY);
+    const onMove = ev => moveDrag(ev.clientX, ev.clientY);
+    const onUp = () => { endDrag(); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
   });
-  window.addEventListener('mousemove', e => moveDrag(e.clientX, e.clientY));
-  window.addEventListener('mouseup', endDrag);
 
-  // Touch
+  // Touch — attach move/end only while dragging
   handle.addEventListener('touchstart', e => {
     if (_skipDrag(e.target)) return;
     if (e.touches.length !== 1) return;
     e.preventDefault();
     startDrag(e.touches[0].clientX, e.touches[0].clientY);
+    const onMove = ev => { if (ev.touches.length) moveDrag(ev.touches[0].clientX, ev.touches[0].clientY); };
+    const onEnd = () => { endDrag(); window.removeEventListener('touchmove', onMove); window.removeEventListener('touchend', onEnd); };
+    window.addEventListener('touchmove', onMove, { passive: true });
+    window.addEventListener('touchend', onEnd, { passive: true });
+  }, { passive: false });
+}
+
+// ── Magic Panel Resizing ──
+function makeResizable(el, moteColor) {
+  if (!el) return;
+  // Create resize handle (bottom-right corner grip)
+  const grip = document.createElement('div');
+  grip.className = 'panel-resize-grip';
+  grip.innerHTML = '&#9698;'; // ◢ triangle
+  el.appendChild(grip);
+
+  let isResizing = false, startX, startY, startW, startH;
+
+  function startResize(cx, cy, e) {
+    e.preventDefault();
+    e.stopPropagation();
+    isResizing = true;
+    startX = cx;
+    startY = cy;
+    const rect = el.getBoundingClientRect();
+    startW = rect.width;
+    startH = rect.height;
+    el.style.transition = 'none';
+    grip.classList.add('active');
+    document.body.style.userSelect = 'none';
+  }
+  function doResize(cx, cy) {
+    if (!isResizing) return;
+    const w = Math.max(140, startW + (cx - startX));
+    const h = Math.max(80, startH + (cy - startY));
+    el.style.width = Math.round(w) + 'px';
+    el.style.height = Math.round(h) + 'px';
+    el.style.maxHeight = 'none';
+    // Sparkle trail on edge
+    if (moteColor && Math.random() < 0.35) {
+      spawnMote(cx + (Math.random() - 0.5) * 12, cy + (Math.random() - 0.5) * 12, moteColor);
+    }
+  }
+  function endResize() {
+    if (!isResizing) return;
+    isResizing = false;
+    grip.classList.remove('active');
+    document.body.style.userSelect = '';
+    scheduleSave();
+    // Trigger re-arrange if in auto mode
+    if (_panelMode === 'auto') {
+      clearTimeout(_autoLayoutTimer);
+      _autoLayoutTimer = setTimeout(autoArrangePanels, 300);
+    }
+  }
+
+  // Mouse
+  grip.addEventListener('mousedown', e => startResize(e.clientX, e.clientY, e));
+  window.addEventListener('mousemove', e => doResize(e.clientX, e.clientY));
+  window.addEventListener('mouseup', endResize);
+  // Touch
+  grip.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) return;
+    startResize(e.touches[0].clientX, e.touches[0].clientY, e);
   }, { passive: false });
   window.addEventListener('touchmove', e => {
-    if (!isDragging || !e.touches.length) return;
-    moveDrag(e.touches[0].clientX, e.touches[0].clientY);
+    if (!isResizing || !e.touches.length) return;
+    doResize(e.touches[0].clientX, e.touches[0].clientY);
   }, { passive: true });
-  window.addEventListener('touchend', endDrag, { passive: true });
+  window.addEventListener('touchend', endResize, { passive: true });
 }
 
 // Make all fixed panels draggable with magic motes
@@ -5169,6 +5876,22 @@ makeDraggable(document.getElementById('persona-editor'), '.pe-header', [240,200,
 makeDraggable(document.getElementById('node-list'), '#node-list-header', [192,144,96]);
 makeDraggable(document.getElementById('latency-panel'), '.panel-header', [100,180,255]);
 makeDraggable(document.getElementById('firewall-panel'), '.panel-header', [220,160,80]);
+makeDraggable(document.getElementById('wifi-panel'), '.panel-header', [100,200,255]);
+
+// Make all panels resizable with magical grip handles
+makeResizable(document.getElementById('realm-panel'), [240,216,144]);
+makeResizable(document.getElementById('legend'), [100,180,255]);
+makeResizable(document.getElementById('spellbook'), [192,160,255]);
+makeResizable(document.getElementById('quest-log'), [160,255,96]);
+makeResizable(document.getElementById('realm-codex'), [144,96,192]);
+makeResizable(document.getElementById('cartographer'), [192,144,96]);
+makeResizable(document.getElementById('energy-panel'), [96,192,96]);
+makeResizable(document.getElementById('node-list'), [192,144,96]);
+makeResizable(document.getElementById('latency-panel'), [100,180,255]);
+makeResizable(document.getElementById('firewall-panel'), [220,160,80]);
+makeResizable(document.getElementById('wifi-panel'), [100,200,255]);
+makeResizable(document.getElementById('debug-panel'), [120,80,200]);
+makeResizable(document.getElementById('persona-editor'), [240,200,100]);
 
 // ── Draggable Map Nodes (mouse + touch) ──
 (function() {
@@ -5263,6 +5986,11 @@ makeDraggable(document.getElementById('firewall-panel'), '.panel-header', [220,1
         } else {
           _lastNodeTapTime = now;
           _lastNodeTapped = tappedNode;
+          // Single tap on cluster → toggle expand/collapse
+          const tipKey = tappedNode.dataset.tip;
+          if (tipKey && isClusterExpandable(tipKey)) {
+            toggleClusterExpand(tipKey);
+          }
         }
       }
       dragNode = null;
@@ -5304,15 +6032,7 @@ restoreLayout();
 // Always restore settings (sliders, toggles, collapsed sections) independently
 restoreSettings();
 
-// Save scroll position on viewport scroll (debounced)
-let _scrollSaveTimer = null;
-const _mapVp = document.getElementById('map-viewport');
-if (_mapVp) {
-  _mapVp.addEventListener('scroll', () => {
-    clearTimeout(_scrollSaveTimer);
-    _scrollSaveTimer = setTimeout(saveSettings, 1000);
-  }, { passive: true });
-}
+// Zoom/pan is now saved by wheel, mouseup, and touchend handlers above
 
 // ── Node Chat Dialog ──
 let _chatDialog = null;
@@ -5376,6 +6096,7 @@ function _createChatDialog() {
   // Register with panel manager (seal button, drag, dock)
   registerPanel(dialog);
   makeDraggable(dialog, '.panel-header', [160,120,255]);
+  makeResizable(dialog, [160,120,255]);
 
   _chatDialog = dialog;
   return dialog;

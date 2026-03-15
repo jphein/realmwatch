@@ -25,7 +25,8 @@ const PANELS = {
   'debug-panel':    { name: 'Arcane Mirror', anchor: 's', priority: 10, icon: '\uD83D\uDD2E' },
   'latency-panel':  { name: 'Arcane Pulse', anchor: 'e', priority: 11, icon: '\uD83C\uDFD3' },
   'firewall-panel': { name: 'Realm Wards', anchor: 'w', priority: 12, icon: '\uD83D\uDEE1' },
-  'node-chat-dialog': { name: 'Oracle Commune', anchor: 'se', priority: 13, icon: '\uD83D\uDCAC' },
+  'wifi-panel':     { name: 'Aether Towers', anchor: 'w', priority: 13, icon: '\uD83D\uDCE1' },
+  'node-chat-dialog': { name: 'Oracle Commune', anchor: 'se', priority: 14, icon: '\uD83D\uDCAC' },
 };
 
 // Arcane Formations (presets)
@@ -399,7 +400,7 @@ function _onDrag(e) {
       _dragging.style.transition = 'none';
       _dragging.style.position = 'fixed';
       _dragging.style.zIndex = '9999';
-      if (_autoSnap && _showAnchors) _anchorOverlay.classList.add('visible');
+      if (_autoSnap && _showAnchors && !document.body.classList.contains('panel-mode-auto')) _anchorOverlay.classList.add('visible');
       _startParticleTrail(clientX, clientY);
     }
   }
@@ -431,7 +432,7 @@ function _endDrag() {
 
   const panel = _dragging;
 
-  if (_autoSnap) {
+  if (_autoSnap && !document.body.classList.contains('panel-mode-auto')) {
     const rect = panel.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
@@ -557,8 +558,13 @@ function _createRune(panelId, def) {
   const glow = document.createElement('span');
   glow.className = 'rune-glow';
 
+  const label = document.createElement('span');
+  label.className = 'rune-label';
+  label.textContent = def.name;
+
   rune.appendChild(icon);
   rune.appendChild(glow);
+  rune.appendChild(label);
 
   // Click to unseal (dock mode uses this; anchored/conjured use drag handler)
   const panel = document.getElementById(panelId);
@@ -773,6 +779,8 @@ function _finalizeSeal(panel) {
   panel.style.opacity = '';
   _saveFormation();
   _updateDockBadge();
+  // Notify layout system that a panel was sealed
+  document.dispatchEvent(new CustomEvent('panel-layout-change', { detail: { action: 'seal', id: panel.id } }));
 }
 
 function _animateWandering() {
@@ -1029,6 +1037,7 @@ function _unsealPanel(panel) {
     'cartographer': 'vis-cartographer', 'energy-panel': 'vis-energy',
     'debug-panel': 'vis-debug', 'latency-panel': 'vis-latency',
     'firewall-panel': 'vis-firewall',
+    'wifi-panel': 'vis-wifi',
   };
   const _visCb = document.getElementById(_visMap[panel.id]);
   if (_visCb && !_visCb.checked) _visCb.checked = true;
@@ -1065,8 +1074,8 @@ function _unsealPanel(panel) {
     panel.style.bottom = savedBottom || '';
     panel.style.transform = panel.dataset.originalTransform || '';
     if (panel.dataset.originalAnchor) panel.dataset.anchor = panel.dataset.originalAnchor;
-  } else {
-    // No saved position — snap to anchor
+  } else if (!document.body.classList.contains('panel-mode-auto')) {
+    // No saved position — snap to anchor (skip in enchant mode, auto-arrange handles it)
     const anchorId = panel.dataset.originalAnchor;
     const anchor = ANCHORS.find(a => a.id === anchorId);
     if (anchor) _snapToAnchor(panel, anchor);
@@ -1088,6 +1097,8 @@ function _unsealPanel(panel) {
   });
 
   _spawnRestoreParticles(panel);
+  // Notify layout system that a panel was unsealed
+  document.dispatchEvent(new CustomEvent('panel-layout-change', { detail: { action: 'unseal', id: panel.id } }));
 }
 
 // ── Particle Effects ──
@@ -1099,7 +1110,7 @@ function _startParticleTrail(x, y) {
   _trailActive = true;
   _trailX = x;
   _trailY = y;
-  _animateParticles();
+  if (!_particleLoopRunning) _animateParticles();
 }
 
 function _updateParticleTrail(x, y) {
@@ -1127,34 +1138,40 @@ function _stopParticleTrail() {
   _trailActive = false;
 }
 
+let _particleLoopRunning = false;
 function _animateParticles() {
-  if (!_trailActive && _particles.length === 0) return;
+  if (!_trailActive && _particles.length === 0) {
+    _particleLoopRunning = false;
+    return;
+  }
+  _particleLoopRunning = true;
 
   const ctx = _particleCanvas.getContext('2d');
   ctx.clearRect(0, 0, _particleCanvas.width, _particleCanvas.height);
 
-  for (let i = _particles.length - 1; i >= 0; i--) {
+  // Swap-and-pop removal (avoids O(n) splice shifts)
+  let writeIdx = 0;
+  for (let i = 0, len = _particles.length; i < len; i++) {
     const p = _particles[i];
     p.x += p.vx;
     p.y += p.vy;
     p.life -= 0.02;
 
-    if (p.life <= 0) {
-      _particles.splice(i, 1);
-      continue;
-    }
+    if (p.life <= 0) continue;
+    if (writeIdx !== i) _particles[writeIdx] = p;
+    writeIdx++;
 
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
     ctx.fillStyle = `hsla(${p.hue}, 80%, 60%, ${p.life * 0.8})`;
     ctx.fill();
 
-    // Glow
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.size * p.life * 2, 0, Math.PI * 2);
     ctx.fillStyle = `hsla(${p.hue}, 80%, 70%, ${p.life * 0.3})`;
     ctx.fill();
   }
+  _particles.length = writeIdx;
 
   requestAnimationFrame(_animateParticles);
 }
@@ -1183,7 +1200,7 @@ function _spawnSealParticles(panel) {
       hue: 280,
     });
   }
-  _animateParticles();
+  if (!_particleLoopRunning) _animateParticles();
 }
 
 function _spawnRestoreParticles(panel) {
@@ -1204,7 +1221,7 @@ function _spawnRestoreParticles(panel) {
       hue: 50 + Math.random() * 30,
     });
   }
-  _animateParticles();
+  if (!_particleLoopRunning) _animateParticles();
 }
 
 // ── Formations ──
@@ -1296,8 +1313,13 @@ function _restoreSealedToDoc(panel, anchorId) {
   const glow = document.createElement('span');
   glow.className = 'rune-glow';
 
+  const label = document.createElement('span');
+  label.className = 'rune-label';
+  label.textContent = def.name;
+
   rune.appendChild(icon);
   rune.appendChild(glow);
+  rune.appendChild(label);
   rune.addEventListener('click', () => {
     if (rune._dragManaged) return;
     _toggleMinimize(panel);
@@ -1379,7 +1401,7 @@ function _spawnConjurationCircle() {
       }, delay);
     }
   }
-  _animateParticles();
+  if (!_particleLoopRunning) _animateParticles();
 }
 
 // ── Persistence ──
