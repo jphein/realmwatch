@@ -285,11 +285,13 @@
     text-shadow: 0 0 8px rgba(240,216,144,0.3);
   }
 
-  /* Title text */
+  /* Title text — positioned absolutely below center to stay aligned with rings */
   .rl-text {
-    position: relative;
+    position: absolute;
     z-index: 2;
-    margin-top: 200px;
+    top: calc(50% + 160px);
+    left: 50%;
+    transform: translateX(-50%);
     font-family: 'Cinzel Decorative', 'Cinzel', serif;
     font-size: 28px;
     font-weight: 700;
@@ -300,6 +302,8 @@
     animation: rlTextReveal 2s ease-out forwards;
     opacity: 0;
     transition: color 0.8s ease, text-shadow 0.8s ease;
+    white-space: nowrap;
+    text-align: center;
   }
   #realm-loading[data-stage="4"] .rl-text {
     color: rgba(240,216,144,0.9);
@@ -308,15 +312,19 @@
 
   /* Subtitle with animated dots + stage text */
   .rl-sub {
-    position: relative;
+    position: absolute;
     z-index: 2;
-    margin-top: 16px;
+    top: calc(50% + 200px);
+    left: 50%;
+    transform: translateX(-50%);
     font-family: 'MedievalSharp', 'Cinzel', serif;
     font-size: 14px;
     color: rgba(180,160,120,0.5);
     letter-spacing: 3px;
     animation: rlTextReveal 2s ease-out 0.6s forwards;
     opacity: 0;
+    white-space: nowrap;
+    text-align: center;
   }
   .rl-stage-text {
     transition: opacity 0.4s ease;
@@ -433,8 +441,8 @@
     80% { opacity: 0.35; }
   }
   @keyframes rlTextReveal {
-    0% { opacity: 0; transform: translateY(12px); letter-spacing: 12px; }
-    100% { opacity: 1; transform: translateY(0); letter-spacing: 6px; }
+    0% { opacity: 0; transform: translateX(-50%) translateY(12px); }
+    100% { opacity: 1; transform: translateX(-50%) translateY(0); }
   }
   @keyframes rlMoteFloat {
     0% { opacity: 0; transform: translateY(0) scale(0.5); }
@@ -489,8 +497,8 @@
     .rl-progress-ring, .rl-stage-markers { width: 260px; height: 260px; }
     .rl-runes { width: 200px; height: 200px; margin-top: -100px; margin-left: -100px; }
     .rl-runes span { transform: rotate(calc(var(--i) * 45deg)) translateY(-100px) rotate(calc(var(--i) * -45deg)); }
-    .rl-text { margin-top: 140px; font-size: 20px; letter-spacing: 4px; }
-    .rl-sub { font-size: 12px; }
+    .rl-text { top: calc(50% + 110px); font-size: 20px; letter-spacing: 4px; }
+    .rl-sub { top: calc(50% + 142px); font-size: 12px; }
     .rl-sigil svg { width: 80px; height: 80px; }
     .rl-vines { width: 150px; height: 150px; }
     .rl-aurora-band { filter: blur(50px); }
@@ -1779,6 +1787,9 @@
   .perf-no-dash .conn-bridge,
   .perf-no-dash .conn-bridge-inner { animation: none !important; }
   .perf-no-breath .sealed-rune { animation: rune-float 3s ease-in-out infinite !important; }
+  .perf-no-breath .rune-embers { display: none; }
+  .perf-no-breath .sealed-rune::before { animation: none; }
+  .perf-no-breath .rune-glow { display: none; }
   .perf-no-filters .vine-cluster { filter: none !important; }
   .perf-no-filters .vine-cluster .vine-glow { display: none; }
   .perf-no-vine-anim .vine-cluster { animation: none !important; }
