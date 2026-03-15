@@ -6,7 +6,7 @@
 <meta name="color-scheme" content="dark">
 <title>The Realm — Geographic Map</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link rel="stylesheet" href="realm-map.css?v=1773552225">
+<link rel="stylesheet" href="realm-map.css?v=1773553237">
 </head>
 <body>
 
@@ -272,6 +272,10 @@
           <option value="high">High (desktop)</option>
         </select>
       </div>
+      <div class="layer-row" style="margin-top:6px">
+        <label class="topo-switch"><input type="checkbox" id="vis-fps-counter"><span class="topo-switch-track"></span></label>
+        <span class="layer-name">FPS Counter</span>
+      </div>
     </div>
   </div>
   <div class="legend-section" data-section="sealed-dock">
@@ -288,6 +292,10 @@
       <div class="traffic-control">
         <label>Dock Background <span class="tc-val" id="dock-bg-val">1.00</span></label>
         <input type="range" class="traffic-slider" id="dock-bg-slider" min="0" max="1" step="0.05" value="1">
+      </div>
+      <div class="layer-row" style="margin-top:6px">
+        <label class="topo-switch"><input type="checkbox" id="dock-emoji-icons"><span class="topo-switch-track"></span></label>
+        <span class="layer-name">Emoji Icons</span>
       </div>
     </div>
   </div>
@@ -1704,6 +1712,6 @@
 <div id="scan-line"></div>
 <div class="tooltip" id="tooltip"></div>
 
-<script src="realm-map.js?v=1773552225"></script>
+<script src="realm-map.js?v=1773553237"></script>
 </body>
 </html>

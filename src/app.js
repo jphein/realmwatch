@@ -5457,6 +5457,25 @@ document.getElementById('layout-reset-btn')?.addEventListener('click', resetToOr
     });
   }
 
+  // Emoji icons toggle
+  const emojiCb = document.getElementById('dock-emoji-icons');
+  if (emojiCb) {
+    emojiCb.checked = localStorage.getItem('realm-emoji-icons') === 'true';
+    emojiCb.addEventListener('change', () => {
+      window.setEmojiIcons?.(emojiCb.checked);
+      saveSettings();
+    });
+  }
+
+  // FPS counter toggle
+  const fpsCb = document.getElementById('vis-fps-counter');
+  if (fpsCb) {
+    fpsCb.addEventListener('change', () => {
+      _fpsEl.style.display = fpsCb.checked ? '' : 'none';
+      saveSettings();
+    });
+  }
+
   // Loading screen vines toggle
   const loadVinesCb = document.getElementById('vis-loading-vines');
   if (loadVinesCb) {
@@ -5578,7 +5597,11 @@ function _fpsUpdate() {
   }
 }
 window.addEventListener('keydown', e => {
-  if (e.ctrlKey && e.shiftKey && e.key === 'F') _fpsEl.style.display = _fpsEl.style.display === 'none' ? '' : 'none';
+  if (e.ctrlKey && e.shiftKey && e.key === 'F') {
+    _fpsEl.style.display = _fpsEl.style.display === 'none' ? '' : 'none';
+    const cb = document.getElementById('vis-fps-counter');
+    if (cb) cb.checked = _fpsEl.style.display !== 'none';
+  }
 });
 
 function resizeMoteCanvas() {
@@ -6149,6 +6172,8 @@ const _PERSIST_CHECKBOXES = [
   'vis-titlebar', 'vis-search', 'vis-statuspanel', 'vis-legend', 'vis-spellbook',
   'vis-codex', 'vis-questlog', 'vis-cartographer', 'vis-energy', 'vis-nodelist', 'vis-debug', 'vis-latency', 'vis-firewall', 'vis-wifi',
   'vis-map-vines', 'vis-loading-vines',
+  'dock-emoji-icons',
+  'vis-fps-counter',
 ];
 
 // Debounce server saves (avoid hammering on every slider move)

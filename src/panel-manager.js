@@ -12,6 +12,9 @@ const ANCHORS = [
   { id: 'w',  x: 0, y: 0.5, label: 'West Anchor' },
 ];
 
+// Emoji icon mode — when true, dock uses emoji icons instead of SVG sigils
+let _useEmojiIcons = localStorage.getItem('realm-emoji-icons') === 'true';
+
 // SVG sigil icons — small hand-crafted rune marks for each panel
 // Colored sigil helper — uses explicit stroke/fill colors per panel
 const _SIGIL = (d, vb = '0 0 24 24') =>
@@ -758,11 +761,7 @@ function _createRune(panelId, def) {
 
   const icon = document.createElement('span');
   icon.className = 'rune-icon';
-  if (SIGILS[panelId]) {
-    icon.innerHTML = SIGILS[panelId];
-  } else {
-    icon.textContent = def.icon;
-  }
+  _setRuneIcon(icon, panelId, def);
 
   const glow = document.createElement('span');
   glow.className = 'rune-glow';
@@ -1531,11 +1530,7 @@ function _restoreSealedToDoc(panel, anchorId) {
 
   const icon = document.createElement('span');
   icon.className = 'rune-icon';
-  if (SIGILS[panel.id]) {
-    icon.innerHTML = SIGILS[panel.id];
-  } else {
-    icon.textContent = def.icon;
-  }
+  _setRuneIcon(icon, panel.id, def);
 
   const glow = document.createElement('span');
   glow.className = 'rune-glow';
@@ -1827,6 +1822,34 @@ export function registerPanel(panel) {
   header.addEventListener('touchstart', e => _startDrag(e, panel), { passive: false });
   header.addEventListener('dblclick', () => _toggleMinimize(panel));
 }
+
+// ── Emoji / Sigil icon switching ──
+
+function _setRuneIcon(iconEl, panelId, def) {
+  if (_useEmojiIcons || !SIGILS[panelId]) {
+    iconEl.innerHTML = '';
+    iconEl.textContent = def.icon;
+    iconEl.classList.add('rune-icon--emoji');
+  } else {
+    iconEl.innerHTML = SIGILS[panelId];
+    iconEl.classList.remove('rune-icon--emoji');
+  }
+}
+
+function setEmojiIcons(enabled) {
+  _useEmojiIcons = enabled;
+  localStorage.setItem('realm-emoji-icons', enabled ? 'true' : 'false');
+  // Refresh all existing runes
+  document.querySelectorAll('.sealed-rune').forEach(rune => {
+    const pid = rune.dataset.panelId;
+    const def = PANELS[pid];
+    if (!def) return;
+    const icon = rune.querySelector('.rune-icon');
+    if (icon) _setRuneIcon(icon, pid, def);
+  });
+}
+
+window.setEmojiIcons = setEmojiIcons;
 
 // ── Dock HUD ──
 
