@@ -9,7 +9,7 @@ const config = {
   format: 'iife',
   target: ['es2020'],
   sourcemap: true,
-  minify: false,       // keep readable for debugging
+  minify: true,
   keepNames: true,
   banner: { js: '// Built from src/ modules — do not edit directly\n' },
 };

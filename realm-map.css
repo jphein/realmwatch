@@ -285,28 +285,7 @@
     contain: layout style paint;
   }
 
-  /* Arcane veil — covers repaint jank when zoom mode exits */
-  #zoom-veil {
-    position: absolute;
-    inset: 0;
-    z-index: 999;
-    pointer-events: none;
-    opacity: 0;
-    background: radial-gradient(ellipse at center,
-      rgba(20,15,40,0.6) 0%,
-      rgba(10,8,25,0.85) 60%,
-      rgba(5,4,15,0.95) 100%);
-    mix-blend-mode: normal;
-  }
-  #zoom-veil.active {
-    opacity: 1;
-  }
-  #zoom-veil.fade {
-    opacity: 0;
-    transition: opacity 0.2s ease-out;
-  }
-
-  /* During zoom/pan: strip all heavy layers from the rendering tree entirely.
+/* During zoom/pan: strip all heavy layers from the rendering tree entirely.
      display:none removes from layout+paint (unlike visibility:hidden which still composites).
      This lets the browser only tile-render the bare node icons during interaction. */
   #map-world.zooming #topo-svg,
@@ -316,8 +295,10 @@
   #map-world.zooming .pulse-ring,
   #map-world.zooming .sparkle-layer,
   #map-world.zooming .speech-bubble { display: none !important; }
+  /* Labels use visibility:hidden (not display:none) to preserve .realm-node
+     container width — prevents icon horizontal shift during zoom */
   #map-world.zooming .node-label,
-  #map-world.zooming .node-sublabel,
+  #map-world.zooming .node-sublabel { visibility: hidden !important; }
   #map-world.zooming .region-label,
   #map-world.zooming .vlan-label { display: none !important; }
   /* Kill ALL node pseudo-elements and shadows during zoom — not just collectd */
@@ -1336,6 +1317,18 @@
     color: #c0b080;
   }
   .tooltip .stat-val { color: #f0e6c8; font-weight: bold; }
+
+  /* Ghost ley-lines — half-res canvas bitmap shown during zoom/pan */
+  #ghost-lines {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 5;
+    pointer-events: none;
+    display: none;
+    opacity: 0.7;
+  }
+  #map-world.zooming #ghost-lines { display: block !important; }
 
   /* Connection lines (SVG overlay) */
   #connections {
@@ -2683,6 +2676,16 @@
     line-height: 1.4;
   }
   .cne-name { font-family: 'Cinzel', serif; font-size: 10px; }
+  .cne-link {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(240,216,144,0.15);
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .cne-link:hover {
+    color: #f0d890;
+    border-color: rgba(240,216,144,0.5);
+  }
   .cne-body {
     font-size: 9px;
     color: #807060;
@@ -3700,8 +3703,242 @@
     z-index: 2;
   }
 
+  /* ═══════════════════════════════════════════════════════════
+     ARCANE CONSOLE — API explorer, MCP tools, scripts, terminal
+     ═══════════════════════════════════════════════════════════ */
+  #arcane-console {
+    position: fixed;
+    top: 20px;
+    left: 290px;
+    width: 420px;
+    max-height: 70vh;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #ac-body { padding: 0 8px 8px; overflow-y: auto; flex: 1; }
+
+  /* Collapsible section toggles (reuses codex pattern) */
+  .ac-toggle { cursor: pointer; }
+
+  /* Endpoint / tool items */
+  .ac-item {
+    padding: 4px 6px;
+    border-bottom: 1px solid rgba(100,220,180,0.06);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .ac-item:hover { background: rgba(100,220,180,0.06); }
+  .ac-item:last-child { border-bottom: none; }
+  .ac-item-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+  }
+  .ac-method {
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 3px;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+  }
+  .ac-method-get { background: rgba(100,200,120,0.2); color: #80d090; }
+  .ac-method-post { background: rgba(220,180,80,0.2); color: #d0b060; }
+  .ac-method-delete { background: rgba(220,80,80,0.2); color: #d07070; }
+  .ac-method-sse { background: rgba(120,160,220,0.2); color: #90b0e0; }
+  .ac-method-mcp { background: rgba(180,120,255,0.2); color: #b090e0; }
+  .ac-path {
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    color: #c0d0b0;
+  }
+  .ac-desc {
+    font-size: 9px;
+    color: #706858;
+    margin-left: auto;
+    text-align: right;
+    flex-shrink: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Expanded form (params + invoke) */
+  .ac-form {
+    display: none;
+    padding: 6px 4px 8px 20px;
+    border-left: 2px solid rgba(100,220,180,0.15);
+    margin: 4px 0;
+  }
+  .ac-item.ac-open .ac-form { display: block; }
+  .ac-form label {
+    display: block;
+    font-size: 9px;
+    color: #908070;
+    margin: 4px 0 1px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .ac-form input, .ac-form textarea, .ac-form select {
+    width: 100%;
+    background: rgba(10,10,20,0.6);
+    border: 1px solid rgba(100,220,180,0.15);
+    color: #c0d0b0;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    padding: 3px 6px;
+    border-radius: 3px;
+    outline: none;
+  }
+  .ac-form input:focus, .ac-form textarea:focus {
+    border-color: rgba(100,220,180,0.4);
+  }
+  .ac-form textarea { resize: vertical; min-height: 40px; }
+  .ac-invoke-btn {
+    margin-top: 6px;
+    padding: 4px 14px;
+    background: rgba(100,220,180,0.12);
+    border: 1px solid rgba(100,220,180,0.3);
+    color: #80d0b0;
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.2s;
+  }
+  .ac-invoke-btn:hover {
+    background: rgba(100,220,180,0.2);
+    border-color: rgba(100,220,180,0.5);
+    color: #a0f0d0;
+  }
+  .ac-invoke-btn:active { transform: scale(0.97); }
+  .ac-invoke-btn.ac-running {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  /* Response display */
+  .ac-response {
+    margin-top: 6px;
+    padding: 6px;
+    background: rgba(5,5,15,0.8);
+    border: 1px solid rgba(100,220,180,0.1);
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    color: #90a880;
+    max-height: 200px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .ac-response.ac-error { color: #d08080; border-color: rgba(220,80,80,0.2); }
+
+  /* Script items */
+  .ac-script {
+    padding: 4px 6px;
+    border-bottom: 1px solid rgba(100,220,180,0.06);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ac-script:last-child { border-bottom: none; }
+  .ac-script-name {
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    color: #c0d0b0;
+  }
+  .ac-script-desc {
+    font-size: 9px;
+    color: #706858;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ac-script-run {
+    padding: 2px 8px;
+    background: rgba(100,220,180,0.1);
+    border: 1px solid rgba(100,220,180,0.25);
+    color: #80d0b0;
+    font-size: 9px;
+    cursor: pointer;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+  .ac-script-run:hover { background: rgba(100,220,180,0.2); }
+
+  /* ── The Terminal ── */
+  .ac-terminal-section {
+    margin-top: 8px;
+    border: 1px solid rgba(100,220,180,0.15);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .ac-terminal-header {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    color: #60c0a0;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 5px 8px;
+    background: rgba(100,220,180,0.05);
+    border-bottom: 1px solid rgba(100,220,180,0.1);
+  }
+  .ac-terminal-output {
+    min-height: 80px;
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 6px 8px;
+    background: rgba(3,3,8,0.9);
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    color: #90a880;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .ac-terminal-output .ac-cmd-line {
+    color: #60c0a0;
+  }
+  .ac-terminal-output .ac-cmd-error {
+    color: #d08080;
+  }
+  .ac-terminal-input-row {
+    display: flex;
+    align-items: center;
+    background: rgba(5,5,12,0.95);
+    border-top: 1px solid rgba(100,220,180,0.1);
+    padding: 0 8px;
+  }
+  .ac-prompt {
+    color: #60c0a0;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    margin-right: 6px;
+    flex-shrink: 0;
+  }
+  .ac-terminal-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #c0d0b0;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    padding: 6px 0;
+    outline: none;
+    caret-color: #60c0a0;
+  }
+
   /* ── Mobile / touch responsiveness ── */
   /* ── Viewport safety: clamp all fixed panels ── */
+  #arcane-console { max-width: calc(100vw - 40px); }
   #quest-log { max-width: calc(100vw - 40px); }
   #realm-codex { max-width: calc(100vw - 40px); }
   #spellbook { max-width: calc(100vw - 40px); }
@@ -3731,6 +3968,7 @@
     .realm-node.cluster-node .node-icon { width: 36px; height: 36px; font-size: 16px; }
     #quest-log { max-width: 260px; bottom: 120px; }
     #realm-codex { max-width: 280px; left: 10px; top: 60px; }
+    #arcane-console { left: 10px; top: 60px; width: 320px; max-height: 60vh; }
     #energy-panel { left: 10px; top: 60px; width: 140px; }
     #latency-panel { right: 10px; top: 260px; width: 170px; }
     #firewall-panel { left: 10px; top: 200px; width: 180px; }
@@ -3753,6 +3991,7 @@
     .carto-body { padding: 6px 8px; }
     #quest-log { right: 5px; bottom: 90px; width: calc(100vw - 10px); max-width: none; max-height: 250px; }
     #realm-codex { left: 5px; top: 50px; width: calc(100vw - 10px); max-width: none; max-height: 50vh; }
+    #arcane-console { left: 5px; top: 50px; width: calc(100vw - 10px); max-width: none; max-height: 50vh; }
     #energy-panel { left: 5px; top: 50px; width: 130px; }
     #node-list { left: 5px; top: 50px; width: calc(100vw - 10px); max-width: none; }
     #node-chat-dialog { width: calc(100vw - 10px); right: 5px; left: 5px; top: 60px; max-height: 65vh; }
@@ -4305,6 +4544,12 @@
       width: auto;
       min-width: 320px;
       max-width: min(480px, calc(100vw - 40px));
+    }
+    body.dynamic-panels #arcane-console {
+      width: auto;
+      min-width: 360px;
+      max-width: min(480px, calc(100vw - 40px));
+      max-height: min(70vh, 700px);
     }
     /* Smooth transition when toggling */
     body.dynamic-panels .panel,

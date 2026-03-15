@@ -6,7 +6,7 @@
 <meta name="color-scheme" content="dark">
 <title>The Realm — Geographic Map</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link rel="stylesheet" href="realm-map.css?v=1773616000">
+<link rel="stylesheet" href="realm-map.css?v=1773540400">
 </head>
 <body>
 
@@ -576,10 +576,11 @@
 
     <!-- ── MCP Server 1: Realm Voice (lit-rpg-fantasy-voice) ── -->
     <div class="codex-section">
-      <h4 class="codex-toggle" data-target="codex-srv-realm">&#9965; Realm Voice <span class="codex-tool-count">16 tools</span></h4>
+      <h4 class="codex-toggle" data-target="codex-srv-realm">&#9965; Realm Voice <span class="codex-tool-count">19 tools</span></h4>
       <div id="codex-srv-realm" class="codex-tools">
         <div class="codex-tool-group">Observation &amp; Voice</div>
         <div class="codex-tool"><code>get_system_status</code><span>Raw sensor JSON &mdash; CPU, RAM, GPU, battery as fantasy data</span></div>
+        <div class="codex-tool"><code>get_energy_status</code><span>Home Assistant energy &mdash; solar, battery, grid, house load</span></div>
         <div class="codex-tool"><code>trigger_system_observation</code><span>Narrate realm state as fantasy observation</span></div>
         <div class="codex-tool"><code>vocalize_message</code><span>Speak custom text in the System's voice</span></div>
         <div class="codex-tool"><code>commune_with_system</code><span>Voice conversation about realm state</span></div>
@@ -652,6 +653,40 @@
       <div id="codex-personas" class="codex-tools codex-persona-list"></div>
     </div>
 
+  </div>
+</div>
+
+<div id="arcane-console" class="panel" style="--panel-accent:rgba(100,220,180,0.5)">
+  <div class="panel-header">
+    <span class="panel-hdr-icon">&#9000;</span>
+    <span class="panel-hdr-title">Arcane Console</span>
+    <span class="panel-hdr-badge ac-status"></span>
+  </div>
+  <div id="ac-body">
+    <!-- API Endpoints -->
+    <div class="codex-section">
+      <h4 class="codex-toggle ac-toggle" data-target="ac-api">&#9889; Ley-Line Endpoints <span class="codex-tool-count" id="ac-api-count"></span></h4>
+      <div id="ac-api" class="codex-tools ac-section"></div>
+    </div>
+    <!-- MCP Tools -->
+    <div class="codex-section">
+      <h4 class="codex-toggle ac-toggle" data-target="ac-mcp">&#128302; Arcane Invocations <span class="codex-tool-count" id="ac-mcp-count"></span></h4>
+      <div id="ac-mcp" class="codex-tools ac-section"></div>
+    </div>
+    <!-- Scripts -->
+    <div class="codex-section">
+      <h4 class="codex-toggle ac-toggle" data-target="ac-scripts">&#9878; Forge Scripts <span class="codex-tool-count" id="ac-script-count"></span></h4>
+      <div id="ac-scripts" class="codex-tools ac-section"></div>
+    </div>
+    <!-- Terminal -->
+    <div class="ac-terminal-section">
+      <div class="ac-terminal-header">&#10095;&#10095; The Terminal</div>
+      <div id="ac-terminal-output" class="ac-terminal-output"></div>
+      <div class="ac-terminal-input-row">
+        <span class="ac-prompt">&#10095;</span>
+        <input type="text" id="ac-terminal-input" class="ac-terminal-input" placeholder="Enter command..." autocomplete="off" spellcheck="false">
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1478,6 +1513,6 @@
 <div id="scan-line"></div>
 <div class="tooltip" id="tooltip"></div>
 
-<script src="realm-map.js?v=1773616000"></script>
+<script src="realm-map.js?v=1773540400"></script>
 </body>
 </html>

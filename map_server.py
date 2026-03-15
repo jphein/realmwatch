@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """HTTP server for the live realm map — serves status, events, and the map UI."""
 
+import gzip
 import json
 import os
 
@@ -50,6 +51,95 @@ _CHAT_SAFE_KEYS = {"deployment", "model", "model_type", "max_completion_tokens",
 _SPEECH_SAFE_KEYS = {"silence_timeout", "talk_silence_timeout", "energy_multiplier", "end_word",
                      "subtitle_color_user", "subtitle_color_tts", "live_subtitles", "voice",
                      "fast_voice", "max_record_seconds", "vu_meter", "chime_ready"}
+
+
+def _mcp_dispatch(tool, args):
+    """Dispatch MCP tool calls to underlying functions."""
+    if tool == "get_system_status":
+        status = engine.get_status()
+        status["tailscale"] = engine.get_tailscale_status()
+        status["host"] = engine.get_host_config()
+        return status
+    elif tool == "get_energy_status":
+        return ha_bridge.get_energy_data()
+    elif tool == "trigger_system_observation":
+        status = engine.get_status()
+        return {"observation": engine.adult_observation(status), "status": status}
+    elif tool == "get_topology":
+        return _load_topology()
+    elif tool == "get_collectd_data":
+        hostname = args.get("hostname")
+        data = get_all_summaries()
+        if hostname:
+            return {hostname: data.get(hostname, {})}
+        return data
+    elif tool == "get_map_events":
+        since = float(args.get("since", 0))
+        return {"events": realm_db.get_events(since=since)}
+    elif tool == "get_node_personas":
+        return _load_personas()
+    elif tool == "configure_persona":
+        node = args.get("node")
+        if not node:
+            return {"error": "node required"}
+        personas = _load_personas()
+        p = personas.get(node, {})
+        for k in ("name", "title", "voice", "system_prompt", "hints"):
+            if k in args:
+                p[k] = args[k]
+        personas[node] = p
+        with open(PERSONAS_FILE, "w") as f:
+            json.dump(personas, f, indent=2)
+        return {"ok": True, "persona": p}
+    elif tool == "delete_persona":
+        node = args.get("node")
+        personas = _load_personas()
+        if node in personas:
+            del personas[node]
+            with open(PERSONAS_FILE, "w") as f:
+                json.dump(personas, f, indent=2)
+        return {"ok": True}
+    elif tool == "map_event":
+        evt = {"type": args.get("type", "speech"), "node": args.get("node", ""), "text": args.get("text", "")}
+        if args.get("color"):
+            evt["color"] = args["color"]
+        realm_db.add_event(evt)
+        _sse_broker.send_event("realm-event", evt)
+        return {"ok": True}
+    elif tool == "map_node_chat":
+        return {"error": "map_node_chat requires Azure AI — use MCP client directly"}
+    elif tool == "configure_topology_node":
+        node_id = args.get("id")
+        if not node_id:
+            return {"error": "id required"}
+        topo = _load_topology()
+        existing = next((n for n in topo["nodes"] if n["id"] == node_id), None)
+        if existing:
+            for k, v in args.items():
+                if k != "id":
+                    existing[k] = v
+        else:
+            topo["nodes"].append(args)
+        realm_db.save_topology_json(TOPOLOGY_FILE)
+        return {"ok": True}
+    elif tool == "scan_wifi":
+        action = args.get("action", "scan")
+        if action == "status":
+            return realm_db.get_wifi_scan()
+        ap_scanner.run_scan()
+        return {"ok": True, "action": "scan started"}
+    elif tool == "sync_notion_quests":
+        force = args.get("force", False)
+        result = notion_sync.sync_quests(force=bool(force))
+        return result
+    elif tool == "manage_map_server":
+        return {"note": "Cannot control map_server from within itself"}
+    elif tool == "manage_herald":
+        return {"note": "Herald control requires MCP stdio — use manage_herald MCP tool"}
+    elif tool in ("vocalize_message", "commune_with_system", "herald_round"):
+        return {"note": f"{tool} requires voice pipeline — use MCP client directly"}
+    else:
+        return {"error": f"Unknown tool: {tool}"}
 
 
 def _write_config_file(path, updates, safe_keys):
@@ -206,8 +296,12 @@ class RealmHandler(SimpleHTTPRequestHandler):
                     else:
                         self._json_response({"error": "Failed to parse nft rules"}, 500)
 
+        elif self.path == "/quests":
+            self._json_response(realm_db.get_quests())
+
         elif self.path.startswith("/events"):
             since = 0
+            limit = 0
             if "?" in self.path:
                 for param in self.path.split("?", 1)[1].split("&"):
                     if param.startswith("since="):
@@ -215,7 +309,15 @@ class RealmHandler(SimpleHTTPRequestHandler):
                             since = float(param.split("=", 1)[1])
                         except ValueError:
                             pass
-            self._json_response(get_events_since(since))
+                    elif param.startswith("limit="):
+                        try:
+                            limit = int(param.split("=", 1)[1])
+                        except ValueError:
+                            pass
+            events = get_events_since(since)
+            if limit > 0:
+                events = events[-limit:]
+            self._json_response(events)
 
         elif self.path.startswith("/notion-sync"):
             try:
@@ -246,6 +348,9 @@ class RealmHandler(SimpleHTTPRequestHandler):
 
         elif self.path == "/scan/wifi":
             self._json_response(ap_scanner.get_wifi_signal())
+
+        elif self.path == "/wifi/aps":
+            self._json_response(ap_scanner.get_ap_info())
 
         elif self.path.startswith("/ping/"):
             ip = self.path.split("/ping/", 1)[1].split("?")[0]
@@ -340,6 +445,29 @@ class RealmHandler(SimpleHTTPRequestHandler):
                 "settings_ns": list(realm_db.get_settings().keys()),
             })
 
+        elif self.path == "/scripts":
+            scripts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scripts")
+            scripts = []
+            if os.path.isdir(scripts_dir):
+                for f in sorted(os.listdir(scripts_dir)):
+                    fp = os.path.join(scripts_dir, f)
+                    if os.path.isfile(fp) and os.access(fp, os.X_OK):
+                        # Read first comment line as description
+                        desc = ""
+                        try:
+                            with open(fp) as fh:
+                                for line in fh:
+                                    line = line.strip()
+                                    if line.startswith("#!"):
+                                        continue
+                                    if line.startswith("#"):
+                                        desc = line.lstrip("# ").strip()
+                                    break
+                        except Exception:
+                            pass
+                        scripts.append({"name": f, "path": f"scripts/{f}", "description": desc})
+            self._json_response({"scripts": scripts})
+
         elif self.path == "/chat/sessions":
             sessions = chat_bridge.list_sessions()
             self._json_response({"sessions": sessions, "current": chat_bridge.DEFAULT_SESSION})
@@ -374,7 +502,32 @@ window.location.href = '/';
 
         elif self.path == "/" or self.path == "" or self.path.startswith("/?"):
             self.path = "/realm-map.html"
-            super().do_GET()
+            self._serve_static_gzip()
+        else:
+            self._serve_static_gzip()
+
+    _GZIP_TYPES = {'.js', '.css', '.html', '.json', '.svg', '.map'}
+
+    def _serve_static_gzip(self):
+        """Serve static files with gzip if client accepts it."""
+        path = self.translate_path(self.path)
+        ext = os.path.splitext(path)[1].lower()
+        accept_gz = 'gzip' in self.headers.get('Accept-Encoding', '')
+        if accept_gz and ext in self._GZIP_TYPES and os.path.isfile(path):
+            try:
+                with open(path, 'rb') as f:
+                    raw = f.read()
+                compressed = gzip.compress(raw, compresslevel=6)
+                self.send_response(200)
+                ctype = self.guess_type(path)
+                self.send_header("Content-Type", ctype)
+                self.send_header("Content-Encoding", "gzip")
+                self.send_header("Content-Length", len(compressed))
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(compressed)
+            except Exception:
+                super().do_GET()
         else:
             super().do_GET()
 
@@ -458,6 +611,50 @@ window.location.href = '/';
                 self._json_response({"ok": True, "personas": personas})
             except (json.JSONDecodeError, KeyError) as e:
                 self._json_response({"error": str(e)}, 400)
+        elif self.path == "/quest-delete":
+            try:
+                req = json.loads(body)
+                # Support both legacy text-based and new id-based deletion
+                quest_id = req.get("id", "")
+                text = req.get("text", "")
+                if quest_id:
+                    deleted = realm_db.delete_quest(quest_id)
+                elif text:
+                    deleted = realm_db.delete_quest_by_text(text)
+                else:
+                    self._json_response({"error": "missing id or text"}, 400)
+                    return
+                self._json_response({"deleted": deleted})
+            except Exception as e:
+                self._json_response({"error": str(e)}, 500)
+
+        elif self.path == "/quest-update":
+            try:
+                req = json.loads(body)
+                quest_id = req.get("id", "")
+                status = req.get("status", "")
+                if not quest_id or not status:
+                    self._json_response({"error": "missing id or status"}, 400)
+                    return
+                ok = realm_db.update_quest_status(quest_id, status)
+                if ok:
+                    self._json_response({"ok": True, "id": quest_id, "status": status})
+                else:
+                    self._json_response({"error": "quest not found"}, 404)
+            except Exception as e:
+                self._json_response({"error": str(e)}, 500)
+
+        elif self.path == "/quest-create":
+            try:
+                quest = json.loads(body)
+                if "id" not in quest or "title" not in quest:
+                    self._json_response({"error": "missing id or title"}, 400)
+                    return
+                realm_db.upsert_quest(quest)
+                self._json_response({"ok": True, "id": quest["id"]})
+            except Exception as e:
+                self._json_response({"error": str(e)}, 500)
+
         elif self.path == "/notion-complete":
             try:
                 req = json.loads(body)
@@ -636,6 +833,39 @@ window.location.href = '/';
                 self._json_response({"error": "Command timed out (30s)"}, 504)
             except (json.JSONDecodeError, KeyError) as e:
                 self._json_response({"error": str(e)}, 400)
+
+        elif self.path == "/exec":
+            try:
+                req = json.loads(body)
+                command = req.get("command", "").strip()
+                if not command:
+                    self._json_response({"error": "Empty command"}, 400)
+                    return
+                result = subprocess.run(
+                    ["bash", "-c", command],
+                    capture_output=True, text=True, timeout=30,
+                    cwd=os.path.dirname(os.path.abspath(__file__))
+                )
+                self._json_response({
+                    "output": result.stdout[-50000:] if result.stdout else "",
+                    "error": result.stderr[-5000:] if result.stderr else "",
+                    "exit_code": result.returncode,
+                })
+            except subprocess.TimeoutExpired:
+                self._json_response({"error": "Command timed out (30s)"}, 504)
+            except (json.JSONDecodeError, KeyError) as e:
+                self._json_response({"error": str(e)}, 400)
+
+        elif self.path == "/mcp/invoke":
+            try:
+                req = json.loads(body)
+                tool = req.get("tool", "")
+                args = req.get("arguments", {})
+                result = _mcp_dispatch(tool, args)
+                self._json_response(result)
+            except Exception as e:
+                self._json_response({"error": str(e)}, 500)
+
         else:
             self.send_error(404)
 

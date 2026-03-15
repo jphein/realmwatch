@@ -81,6 +81,7 @@ function _computeFanAngles() {
 }
 
 let _obstacles = [];
+const _nodeSizeCache = new Map();  // id → {w, h} — nodes don't resize, just move
 function _buildObstacles() {
   _obstacles = [];
   if (!_topology) return;
@@ -89,18 +90,21 @@ function _buildObstacles() {
     if (!el.el) continue;
     const left = parseInt(el.el.style.left) || 0;
     const top = parseInt(el.el.style.top) || 0;
-    const w = el.el.offsetWidth;
-    const h = el.el.offsetHeight;
-    const icon = el.el.querySelector('.node-icon');
+    let sz = _nodeSizeCache.get(n.id);
+    if (!sz) {
+      sz = { w: el.el.offsetWidth, h: el.el.offsetHeight };
+      _nodeSizeCache.set(n.id, sz);
+    }
+    const icon = el._icon || (el._icon = el.el.querySelector('.node-icon'));
     let iconScale = 1;
     if (icon && icon.style.transform) {
       const m = icon.style.transform.match(/scale\(([^)]+)\)/);
       if (m) iconScale = parseFloat(m[1]) || 1;
     }
-    const cx = left + w / 2;
-    const cy = top + h / 2;
-    const rx = (w / 2) * Math.max(1, iconScale) + 20;
-    const ry = (h / 2) * Math.max(1, iconScale) + 15;
+    const cx = left + sz.w / 2;
+    const cy = top + sz.h / 2;
+    const rx = (sz.w / 2) * Math.max(1, iconScale) + 20;
+    const ry = (sz.h / 2) * Math.max(1, iconScale) + 15;
     _obstacles.push({ id: n.id, x: cx, y: cy, rx, ry });
   }
 }
@@ -290,7 +294,11 @@ export function renderTopology(topo) {
 
     if (n.tip) tips[n.id] = { title: n.tip.title, stats: [...(n.tip.stats || [])] };
     else {
-      const auto = []; if (n.type) auto.push(['Type', n.type]); if (n.ip) auto.push(['IP', n.ip]);
+      const auto = [];
+      if (n._hostname) auto.push(['Hostname', n._hostname]);
+      if (n.type) auto.push(['Type', n.type]);
+      if (n.ip) auto.push(['IP', n.ip]);
+      if (n._vendor) auto.push(['Vendor', n._vendor]);
       tips[n.id] = { title: n.label || n.id, stats: auto };
     }
     if (n.ip || n.ssh) infraNodes[n.id] = { name: n.label, ip: n.ip || '', collectdHost: n.collectd || null, sshHost: n.ssh || null, tsHost: n.tsHost || null };
@@ -361,13 +369,11 @@ export function renderTopology(topo) {
   });
 }
 
-// ── Load topology synchronously ──
-export function loadTopology() {
-  const xhr = new XMLHttpRequest();
-  xhr.open('GET', '/topology', false);
-  xhr.send();
-  if (xhr.status === 200) {
-    const topo = JSON.parse(xhr.responseText);
+// ── Load topology (async) ──
+export async function loadTopology() {
+  const r = await fetch('/topology');
+  if (r.ok) {
+    const topo = await r.json();
     renderTopology(topo);
   }
 }
@@ -400,6 +406,7 @@ export async function refreshTopology() {
     _connPaths.length = 0;
     _vlanLabels.length = 0;
     Object.keys(_nodeDOM).forEach(k => delete _nodeDOM[k]);
+    _nodeSizeCache.clear();
     // Re-render with server data
     renderTopology(topo);
     // Restore saved positions for existing nodes (auto-arrange / drag)
@@ -423,6 +430,265 @@ export async function refreshTopology() {
   } catch (e) { /* silent */ }
 }
 
-// Load topology synchronously at module init
-loadTopology();
-_lastNodeCount = (_topology?.nodes || []).length;
+// ── Render a single node (reusable for initial render + cluster expand) ──
+function _renderNode(n) {
+  const world = document.getElementById('map-world');
+  const div = document.createElement('div');
+  const tc = TYPE_TO_CLASS[n.type] || '';
+  div.className = 'realm-node' + (tc ? ' ' + tc : '') + (n.collectd ? ' collectd-monitored' : '');
+  if (n._clusterChild) div.classList.add('cluster-child');
+  div.setAttribute('style', `left:${n.x}px;top:${n.y}px;`);
+  div.dataset.tip = n.id;
+
+  const icon = document.createElement('div');
+  icon.className = 'node-icon';
+  const is = n.iconStyle || {};
+  let ic = '';
+  for (const [k,v] of Object.entries(is)) ic += `${k.replace(/[A-Z]/g, m => '-'+m.toLowerCase())}:${v};`;
+  icon.setAttribute('style', ic);
+  if (n.pulse) {
+    const p = document.createElement('div');
+    p.className = 'pulse-ring';
+    if (n.pulseStyle?.borderColor) p.style.borderColor = n.pulseStyle.borderColor;
+    icon.appendChild(p);
+  }
+  if (n.badge) {
+    const b = document.createElement('span');
+    b.className = 'cluster-badge';
+    b.textContent = n.badge;
+    icon.appendChild(b);
+  }
+  // Safe: icon HTML comes from our topology data, not user input
+  icon.insertAdjacentHTML('beforeend', n.icon || '&#9670;');
+  div.appendChild(icon);
+
+  const lbl = document.createElement('div');
+  lbl.className = 'node-label';
+  if (n.labelStyle) {
+    let ls = '';
+    for (const [k,v] of Object.entries(n.labelStyle)) ls += `${k.replace(/[A-Z]/g, m => '-'+m.toLowerCase())}:${v};`;
+    lbl.setAttribute('style', ls);
+  }
+  lbl.textContent = n.label;
+  div.appendChild(lbl);
+
+  const sub = document.createElement('div');
+  sub.className = 'node-sublabel';
+  // Safe: sublabel comes from our topology data, not user input
+  sub.textContent = n.sublabel || '';
+  div.appendChild(sub);
+
+  world.appendChild(div);
+
+  // Register in caches
+  if (n.tip) tips[n.id] = { title: n.tip.title, stats: [...(n.tip.stats || [])] };
+  else {
+    const auto = []; if (n.type) auto.push(['Type', n.type]); if (n.ip) auto.push(['IP', n.ip]);
+    tips[n.id] = { title: n.label || n.id, stats: auto };
+  }
+  if (n.ip) infraNodes[n.id] = { name: n.label, ip: n.ip, collectdHost: n.collectd || null, sshHost: null, tsHost: null };
+  delete _nodeDOM[n.id]; // clear stale cache
+  return div;
+}
+
+// ── Render a single connection (ley-line routed) ──
+function _renderConn(conn) {
+  const connSvg = document.querySelector('#connections');
+  const fp = _getNodePos(conn.from), tp = _getNodePos(conn.to);
+  if (!fp || !tp) return null;
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', _computePathD(fp, tp, 0, 0, conn.from, conn.to));
+  path.setAttribute('class', 'conn-line ' + (CONN_TYPE_TO_CLASS[conn.type] || 'conn-active'));
+  if (conn._clusterChild) path.classList.add('conn-cluster-child');
+  path.dataset.from = conn.from;
+  path.dataset.to = conn.to;
+  path.dataset.fromNode = conn.from;
+  path.dataset.toNode = conn.to;
+  connSvg.appendChild(path);
+  _connPaths.push(path);
+  return path;
+}
+
+// ── Expandable Clusters ──
+const _expandedClusters = new Set();
+const _clusterChildIds = {};   // clusterId → [nodeId, ...]
+
+export function isClusterExpandable(nodeId) {
+  const n = _topology?.nodes.find(nd => nd.id === nodeId);
+  return n?.type === 'cluster' && n.members?.length > 0;
+}
+
+export function isClusterExpanded(nodeId) { return _expandedClusters.has(nodeId); }
+
+export function toggleClusterExpand(clusterId) {
+  if (_expandedClusters.has(clusterId)) collapseCluster(clusterId);
+  else expandCluster(clusterId);
+}
+
+function expandCluster(clusterId) {
+  const cluster = _topology?.nodes.find(n => n.id === clusterId);
+  if (!cluster?.members?.length) return;
+  const center = _getNodePos(clusterId);
+  if (!center) return;
+
+  const members = cluster.members;
+  const childIds = [];
+
+  // Group members by AP — position each group near its AP node
+  const apGroups = {};  // ap_id → [member, ...]
+  const noAp = [];
+  members.forEach(m => {
+    if (m.ap && _topology.nodes.find(n => n.id === m.ap)) {
+      (apGroups[m.ap] ||= []).push(m);
+    } else {
+      noAp.push(m);
+    }
+  });
+
+  const allPlacements = []; // [{member, tx, ty, apId}, ...]
+
+  // Members with known APs: fan out along the line between AP and cluster
+  for (const [apId, group] of Object.entries(apGroups)) {
+    const apPos = _getNodePos(apId);
+    if (!apPos) { noAp.push(...group); continue; }
+    const midX = (apPos.x + center.x) / 2;
+    const midY = (apPos.y + center.y) / 2;
+    const fanRadius = Math.max(60, group.length * 18);
+    const baseAngle = Math.atan2(center.y - apPos.y, center.x - apPos.x);
+    group.forEach((m, i) => {
+      const spread = (i - (group.length - 1) / 2) * 0.35;
+      const a = baseAngle + spread;
+      allPlacements.push({
+        member: m,
+        tx: Math.round(midX + Math.cos(a) * fanRadius),
+        ty: Math.round(midY + Math.sin(a) * fanRadius),
+        apId,
+      });
+    });
+  }
+
+  // Members without AP: orbit the cluster center
+  const orbitRadius = Math.max(80, noAp.length * 22);
+  noAp.forEach((m, i) => {
+    const angle = (i / Math.max(noAp.length, 1)) * Math.PI * 2 - Math.PI / 2;
+    allPlacements.push({
+      member: m,
+      tx: Math.round(center.x + Math.cos(angle) * orbitRadius),
+      ty: Math.round(center.y + Math.sin(angle) * orbitRadius),
+      apId: null,
+    });
+  });
+
+  let idx = 0;
+  allPlacements.forEach(({ member: m, tx, ty, apId }) => {
+    const nodeId = `${clusterId}::${m.mac || idx}`;
+    idx++;
+
+    const nodeData = {
+      id: nodeId, type: 'device',
+      _clusterChild: true, _parentCluster: clusterId,
+      x: center.x, y: center.y,
+      _targetX: tx, _targetY: ty,
+      icon: '&#9670;',
+      label: m.label,
+      sublabel: (m.hw ? m.hw : '') + (m.hw && m.ip ? ' \u2022 ' : '') + (m.ip || ''),
+      ip: m.ip || '',
+      iconStyle: {
+        width: '30px', height: '30px', fontSize: '13px',
+        background: 'radial-gradient(circle, #1a1520, #0f0d12)',
+        borderColor: 'rgba(96,192,96,0.35)',
+        boxShadow: '0 0 10px rgba(96,192,96,0.2)',
+      },
+      tip: {
+        title: m.label,
+        stats: [
+          ['Hostname', m.hw || 'Unknown'], ['IP', m.ip || 'N/A'],
+          ['MAC', m.mac || 'N/A'], ['AP', apId || 'Unknown'],
+        ]
+      },
+    };
+
+    _topology.nodes.push(nodeData);
+    _renderNode(nodeData);
+
+    // Connect to actual AP if known, otherwise to parent cluster
+    const connTarget = apId || clusterId;
+    const conn = { from: nodeId, to: connTarget, type: 'active', _clusterChild: true };
+    _topology.connections.push(conn);
+    _renderConn(conn);
+
+    childIds.push(nodeId);
+  });
+
+  _clusterChildIds[clusterId] = childIds;
+  _expandedClusters.add(clusterId);
+
+  // Visual feedback on parent
+  const clusterEl = document.querySelector(`[data-tip="${clusterId}"]`);
+  if (clusterEl) clusterEl.classList.add('cluster-expanded');
+
+  // Animate children outward from cluster center
+  requestAnimationFrame(() => {
+    childIds.forEach(nid => {
+      const nd = _topology.nodes.find(n => n.id === nid);
+      if (!nd) return;
+      const el = document.querySelector(`[data-tip="${nid}"]`);
+      if (!el) return;
+      el.style.transition = 'left 0.45s cubic-bezier(0.34,1.56,0.64,1), top 0.45s cubic-bezier(0.34,1.56,0.64,1)';
+      nd.x = nd._targetX; nd.y = nd._targetY;
+      el.style.left = nd.x + 'px';
+      el.style.top = nd.y + 'px';
+    });
+    // Rebuild ley-lines after animation settles
+    setTimeout(() => { _buildObstacles(); updateLinePositions(); }, 470);
+  });
+}
+
+function collapseCluster(clusterId) {
+  const childIds = _clusterChildIds[clusterId];
+  if (!childIds) return;
+  const center = _getNodePos(clusterId);
+
+  // Animate children back to cluster center
+  childIds.forEach(nid => {
+    const el = document.querySelector(`[data-tip="${nid}"]`);
+    if (!el) return;
+    el.style.transition = 'left 0.25s ease-in, top 0.25s ease-in, opacity 0.2s ease';
+    if (center) { el.style.left = center.x + 'px'; el.style.top = center.y + 'px'; }
+    el.style.opacity = '0';
+  });
+
+  // After animation, clean up DOM + topology data
+  setTimeout(() => {
+    const removeSet = new Set(childIds);
+    _topology.nodes = _topology.nodes.filter(n => !removeSet.has(n.id));
+    _topology.connections = _topology.connections.filter(c => !removeSet.has(c.from) && !removeSet.has(c.to));
+
+    childIds.forEach(nid => {
+      const el = document.querySelector(`[data-tip="${nid}"]`);
+      if (el) el.remove();
+      delete tips[nid];
+      delete _nodeDOM[nid];
+      delete infraNodes[nid];
+    });
+
+    // Remove SVG paths for child connections
+    for (let i = _connPaths.length - 1; i >= 0; i--) {
+      const p = _connPaths[i];
+      if (p && (removeSet.has(p.dataset.fromNode) || removeSet.has(p.dataset.toNode))) {
+        p.remove();
+        _connPaths.splice(i, 1);
+      }
+    }
+    _buildObstacles();
+    updateLinePositions();
+  }, 300);
+
+  delete _clusterChildIds[clusterId];
+  _expandedClusters.delete(clusterId);
+
+  const clusterEl = document.querySelector(`[data-tip="${clusterId}"]`);
+  if (clusterEl) clusterEl.classList.remove('cluster-expanded');
+}
+
+// loadTopology() called from main.js (async, non-blocking)

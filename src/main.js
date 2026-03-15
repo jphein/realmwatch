@@ -1,14 +1,15 @@
 // ── Entry point ──
-// topology.js loads and renders topology at module level (synchronous XHR)
-// app.js runs all UI initialization via module-level side effects
-// Import order matters: topology must come before app
-export * from './topology.js';
-export * from './app.js';
-import { initPanelManager } from './panel-manager.js';
+// Load topology async, then run app.js + panel-manager init.
+// Dynamic imports ensure app.js side effects execute AFTER topology is ready.
+import { loadTopology } from './topology.js';
 
-// Initialize panel manager after DOM is fully ready
-if (document.readyState === 'complete') {
-  initPanelManager();
-} else {
-  window.addEventListener('load', initPanelManager);
-}
+(async () => {
+  await loadTopology();
+  await import('./app.js');
+  const { initPanelManager } = await import('./panel-manager.js');
+  if (document.readyState === 'complete') {
+    initPanelManager();
+  } else {
+    window.addEventListener('load', initPanelManager);
+  }
+})();

@@ -1046,6 +1046,7 @@ _connPaths.forEach(path => {
 });
 
 const TOP_GLOW_COUNT = 5;  // Only apply expensive SVG glow to top N traffic lines
+const MAX_ANIMATED_CONNS = 15;  // Limit dash animations — each is a 60fps SVG repaint
 
 export function updateConnectionTraffic(collectd) {
   if (!collectd) return;
@@ -1177,7 +1178,6 @@ export function updateConnectionTrafficSSE(trafficMap) {
       return;
     }
 
-    if (!cache.animated) { line.classList.add('conn-animated'); cache.animated = true; }
     const intensity = Math.min(1, traffic.intensity * trafficScale);
     const sw = +(baseW + intensity * 8 * trafficScale).toFixed(1);
     const speed = +Math.max(2, 20 - intensity * 18).toFixed(1);
@@ -1203,11 +1203,20 @@ export function updateConnectionTrafficSSE(trafficMap) {
       cache.tier = tier;
     }
 
-    if (intensity > 0.3) trafficData.push({ line, cache, intensity });
+    // Collect for animation budget (only top N get dash animation)
+    trafficData.push({ line, cache, intensity });
   });
 
+  // Only the top N connections by intensity get the expensive dash animation.
+  // All others get static stroke styling but no animation (saves ~50 SVG repaints/frame).
   trafficData.sort((a, b) => b.intensity - a.intensity);
-  const topLines = new Set(trafficData.slice(0, TOP_GLOW_COUNT).map(d => d.line));
+  const topAnimated = new Set(trafficData.slice(0, MAX_ANIMATED_CONNS).map(d => d.line));
+  for (const { line, cache } of trafficData) {
+    const shouldAnimate = topAnimated.has(line);
+    if (shouldAnimate && !cache.animated) { line.classList.add('conn-animated'); cache.animated = true; }
+    else if (!shouldAnimate && cache.animated) { line.classList.remove('conn-animated'); cache.animated = false; }
+  }
+  const topLines = new Set(trafficData.filter(d => d.intensity > 0.3).slice(0, TOP_GLOW_COUNT).map(d => d.line));
   trafficData.forEach(({ line, cache }) => {
     const shouldGlow = topLines.has(line);
     if (shouldGlow !== cache.glow) {
@@ -1826,7 +1835,11 @@ function renderCodexNotion(data) {
     html += `<div id="${id}" class="codex-tools">`;
     for (const e of entries) {
       html += `<div class="codex-notion-entry">`;
-      html += `<div class="cne-header">${e.icon||''} <span class="cne-name">${e.name}</span></div>`;
+      if (e.url) {
+        html += `<div class="cne-header"><a href="${e.url}" target="_blank" rel="noopener" class="cne-link">${e.icon||''} <span class="cne-name">${e.name}</span></a></div>`;
+      } else {
+        html += `<div class="cne-header">${e.icon||''} <span class="cne-name">${e.name}</span></div>`;
+      }
       html += `<div class="cne-body">${e.body||''}</div>`;
       html += `</div>`;
     }
@@ -1843,7 +1856,8 @@ function renderCodexNotion(data) {
     });
   });
 }
-fetch('/codex-sync').then(r => r.json()).then(renderCodexNotion).catch(() => {});
+// Defer Notion sync — not needed for initial render
+setTimeout(() => fetch('/codex-sync').then(r => r.json()).then(renderCodexNotion).catch(() => {}), 5000);
 
 // Quest log header click-to-collapse removed — seal system handles panel hide/show
 
@@ -2199,9 +2213,12 @@ export function updateBubblePositions() {
   });
 }
 
-// Register hook so topology refresh updates bubble positions
-setTopologyRefreshHook(updateBubblePositions);
-setTopologyRefreshHook(() => { _searchIndex = null; }); // Rebuild search on topology change
+// Register hook so topology refresh updates bubbles, search index, ghost lines
+setTopologyRefreshHook(() => {
+  updateBubblePositions();
+  _searchIndex = null;
+  _ghostDirty = true;
+});
 
 function _dismissBubble(bubble) {
   bubble.style.animation = 'bubbleOut 0.3s ease-in forwards';
@@ -2332,9 +2349,57 @@ let dragging = false, lastX, lastY;
 
 let _lastGlobeTilt = 0;
 
+// ── Ghost ley-lines — half-res canvas shown during zoom/pan ──
+// Pre-renders SVG connection curves onto a canvas bitmap using Path2D.
+// Single raster layer = zero per-element compositing cost during zoom.
+const _GHOST_VLAN_COLORS = {
+  0:[100,220,220], 3:[180,120,100], 4:[120,110,100], 5:[160,100,180],
+  6:[140,180,255], 7:[255,160,100], 8:[200,140,255], 9:[100,180,180],
+  10:[100,220,160], 11:[255,200,100], 12:[140,140,160], 20:[140,140,160],
+  38:[255,100,130]
+};
+let _ghostCanvas = null;
+let _ghostDirty = true;
+
+function _renderGhostLines() {
+  if (!_topology || !_connPaths.length) return;
+  if (!_ghostCanvas) {
+    _ghostCanvas = document.createElement('canvas');
+    _ghostCanvas.id = 'ghost-lines';
+    // Half resolution — smooth CSS upscale gives ethereal soft look
+    _ghostCanvas.width = Math.round(WORLD_W / 2);
+    _ghostCanvas.height = Math.round(WORLD_H / 2);
+    world.appendChild(_ghostCanvas);
+  }
+  const ctx = _ghostCanvas.getContext('2d');
+  ctx.clearRect(0, 0, _ghostCanvas.width, _ghostCanvas.height);
+
+  // Group paths by VLAN color to minimize strokeStyle changes
+  const groups = {};
+  for (const path of _connPaths) {
+    if (!path) continue;
+    const d = path.getAttribute('d');
+    if (!d) continue;
+    const v = path.dataset.vlan || '6';
+    (groups[v] || (groups[v] = [])).push(d);
+  }
+
+  ctx.save();
+  ctx.scale(0.5, 0.5);
+  ctx.lineWidth = 1.5;
+  ctx.lineCap = 'round';
+  for (const [vlan, paths] of Object.entries(groups)) {
+    const [r, g, b] = _GHOST_VLAN_COLORS[+vlan] || [140,180,255];
+    ctx.strokeStyle = `rgba(${r},${g},${b},0.25)`;
+    for (const d of paths) ctx.stroke(new Path2D(d));
+  }
+  ctx.restore();
+  _ghostDirty = false;
+}
+
 // During active zoom/pan, strip heavy layers (display:none) then promote world to
 // a single GPU layer (will-change:transform). With heavy layers gone, the texture
-// is just 87 small icons — well within VRAM.  Sequence matters:
+// is just 87 small icons + ghost canvas — well within VRAM.  Sequence matters:
 //   Frame 0: add .zooming (display:none strips layers from paint tree)
 //   Frame 1: set will-change:transform (browser rasterizes the now-lightweight world)
 //   Frame 2+: GPU scales the cached raster — zero main-thread paint work
@@ -2344,6 +2409,7 @@ let _zoomWillChangeRaf = 0;
 function _enterZoomMode() {
   if (!_zoomActive) {
     _zoomActive = true;
+    if (_ghostDirty) _renderGhostLines();
     world.classList.add('zooming');
     // Delay will-change by one frame so display:none takes effect first
     _zoomWillChangeRaf = requestAnimationFrame(() => {
@@ -2354,30 +2420,12 @@ function _enterZoomMode() {
   clearTimeout(_zoomIdleTimer);
   _zoomIdleTimer = setTimeout(_exitZoomMode, 400);
 }
-// Arcane veil: covers the repaint jank when heavy layers restore after zoom
-const _zoomVeil = document.createElement('div');
-_zoomVeil.id = 'zoom-veil';
-document.getElementById('map-canvas').appendChild(_zoomVeil);
-
 function _exitZoomMode() {
   _zoomActive = false;
   if (_zoomWillChangeRaf) { cancelAnimationFrame(_zoomWillChangeRaf); _zoomWillChangeRaf = 0; }
   world.style.willChange = '';
-  // Show veil instantly, then restore layers behind it, then fade veil out
-  _zoomVeil.classList.add('active');
-  requestAnimationFrame(() => {
-    // Heavy layers restored here (browser paints behind the opaque veil)
-    world.classList.remove('zooming');
-    _updateSparkleRect();
-    // Next frame: start fade-out (repaint is done, veil dissolves to reveal)
-    requestAnimationFrame(() => {
-      _zoomVeil.classList.add('fade');
-      // Clean up after transition ends
-      setTimeout(() => {
-        _zoomVeil.classList.remove('active', 'fade');
-      }, 250);
-    });
-  });
+  world.classList.remove('zooming');
+  _updateSparkleRect();
 }
 
 // rAF-batched transform: multiple wheel/touch events per frame collapse into one DOM write
@@ -2510,6 +2558,8 @@ export function panToNode(x, y) {
 }
 
 canvas.addEventListener('mousedown', e => {
+  // Don't start pan if clicking an interactive element (bubble, panel, button)
+  if (e.target.closest('.speech-bubble, .panel, button, a, input, textarea, select')) return;
   dragging = true;
   lastX = e.clientX; lastY = e.clientY;
   _enterZoomMode();  // Activate immediately — prevents repaint gap between zoom→pan
@@ -2527,6 +2577,7 @@ window.addEventListener('mouseup', () => { if (dragging) { dragging = false; sav
 // ── Touch: pan & pinch-to-zoom ──
 let _touchPanning = false, _lastTouch = null, _pinchDist = null;
 canvas.addEventListener('touchstart', e => {
+  if (e.target.closest('.speech-bubble, .panel, button, a, input, textarea, select')) return;
   _enterZoomMode();  // Activate immediately on touch
   if (e.touches.length === 2) {
     _pinchDist = Math.hypot(
@@ -6553,4 +6604,323 @@ new MutationObserver(() => {
 setInterval(() => {
   if (_dbgPanel && _dbgPanel.style.display !== 'none') _dbgFetchDb();
 }, 30000);
+
+// ═══════════════════════════════════════════════════════════
+// ARCANE CONSOLE — API explorer, MCP tools, scripts, terminal
+// ═══════════════════════════════════════════════════════════
+
+const _acPanel = document.getElementById('arcane-console');
+if (_acPanel) {
+  registerPanel(_acPanel);
+  makeDraggable(_acPanel, '.panel-header', [100,220,180]);
+  makeResizable(_acPanel, [100,220,180]);
+
+  // ── API endpoint registry ──
+  const _acEndpoints = [
+    { method:'GET', path:'/status', desc:'Full realm status', params:[] },
+    { method:'GET', path:'/topology', desc:'Nodes, connections, regions', params:[] },
+    { method:'GET', path:'/latency', desc:'fping latency per node', params:[] },
+    { method:'GET', path:'/firewall', desc:'nftables rules (60s cache)', params:[] },
+    { method:'GET', path:'/energy', desc:'Solar, battery, grid, load', params:[] },
+    { method:'GET', path:'/events', desc:'Map events', params:[{name:'since',type:'text',placeholder:'timestamp'},{name:'limit',type:'text',placeholder:'50'}] },
+    { method:'GET', path:'/quests', desc:'Active quest log', params:[] },
+    { method:'GET', path:'/personas', desc:'All node personas', params:[] },
+    { method:'GET', path:'/config', desc:'Chat/speech/oracle config', params:[] },
+    { method:'GET', path:'/settings', desc:'UI layout settings', params:[] },
+    { method:'GET', path:'/scan/status', desc:'Last WiFi scan results', params:[] },
+    { method:'GET', path:'/scan/wifi', desc:'WiFi signal per AP', params:[] },
+    { method:'GET', path:'/codex-sync', desc:'Notion lore database', params:[{name:'force',type:'checkbox',label:'Force refresh'}] },
+    { method:'GET', path:'/chat/sessions', desc:'Chat session list', params:[] },
+    { method:'GET', path:'/chat/history', desc:'Chat history', params:[{name:'session',type:'text',placeholder:'session name'}] },
+    { method:'GET', path:'/debug', desc:'DB stats & diagnostics', params:[] },
+    { method:'SSE', path:'/sse', desc:'Live event stream', params:[] },
+    { method:'POST', path:'/event', desc:'Push map event', params:[{name:'type',type:'select',options:['speech','alert','quest','highlight']},{name:'node',type:'text',placeholder:'node id'},{name:'text',type:'textarea',placeholder:'Event text'}] },
+    { method:'POST', path:'/chat', desc:'Send chat message', params:[{name:'message',type:'textarea',placeholder:'Message'},{name:'node',type:'text',placeholder:'node id'},{name:'session',type:'text',placeholder:'session'}] },
+    { method:'POST', path:'/exec', desc:'Run local command', params:[{name:'command',type:'text',placeholder:'bash command'}] },
+    { method:'POST', path:'/ssh', desc:'SSH to topology host', params:[{name:'host',type:'text',placeholder:'hostname'},{name:'command',type:'text',placeholder:'command'}] },
+    { method:'POST', path:'/node', desc:'Add/update topology node', params:[{name:'id',type:'text',placeholder:'node id'},{name:'x',type:'text',placeholder:'x'},{name:'y',type:'text',placeholder:'y'}] },
+    { method:'POST', path:'/wol', desc:'Wake-on-LAN', params:[{name:'mac',type:'text',placeholder:'AA:BB:CC:DD:EE:FF'},{name:'ip',type:'text',placeholder:'broadcast IP'}] },
+    { method:'POST', path:'/personas', desc:'Update persona', params:[{name:'node',type:'text',placeholder:'node id'},{name:'name',type:'text',placeholder:'persona name'}] },
+    { method:'POST', path:'/scan', desc:'Trigger WiFi scan', params:[] },
+    { method:'DELETE', path:'/settings', desc:'Clear UI settings', params:[] },
+  ];
+
+  // ── MCP tool registry ──
+  const _acMcpTools = [
+    { name:'get_system_status', desc:'Raw sensor JSON', params:[], group:'Observation' },
+    { name:'get_energy_status', desc:'HA energy data', params:[], group:'Observation' },
+    { name:'trigger_system_observation', desc:'Fantasy narration', params:[], group:'Observation' },
+    { name:'vocalize_message', desc:'Speak custom text', params:[{name:'text',type:'textarea',placeholder:'Text to speak'}], group:'Observation' },
+    { name:'commune_with_system', desc:'Voice conversation', params:[], group:'Observation' },
+    { name:'map_event', desc:'Push event to map', params:[{name:'type',type:'select',options:['speech','alert','quest','highlight']},{name:'node',type:'text',placeholder:'node id'},{name:'text',type:'textarea',placeholder:'Event text'}], group:'Map Events' },
+    { name:'map_node_chat', desc:'Node speaks via persona', params:[{name:'node',type:'text',placeholder:'node id'},{name:'prompt',type:'textarea',placeholder:'Prompt'}], group:'Map Events' },
+    { name:'get_map_events', desc:'Recent events', params:[{name:'since',type:'text',placeholder:'timestamp'}], group:'Map Events' },
+    { name:'get_node_personas', desc:'List all personas', params:[], group:'Personas' },
+    { name:'configure_persona', desc:'Create/update persona', params:[{name:'node',type:'text',placeholder:'node id'},{name:'name',type:'text',placeholder:'Name'},{name:'voice',type:'text',placeholder:'Voice'}], group:'Personas' },
+    { name:'delete_persona', desc:'Remove persona', params:[{name:'node',type:'text',placeholder:'node id'}], group:'Personas' },
+    { name:'herald_round', desc:'Multi-node voice round', params:[{name:'count',type:'text',placeholder:'2-5'}], group:'Personas' },
+    { name:'get_topology', desc:'Full topology', params:[], group:'Topology' },
+    { name:'configure_topology_node', desc:'Add/update node', params:[{name:'id',type:'text',placeholder:'node id'},{name:'label',type:'text',placeholder:'Label'}], group:'Topology' },
+    { name:'get_collectd_data', desc:'RRD metrics', params:[{name:'hostname',type:'text',placeholder:'hostname (optional)'}], group:'Topology' },
+    { name:'scan_wifi', desc:'AP scan', params:[{name:'action',type:'select',options:['scan','status']}], group:'Topology' },
+    { name:'sync_notion_quests', desc:'Notion todo sync', params:[{name:'force',type:'checkbox',label:'Force'}], group:'Topology' },
+    { name:'manage_map_server', desc:'HTTP server control', params:[{name:'action',type:'select',options:['status','start','stop','restart']}], group:'Services' },
+    { name:'manage_herald', desc:'Herald daemon', params:[{name:'action',type:'select',options:['status','start','stop','once']}], group:'Services' },
+  ];
+
+  // ── Render API endpoints ──
+  function _acRenderEndpoints() {
+    const container = document.getElementById('ac-api');
+    let html = '';
+    for (const ep of _acEndpoints) {
+      const mcls = 'ac-method ac-method-' + ep.method.toLowerCase();
+      html += `<div class="ac-item" data-ac-type="api" data-ac-path="${ep.path}" data-ac-method="${ep.method}">`;
+      html += `<div class="ac-item-header"><span class="${mcls}">${ep.method}</span><span class="ac-path">${ep.path}</span><span class="ac-desc">${ep.desc}</span></div>`;
+      html += `<div class="ac-form">${_acBuildForm(ep.params)}<button class="ac-invoke-btn">Invoke</button><div class="ac-response" style="display:none"></div></div>`;
+      html += `</div>`;
+    }
+    container.innerHTML = html;
+    document.getElementById('ac-api-count').textContent = _acEndpoints.length;
+  }
+
+  // ── Render MCP tools ──
+  function _acRenderMcp() {
+    const container = document.getElementById('ac-mcp');
+    let html = '';
+    let lastGroup = '';
+    for (const tool of _acMcpTools) {
+      if (tool.group !== lastGroup) {
+        html += `<div class="codex-tool-group">${tool.group}</div>`;
+        lastGroup = tool.group;
+      }
+      html += `<div class="ac-item" data-ac-type="mcp" data-ac-tool="${tool.name}">`;
+      html += `<div class="ac-item-header"><span class="ac-method ac-method-mcp">MCP</span><span class="ac-path">${tool.name}</span><span class="ac-desc">${tool.desc}</span></div>`;
+      html += `<div class="ac-form">${_acBuildForm(tool.params)}<button class="ac-invoke-btn">Cast</button><div class="ac-response" style="display:none"></div></div>`;
+      html += `</div>`;
+    }
+    container.innerHTML = html;
+    document.getElementById('ac-mcp-count').textContent = _acMcpTools.length + ' tools';
+  }
+
+  // ── Render scripts ──
+  async function _acRenderScripts() {
+    const container = document.getElementById('ac-scripts');
+    try {
+      const r = await fetch('/scripts');
+      const data = await r.json();
+      let html = '';
+      for (const s of data.scripts) {
+        html += `<div class="ac-script">`;
+        html += `<span class="ac-script-name">${s.name}</span>`;
+        html += `<span class="ac-script-desc">${s.description}</span>`;
+        html += `<button class="ac-script-run" data-script="${s.path}">Run</button>`;
+        html += `</div>`;
+      }
+      container.innerHTML = html || '<div style="color:#605040;font-size:9px;padding:4px">No scripts found</div>';
+      document.getElementById('ac-script-count').textContent = data.scripts.length;
+    } catch { container.innerHTML = '<div style="color:#805050;font-size:9px;padding:4px">Failed to load scripts</div>'; }
+  }
+
+  // ── Build form fields from param definitions ──
+  function _acBuildForm(params) {
+    if (!params || !params.length) return '';
+    let html = '';
+    for (const p of params) {
+      if (p.type === 'textarea') {
+        html += `<label>${p.name}</label><textarea data-param="${p.name}" placeholder="${p.placeholder || ''}"></textarea>`;
+      } else if (p.type === 'select') {
+        html += `<label>${p.name}</label><select data-param="${p.name}">${(p.options||[]).map(o => `<option value="${o}">${o}</option>`).join('')}</select>`;
+      } else if (p.type === 'checkbox') {
+        html += `<label><input type="checkbox" data-param="${p.name}"> ${p.label || p.name}</label>`;
+      } else {
+        html += `<label>${p.name}</label><input type="text" data-param="${p.name}" placeholder="${p.placeholder || ''}">`;
+      }
+    }
+    return html;
+  }
+
+  // ── Collect form values ──
+  function _acCollectParams(formEl) {
+    const params = {};
+    formEl.querySelectorAll('[data-param]').forEach(el => {
+      const name = el.dataset.param;
+      if (el.type === 'checkbox') { if (el.checked) params[name] = true; }
+      else if (el.value.trim()) params[name] = el.value.trim();
+    });
+    return params;
+  }
+
+  // ── Invoke API endpoint ──
+  async function _acInvokeApi(item) {
+    const method = item.dataset.acMethod;
+    const path = item.dataset.acPath;
+    const form = item.querySelector('.ac-form');
+    const params = _acCollectParams(form);
+    const respEl = form.querySelector('.ac-response');
+    const btn = form.querySelector('.ac-invoke-btn');
+
+    btn.classList.add('ac-running');
+    btn.textContent = 'Casting...';
+    respEl.style.display = 'block';
+    respEl.className = 'ac-response';
+    respEl.textContent = 'Invoking...';
+
+    try {
+      let url = path;
+      let opts = {};
+      if (method === 'GET' || method === 'SSE') {
+        const qs = Object.entries(params).map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+        if (qs) url += '?' + qs;
+      } else if (method === 'POST') {
+        opts = { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(params) };
+      } else if (method === 'DELETE') {
+        opts = { method: 'DELETE' };
+      }
+      const r = await fetch(url, opts);
+      const text = await r.text();
+      try {
+        respEl.textContent = JSON.stringify(JSON.parse(text), null, 2);
+      } catch { respEl.textContent = text; }
+      if (!r.ok) respEl.classList.add('ac-error');
+    } catch (e) {
+      respEl.textContent = 'Error: ' + e.message;
+      respEl.classList.add('ac-error');
+    }
+    btn.classList.remove('ac-running');
+    btn.textContent = 'Invoke';
+  }
+
+  // ── Invoke MCP tool (via map_event POST or direct tool call) ──
+  async function _acInvokeMcp(item) {
+    const toolName = item.dataset.acTool;
+    const form = item.querySelector('.ac-form');
+    const params = _acCollectParams(form);
+    const respEl = form.querySelector('.ac-response');
+    const btn = form.querySelector('.ac-invoke-btn');
+
+    btn.classList.add('ac-running');
+    btn.textContent = 'Casting...';
+    respEl.style.display = 'block';
+    respEl.className = 'ac-response';
+    respEl.textContent = 'Invoking...';
+
+    try {
+      // MCP tools are invoked via the map_server proxy
+      const r = await fetch('/mcp/invoke', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ tool: toolName, arguments: params })
+      });
+      const text = await r.text();
+      try {
+        respEl.textContent = JSON.stringify(JSON.parse(text), null, 2);
+      } catch { respEl.textContent = text; }
+      if (!r.ok) respEl.classList.add('ac-error');
+    } catch (e) {
+      respEl.textContent = 'Error: ' + e.message;
+      respEl.classList.add('ac-error');
+    }
+    btn.classList.remove('ac-running');
+    btn.textContent = 'Cast';
+  }
+
+  // ── Click handlers (event delegation) ──
+  _acPanel.addEventListener('click', e => {
+    // Toggle expand/collapse on item header
+    const itemHeader = e.target.closest('.ac-item-header');
+    if (itemHeader) {
+      const item = itemHeader.closest('.ac-item');
+      item.classList.toggle('ac-open');
+      return;
+    }
+    // Invoke button
+    const invokeBtn = e.target.closest('.ac-invoke-btn');
+    if (invokeBtn && !invokeBtn.classList.contains('ac-running')) {
+      const item = invokeBtn.closest('.ac-item');
+      if (item.dataset.acType === 'api') _acInvokeApi(item);
+      else if (item.dataset.acType === 'mcp') _acInvokeMcp(item);
+      return;
+    }
+    // Script run button
+    const scriptBtn = e.target.closest('.ac-script-run');
+    if (scriptBtn) {
+      const script = scriptBtn.dataset.script;
+      scriptBtn.textContent = 'Running...';
+      scriptBtn.style.pointerEvents = 'none';
+      _acTerminalExec('bash ' + script).then(() => {
+        scriptBtn.textContent = 'Run';
+        scriptBtn.style.pointerEvents = '';
+      });
+      return;
+    }
+    // Section toggles
+    const toggle = e.target.closest('.ac-toggle');
+    if (toggle) {
+      const target = document.getElementById(toggle.dataset.target);
+      if (target) { toggle.classList.toggle('open'); target.classList.toggle('open'); }
+    }
+  });
+
+  // ── Terminal ──
+  const _acTermOutput = document.getElementById('ac-terminal-output');
+  const _acTermInput = document.getElementById('ac-terminal-input');
+  const _acCmdHistory = [];
+  let _acHistIdx = -1;
+
+  function _acTermAppend(text, cls) {
+    const line = document.createElement('div');
+    if (cls) line.className = cls;
+    line.textContent = text;
+    _acTermOutput.appendChild(line);
+    _acTermOutput.scrollTop = _acTermOutput.scrollHeight;
+  }
+
+  async function _acTerminalExec(cmd) {
+    _acTermAppend('❯ ' + cmd, 'ac-cmd-line');
+    try {
+      const r = await fetch('/exec', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ command: cmd })
+      });
+      const data = await r.json();
+      if (data.output) _acTermAppend(data.output);
+      if (data.error) _acTermAppend(data.error, 'ac-cmd-error');
+      if (data.exit_code !== 0 && !data.error) _acTermAppend(`Exit code: ${data.exit_code}`, 'ac-cmd-error');
+    } catch (e) {
+      _acTermAppend('Error: ' + e.message, 'ac-cmd-error');
+    }
+  }
+
+  _acTermInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && _acTermInput.value.trim()) {
+      const cmd = _acTermInput.value.trim();
+      _acCmdHistory.unshift(cmd);
+      _acHistIdx = -1;
+      _acTermInput.value = '';
+      _acTerminalExec(cmd);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (_acHistIdx < _acCmdHistory.length - 1) {
+        _acHistIdx++;
+        _acTermInput.value = _acCmdHistory[_acHistIdx];
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (_acHistIdx > 0) {
+        _acHistIdx--;
+        _acTermInput.value = _acCmdHistory[_acHistIdx];
+      } else {
+        _acHistIdx = -1;
+        _acTermInput.value = '';
+      }
+    }
+  });
+
+  // ── Initialize ──
+  _acRenderEndpoints();
+  _acRenderMcp();
+  _acRenderScripts();
+  _acTermAppend('Arcane Console ready. Type commands below.', 'ac-cmd-line');
+}
 

@@ -27,6 +27,7 @@ const PANELS = {
   'firewall-panel': { name: 'Realm Wards', anchor: 'w', priority: 12, icon: '\uD83D\uDEE1' },
   'wifi-panel':     { name: 'Aether Towers', anchor: 'w', priority: 13, icon: '\uD83D\uDCE1' },
   'node-chat-dialog': { name: 'Oracle Commune', anchor: 'se', priority: 14, icon: '\uD83D\uDCAC' },
+  'arcane-console':   { name: 'Arcane Console', anchor: 'nw', priority: 15, icon: '\u2328' },
 };
 
 // Arcane Formations (presets)
