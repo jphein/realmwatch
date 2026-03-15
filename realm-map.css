@@ -5721,6 +5721,119 @@
     50% { opacity: 0.7; }
   }
 
+  /* ── Dock HUD — player stats bar ── */
+  .dock-hud {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 28px;
+    width: 100%;
+    z-index: 2;
+    position: relative;
+    animation: label-etch 1.8s ease-out both;
+    padding: 0 12px;
+    box-sizing: border-box;
+  }
+  .hud-level {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, #c9a84c, #8a6d2b);
+    border: 1.5px solid rgba(220, 190, 80, 0.6);
+    box-shadow: 0 0 6px rgba(200, 170, 60, 0.4), inset 0 1px 2px rgba(255, 240, 180, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .hud-level-num {
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: #f5e6b8;
+    text-shadow: 0 0 4px rgba(200, 170, 60, 0.6);
+    line-height: 1;
+  }
+  .hud-xp {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .hud-xp-bar {
+    width: 60px;
+    height: 4px;
+    background: rgba(30, 20, 40, 0.6);
+    border-radius: 2px;
+    overflow: hidden;
+    border: 0.5px solid rgba(120, 100, 160, 0.3);
+  }
+  .hud-xp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #8a5cf5, #4cc9a0);
+    border-radius: 2px;
+    transition: width 0.6s ease-out;
+    box-shadow: 0 0 4px rgba(138, 92, 245, 0.4);
+  }
+  .hud-xp-text {
+    font-family: 'MedievalSharp', cursive;
+    font-size: 9px;
+    color: rgba(180, 170, 200, 0.7);
+    white-space: nowrap;
+  }
+  .hud-sep {
+    width: 1px;
+    height: 14px;
+    background: rgba(200, 170, 60, 0.25);
+    flex-shrink: 0;
+  }
+  .hud-currency {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .hud-coin-icon::before {
+    content: '\25CF';
+    font-size: 10px;
+    color: #ddb870;
+    filter: drop-shadow(0 0 2px rgba(200, 170, 60, 0.5));
+  }
+  .hud-gem-icon::before {
+    content: '\25C6';
+    font-size: 9px;
+    color: #60d8d8;
+    filter: drop-shadow(0 0 2px rgba(96, 216, 216, 0.5));
+  }
+  .hud-gold-num {
+    font-family: 'MedievalSharp', cursive;
+    font-size: 11px;
+    color: #ddb870;
+    text-shadow: 0 0 4px rgba(200, 170, 60, 0.3);
+  }
+  .hud-gems-num {
+    font-family: 'MedievalSharp', cursive;
+    font-size: 11px;
+    color: #60d8d8;
+    text-shadow: 0 0 4px rgba(96, 216, 216, 0.3);
+  }
+  .hud-pulse {
+    animation: hud-glow-pulse 0.8s ease-out;
+  }
+  @keyframes hud-glow-pulse {
+    0% { filter: brightness(1); }
+    30% { filter: brightness(1.4) drop-shadow(0 0 8px rgba(200, 170, 60, 0.6)); }
+    100% { filter: brightness(1); }
+  }
+  .hud-level-up {
+    animation: hud-level-burst 1.5s ease-out;
+  }
+  @keyframes hud-level-burst {
+    0% { transform: scale(1); box-shadow: 0 0 6px rgba(200, 170, 60, 0.4); }
+    20% { transform: scale(1.5); box-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(200, 170, 60, 0.4); }
+    60% { transform: scale(1.1); box-shadow: 0 0 12px rgba(200, 170, 60, 0.5); }
+    100% { transform: scale(1); box-shadow: 0 0 6px rgba(200, 170, 60, 0.4); }
+  }
+
   /* Swipe handle — only visible when runes overflow */
   .dock-handle {
     display: none;
