@@ -21,6 +21,19 @@
     visibility: hidden;
     pointer-events: none;
   }
+  /* Hide panels and dock during loading — they restore when loading screen dismisses */
+  #realm-loading:not(.dismissed) ~ .panel,
+  #realm-loading:not(.dismissed) ~ .sealed-dock,
+  #realm-loading:not(.dismissed) ~ #title-bar {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: none !important;
+  }
+  #realm-loading.dismissed ~ .panel,
+  #realm-loading.dismissed ~ .sealed-dock,
+  #realm-loading.dismissed ~ #title-bar {
+    transition: opacity 0.6s ease 0.3s !important;
+  }
 
   /* Semi-opaque backdrop with subtle grain texture */
   .rl-backdrop {
