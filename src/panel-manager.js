@@ -67,6 +67,7 @@ const PANELS = {
   'latency-panel':  { name: 'Arcane Pulse', anchor: 'e', priority: 11, icon: '\uD83C\uDFD3' },
   'firewall-panel': { name: 'Realm Wards', anchor: 'w', priority: 12, icon: '\uD83D\uDEE1' },
   'wifi-panel':     { name: 'Aether Towers', anchor: 'w', priority: 13, icon: '\uD83D\uDCE1' },
+  'scanner-panel':  { name: 'Survey Glass', anchor: 'e', priority: 17, icon: '\uD83D\uDD2D' },
   'node-chat-dialog': { name: 'Oracle Commune', anchor: 'se', priority: 14, icon: '\uD83D\uDCAC' },
   'arcane-grimoire':  { name: 'Grimoire', anchor: 'nw', priority: 15, icon: '\uD83D\uDCD6' },
   'scrying-terminal': { name: 'Scrying Terminal', anchor: 'sw', priority: 16, icon: '\uD83D\uDD2E' },

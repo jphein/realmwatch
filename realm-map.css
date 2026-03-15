@@ -338,6 +338,39 @@
   .rl-dots span:nth-child(2) { animation-delay: 0.2s; }
   .rl-dots span:nth-child(3) { animation-delay: 0.4s; }
 
+  /* Data stream attunement indicators */
+  .rl-streams {
+    position: absolute;
+    z-index: 2;
+    top: calc(50% + 226px);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 14px;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+  }
+  #realm-loading[data-stage="3"] .rl-streams,
+  #realm-loading[data-stage="4"] .rl-streams { opacity: 1; }
+
+  .rl-stream {
+    font-size: 14px;
+    color: rgba(180,160,120,0.15);
+    text-shadow: none;
+    transition: color 0.4s ease, text-shadow 0.4s ease, transform 0.3s ease;
+    cursor: default;
+  }
+  .rl-stream.attuned {
+    color: rgba(240,216,144,0.8);
+    text-shadow: 0 0 8px rgba(240,216,144,0.5), 0 0 20px rgba(180,140,255,0.3);
+    animation: rlStreamPulse 0.6s ease-out;
+  }
+  @keyframes rlStreamPulse {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.6); color: rgba(255,240,200,1); text-shadow: 0 0 16px rgba(240,216,144,0.8), 0 0 30px rgba(180,140,255,0.5); }
+    100% { transform: scale(1); }
+  }
+
   /* Floating mote particles */
   .rl-motes {
     position: absolute;
@@ -499,6 +532,8 @@
     .rl-runes span { transform: rotate(calc(var(--i) * 45deg)) translateY(-100px) rotate(calc(var(--i) * -45deg)); }
     .rl-text { top: calc(50% + 110px); font-size: 20px; letter-spacing: 4px; }
     .rl-sub { top: calc(50% + 142px); font-size: 12px; }
+    .rl-streams { top: calc(50% + 164px); gap: 10px; }
+    .rl-stream { font-size: 12px; }
     .rl-sigil svg { width: 80px; height: 80px; }
     .rl-vines { width: 150px; height: 150px; }
     .rl-aurora-band { filter: blur(50px); }
@@ -567,22 +602,16 @@
      Connections are replaced by the ghost-lines canvas bitmap. */
   #map-world.zooming #connections,
   #map-world.zooming .pulse-ring,
-  #map-world.zooming .sparkle-layer,
-  #map-world.zooming .speech-bubble { display: none !important; }
-  /* Freeze animations on background layers during zoom to prevent repaints */
+  #map-world.zooming .sparkle-layer { display: none !important; }
+  /* Only hide bubbles during zoom when NOT in fixed-size mode */
+  #map-world.zooming:not(.bubble-fixed) .speech-bubble { display: none !important; }
+  /* Nuke ALL decorative layers during zoom — 4800x3300 world is too large to
+     rasterize with these in the paint tree.  Keeps just icons + ghost-lines. */
   #map-world.zooming #topo-svg,
   #map-world.zooming #arcane-grid,
   #map-world.zooming #map-parchment,
   #map-world.zooming #terrain,
-  #map-world.zooming #enchanted-vines { animation: none !important; pointer-events: none; }
-  /* Mobile: nuke ALL decorative layers during zoom — VRAM can't handle 7000x5000px textures */
-  @media (max-width: 768px) {
-    #map-world.zooming #terrain,
-    #map-world.zooming #map-parchment,
-    #map-world.zooming #enchanted-vines,
-    #map-world.zooming #topo-svg,
-    #map-world.zooming #arcane-grid { display: none !important; }
-  }
+  #map-world.zooming #enchanted-vines { display: none !important; }
   /* Labels use visibility:hidden (not display:none) to preserve .realm-node
      container width — prevents icon horizontal shift during zoom */
   #map-world.zooming .node-label,
@@ -592,7 +621,7 @@
   /* Kill ALL node pseudo-elements and shadows during zoom — not just collectd */
   #map-world.zooming .node-icon::before,
   #map-world.zooming .node-icon::after { display: none !important; }
-  #map-world.zooming .node-icon { box-shadow: none !important; transition: none !important; }
+  #map-world.zooming .node-icon { box-shadow: none !important; transition: none !important; filter: none !important; }
   /* Freeze any remaining node hover/transition effects */
   #map-world.zooming .realm-node { transition: none !important; pointer-events: none; }
 
@@ -1131,6 +1160,220 @@
     font-style: italic;
     font-size: 9px;
   }
+
+  /* ── Survey Glass / Scanner Panel ── */
+  #scanner-panel {
+    position: fixed;
+    right: 20px;
+    top: 220px;
+    width: 280px;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+  }
+  .scanner-run-all-btn {
+    margin-left: auto;
+    padding: 2px 10px;
+    font-size: 9px;
+    font-family: 'MedievalSharp', cursive;
+    background: rgba(220,180,80,0.12);
+    border: 1px solid rgba(220,180,80,0.35);
+    border-radius: 4px;
+    color: #dcc050;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .scanner-run-all-btn:hover {
+    background: rgba(220,180,80,0.22);
+    border-color: rgba(220,180,80,0.6);
+  }
+  .scanner-body {
+    padding: 6px 8px 8px;
+    max-height: 55vh;
+    overflow-y: auto;
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .scan-card {
+    border: 1px solid rgba(220,180,80,0.12);
+    border-radius: 7px;
+    background: rgba(220,180,80,0.03);
+    padding: 7px 9px 5px;
+    transition: border-color 0.25s, background 0.25s;
+  }
+  .scan-card:hover {
+    border-color: rgba(220,180,80,0.22);
+    background: rgba(220,180,80,0.06);
+  }
+  .scan-card-hdr {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .scan-icon {
+    font-size: 14px;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+  .scan-titles {
+    flex: 1;
+    min-width: 0;
+  }
+  .scan-name {
+    font-family: 'MedievalSharp', cursive;
+    font-size: 11px;
+    color: #dcc870;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .scan-tech {
+    font-size: 8px;
+    color: #7a6840;
+    font-family: 'Consolas', 'Fira Code', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .scan-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: background 0.3s;
+  }
+  .scan-dot--idle    { background: #3a3020; border: 1px solid #5a4a30; }
+  .scan-dot--running { background: #dcc050; border: 1px solid #f0e080; animation: scan-pulse 0.7s ease-in-out infinite alternate; }
+  .scan-dot--ok      { background: #60c060; border: 1px solid #80e080; }
+  .scan-dot--error   { background: #c05050; border: 1px solid #e06060; }
+  @keyframes scan-pulse {
+    from { opacity: 0.5; transform: scale(0.85); }
+    to   { opacity: 1.0; transform: scale(1.15); }
+  }
+  .scan-run-btn {
+    padding: 2px 8px;
+    font-size: 9px;
+    font-family: 'MedievalSharp', cursive;
+    background: rgba(220,180,80,0.1);
+    border: 1px solid rgba(220,180,80,0.3);
+    border-radius: 4px;
+    color: #dcc050;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .scan-run-btn:hover:not(:disabled) {
+    background: rgba(220,180,80,0.2);
+    border-color: rgba(220,180,80,0.55);
+  }
+  .scan-run-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  .scan-desc {
+    font-size: 9px;
+    color: #6a5840;
+    line-height: 1.45;
+    margin: 4px 0 2px 20px;
+  }
+  .scan-sched {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 0 0 3px 20px;
+    font-size: 8px;
+    font-family: 'Consolas', 'Fira Code', monospace;
+  }
+  .scan-sched-mode {
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 7.5px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+  }
+  .scan-sched-mode--bg     { background: rgba(220,180,80,0.15); color: #b09040; border: 1px solid rgba(220,180,80,0.25); }
+  .scan-sched-mode--sse    { background: rgba(80,180,220,0.12); color: #4090a0; border: 1px solid rgba(80,180,220,0.2); }
+  .scan-sched-mode--manual { background: rgba(120,100,80,0.15); color: #706050; border: 1px solid rgba(120,100,80,0.2); }
+  .scan-sched-every {
+    color: #a08050;
+    flex-shrink: 0;
+  }
+  .scan-sched-by {
+    color: #5a4a30;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+  .scan-status-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 9px;
+    margin: 3px 0 2px 20px;
+    min-height: 13px;
+  }
+  .scan-last-run {
+    color: #5a4a30;
+    font-family: 'Consolas', 'Fira Code', monospace;
+    flex-shrink: 0;
+  }
+  .scan-elapsed {
+    color: #8a7040;
+    font-family: 'Consolas', 'Fira Code', monospace;
+    flex-shrink: 0;
+  }
+  .scan-summary {
+    color: #b09060;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .scan-log-wrap {
+    margin: 3px 0 0 20px;
+  }
+  .scan-log-toggle {
+    background: none;
+    border: none;
+    font-size: 8px;
+    color: #6a5030;
+    cursor: pointer;
+    padding: 1px 0;
+    font-family: 'Consolas', 'Fira Code', monospace;
+    transition: color 0.2s;
+  }
+  .scan-log-toggle:hover { color: #a08050; }
+  .scan-log-body {
+    margin-top: 3px;
+    border-left: 1px solid rgba(220,180,80,0.12);
+    padding-left: 6px;
+    overflow: hidden;
+    max-height: 120px;
+    overflow-y: auto;
+  }
+  .scan-log-body--hidden { display: none; }
+  .scan-log-head {
+    font-size: 8px;
+    color: rgba(220,180,80,0.55);
+    font-family: 'MedievalSharp', cursive;
+    margin: 3px 0 1px;
+  }
+  .scan-log-line {
+    font-size: 8px;
+    color: #706050;
+    font-family: 'Consolas', 'Fira Code', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .firewall-body {
     padding: 8px 12px 10px;
     max-height: 55vh;
@@ -1286,13 +1529,13 @@
     background: rgba(220,80,60,0.1);
   }
 
-  /* Index contour shimmer — slow magical pulse */
-  #topo-svg .topo-idx {
+  /* Index contour shimmer — single animation on parent instead of 76 individual elements */
+  #topo-svg.active {
     animation: topoShimmer 8s ease-in-out infinite;
   }
   @keyframes topoShimmer {
-    0%, 100% { opacity: 0.55; }
-    50% { opacity: 0.75; }
+    0%, 100% { opacity: var(--topo-opacity, 0.55); }
+    50% { opacity: calc(var(--topo-opacity, 0.55) + 0.2); }
   }
 
   /* Parchment texture layer — paper grain + age stains */
@@ -1322,12 +1565,13 @@
     text-align: center;
     cursor: pointer;
     touch-action: none;
+    transform: scale(var(--node-scale, 1));
     transition: transform 0.3s ease, opacity 0.5s ease;
     z-index: 10;
     contain: layout style;
   }
   .realm-node:hover {
-    transform: scale(1.15);
+    transform: scale(calc(var(--node-scale, 1) * 1.15));
     z-index: 20;
   }
 
@@ -1346,7 +1590,6 @@
       0 0 calc(var(--ambient-glow, 0) * 16px) rgba(180,140,255,0.15);
     border: 2px solid rgba(212,197,160,0.4);
     position: relative;
-    transition: transform 1.5s ease;
   }
 
   /* Collectd-monitored nodes: arcane scrying frame */
@@ -1374,6 +1617,7 @@
     mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0) border-box;
     mask-composite: subtract;
     animation: arcaneFrameRotate 4s linear infinite;
+    will-change: transform;
     pointer-events: none;
   }
   /* Fallback for browsers that don't support mask-composite (Android Chrome) */
@@ -1399,7 +1643,7 @@
       rgba(160,100,255,0.1) 75%,
       transparent 100%
     );
-    animation: arcaneFrameRotate 4s linear infinite;
+    /* Static outer ring — animation removed for perf (saves 19 compositor layers) */
     pointer-events: none;
     opacity: 0.8;
   }
@@ -1414,12 +1658,14 @@
     color: #f0e6c8;
     text-shadow: 0 0 8px rgba(0,0,0,0.9), 0 0 3px #000;
     white-space: nowrap;
+    transform: scale(var(--text-scale, 1));
   }
 
   .node-sublabel {
     font-size: 11px;
     color: #a89870;
     text-shadow: 0 0 6px rgba(0,0,0,0.9);
+    transform: scale(var(--text-scale, 1));
   }
 
   /* Tower nodes (WiFi APs) */
@@ -1655,7 +1901,12 @@
   .vine-bloom {
     opacity: 0.8;
   }
-  /* Gentle sway animation for vines */
+  /* Gentle sway — single animation on parent instead of 76 individual vine groups */
+  #enchanted-vines {
+    animation: vine-sway 12s ease-in-out infinite;
+    will-change: transform;
+  }
+  #enchanted-vines g { animation: none !important; }
   @keyframes vine-sway {
     0%, 100% { transform: translateX(0); }
     50% { transform: translateX(2px); }
@@ -1759,7 +2010,7 @@
   /* VLAN labels on connection lines */
   .vlan-label {
     position: absolute;
-    transform: translate(-50%, -100%);
+    transform: translate(-50%, -100%) scale(var(--text-scale, 1));
     font-family: 'Cinzel', serif;
     font-size: 9px;
     color: rgba(255,160,60,0.4);
@@ -1815,6 +2066,7 @@
     border-radius: 50%;
     border: 2px solid rgba(100,220,100,0.4);
     animation: pulse 2.5s ease-out infinite;
+    will-change: transform, opacity;
   }
   @keyframes pulse {
     0% { transform: scale(1); opacity: 0.6; }
@@ -2232,6 +2484,13 @@
     text-shadow: 0 0 12px rgba(240,216,144,0.2);
   }
   /* ── Spell Tab Bar ── */
+  /* Spellbook header must be sticky so the seal button doesn't scroll away */
+  #spellbook .panel-header {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: rgba(13,10,22,0.98);
+  }
   .spell-tab-bar {
     display: flex;
     justify-content: center;
@@ -2239,7 +2498,7 @@
     padding: 0;
     border-bottom: 1px solid rgba(120,90,40,0.15);
     position: sticky;
-    top: 0;
+    top: 34px; /* below sticky .panel-header (10px + 16px icon + 8px = 34px) */
     z-index: 2;
     background: linear-gradient(180deg, rgba(16,12,8,0.98) 0%, rgba(16,12,8,0.95) 100%);
   }
@@ -2834,17 +3093,17 @@
     color: #a080e0;
   }
   @keyframes bubbleIn {
-    0%   { opacity: 0; transform: translateY(16px) scale(calc(var(--bubble-scale, 1) * 0.7)); }
-    40%  { opacity: 0.8; transform: translateY(-4px) scale(calc(var(--bubble-scale, 1) * 1.03)); }
-    70%  { transform: translateY(2px) scale(calc(var(--bubble-scale, 1) * 0.98)); }
-    100% { opacity: 1; transform: translateY(0) scale(var(--bubble-scale, 1)); }
+    0%   { opacity: 0; transform: translateY(16px) scale(calc(var(--bubble-total-scale, 1) * 0.7)); }
+    40%  { opacity: 0.8; transform: translateY(-4px) scale(calc(var(--bubble-total-scale, 1) * 1.03)); }
+    70%  { transform: translateY(2px) scale(calc(var(--bubble-total-scale, 1) * 0.98)); }
+    100% { opacity: 1; transform: translateY(0) scale(var(--bubble-total-scale, 1)); }
   }
   @keyframes bubbleOut {
-    0%   { opacity: 1; transform: scale(var(--bubble-scale, 1)); }
-    100% { opacity: 0; transform: scale(calc(var(--bubble-scale, 1) * 0.8)) translateY(8px); }
+    0%   { opacity: 1; transform: scale(var(--bubble-total-scale, 1)); }
+    100% { opacity: 0; transform: scale(calc(var(--bubble-total-scale, 1) * 0.8)) translateY(8px); }
   }
   .speech-bubble {
-    transform: scale(var(--bubble-scale, 1));
+    transform: scale(var(--bubble-total-scale, 1));
     transform-origin: bottom center;
     animation: bubbleIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   }
@@ -6472,6 +6731,21 @@
   .dock-tray .rune-glow {
     opacity: 0.45;
   }
+  /* Perf: dock runes idle with only rune-float — full animations on hover only */
+  .dock-tray .sealed-rune {
+    animation: rune-float 3s ease-in-out infinite !important;
+  }
+  .dock-tray .sealed-rune::before,
+  .dock-tray .sealed-rune::after { animation: none !important; }
+  .dock-tray .rune-embers { display: none; }
+  .dock-tray .rune-glow { animation: none !important; }
+  .dock-tray .rune-ring { animation: none !important; }
+  .dock-tray .sealed-rune:hover {
+    animation: rune-float 3s ease-in-out infinite, rune-breathe 5s ease-in-out infinite !important;
+  }
+  .dock-tray .sealed-rune:hover .rune-embers { display: block; }
+  .dock-tray .sealed-rune:hover .rune-glow { animation: glow-pulse 4s ease-in-out infinite !important; }
+  .dock-tray .sealed-rune:hover .rune-ring { animation: sigil-rotate 60s linear infinite !important; }
 
   @keyframes glow-pulse {
     0%, 100% { opacity: 0.2; transform: scale(1); }

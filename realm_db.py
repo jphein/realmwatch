@@ -146,18 +146,40 @@ def get_setting(namespace, key, default=None):
 
 # ── Events ──
 
+_DEDUP_WINDOW = 300  # suppress identical node+type+text within 5 minutes
+_dedup_cache = {}    # {(node, type, text): timestamp}
+
 def push_event(event):
     """Store an event. Returns event dict with db id injected.
+    Deduplicates: skips if same node+type+text was stored in last 5 minutes.
     Quest-type events also auto-create a structured quest card."""
     event["ts"] = time.time()
+    now = event["ts"]
+
+    # Dedup: skip if identical event seen recently
+    node = event.get("node", "")
+    text = event.get("text", "")
+    etype = event.get("type", "")
+    if node and text:
+        key = (node, etype, text)
+        last = _dedup_cache.get(key, 0)
+        if now - last < _DEDUP_WINDOW:
+            return event  # duplicate, skip
+        _dedup_cache[key] = now
+        # Prune stale cache entries periodically
+        if len(_dedup_cache) > 500:
+            stale = [k for k, ts in _dedup_cache.items() if now - ts > _DEDUP_WINDOW]
+            for k in stale:
+                del _dedup_cache[k]
+
     c = _conn()
     cur = c.execute("INSERT INTO events (ts, type, data) VALUES (?, ?, ?)",
-                    (event["ts"], event.get("type"), json.dumps(event)))
+                    (now, etype, json.dumps(event)))
     c.commit()
     event["id"] = cur.lastrowid
 
     # Auto-create structured quest card for quest-type events
-    if event.get("type") == "quest" and event.get("text"):
+    if etype == "quest" and text:
         _auto_create_quest(event)
 
     return event

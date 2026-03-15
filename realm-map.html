@@ -6,7 +6,7 @@
 <meta name="color-scheme" content="dark">
 <title>The Realm — Geographic Map</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link rel="stylesheet" href="realm-map.css?v=1773596100">
+<link rel="stylesheet" href="realm-map.css?v=1773597100">
 </head>
 <body>
 
@@ -56,6 +56,16 @@
   </div>
   <div class="rl-text">The Realm Awakens</div>
   <div class="rl-sub"><span class="rl-stage-text">Igniting the arcane sigil</span><span class="rl-dots"><span>.</span><span>.</span><span>.</span></span></div>
+  <!-- Data stream attunement indicators — light up as SSE feeds arrive -->
+  <div class="rl-streams">
+    <span class="rl-stream" data-stream="topology" title="Topology">&#9670;</span>
+    <span class="rl-stream" data-stream="status" title="Status">&#9678;</span>
+    <span class="rl-stream" data-stream="traffic" title="Traffic">&#8644;</span>
+    <span class="rl-stream" data-stream="energy" title="Energy">&#9889;</span>
+    <span class="rl-stream" data-stream="latency" title="Latency">&#8982;</span>
+    <span class="rl-stream" data-stream="firewall" title="Firewall">&#9730;</span>
+    <span class="rl-stream" data-stream="events" title="Events">&#10026;</span>
+  </div>
   <!-- Stage completion sparks -->
   <div class="rl-sparks"></div>
   <div class="rl-motes">
@@ -202,11 +212,13 @@
 <div id="spellbook" class="panel" style="--panel-accent:rgba(192,160,255,0.5)">
   <div class="panel-header"><span class="panel-hdr-icon">&#128214;</span><span class="panel-hdr-title">Spellbook</span></div>
   <div class="spell-tab-bar" id="spell-tab-bar">
-    <button class="spell-tab active" data-spell="0" title="Enchantments"><span class="spell-tab-icon">&#10024;</span><span class="spell-tab-label">Enchant</span></button>
-    <button class="spell-tab" data-spell="1" title="Cartography"><span class="spell-tab-icon">&#128506;</span><span class="spell-tab-label">Layers</span></button>
-    <button class="spell-tab" data-spell="2" title="Terrain"><span class="spell-tab-icon">&#9968;</span><span class="spell-tab-label">Terrain</span></button>
-    <button class="spell-tab" data-spell="3" title="Config"><span class="spell-tab-icon">&#128302;</span><span class="spell-tab-label">Config</span></button>
+    <button class="spell-tab active" data-spell="0" title="Panel visibility &amp; layout"><span class="spell-tab-icon">&#9878;</span><span class="spell-tab-label">Panels</span></button>
+    <button class="spell-tab" data-spell="1" title="Map layers, elements, scale"><span class="spell-tab-icon">&#128506;</span><span class="spell-tab-label">Map</span></button>
+    <button class="spell-tab" data-spell="2" title="Visual effects &amp; overlays"><span class="spell-tab-icon">&#10024;</span><span class="spell-tab-label">Style</span></button>
+    <button class="spell-tab" data-spell="3" title="Performance &amp; server config"><span class="spell-tab-icon">&#9881;</span><span class="spell-tab-label">System</span></button>
   </div>
+
+  <!-- ════════ Tab 0: Panels ════════ -->
   <div class="spell-page" data-spell-page="0">
   <div class="spell-presets">
     <button class="preset-btn" data-preset="minimal" title="Clean &amp; minimal">&#9788; Calm</button>
@@ -215,7 +227,7 @@
     <button class="preset-btn" data-preset="full" title="Everything maxed">&#10024; Full</button>
   </div>
   <div class="legend-section" data-section="panels-vis">
-    <div class="legend-section-header" data-accent="amber"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#9878;</span> Panel Wards</div>
+    <div class="legend-section-header" data-accent="amber"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#128065;</span> Panel Wards</div>
     <div class="legend-section-body">
       <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-statuspanel" checked><span class="topo-switch-track"></span></label><span class="layer-name">Realm Vitals</span><input type="range" class="layer-opacity" id="panel-vitals-slider" min="0" max="1" step="0.05" value="1"></div>
       <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-legend" checked><span class="topo-switch-track"></span></label><span class="layer-name">Legend</span><input type="range" class="layer-opacity" id="panel-legend-slider" min="0" max="1" step="0.05" value="1"></div>
@@ -225,6 +237,7 @@
       <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-latency" checked><span class="topo-switch-track"></span></label><span class="layer-name">Arcane Pulse</span><input type="range" class="layer-opacity" id="panel-latency-slider" min="0" max="1" step="0.05" value="1"></div>
       <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-firewall" checked><span class="topo-switch-track"></span></label><span class="layer-name">Realm Wards</span><input type="range" class="layer-opacity" id="panel-firewall-slider" min="0" max="1" step="0.05" value="1"></div>
       <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-wifi" checked><span class="topo-switch-track"></span></label><span class="layer-name">Aether Towers</span><input type="range" class="layer-opacity" id="panel-wifi-slider" min="0" max="1" step="0.05" value="1"></div>
+      <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-scanner" checked><span class="topo-switch-track"></span></label><span class="layer-name">Survey Glass</span><input type="range" class="layer-opacity" id="panel-scanner-slider" min="0" max="1" step="0.05" value="1"></div>
       <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-nodelist" checked><span class="topo-switch-track"></span></label><span class="layer-name">Realm Census</span><input type="range" class="layer-opacity" id="panel-nodelist-slider" min="0" max="1" step="0.05" value="1"></div>
       <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-cartographer" checked><span class="topo-switch-track"></span></label><span class="layer-name">Cartographer</span><input type="range" class="layer-opacity" id="panel-cartographer-slider" min="0" max="1" step="0.05" value="1"></div>
       <div class="layer-row"><label class="topo-switch"><input type="checkbox" id="vis-debug"><span class="topo-switch-track"></span></label><span class="layer-name">Arcane Mirror</span><input type="range" class="layer-opacity" id="panel-mirror-slider" min="0" max="1" step="0.05" value="1"></div>
@@ -242,40 +255,6 @@
         <button class="panel-mode-btn" data-mode="focus" title="Unfocused panels fade, hover to reveal">&#128065; Oracle Eye</button>
       </div>
       <div class="panel-mode-desc" id="panel-mode-desc">Panels stay where you place them.</div>
-    </div>
-  </div>
-  <div class="legend-section" data-section="effects">
-    <div class="legend-section-header" data-accent="gold"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#10024;</span> Magical Effects <button class="section-reset" data-reset="effects" title="Reset to defaults">&#8634;</button></div>
-    <div class="legend-section-body">
-      <div class="traffic-control">
-        <label>Ambient Sparkles <span class="tc-val" id="fx-ambient-val">0.30</span></label>
-        <input type="range" class="traffic-slider" id="fx-ambient-slider" min="0" max="1" step="0.05" value="0.3">
-      </div>
-      <div class="traffic-control">
-        <label>Node Auras <span class="tc-val" id="fx-nodes-val">0.50</span></label>
-        <input type="range" class="traffic-slider" id="fx-nodes-slider" min="0" max="1" step="0.05" value="0.5">
-      </div>
-      <div class="traffic-control">
-        <label>Glow Size <span class="tc-val" id="fx-glow-val">1.00</span></label>
-        <input type="range" class="traffic-slider" id="fx-glow-slider" min="0.3" max="3" step="0.1" value="1">
-      </div>
-      <div class="traffic-control">
-        <label>Pulse Speed <span class="tc-val" id="fx-pulse-val">1.0x</span></label>
-        <input type="range" class="traffic-slider" id="fx-pulse-slider" min="0.2" max="3" step="0.1" value="1">
-      </div>
-      <div class="traffic-control">
-        <label>Quality <span class="tc-val" id="fx-quality-val">auto</span></label>
-        <select id="fx-quality-select" class="cfg-select">
-          <option value="auto">Auto-detect</option>
-          <option value="low">Low (old mobile)</option>
-          <option value="medium">Medium</option>
-          <option value="high">High (desktop)</option>
-        </select>
-      </div>
-      <div class="layer-row" style="margin-top:6px">
-        <label class="topo-switch"><input type="checkbox" id="vis-fps-counter"><span class="topo-switch-track"></span></label>
-        <span class="layer-name">FPS Counter</span>
-      </div>
     </div>
   </div>
   <div class="legend-section" data-section="sealed-dock">
@@ -303,24 +282,54 @@
       </div>
     </div>
   </div>
-  <div class="legend-section" data-section="decorations">
-    <div class="legend-section-header" data-accent="green"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#127807;</span> Realm Decorations</div>
+  </div><!-- /spell-page 0: Panels -->
+
+  <!-- ════════ Tab 1: Map ════════ -->
+  <div class="spell-page" data-spell-page="1" style="display:none">
+  <div class="legend-section" data-section="map-elements">
+    <div class="legend-section-header" data-accent="blue"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#128506;</span> Map Elements</div>
     <div class="legend-section-body">
       <div class="layer-row">
-        <label class="topo-switch"><input type="checkbox" id="vis-map-vines" checked><span class="topo-switch-track"></span></label>
-        <span class="layer-name">Enchanted Vines</span>
+        <label class="topo-switch"><input type="checkbox" id="vis-nodes" checked><span class="topo-switch-track"></span></label>
+        <span class="layer-name">Nodes</span>
+        <input type="range" class="layer-opacity" id="layer-nodes-slider" min="0" max="1" step="0.05" value="1">
       </div>
       <div class="layer-row">
-        <label class="topo-switch"><input type="checkbox" id="vis-loading-vines" checked><span class="topo-switch-track"></span></label>
-        <span class="layer-name">Loading Vines</span>
+        <label class="topo-switch"><input type="checkbox" id="vis-connections" checked><span class="topo-switch-track"></span></label>
+        <span class="layer-name">Ley Lines</span>
+        <input type="range" class="layer-opacity" id="layer-connections-slider" min="0" max="1" step="0.05" value="1">
       </div>
-      <div class="layer-row" style="margin-top:6px">
-        <button class="preset-btn" id="replay-loading-btn" title="Replay the arcane loading screen" style="width:100%">&#10024; Replay Loading Screen</button>
+      <div class="layer-row">
+        <label class="topo-switch"><input type="checkbox" id="vis-labels" checked><span class="topo-switch-track"></span></label>
+        <span class="layer-name">Labels</span>
+        <input type="range" class="layer-opacity" id="layer-labels-slider" min="0" max="1" step="0.05" value="1">
+      </div>
+      <div class="layer-row">
+        <label class="topo-switch"><input type="checkbox" id="vis-sublabels" checked><span class="topo-switch-track"></span></label>
+        <span class="layer-name">Sublabels</span>
+        <input type="range" class="layer-opacity" id="layer-sublabels-slider" min="0" max="1" step="0.05" value="1">
+      </div>
+      <div class="layer-row">
+        <label class="topo-switch"><input type="checkbox" id="vis-regions" checked><span class="topo-switch-track"></span></label>
+        <span class="layer-name">Regions</span>
+        <input type="range" class="layer-opacity" id="layer-regions-slider" min="0" max="1" step="0.05" value="1">
+      </div>
+      <div class="layer-row">
+        <label class="topo-switch"><input type="checkbox" id="vis-vlanlabels" checked><span class="topo-switch-track"></span></label>
+        <span class="layer-name">VLAN Labels</span>
+        <input type="range" class="layer-opacity" id="layer-vlanlabels-slider" min="0" max="1" step="0.05" value="1">
+      </div>
+      <div class="layer-row">
+        <label class="topo-switch"><input type="checkbox" id="vis-bubbles" checked><span class="topo-switch-track"></span></label>
+        <span class="layer-name">Speech Bubbles</span>
+        <input type="range" class="layer-opacity" id="layer-bubbles-slider" min="0" max="1" step="0.05" value="1">
+      </div>
+      <div class="layer-row" style="margin-top:4px;padding-left:28px">
+        <label class="topo-switch"><input type="checkbox" id="bubble-fixed-size" checked><span class="topo-switch-track"></span></label>
+        <span class="layer-name">Fixed Bubble Size</span>
       </div>
     </div>
   </div>
-  </div><!-- /spell-page 0 -->
-  <div class="spell-page" data-spell-page="1" style="display:none">
   <div class="legend-section" data-section="terrain-layers">
     <div class="legend-section-header" data-accent="green"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#9968;</span> Terrain Layers</div>
     <div class="legend-section-body">
@@ -366,43 +375,24 @@
       </div>
     </div>
   </div>
-  <div class="legend-section" data-section="map-elements">
-    <div class="legend-section-header" data-accent="blue"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#128506;</span> Map Elements</div>
+  <div class="legend-section" data-section="scale">
+    <div class="legend-section-header" data-accent="gold"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#128269;</span> Scale <button class="section-reset" data-reset="scale" title="Reset to defaults">&#8634;</button></div>
     <div class="legend-section-body">
-      <div class="layer-row">
-        <label class="topo-switch"><input type="checkbox" id="vis-nodes" checked><span class="topo-switch-track"></span></label>
-        <span class="layer-name">Nodes</span>
-        <input type="range" class="layer-opacity" id="layer-nodes-slider" min="0" max="1" step="0.05" value="1">
+      <div class="traffic-control">
+        <label>Master <span class="tc-val" id="master-scale-val">1.0x</span></label>
+        <input type="range" class="traffic-slider" id="master-scale-slider" min="0.3" max="2.5" step="0.1" value="1">
       </div>
-      <div class="layer-row">
-        <label class="topo-switch"><input type="checkbox" id="vis-connections" checked><span class="topo-switch-track"></span></label>
-        <span class="layer-name">Ley Lines</span>
-        <input type="range" class="layer-opacity" id="layer-connections-slider" min="0" max="1" step="0.05" value="1">
+      <div class="traffic-control">
+        <label>Nodes <span class="tc-val" id="node-scale-val">1.0x</span></label>
+        <input type="range" class="traffic-slider" id="node-scale-slider" min="0.5" max="2" step="0.1" value="1">
       </div>
-      <div class="layer-row">
-        <label class="topo-switch"><input type="checkbox" id="vis-labels" checked><span class="topo-switch-track"></span></label>
-        <span class="layer-name">Labels</span>
-        <input type="range" class="layer-opacity" id="layer-labels-slider" min="0" max="1" step="0.05" value="1">
+      <div class="traffic-control">
+        <label>Text <span class="tc-val" id="text-scale-val">1.0x</span></label>
+        <input type="range" class="traffic-slider" id="text-scale-slider" min="0.5" max="2" step="0.1" value="1">
       </div>
-      <div class="layer-row">
-        <label class="topo-switch"><input type="checkbox" id="vis-sublabels" checked><span class="topo-switch-track"></span></label>
-        <span class="layer-name">Sublabels</span>
-        <input type="range" class="layer-opacity" id="layer-sublabels-slider" min="0" max="1" step="0.05" value="1">
-      </div>
-      <div class="layer-row">
-        <label class="topo-switch"><input type="checkbox" id="vis-regions" checked><span class="topo-switch-track"></span></label>
-        <span class="layer-name">Regions</span>
-        <input type="range" class="layer-opacity" id="layer-regions-slider" min="0" max="1" step="0.05" value="1">
-      </div>
-      <div class="layer-row">
-        <label class="topo-switch"><input type="checkbox" id="vis-vlanlabels" checked><span class="topo-switch-track"></span></label>
-        <span class="layer-name">VLAN Labels</span>
-        <input type="range" class="layer-opacity" id="layer-vlanlabels-slider" min="0" max="1" step="0.05" value="1">
-      </div>
-      <div class="layer-row">
-        <label class="topo-switch"><input type="checkbox" id="vis-bubbles" checked><span class="topo-switch-track"></span></label>
-        <span class="layer-name">Speech Bubbles</span>
-        <input type="range" class="layer-opacity" id="layer-bubbles-slider" min="0" max="1" step="0.05" value="1">
+      <div class="traffic-control">
+        <label>Bubbles <span class="tc-val" id="bubble-scale-val">1.0x</span></label>
+        <input type="range" class="traffic-slider" id="bubble-scale-slider" min="0.5" max="2" step="0.1" value="1">
       </div>
     </div>
   </div>
@@ -418,8 +408,97 @@
       </div>
     </div>
   </div>
-  </div><!-- /spell-page 1 -->
+  </div><!-- /spell-page 1: Map -->
+
+  <!-- ════════ Tab 2: Style ════════ -->
   <div class="spell-page" data-spell-page="2" style="display:none">
+  <div class="legend-section" data-section="effects">
+    <div class="legend-section-header" data-accent="gold"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#10024;</span> Magical Effects <button class="section-reset" data-reset="effects" title="Reset to defaults">&#8634;</button></div>
+    <div class="legend-section-body">
+      <div class="traffic-control">
+        <label>Ambient Sparkles <span class="tc-val" id="fx-ambient-val">0.30</span></label>
+        <input type="range" class="traffic-slider" id="fx-ambient-slider" min="0" max="1" step="0.05" value="0.3">
+      </div>
+      <div class="traffic-control">
+        <label>Node Auras <span class="tc-val" id="fx-nodes-val">0.50</span></label>
+        <input type="range" class="traffic-slider" id="fx-nodes-slider" min="0" max="1" step="0.05" value="0.5">
+      </div>
+      <div class="traffic-control">
+        <label>Glow Size <span class="tc-val" id="fx-glow-val">1.00</span></label>
+        <input type="range" class="traffic-slider" id="fx-glow-slider" min="0.3" max="3" step="0.1" value="1">
+      </div>
+      <div class="traffic-control">
+        <label>Pulse Speed <span class="tc-val" id="fx-pulse-val">1.0x</span></label>
+        <input type="range" class="traffic-slider" id="fx-pulse-slider" min="0.2" max="3" step="0.1" value="1">
+      </div>
+    </div>
+  </div>
+  <div class="legend-section" data-section="ambiance">
+    <div class="legend-section-header" data-accent="purple"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#127769;</span> Arcane Ambiance <button class="section-reset" data-reset="ambiance" title="Reset to defaults">&#8634;</button></div>
+    <div class="legend-section-body">
+      <div class="traffic-control">
+        <label>Compass Scale <span class="tc-val" id="compass-scale-val">1.0</span></label>
+        <input type="range" class="traffic-slider" id="compass-scale-slider" min="0.3" max="2.5" step="0.1" value="1">
+        <div class="slider-hints">
+          <span>Subtle</span><span>Grand</span>
+        </div>
+      </div>
+      <div class="traffic-control">
+        <label>Sparkle Density <span class="tc-val" id="sparkle-density-val">0.50</span></label>
+        <input type="range" class="traffic-slider" id="sparkle-density-slider" min="0" max="1" step="0.05" value="0.5">
+        <div class="slider-hints">
+          <span>None</span><span>Enchanted</span>
+        </div>
+      </div>
+      <div class="traffic-control">
+        <label>Ambient Glow <span class="tc-val" id="ambient-glow-val">0.30</span></label>
+        <input type="range" class="traffic-slider" id="ambient-glow-slider" min="0" max="1" step="0.05" value="0.3">
+      </div>
+      <div class="traffic-control">
+        <label>Vignette <span class="tc-val" id="vignette-val">0.30</span></label>
+        <input type="range" class="traffic-slider" id="vignette-slider" min="0" max="1" step="0.05" value="0.3">
+        <div class="slider-hints">
+          <span>Open</span><span>Framed</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="legend-section" data-section="decorations">
+    <div class="legend-section-header" data-accent="green"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#127807;</span> Decorations</div>
+    <div class="legend-section-body">
+      <div class="layer-row">
+        <label class="topo-switch"><input type="checkbox" id="vis-map-vines" checked><span class="topo-switch-track"></span></label>
+        <span class="layer-name">Enchanted Vines</span>
+      </div>
+      <div class="layer-row">
+        <label class="topo-switch"><input type="checkbox" id="vis-loading-vines" checked><span class="topo-switch-track"></span></label>
+        <span class="layer-name">Loading Vines</span>
+      </div>
+      <div class="layer-row" style="margin-top:6px">
+        <button class="preset-btn" id="replay-loading-btn" title="Replay the arcane loading screen" style="width:100%">&#10024; Replay Loading Screen</button>
+      </div>
+    </div>
+  </div>
+  <div class="legend-section" data-section="ley-lines">
+    <div class="legend-section-header" data-accent="blue"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#9889;</span> Ley Lines <button class="section-reset" data-reset="ley-lines" title="Reset to defaults">&#8634;</button></div>
+    <div class="legend-section-body">
+      <div class="traffic-control">
+        <label>Traffic Scale <span class="tc-val" id="traffic-scale-val">1.0x</span></label>
+        <input type="range" class="traffic-slider" id="traffic-scale-slider" min="0.1" max="3" step="0.1" value="1">
+        <div class="slider-hints">
+          <span>Subtle</span><span>Bold</span>
+        </div>
+      </div>
+      <div class="traffic-control">
+        <label>Sparks <span class="tc-val" id="fx-leylines-val">0.40</span></label>
+        <input type="range" class="traffic-slider" id="fx-leylines-slider" min="0" max="1" step="0.05" value="0.4">
+      </div>
+      <div class="traffic-control">
+        <label>Glow Intensity <span class="tc-val" id="fx-leyglow-val">1.00</span></label>
+        <input type="range" class="traffic-slider" id="fx-leyglow-slider" min="0" max="2" step="0.1" value="1">
+      </div>
+    </div>
+  </div>
   <div class="legend-section" data-section="biomes">
     <div class="legend-section-header" data-accent="green"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#127807;</span> Biomes <button class="section-reset" data-reset="biomes" title="Reset to defaults">&#8634;</button></div>
     <div class="legend-section-body">
@@ -442,87 +521,6 @@
       <div class="traffic-control">
         <label>Coord Lines <span class="tc-val" id="biome-grid-val">0.03</span></label>
         <input type="range" class="traffic-slider" id="biome-grid-slider" min="0" max="0.15" step="0.01" value="0.03">
-      </div>
-    </div>
-  </div>
-  <div class="legend-section" data-section="scale">
-    <div class="legend-section-header" data-accent="gold"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#9878;</span> Scale <button class="section-reset" data-reset="scale" title="Reset to defaults">&#8634;</button></div>
-    <div class="legend-section-body">
-      <div class="traffic-control">
-        <label>Master <span class="tc-val" id="master-scale-val">1.0x</span></label>
-        <input type="range" class="traffic-slider" id="master-scale-slider" min="0.3" max="2.5" step="0.1" value="1">
-      </div>
-      <div class="traffic-control">
-        <label>Nodes <span class="tc-val" id="node-scale-val">1.0x</span></label>
-        <input type="range" class="traffic-slider" id="node-scale-slider" min="0.5" max="2" step="0.1" value="1">
-      </div>
-      <div class="traffic-control">
-        <label>Text <span class="tc-val" id="text-scale-val">1.0x</span></label>
-        <input type="range" class="traffic-slider" id="text-scale-slider" min="0.5" max="2" step="0.1" value="1">
-      </div>
-      <div class="traffic-control">
-        <label>Bubbles <span class="tc-val" id="bubble-scale-val">1.0x</span></label>
-        <input type="range" class="traffic-slider" id="bubble-scale-slider" min="0.5" max="2" step="0.1" value="1">
-      </div>
-    </div>
-  </div>
-  <div class="legend-section" data-section="ley-lines">
-    <div class="legend-section-header" data-accent="purple"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#9889;</span> Ley Lines <button class="section-reset" data-reset="ley-lines" title="Reset to defaults">&#8634;</button></div>
-    <div class="legend-section-body">
-      <div class="traffic-control">
-        <label>Traffic Scale <span class="tc-val" id="traffic-scale-val">1.0x</span></label>
-        <input type="range" class="traffic-slider" id="traffic-scale-slider" min="0.1" max="3" step="0.1" value="1">
-        <div class="slider-hints">
-          <span>Subtle</span><span>Bold</span>
-        </div>
-      </div>
-      <div class="traffic-control">
-        <label>Sparks <span class="tc-val" id="fx-leylines-val">0.40</span></label>
-        <input type="range" class="traffic-slider" id="fx-leylines-slider" min="0" max="1" step="0.05" value="0.4">
-      </div>
-      <div class="traffic-control">
-        <label>Glow Intensity <span class="tc-val" id="fx-leyglow-val">1.00</span></label>
-        <input type="range" class="traffic-slider" id="fx-leyglow-slider" min="0" max="2" step="0.1" value="1">
-      </div>
-    </div>
-  </div>
-  <div class="legend-section collapsed" data-section="performance">
-    <div class="legend-section-header" data-accent="red"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#9202;</span> Performance</div>
-    <div class="legend-section-body">
-      <div class="traffic-control">
-        <label>Update Interval <span class="tc-val" id="update-speed-val">5s</span></label>
-        <input type="range" class="traffic-slider" id="update-speed-slider" min="1" max="30" step="1" value="5">
-        <div class="slider-hints">
-          <span>Fast</span><span>Light</span>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="legend-section" data-section="arcane-grid">
-    <div class="legend-section-header" data-accent="cyan"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#11042;</span> Arcane Grid <button class="section-reset" data-reset="arcane-grid" title="Reset to defaults">&#8634;</button></div>
-    <div class="legend-section-body">
-      <div class="traffic-control overlay-toggle">
-        <label>Overlay</label>
-        <label class="topo-switch"><input type="checkbox" id="grid-toggle-cb"><span class="topo-switch-track"></span></label>
-      </div>
-      <div class="traffic-control">
-        <label>Opacity <span class="tc-val" id="grid-opacity-val">0.40</span></label>
-        <input type="range" class="traffic-slider" id="grid-opacity-slider" min="0.05" max="1" step="0.05" value="0.4">
-      </div>
-      <div class="traffic-control">
-        <label>Scale <span class="tc-val" id="grid-scale-val">1.0</span></label>
-        <input type="range" class="traffic-slider" id="grid-scale-slider" min="0.3" max="3" step="0.1" value="1">
-        <div class="slider-hints">
-          <span>Fine</span><span>Normal</span><span>Grand</span>
-        </div>
-      </div>
-      <div class="traffic-control">
-        <label>Pulse <span class="tc-val" id="grid-pulse-val">on</span></label>
-        <label class="topo-switch"><input type="checkbox" id="grid-pulse-cb" checked><span class="topo-switch-track"></span></label>
-      </div>
-      <div class="traffic-control">
-        <label>Hue Shift <span class="tc-val" id="grid-hue-val">0&deg;</span></label>
-        <input type="range" class="traffic-slider" id="grid-hue-slider" min="0" max="360" step="10" value="0">
       </div>
     </div>
   </div>
@@ -564,42 +562,74 @@
       </div>
     </div>
   </div>
-  <div class="legend-section" data-section="ambiance">
-    <div class="legend-section-header" data-accent="gold"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#10024;</span> Arcane Ambiance <button class="section-reset" data-reset="ambiance" title="Reset to defaults">&#8634;</button></div>
+  <div class="legend-section" data-section="arcane-grid">
+    <div class="legend-section-header" data-accent="cyan"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#11042;</span> Arcane Grid <button class="section-reset" data-reset="arcane-grid" title="Reset to defaults">&#8634;</button></div>
+    <div class="legend-section-body">
+      <div class="traffic-control overlay-toggle">
+        <label>Overlay</label>
+        <label class="topo-switch"><input type="checkbox" id="grid-toggle-cb"><span class="topo-switch-track"></span></label>
+      </div>
+      <div class="traffic-control">
+        <label>Opacity <span class="tc-val" id="grid-opacity-val">0.40</span></label>
+        <input type="range" class="traffic-slider" id="grid-opacity-slider" min="0.05" max="1" step="0.05" value="0.4">
+      </div>
+      <div class="traffic-control">
+        <label>Scale <span class="tc-val" id="grid-scale-val">1.0</span></label>
+        <input type="range" class="traffic-slider" id="grid-scale-slider" min="0.3" max="3" step="0.1" value="1">
+        <div class="slider-hints">
+          <span>Fine</span><span>Normal</span><span>Grand</span>
+        </div>
+      </div>
+      <div class="traffic-control">
+        <label>Pulse <span class="tc-val" id="grid-pulse-val">on</span></label>
+        <label class="topo-switch"><input type="checkbox" id="grid-pulse-cb" checked><span class="topo-switch-track"></span></label>
+      </div>
+      <div class="traffic-control">
+        <label>Hue Shift <span class="tc-val" id="grid-hue-val">0&deg;</span></label>
+        <input type="range" class="traffic-slider" id="grid-hue-slider" min="0" max="360" step="10" value="0">
+      </div>
+    </div>
+  </div>
+  </div><!-- /spell-page 2: Style -->
+
+  <!-- ════════ Tab 3: System ════════ -->
+  <div class="spell-page" data-spell-page="3" style="display:none">
+  <div class="legend-section" data-section="performance">
+    <div class="legend-section-header" data-accent="red"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#9889;</span> Performance</div>
     <div class="legend-section-body">
       <div class="traffic-control">
-        <label>Compass Scale <span class="tc-val" id="compass-scale-val">1.0</span></label>
-        <input type="range" class="traffic-slider" id="compass-scale-slider" min="0.3" max="2.5" step="0.1" value="1">
-        <div class="slider-hints">
-          <span>Subtle</span><span>Grand</span>
-        </div>
+        <label>Quality <span class="tc-val" id="fx-quality-val">auto</span></label>
+        <select id="fx-quality-select" class="cfg-select">
+          <option value="auto">Auto-detect</option>
+          <option value="low">Low (old mobile)</option>
+          <option value="medium">Medium</option>
+          <option value="high">High (desktop)</option>
+        </select>
       </div>
-      <div class="traffic-control">
-        <label>Sparkle Density <span class="tc-val" id="sparkle-density-val">0.50</span></label>
-        <input type="range" class="traffic-slider" id="sparkle-density-slider" min="0" max="1" step="0.05" value="0.5">
-        <div class="slider-hints">
-          <span>None</span><span>Enchanted</span>
-        </div>
+      <div class="layer-row" style="margin-top:4px">
+        <label class="topo-switch"><input type="checkbox" id="perf-auto-detect" checked><span class="topo-switch-track"></span></label>
+        <span class="layer-name">Auto-detect Tier</span>
       </div>
-      <div class="traffic-control">
-        <label>Ambient Glow <span class="tc-val" id="ambient-glow-val">0.30</span></label>
-        <input type="range" class="traffic-slider" id="ambient-glow-slider" min="0" max="1" step="0.05" value="0.3">
+      <div class="layer-row">
+        <label class="topo-switch"><input type="checkbox" id="perf-gpu-zoom" checked><span class="topo-switch-track"></span></label>
+        <span class="layer-name">GPU Zoom Boost</span>
       </div>
-      <div class="traffic-control">
-        <label>Vignette <span class="tc-val" id="vignette-val">0.30</span></label>
-        <input type="range" class="traffic-slider" id="vignette-slider" min="0" max="1" step="0.05" value="0.3">
+      <div class="layer-row">
+        <label class="topo-switch"><input type="checkbox" id="vis-fps-counter"><span class="topo-switch-track"></span></label>
+        <span class="layer-name">FPS Counter</span>
+      </div>
+      <div class="traffic-control" style="margin-top:4px">
+        <label>SSE Interval <span class="tc-val" id="update-speed-val">5s</span></label>
+        <input type="range" class="traffic-slider" id="update-speed-slider" min="1" max="30" step="1" value="5">
         <div class="slider-hints">
-          <span>Open</span><span>Framed</span>
+          <span>Fast</span><span>Light</span>
         </div>
       </div>
     </div>
   </div>
-  </div><!-- /spell-page 2 -->
-  <div class="spell-page" data-spell-page="3" style="display:none">
   <div class="legend-section" data-section="arcane-config">
-    <div class="legend-section-header" data-accent="purple"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#128302;</span> Arcane Config</div>
+    <div class="legend-section-header" data-accent="purple"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#129302;</span> Oracle (Azure AI)</div>
     <div class="legend-section-body" id="arcane-config-body">
-      <div class="cfg-group-label"><span class="cfg-group-icon">&#129302;</span>Oracle (Azure AI)</div>
       <div class="cfg-row">
         <label>Model</label>
         <select id="cfg-chat-model" class="cfg-select">
@@ -628,7 +658,11 @@
         <label>Multi-Chat Timeout</label>
         <input type="number" id="cfg-multi-timeout" class="cfg-input" min="5" max="120" step="5" value="30">
       </div>
-      <div class="cfg-group-label"><span class="cfg-group-icon">&#127908;</span>Voice (Speech)</div>
+    </div>
+  </div>
+  <div class="legend-section" data-section="voice-config">
+    <div class="legend-section-header" data-accent="amber"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#127908;</span> Voice (Speech)</div>
+    <div class="legend-section-body">
       <div class="cfg-row">
         <label>TTS Voice</label>
         <select id="cfg-voice" class="cfg-select">
@@ -650,7 +684,11 @@
         <label>Subtitles</label>
         <label class="topo-switch"><input type="checkbox" id="cfg-subtitles" checked><span class="topo-switch-track"></span></label>
       </div>
-      <div class="cfg-group-label"><span class="cfg-group-icon">&#128302;</span>Scrying Pool (Oracle Daemon)</div>
+    </div>
+  </div>
+  <div class="legend-section" data-section="oracle-config">
+    <div class="legend-section-header" data-accent="cyan"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#128302;</span> Scrying Pool (Oracle Daemon)</div>
+    <div class="legend-section-body">
       <div class="cfg-row">
         <label>Oracle Model</label>
         <select id="cfg-oracle-model" class="cfg-select">
@@ -682,7 +720,22 @@
       <div id="cfg-status"></div>
     </div>
   </div>
-  </div><!-- /spell-page 3 -->
+  <div class="legend-section" data-section="herald-config">
+    <div class="legend-section-header" data-accent="gold"><span class="legend-chevron">&#9662;</span><span class="sec-icon">&#128483;</span> Herald (Auto-Speech)</div>
+    <div class="legend-section-body">
+      <div class="cfg-row">
+        <label>Interval (seconds)</label>
+        <input type="number" id="cfg-herald-interval" class="cfg-select" value="90" min="30" max="600" step="10" style="width:80px">
+      </div>
+      <div class="cfg-row" style="gap:6px">
+        <button id="herald-start-btn" class="layout-btn" style="flex:1">&#9654; Start</button>
+        <button id="herald-stop-btn" class="layout-btn" style="flex:1">&#9632; Stop</button>
+        <button id="herald-once-btn" class="layout-btn" style="flex:1">&#9655; Once</button>
+      </div>
+      <div id="herald-status" class="cfg-row" style="font-size:11px;opacity:0.7"></div>
+    </div>
+  </div>
+  </div><!-- /spell-page 3: System -->
 </div>
 
 <div id="realm-codex" class="panel" style="--panel-accent:rgba(144,96,192,0.5)">
@@ -703,34 +756,31 @@
       <div class="codex-entry"><span class="ce-label">Source:</span> <em>Access to Power</em> &mdash; Julia Kelliher</div>
     </div>
 
-    <!-- ── MCP Server 1: Realm Voice (lit-rpg-fantasy-voice) ── -->
+    <!-- ── Realm HTTP API (:8777) ── -->
     <div class="codex-section">
-      <h4 class="codex-toggle" data-target="codex-srv-realm">&#9965; Realm Voice <span class="codex-tool-count">19 tools</span></h4>
+      <h4 class="codex-toggle" data-target="codex-srv-realm">&#9965; Realm API <span class="codex-tool-count">HTTP :8777</span></h4>
       <div id="codex-srv-realm" class="codex-tools">
-        <div class="codex-tool-group">Observation &amp; Voice</div>
-        <div class="codex-tool"><code>get_system_status</code><span>Raw sensor JSON &mdash; CPU, RAM, GPU, battery as fantasy data</span></div>
-        <div class="codex-tool"><code>get_energy_status</code><span>Home Assistant energy &mdash; solar, battery, grid, house load</span></div>
-        <div class="codex-tool"><code>trigger_system_observation</code><span>Narrate realm state as fantasy observation</span></div>
-        <div class="codex-tool"><code>vocalize_message</code><span>Speak custom text in the System's voice</span></div>
-        <div class="codex-tool"><code>commune_with_system</code><span>Voice conversation about realm state</span></div>
-        <div class="codex-tool-group">Map Events</div>
-        <div class="codex-tool"><code>map_event</code><span>Push speech/highlight/alert/quest to live map</span></div>
-        <div class="codex-tool"><code>map_node_chat</code><span>Node speaks via persona + GPT + speech bubble</span></div>
-        <div class="codex-tool"><code>get_map_events</code><span>Fetch recent map events since timestamp</span></div>
-        <div class="codex-tool-group">Personas</div>
-        <div class="codex-tool"><code>get_node_personas</code><span>List all personas with voices and prompts</span></div>
-        <div class="codex-tool"><code>configure_persona</code><span>Create/update node persona</span></div>
-        <div class="codex-tool"><code>delete_persona</code><span>Remove a node persona</span></div>
-        <div class="codex-tool"><code>herald_round</code><span>Orchestrate 2&ndash;5 nodes reporting with voices</span></div>
-        <div class="codex-tool-group">Topology &amp; Data</div>
-        <div class="codex-tool"><code>get_topology</code><span>Full topology: nodes, connections, regions</span></div>
-        <div class="codex-tool"><code>configure_topology_node</code><span>Add/update a node in topology.json</span></div>
-        <div class="codex-tool"><code>get_collectd_data</code><span>Collectd RRD summaries per host</span></div>
-        <div class="codex-tool"><code>scan_wifi</code><span>Scan 11 APs &mdash; detect roaming, verify links</span></div>
+        <div class="codex-tool-group">Status &amp; Data</div>
+        <div class="codex-tool"><code>GET /status</code><span>System status &mdash; CPU, RAM, GPU, battery, energy</span></div>
+        <div class="codex-tool"><code>GET /topology</code><span>Full topology: nodes, connections, regions</span></div>
+        <div class="codex-tool"><code>GET /collectd</code><span>Collectd RRD summaries (?host= optional)</span></div>
+        <div class="codex-tool"><code>GET /energy</code><span>Home Assistant energy &mdash; solar, battery, grid</span></div>
+        <div class="codex-tool"><code>GET /latency</code><span>Latency data from fping prober</span></div>
+        <div class="codex-tool"><code>GET /firewall</code><span>Gatekeeper nft rules + zone mapping</span></div>
+        <div class="codex-tool-group">Events &amp; Voice</div>
+        <div class="codex-tool"><code>SSE /events</code><span>Live stream: collectd, latency, map events</span></div>
+        <div class="codex-tool"><code>POST /event</code><span>Push speech/highlight/alert/quest to map</span></div>
+        <div class="codex-tool"><code>GET /observation</code><span>Trigger system observation narration</span></div>
+        <div class="codex-tool-group">Topology Management</div>
+        <div class="codex-tool"><code>POST /node</code><span>Add/update topology node</span></div>
+        <div class="codex-tool"><code>POST /connections</code><span>Update topology connections</span></div>
+        <div class="codex-tool"><code>POST /personas</code><span>Create/update node persona</span></div>
+        <div class="codex-tool"><code>GET /personas</code><span>List all personas with voices</span></div>
         <div class="codex-tool-group">Services</div>
-        <div class="codex-tool"><code>manage_map_server</code><span>Start/stop/restart map HTTP server (:8777)</span></div>
-        <div class="codex-tool"><code>manage_herald</code><span>Start/stop/once the Herald daemon</span></div>
-        <div class="codex-tool"><code>sync_notion_quests</code><span>Sync Notion todos as map quests</span></div>
+        <div class="codex-tool"><code>GET /herald</code><span>Herald daemon: ?action=status|start|stop|once</span></div>
+        <div class="codex-tool"><code>POST /scan</code><span>Trigger WiFi AP scan</span></div>
+        <div class="codex-tool"><code>POST /ssh</code><span>SSH to topology host</span></div>
+        <div class="codex-tool"><code>POST /wol</code><span>Wake-on-LAN magic packet</span></div>
       </div>
     </div>
 
@@ -803,15 +853,6 @@
       <div id="ac-api" class="ag-section-body"></div>
     </div>
     <div class="ag-section">
-      <div class="ag-section-toggle" data-target="ac-mcp">
-        <span class="ag-sigil">&#9764;</span>
-        <span class="ag-section-title">Arcane Invocations</span>
-        <span class="ag-count" id="ac-mcp-count"></span>
-        <span class="ag-chevron"></span>
-      </div>
-      <div id="ac-mcp" class="ag-section-body"></div>
-    </div>
-    <div class="ag-section">
       <div class="ag-section-toggle" data-target="ac-scripts">
         <span class="ag-sigil">&#9876;</span>
         <span class="ag-section-title">Forge Scripts</span>
@@ -852,6 +893,7 @@
   <div id="quest-log-tabs">
     <div class="log-tab active" data-tab="all">All</div>
     <div class="log-tab" data-tab="speech">Speech</div>
+    <div class="log-tab" data-tab="alert">Alerts</div>
     <div class="log-tab" data-tab="report">Reports</div>
     <div class="log-tab" data-tab="quest">Quests</div>
     <div class="log-tab" data-tab="notion">Notion</div>
@@ -1359,6 +1401,15 @@
   </div>
 </div>
 
+<div id="scanner-panel" class="panel" style="--panel-accent:rgba(220,180,80,0.5)">
+  <div class="panel-header">
+    <span class="panel-hdr-icon">&#128301;</span>
+    <span class="panel-hdr-title">Survey Glass</span>
+    <button id="scanner-run-all" class="scanner-run-all-btn">Run All</button>
+  </div>
+  <div class="scanner-body" id="scanner-body"></div>
+</div>
+
 <div id="wifi-panel" class="panel" style="--panel-accent:rgba(100,200,255,0.5)">
   <div class="panel-header">
     <span class="panel-hdr-icon">&#128225;</span>
@@ -1716,6 +1767,6 @@
 <div id="scan-line"></div>
 <div class="tooltip" id="tooltip"></div>
 
-<script src="realm-map.js?v=1773596064"></script>
+<script src="realm-map.js?v=1773597100"></script>
 </body>
 </html>

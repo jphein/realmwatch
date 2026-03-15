@@ -16,6 +16,7 @@ if os.path.exists(_env_path):
                 k, v = k.strip(), v.strip()
                 if v:  # Always set if .env has a value
                     os.environ[k] = v
+import signal
 import subprocess
 import threading
 import time
@@ -23,7 +24,7 @@ import queue
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from socketserver import ThreadingMixIn
 from engine import LitRPGEngine
-from collectd_reader import get_all_summaries
+from collectd_reader import get_all_summaries, get_host_summary
 import notion_sync
 import ap_scanner
 import codex_sync
@@ -42,8 +43,77 @@ PORT = 8777
 MAP_DIR = os.path.dirname(os.path.abspath(__file__))
 PERSONAS_FILE = os.path.join(MAP_DIR, "personas.json")
 TOPOLOGY_FILE = os.path.join(MAP_DIR, "topology.json")
+VENV_PYTHON = os.path.join(MAP_DIR, "venv", "bin", "python3")
 _CHAT_CONFIG = os.path.expanduser("~/.config/azure-chat-assistant/config.json")
 _SPEECH_CONFIG = os.path.expanduser("~/.config/speech-to-cli/config.json")
+
+
+# ── Herald process management ──
+_herald_proc = None
+
+
+def _herald_start(interval=90):
+    """Start the herald daemon as a subprocess."""
+    global _herald_proc
+    _herald_stop()
+    _herald_proc = subprocess.Popen(
+        [VENV_PYTHON, "realm_herald.py", "--interval", str(interval)],
+        cwd=MAP_DIR, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    return _herald_proc.pid
+
+
+def _herald_stop():
+    """Stop the herald daemon."""
+    global _herald_proc
+    if _herald_proc and _herald_proc.poll() is None:
+        _herald_proc.terminate()
+        try:
+            _herald_proc.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            _herald_proc.kill()
+    _herald_proc = None
+    # Also kill by script name
+    try:
+        out = subprocess.check_output(
+            ["pgrep", "-f", "realm_herald.py"], text=True, timeout=3
+        ).strip()
+        for pid in (int(p) for p in out.split("\n") if p.strip()):
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except OSError:
+                pass
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        pass
+
+
+def _herald_status():
+    """Check herald daemon status."""
+    running = _herald_proc is not None and _herald_proc.poll() is None
+    pids = []
+    try:
+        out = subprocess.check_output(
+            ["pgrep", "-f", "realm_herald.py"], text=True, timeout=3
+        ).strip()
+        pids = [int(p) for p in out.split("\n") if p.strip()]
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        pass
+    return {"running": running or len(pids) > 0, "pids": pids}
+
+
+def _herald_once():
+    """Run a single herald round (blocking, returns output)."""
+    try:
+        out = subprocess.check_output(
+            [VENV_PYTHON, "realm_herald.py", "--once"],
+            cwd=MAP_DIR, text=True, timeout=15, stderr=subprocess.STDOUT,
+        )
+        return {"ok": True, "output": out}
+    except subprocess.TimeoutExpired:
+        return {"error": "Herald round timed out (15s)"}
+    except subprocess.CalledProcessError as e:
+        return {"error": f"Herald round failed: {e}"}
 
 # Settings exposed to UI (keys safe to read/write — no secrets)
 _CHAT_SAFE_KEYS = {"deployment", "model", "model_type", "max_completion_tokens", "temperature",
@@ -53,93 +123,15 @@ _SPEECH_SAFE_KEYS = {"silence_timeout", "talk_silence_timeout", "energy_multipli
                      "fast_voice", "max_record_seconds", "vu_meter", "chime_ready"}
 
 
-def _mcp_dispatch(tool, args):
-    """Dispatch MCP tool calls to underlying functions."""
-    if tool == "get_system_status":
-        status = engine.get_status()
-        status["tailscale"] = engine.get_tailscale_status()
-        status["host"] = engine.get_host_config()
-        return status
-    elif tool == "get_energy_status":
-        return ha_bridge.get_energy_data()
-    elif tool == "trigger_system_observation":
-        status = engine.get_status()
-        return {"observation": engine.adult_observation(status), "status": status}
-    elif tool == "get_topology":
-        return _load_topology()
-    elif tool == "get_collectd_data":
-        hostname = args.get("hostname")
-        data = get_all_summaries()
-        if hostname:
-            return {hostname: data.get(hostname, {})}
-        return data
-    elif tool == "get_map_events":
-        since = float(args.get("since", 0))
-        return {"events": realm_db.get_events(since=since)}
-    elif tool == "get_node_personas":
-        return _load_personas()
-    elif tool == "configure_persona":
-        node = args.get("node")
-        if not node:
-            return {"error": "node required"}
-        personas = _load_personas()
-        p = personas.get(node, {})
-        for k in ("name", "title", "voice", "system_prompt", "hints"):
-            if k in args:
-                p[k] = args[k]
-        personas[node] = p
-        with open(PERSONAS_FILE, "w") as f:
-            json.dump(personas, f, indent=2)
-        return {"ok": True, "persona": p}
-    elif tool == "delete_persona":
-        node = args.get("node")
-        personas = _load_personas()
-        if node in personas:
-            del personas[node]
-            with open(PERSONAS_FILE, "w") as f:
-                json.dump(personas, f, indent=2)
-        return {"ok": True}
-    elif tool == "map_event":
-        evt = {"type": args.get("type", "speech"), "node": args.get("node", ""), "text": args.get("text", "")}
-        if args.get("color"):
-            evt["color"] = args["color"]
-        realm_db.add_event(evt)
-        _sse_broker.send_event("realm-event", evt)
-        return {"ok": True}
-    elif tool == "map_node_chat":
-        return {"error": "map_node_chat requires Azure AI — use MCP client directly"}
-    elif tool == "configure_topology_node":
-        node_id = args.get("id")
-        if not node_id:
-            return {"error": "id required"}
-        topo = _load_topology()
-        existing = next((n for n in topo["nodes"] if n["id"] == node_id), None)
-        if existing:
-            for k, v in args.items():
-                if k != "id":
-                    existing[k] = v
-        else:
-            topo["nodes"].append(args)
-        realm_db.save_topology_json(TOPOLOGY_FILE)
-        return {"ok": True}
-    elif tool == "scan_wifi":
-        action = args.get("action", "scan")
-        if action == "status":
-            return realm_db.get_wifi_scan()
-        ap_scanner.run_scan()
-        return {"ok": True, "action": "scan started"}
-    elif tool == "sync_notion_quests":
-        force = args.get("force", False)
-        result = notion_sync.sync_quests(force=bool(force))
-        return result
-    elif tool == "manage_map_server":
-        return {"note": "Cannot control map_server from within itself"}
-    elif tool == "manage_herald":
-        return {"note": "Herald control requires MCP stdio — use manage_herald MCP tool"}
-    elif tool in ("vocalize_message", "commune_with_system", "herald_round"):
-        return {"note": f"{tool} requires voice pipeline — use MCP client directly"}
-    else:
-        return {"error": f"Unknown tool: {tool}"}
+def _load_personas():
+    """Load all personas from DB."""
+    try:
+        data = realm_db.get_personas()
+        if data:
+            return data
+    except Exception:
+        pass
+    return {}
 
 
 def _write_config_file(path, updates, safe_keys):
@@ -211,10 +203,6 @@ def _get_energy_data():
         "inverter_temp_f": num("sensor.inverter_temperature_module"),
         "ts": time.time(),
     }
-
-
-def _load_personas():
-    return realm_db.get_personas()
 
 
 def _save_personas(data):
@@ -312,8 +300,26 @@ def build_status():
     return status
 
 
+def _get_firewall_data():
+    """Get firewall data, refreshing cache via SSH if stale."""
+    cached = firewall_parser.get_cached()
+    if cached:
+        return cached
+    raw = engine._run_router_cmd("nft -j list ruleset")
+    if not raw:
+        return None
+    parsed = firewall_parser.parse_nft_json(raw)
+    if parsed:
+        firewall_parser.update_cache(parsed)
+    return parsed
+
 from sse_broker import SSEBroker
-_sse_broker = SSEBroker(build_status, _get_energy_data, latency_fn=latency_prober.get_latency_map)
+_sse_broker = SSEBroker(
+    build_status, _get_energy_data,
+    latency_fn=latency_prober.get_latency_map,
+    firewall_fn=_get_firewall_data,
+    wifi_fn=ap_scanner.get_ap_info,
+)
 
 
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
@@ -407,6 +413,21 @@ class RealmHandler(SimpleHTTPRequestHandler):
         elif self.path == "/scan/status":
             self._json_response(ap_scanner.get_last_scan())
 
+        elif self.path == "/scan/lldp":
+            links = ap_scanner.detect_ethernet_topology()
+            topo = _load_topology()
+            auto_switches = [n for n in topo.get("nodes", []) if n.get("_auto_switch")]
+            self._json_response({
+                "links": len(links),
+                "switches": len(auto_switches),
+                "connections": [
+                    {"from": l["from_node"], "to": l["to_node"],
+                     "type": l.get("protocol", "lldp")}
+                    for l in links
+                ],
+                "cliques": [n["id"] for n in auto_switches],
+            })
+
         elif self.path == "/scan/wifi":
             self._json_response(ap_scanner.get_wifi_signal())
 
@@ -462,6 +483,43 @@ class RealmHandler(SimpleHTTPRequestHandler):
             energy = _get_energy_data()
             self._json_response(energy)
 
+        elif self.path.startswith("/collectd"):
+            # Per-host or all collectd summaries
+            if "?" in self.path:
+                params = dict(p.split("=", 1) for p in self.path.split("?", 1)[1].split("&") if "=" in p)
+                hostname = params.get("host")
+                if hostname:
+                    summary = get_host_summary(hostname)
+                    self._json_response(summary or {"error": f"No data for {hostname}"})
+                    return
+            self._json_response(get_all_summaries())
+
+        elif self.path == "/observation":
+            status = engine.get_status()
+            self._json_response({
+                "observation": engine.adult_observation(status),
+                "status": status,
+            })
+
+        elif self.path.startswith("/herald"):
+            params = {}
+            if "?" in self.path:
+                params = dict(p.split("=", 1) for p in self.path.split("?", 1)[1].split("&") if "=" in p)
+            action = params.get("action", "status")
+            if action == "status":
+                self._json_response(_herald_status())
+            elif action == "start":
+                interval = int(params.get("interval", 90))
+                pid = _herald_start(interval)
+                self._json_response({"ok": True, "pid": pid, "interval": interval})
+            elif action == "stop":
+                _herald_stop()
+                self._json_response({"ok": True, "stopped": True})
+            elif action == "once":
+                self._json_response(_herald_once())
+            else:
+                self._json_response({"error": f"Unknown action: {action}"}, 400)
+
         elif self.path == "/player":
             self._json_response(realm_db.get_player_stats())
 
@@ -489,6 +547,9 @@ class RealmHandler(SimpleHTTPRequestHandler):
             finally:
                 _sse_broker.remove_client(client_q)
             return
+
+        elif self.path == "/ping":
+            self._json_response({"t": time.time()})
 
         elif self.path == "/debug":
             c = realm_db._conn()
@@ -934,16 +995,6 @@ window.location.href = '/';
             except (json.JSONDecodeError, KeyError) as e:
                 self._json_response({"error": str(e)}, 400)
 
-        elif self.path == "/mcp/invoke":
-            try:
-                req = json.loads(body)
-                tool = req.get("tool", "")
-                args = req.get("arguments", {})
-                result = _mcp_dispatch(tool, args)
-                self._json_response(result)
-            except Exception as e:
-                self._json_response({"error": str(e)}, 500)
-
         else:
             self.send_error(404)
 
@@ -979,6 +1030,7 @@ if __name__ == "__main__":
     node_roles.migrate_to_db()
     print(f"collectd RRD: /var/lib/collectd/rrd/")
     ap_scanner._event_callback = push_event
+    ap_scanner._topo_callback = lambda: _sse_broker.send_event("topology", realm_db.get_topology())
     ap_scanner.start_background_scanner()
     ha_bridge.start_ha_bridge()
     wled_bridge.start_wled_bridge()

@@ -4,6 +4,7 @@ import { WORLD_W, WORLD_H, WORLD_SCALE, _isMobile, _cpuCores, _perfTier, setPerf
 import { scaleLabel, scaleColor, fmtBytes, fmtRate, scalePct } from './utils.js';
 import { tips, _topology, infraNodes, isTS, CONN_TYPE_TO_CLASS, _tsHostMap, _vlanLabels, _connPaths, _nodeDOM, getNodeDOM, getNodeCenter, updateLinePositions, _getNodePos, _computePathD, refreshTopology, setTopologyRefreshHook, isClusterExpandable, toggleClusterExpand } from './topology.js';
 import { saveFormation, unsealPanel, registerPanel } from './panel-manager.js';
+import { initScanner } from './scan.js';
 
 // ── Dynamic Biome Terrain (generated from topology VLANs/zones) ──
 let _biomeLandScale = 1.0, _biomeGlow = 1.0, _biomeRoads = 0.5, _biomePeaks = 0.5, _biomeGrid = 0.03;
@@ -404,7 +405,7 @@ const _vlanIfaceMap = {
   '11': 'br-lan.11', '12': 'br-lan.12', '20': 'br-lan.20', '38': 'br-lan.38',
 };
 let _fwData = null;
-let _fwFetchTimer = null;
+
 
 function _fetchFirewall() {
   fetch('/firewall').then(r => r.json()).then(d => {
@@ -533,8 +534,7 @@ function _renderFirewallPanel() {
   }
 }
 
-// Fetch firewall data on load and every 60s
-setTimeout(() => { _fetchFirewall(); _fwFetchTimer = setInterval(_fetchFirewall, 60000); }, 3000);
+// Firewall data pushed via SSE 'firewall' event — initial burst on connect.
 
 // ── WiFi / Aether Towers Panel ──
 const _VLAN_NAMES = { 6: 'Admin', 8: 'Family', 10: 'IoT', 11: 'Guest' };
@@ -596,8 +596,7 @@ function _renderWifiPanel(data) {
   });
 }
 
-// Fetch on load and every 2 minutes
-setTimeout(() => { _fetchWifiAPs(); setInterval(_fetchWifiAPs, 120000); }, 4000);
+// WiFi AP data pushed via SSE 'wifi' event — initial burst on connect.
 
 function updateCoreSublabels(d) {
   const { forge, mana, essence, astral } = d;
@@ -641,9 +640,27 @@ function updateCoreSublabels(d) {
   if (oN.pulse) oN.pulse.style.display = astral.nodes.oracle ? '' : 'none';
 }
 
+// Pre-built lowercase → original key map for O(1) status lookups
+let _statusKeyMap = null;
+let _statusKeyMapSrc = null;  // identity ref to avoid rebuilding on same object
+
+function _buildStatusKeyMap(nodeStatus) {
+  if (_statusKeyMapSrc === nodeStatus) return _statusKeyMap;
+  const m = new Map();
+  for (const k of Object.keys(nodeStatus)) {
+    const lo = k.toLowerCase();
+    m.set(lo, k);
+    m.set(lo.replace(/-/g, ''), k);  // also index dash-stripped variant
+  }
+  _statusKeyMap = m;
+  _statusKeyMapSrc = nodeStatus;
+  return m;
+}
+
 function findStatusKey(nodeStatus, tipKey) {
-  return Object.keys(nodeStatus).find(k => k.toLowerCase() === tipKey.toLowerCase())
-    || Object.keys(nodeStatus).find(k => k.replace(/-/g, '').toLowerCase() === tipKey.replace(/-/g, '').toLowerCase());
+  const m = _buildStatusKeyMap(nodeStatus);
+  const lo = tipKey.toLowerCase();
+  return m.get(lo) || m.get(lo.replace(/-/g, ''));
 }
 
 function findCollectd(collectd, tipKey, statusKey) {
@@ -905,13 +922,12 @@ let _nodeScaleRaf = false;
 nodeScaleSlider.addEventListener('input', () => {
   nodeScale = parseFloat(nodeScaleSlider.value) * masterScale;
   nodeScaleVal.textContent = nodeScale.toFixed(1) + 'x';
+  // Single CSS variable write instead of 87 per-element transforms
+  document.documentElement.style.setProperty('--node-scale', nodeScale);
   if (!_nodeScaleRaf) {
     _nodeScaleRaf = true;
     requestAnimationFrame(() => {
       _nodeScaleRaf = false;
-      document.querySelectorAll('.realm-node').forEach(node => {
-        node.style.transform = `scale(${nodeScale})`;
-      });
       updateLinePositions();
     });
   }
@@ -926,20 +942,13 @@ let _textScaleRaf = false;
 textScaleSlider.addEventListener('input', () => {
   textScale = parseFloat(textScaleSlider.value) * masterScale;
   textScaleVal.textContent = textScale.toFixed(1) + 'x';
+  // Single CSS variable write — labels, sublabels, vlan-labels all use var(--text-scale)
+  document.documentElement.style.setProperty('--text-scale', textScale);
+  // Region labels still need inline (per-element rotate + scale), but only ~9 elements
   if (!_textScaleRaf) {
     _textScaleRaf = true;
     requestAnimationFrame(() => {
       _textScaleRaf = false;
-      document.documentElement.style.setProperty('--text-scale', textScale);
-      document.querySelectorAll('.node-label').forEach(el => {
-        el.style.transform = `scale(${textScale})`;
-      });
-      document.querySelectorAll('.node-sublabel').forEach(el => {
-        el.style.transform = `scale(${textScale})`;
-      });
-      document.querySelectorAll('.vlan-label').forEach(el => {
-        el.style.transform = `translate(-50%, -100%) scale(${textScale})`;
-      });
       document.querySelectorAll('.region-label').forEach(el => {
         el.style.transform = `rotate(${el.dataset.rotate || 0}deg) scale(${textScale})`;
       });
@@ -950,14 +959,23 @@ textScaleSlider.addEventListener('input', () => {
 
 // ── Bubble scale slider ──
 let bubbleScale = 1.0;
+let _bubbleFixedSize = true;  // Default on: bubbles don't scale with zoom
 const bubbleScaleSlider = document.getElementById('bubble-scale-slider');
 const bubbleScaleVal = document.getElementById('bubble-scale-val');
 bubbleScaleSlider.addEventListener('input', () => {
   bubbleScale = parseFloat(bubbleScaleSlider.value) * masterScale;
   bubbleScaleVal.textContent = bubbleScale.toFixed(1) + 'x';
   document.documentElement.style.setProperty('--bubble-scale', bubbleScale);
+  _updateBubbleTotalScale();
   scheduleSave();
 });
+
+// Compute bubble total scale: base scale * zoom compensation
+// Clamp compensation so bubbles don't explode below zoom 0.3
+function _updateBubbleTotalScale() {
+  const compensate = _bubbleFixedSize ? (1 / Math.max(scale, 0.3)) : 1;
+  document.documentElement.style.setProperty('--bubble-total-scale', bubbleScale * compensate);
+}
 
 // ── Update speed slider ──
 // TODO: Repurpose slider — SSE replaced polling, so this no longer controls refresh rate.
@@ -1104,7 +1122,7 @@ export function updateConnectionTraffic(collectd) {
     if (!icon) continue;
     const traffic = getNodeTraffic(collectd, tipKey);
     if (!traffic || traffic.total === 0) {
-      if (n._lastTrafficScale) { icon.style.transform = ''; icon.style.filter = ''; n._lastTrafficScale = 0; }
+      if (n._lastTrafficScale) { icon.style.transform = ''; n._lastTrafficScale = 0; }
       continue;
     }
     const rawI = Math.max(0, Math.min(1, (Math.log10(traffic.total + 1) - 3) / 4));
@@ -1113,7 +1131,6 @@ export function updateConnectionTraffic(collectd) {
     // Skip DOM write if value unchanged (within 0.01)
     if (Math.abs(s - (n._lastTrafficScale || 1)) > 0.01) {
       icon.style.transform = `scale(${s.toFixed(2)})`;
-      icon.style.filter = intensity > 0.3 ? `brightness(${(1 + intensity * 0.4).toFixed(2)})` : '';
       n._lastTrafficScale = s;
     }
   }
@@ -1222,14 +1239,13 @@ export function updateConnectionTrafficSSE(trafficMap) {
     if (!icon) continue;
     const t = trafficMap[tipKey];
     if (!t || t.total === 0) {
-      if (n._lastTrafficScale) { icon.style.transform = ''; icon.style.filter = ''; n._lastTrafficScale = 0; }
+      if (n._lastTrafficScale) { icon.style.transform = ''; n._lastTrafficScale = 0; }
       continue;
     }
     const intensity = Math.min(1, t.intensity * trafficScale);
     const s = 1 + intensity * 0.5;
     if (Math.abs(s - (n._lastTrafficScale || 1)) > 0.01) {
       icon.style.transform = `scale(${s.toFixed(2)})`;
-      icon.style.filter = intensity > 0.3 ? `brightness(${(1 + intensity * 0.4).toFixed(2)})` : '';
       n._lastTrafficScale = s;
     }
   }
@@ -1701,7 +1717,7 @@ function renderEvent(evt, isRestore = false) {
   addLogEntry(evt, nodeEl);
 
   // Skip bubble for dismissed events
-  if (evt.text && _dismissedQuests.includes(evt.text)) return;
+  if (evt.text && _dismissedQuests.has(evt.text)) return;
 
   // For restored events, only show bubble (no highlight flash)
   // For live events, show both bubble and highlight
@@ -1878,18 +1894,20 @@ if (_syncBtn) {
   });
 }
 
+// Set-based quest dedup — avoids O(n) DOM iteration per addLogEntry call
+const _questTexts = new Set();
+
 export function addLogEntry(evt, nodeEl) {
   if (!_logBody) return;
   const body = _logBody, counter = _logCounter;
 
   // Skip dismissed entries
-  if (evt.text && _dismissedQuests.includes(evt.text)) return;
+  if (evt.text && _dismissedQuests.has(evt.text)) return;
 
-  // Prevent duplicate quest entries
+  // Prevent duplicate quest entries via Set lookup (O(1) vs DOM scan)
   if (evt.type === 'quest' && evt.text) {
-    for (const existing of body.children) {
-      if (existing.classList.contains('log-quest') && existing.querySelector('.log-text')?.textContent?.includes(evt.text)) return;
-    }
+    if (_questTexts.has(evt.text)) return;
+    _questTexts.add(evt.text);
   }
 
   const name = nodeEl ? (nodeEl.querySelector('.node-label')?.textContent || evt.node) : (evt.node || 'System');
@@ -1942,8 +1960,8 @@ export function addLogEntry(evt, nodeEl) {
         }
       }
       // Persist dismissal
-      if (!_dismissedQuests.includes(evt.text)) {
-        _dismissedQuests.push(evt.text);
+      if (!_dismissedQuests.has(evt.text)) {
+        _dismissedQuests.add(evt.text);
         _saveDismissed();
       }
       // Delete quest from DB
@@ -1953,6 +1971,7 @@ export function addLogEntry(evt, nodeEl) {
     }
     entry.addEventListener('animationend', () => {
       entry.remove();
+      if (evt.type === 'quest' && evt.text) _questTexts.delete(evt.text);
       logCount = Math.max(0, logCount - 1);
       _logCounter.textContent = `${logCount} entries`;
     });
@@ -1962,7 +1981,7 @@ export function addLogEntry(evt, nodeEl) {
   const check = entry.querySelector('.quest-check');
   if (check) {
     // Restore completed state
-    if (evt.text && _completedQuests.includes(evt.text)) {
+    if (evt.text && _completedQuests.has(evt.text)) {
       check.innerHTML = '\u2611';
       entry.classList.add('quest-done');
     }
@@ -1971,9 +1990,8 @@ export function addLogEntry(evt, nodeEl) {
       check.innerHTML = done ? (isNotion ? '&#127744;' : '\u2610') : '\u2611';
       entry.classList.toggle('quest-done', !done);
       if (evt.text) {
-        const idx = _completedQuests.indexOf(evt.text);
-        if (!done && idx === -1) _completedQuests.push(evt.text);
-        else if (done && idx !== -1) _completedQuests.splice(idx, 1);
+        if (!done) _completedQuests.add(evt.text);
+        else _completedQuests.delete(evt.text);
         _saveCompleted();
       }
       // Sync completion to Notion
@@ -2029,11 +2047,11 @@ export function addLogEntry(evt, nodeEl) {
   counter.textContent = `${Math.min(logCount, MAX_LOG)} entries`;
 }
 
-// Persist dismissed/completed quests across refreshes
-const _dismissedQuests = JSON.parse(localStorage.getItem('realm-dismissed-quests') || '[]');
-const _completedQuests = JSON.parse(localStorage.getItem('realm-completed-quests') || '[]');
-function _saveDismissed() { localStorage.setItem('realm-dismissed-quests', JSON.stringify(_dismissedQuests)); }
-function _saveCompleted() { localStorage.setItem('realm-completed-quests', JSON.stringify(_completedQuests)); }
+// Persist dismissed/completed quests across refreshes (Sets for O(1) lookup)
+const _dismissedQuests = new Set(JSON.parse(localStorage.getItem('realm-dismissed-quests') || '[]'));
+const _completedQuests = new Set(JSON.parse(localStorage.getItem('realm-completed-quests') || '[]'));
+function _saveDismissed() { localStorage.setItem('realm-dismissed-quests', JSON.stringify([..._dismissedQuests])); }
+function _saveCompleted() { localStorage.setItem('realm-completed-quests', JSON.stringify([..._completedQuests])); }
 
 // ── Player Reward System ──
 const _rewardedEvents = new Set();
@@ -2382,7 +2400,7 @@ function _loadQuestLog() {
   _refreshQuestCards();
   // 2) Recent events for the flat log (All/Speech/Reports tabs)
   fetch('/events?limit=50').then(r => r.json()).then(events => {
-    events.filter(e => e.text && !_dismissedQuests.includes(e.text)).forEach((e, i) => {
+    events.filter(e => e.text && !_dismissedQuests.has(e.text)).forEach((e, i) => {
       setTimeout(() => addLogEntry(e), i * 50);
     });
   }).catch(() => {});
@@ -2681,21 +2699,48 @@ function _enterZoomMode() {
     _zoomActive = true;
     if (_ghostDirty) _renderGhostLines();
     world.classList.add('zooming');
-    // Delay will-change by one frame so display:none takes effect first
-    _zoomWillChangeRaf = requestAnimationFrame(() => {
-      _zoomWillChangeRaf = 0;
-      if (_zoomActive) world.style.willChange = 'transform';
-    });
+    // Clear mote canvas so stale particles don't persist while loop is paused
+    moteCtx.clearRect(0, 0, moteCanvas.width, moteCanvas.height);
+    // On medium/high, promote to GPU layer after decorative layers are gone.
+    // On low tier or when disabled, skip — the 4800x3300 texture exceeds weak GPU VRAM.
+    if (_gpuZoomEnabled && _perfTier !== 'low') {
+      _zoomWillChangeRaf = requestAnimationFrame(() => {
+        _zoomWillChangeRaf = 0;
+        if (_zoomActive) world.style.willChange = 'transform';
+      });
+    }
   }
   clearTimeout(_zoomIdleTimer);
   _zoomIdleTimer = setTimeout(_exitZoomMode, 400);
 }
+// Deferred SSE updates — queued during zoom, flushed on exit
+let _deferredStatus = null;
+let _deferredTraffic = false;
+let _deferredEnergy = null;
+let _deferredLatency = false;
+
 function _exitZoomMode() {
   _zoomActive = false;
   if (_zoomWillChangeRaf) { cancelAnimationFrame(_zoomWillChangeRaf); _zoomWillChangeRaf = 0; }
   world.style.willChange = '';
   world.classList.remove('zooming');
   _updateSparkleRect();
+  _ensureMoteLoop();  // Restart mote animation (was fully stopped during zoom)
+  // Flush deferred SSE updates in a single frame
+  requestAnimationFrame(_flushDeferredUpdates);
+}
+
+function _flushDeferredUpdates() {
+  if (_deferredStatus) { updateUI(_deferredStatus); _deferredStatus = null; }
+  if (_deferredTraffic && _sseTrafficMap) {
+    updateConnectionTrafficSSE(_sseTrafficMap);
+    const fakeCollectd = _trafficToCollectd(_sseTrafficMap);
+    _lastTopoCollectd = fakeCollectd;
+    if (_topoEnabled) renderTopoLayer(fakeCollectd);
+    _deferredTraffic = false;
+  }
+  if (_deferredEnergy) { updateEnergyPanel(_deferredEnergy); _deferredEnergy = null; }
+  if (_deferredLatency) { updateLatencyPanel(); _deferredLatency = false; }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2927,6 +2972,8 @@ function _applyTransformNow() {
     // During zoom, will-change: transform caches the raster so GPU just scales the bitmap.
     world.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
   }
+  // Update bubble zoom compensation (O(1) CSS var write)
+  if (_bubbleFixedSize) _updateBubbleTotalScale();
 }
 
 export function applyTransform() {
@@ -4410,7 +4457,50 @@ document.querySelector('.legend-section[data-section="effects"]')?.classList.add
     });
   }
   _applyPerfClasses();
+
+  // Auto-detect tier toggle
+  const adCb = document.getElementById('perf-auto-detect');
+  if (adCb) {
+    adCb.addEventListener('change', () => {
+      _autoDetectEnabled = adCb.checked;
+      saveSettings();
+    });
+  }
+
+  // GPU zoom boost toggle
+  const gzCb = document.getElementById('perf-gpu-zoom');
+  if (gzCb) {
+    gzCb.addEventListener('change', () => {
+      _gpuZoomEnabled = gzCb.checked;
+      saveSettings();
+    });
+  }
+
+  // Fixed bubble size toggle
+  const bfCb = document.getElementById('bubble-fixed-size');
+  if (bfCb) {
+    bfCb.checked = _bubbleFixedSize;
+    bfCb.addEventListener('change', () => {
+      _bubbleFixedSize = bfCb.checked;
+      document.getElementById('map-world').classList.toggle('bubble-fixed', _bubbleFixedSize);
+      _updateBubbleTotalScale();
+      saveSettings();
+    });
+  }
+  // Apply initial state
+  document.getElementById('map-world').classList.toggle('bubble-fixed', _bubbleFixedSize);
+  _updateBubbleTotalScale();
 })();
+
+let _autoDetectEnabled = true;
+let _gpuZoomEnabled = true;
+
+function _syncQualityUI() {
+  const qSel = document.getElementById('fx-quality-select');
+  const qVal = document.getElementById('fx-quality-val');
+  if (qSel) qSel.value = _perfTier;
+  if (qVal) qVal.textContent = _perfTier;
+}
 
 function _applyPerfClasses() {
   const b = document.body;
@@ -4586,7 +4676,7 @@ function _indexPanelControls() {
       id: `_ctrl:tool-${toolName}`,
       icon: '&#128220;', label: toolName, sub: `${group} \u203A ${desc}`.substring(0, 60), ip: '', type: 'Tool',
       _el: code.closest('.codex-tool'),
-      _text: [toolName, desc, group, 'tool', 'codex', 'mcp'].join(' ').toLowerCase(),
+      _text: [toolName, desc, group, 'tool', 'codex'].join(' ').toLowerCase(),
     });
   });
 
@@ -4754,6 +4844,7 @@ function _restorePanel(panelEl) {
     'debug-panel': 'vis-debug', 'latency-panel': 'vis-latency',
     'firewall-panel': 'vis-firewall',
     'wifi-panel': 'vis-wifi',
+    'scanner-panel': 'vis-scanner',
   };
   const visId = visMap[id] || ('vis-' + id);
   const visCb = document.getElementById(visId);
@@ -5013,9 +5104,7 @@ export function updateNodeListStatus(d) {
     const id = item.dataset.nodeId;
     const dot = item.querySelector('.nl-status');
     if (!dot) return;
-    // Match status key (same logic as updateUI)
-    const statusKey = Object.keys(nodeStatus).find(k => k.toLowerCase() === id.toLowerCase())
-      || Object.keys(nodeStatus).find(k => k.replace(/-/g, '').toLowerCase() === id.replace(/-/g, '').toLowerCase());
+    const statusKey = findStatusKey(nodeStatus, id);
     const online = statusKey ? nodeStatus[statusKey] : null;
     dot.className = 'nl-status ' + (online === true ? 'online' : online === false ? 'offline' : 'unknown');
   });
@@ -5055,15 +5144,11 @@ function updateCensusSubLabels(d) {
   }
 }
 
-// Rebuild census when topology refreshes
-let _lastCensusCount = _topology?.nodes?.length || 0;
-setInterval(() => {
-  const n = _topology?.nodes?.length || 0;
-  if (n !== _lastCensusCount) {
-    _lastCensusCount = n;
-    buildNodeList();
-  }
-}, 10000);
+// Census rebuild triggered by SSE topology event (see initSSE below)
+export function rebuildCensusIfNeeded() {
+  buildNodeList();
+  _censusSubCache = null;  // Invalidate cache — nodes may have changed
+}
 
 // ── Energy Panel ──
 function updateEnergyPanel(data) {
@@ -5377,6 +5462,7 @@ document.getElementById('layout-reset-btn')?.addEventListener('click', resetToOr
     ['vis-latency',      '#latency-panel'],
     ['vis-firewall',     '#firewall-panel'],
     ['vis-wifi',         '#wifi-panel'],
+    ['vis-scanner',      '#scanner-panel'],
     // Decorations
     ['vis-map-vines',    '#enchanted-vines'],
   ];
@@ -5574,6 +5660,7 @@ document.getElementById('layout-reset-btn')?.addEventListener('click', resetToOr
     ['panel-latency-slider',      '#latency-panel',     false],
     ['panel-firewall-slider',     '#firewall-panel',    false],
     ['panel-wifi-slider',        '#wifi-panel',        false],
+    ['panel-scanner-slider',     '#scanner-panel',     false],
   ];
   for (const [sliderId, sel, isMulti, multiSel] of opacityLayers) {
     const sl = document.getElementById(sliderId);
@@ -5603,18 +5690,119 @@ let motes = [];
 
 // FPS counter (toggle with Ctrl+Shift+F)
 const _fpsEl = document.createElement('div');
-_fpsEl.style.cssText = 'position:fixed;top:4px;right:4px;z-index:9999;font:11px monospace;color:#0f0;background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:3px;pointer-events:none;display:none';
+_fpsEl.style.cssText = 'position:fixed;top:4px;right:4px;z-index:9999;font:11px monospace;color:#0f0;background:rgba(0,0,0,0.7);padding:3px 8px;border-radius:3px;pointer-events:none;display:none;line-height:1.5;min-width:200px';
 document.body.appendChild(_fpsEl);
 let _fpsFrames = 0, _fpsLast = performance.now(), _fpsMotes = 0;
+let _fpsFrameTimes = [];  // last 60 frame timestamps for jitter/percentile
+let _fpsLongFrames = 0;   // frames >20ms (jank)
+let _fpsMinFps = 999, _fpsMaxFt = 0;  // worst fps / worst frame time in window
+
+// ── Client RTT ping (measures browser → map_server roundtrip) ──
+let _pingRtt = null;        // latest RTT in ms
+let _pingHistory = [];      // sliding window of recent RTTs
+const _PING_WINDOW = 12;    // keep last 12 measurements (60s at 5s interval)
+let _pingJitter = null;     // stddev of recent RTTs
+
+function _doPing() {
+  const t0 = performance.now();
+  fetch('/ping').then(() => {
+    const rtt = performance.now() - t0;
+    _pingRtt = rtt;
+    _pingHistory.push(rtt);
+    if (_pingHistory.length > _PING_WINDOW) _pingHistory.shift();
+    // Compute jitter as standard deviation
+    if (_pingHistory.length >= 2) {
+      const mean = _pingHistory.reduce((a, b) => a + b, 0) / _pingHistory.length;
+      const variance = _pingHistory.reduce((a, v) => a + (v - mean) ** 2, 0) / _pingHistory.length;
+      _pingJitter = Math.sqrt(variance);
+    }
+  }).catch(() => { _pingRtt = null; });
+}
+_doPing();
+setInterval(_doPing, 5000);
+
 function _fpsUpdate() {
-  _fpsFrames++;
   const now = performance.now();
+  _fpsFrames++;
+
+  // Track per-frame timing for jitter stats
+  _fpsFrameTimes.push(now);
+  if (_fpsFrameTimes.length > 1) {
+    const dt = now - _fpsFrameTimes[_fpsFrameTimes.length - 2];
+    if (dt > 20) _fpsLongFrames++;
+    if (dt > _fpsMaxFt) _fpsMaxFt = dt;
+  }
+  if (_fpsFrameTimes.length > 120) _fpsFrameTimes.splice(0, _fpsFrameTimes.length - 120);
+
   if (now - _fpsLast >= 1000) {
-    _fpsEl.textContent = `${_fpsFrames} fps | ${_fpsMotes} motes`;
+    const fps = _fpsFrames;
+    if (fps < _fpsMinFps) _fpsMinFps = fps;
+
+    // Compute 1% low (worst 1% of frame intervals)
+    const intervals = [];
+    for (let i = 1; i < _fpsFrameTimes.length; i++) {
+      intervals.push(_fpsFrameTimes[i] - _fpsFrameTimes[i - 1]);
+    }
+    intervals.sort((a, b) => b - a);
+    const p1 = intervals.length > 0 ? intervals[Math.floor(intervals.length * 0.01)] : 0;
+    const fps1Low = p1 > 0 ? Math.round(1000 / p1) : fps;
+
+    const anims = document.getAnimations().length;
+    const mem = performance.memory ? `${(performance.memory.usedJSHeapSize / 1048576).toFixed(0)}MB` : '--';
+    const domNodes = document.querySelectorAll('*').length;
+
+    // Color code FPS
+    const color = fps >= 55 ? '#0f0' : fps >= 30 ? '#ff0' : '#f44';
+
+    // Latency line: client RTT + host (gatekeeper fping) + jitter
+    const cRtt = _pingRtt != null ? _pingRtt.toFixed(1) + 'ms' : '--';
+    const hRtt = _latencyFlat && _latencyFlat['gatekeeper'] != null ? _latencyFlat['gatekeeper'].toFixed(1) + 'ms' : '--';
+    const jit = _pingJitter != null ? _pingJitter.toFixed(1) + 'ms' : '--';
+    const rttColor = _pingRtt != null ? (_pingRtt < 10 ? '#0f0' : _pingRtt < 50 ? '#ff0' : '#f44') : '#888';
+
+    _fpsEl.innerHTML =
+      `<span style="color:${color};font-weight:bold">${fps}</span> fps` +
+      ` <span style="color:#888">1%low:</span>${fps1Low}` +
+      ` <span style="color:#888">min:</span>${_fpsMinFps}` +
+      `<br>${_fpsMotes} motes | ${anims} anims` +
+      `<br><span style="color:#888">jank:</span>${_fpsLongFrames} <span style="color:#888">worst:</span>${_fpsMaxFt.toFixed(1)}ms` +
+      `<br><span style="color:#888">rtt:</span><span style="color:${rttColor}">${cRtt}</span>` +
+      ` <span style="color:#888">host:</span>${hRtt}` +
+      ` <span style="color:#888">jitter:</span>${jit}` +
+      `<br><span style="color:#888">DOM:</span>${domNodes} <span style="color:#888">mem:</span>${mem}` +
+      `<br><span style="color:#888">tier:</span>${_perfTier}` +
+      (_zoomActive ? ' <span style="color:#f80">ZOOM</span>' : '');
+
+    // Auto-detect weak hardware: 3 consecutive seconds below 25fps → downgrade to 'low'
+    if (_autoDetectEnabled && _perfTier !== 'low' && _autoDetectSamples < 10) {
+      _autoDetectSamples++;
+      if (_autoDetectSamples > 2) {  // skip first 2s (SSE init, layout settle)
+        if (fps < 25) _autoDetectLow++;
+        else _autoDetectLow = 0;  // must be consecutive
+        if (_autoDetectLow >= 3) {
+          console.log('[perf] Auto-downgrade to low tier (avg idle fps < 25)');
+          setPerfTier('low');
+          _applyPerfClasses();
+          _syncQualityUI();
+        }
+      }
+    }
+
     _fpsFrames = 0;
     _fpsLast = now;
+    _fpsLongFrames = 0;
+    _fpsMaxFt = 0;
   }
 }
+let _autoDetectSamples = 0;
+let _autoDetectLow = 0;
+
+// Reset min FPS on click (useful after settling)
+_fpsEl.addEventListener('click', () => { _fpsMinFps = 999; });
+_fpsEl.style.pointerEvents = 'auto';
+_fpsEl.style.cursor = 'pointer';
+_fpsEl.title = 'Click to reset min FPS';
+
 window.addEventListener('keydown', e => {
   if (e.ctrlKey && e.shiftKey && e.key === 'F') {
     _fpsEl.style.display = _fpsEl.style.display === 'none' ? '' : 'none';
@@ -5738,6 +5926,7 @@ document.addEventListener('visibilitychange', () => {
   _motePaused = document.hidden;
   // Disable connection animations when tab hidden (79 SVG repaints per frame)
   document.body.classList.toggle('reduce-motion', document.hidden);
+  if (!document.hidden) _ensureMoteLoop();
 });
 
 // Cache sparkle rect on resize instead of in animation loop
@@ -5748,12 +5937,20 @@ function _updateSparkleRect() {
 window.addEventListener('resize', _updateSparkleRect);
 _updateSparkleRect();
 
-function animateMotes() {
-  // Skip entirely when tab hidden
-  if (_motePaused) { requestAnimationFrame(animateMotes); return; }
+// Separate FPS tracking loop — runs always (even during zoom/hidden) so diagnostics don't stop
+function _fpsLoop() {
+  _fpsUpdate();
+  requestAnimationFrame(_fpsLoop);
+}
+requestAnimationFrame(_fpsLoop);
 
-  // Skip during active zoom
-  if (_zoomActive) { requestAnimationFrame(animateMotes); return; }
+let _moteLoopRunning = false;
+function _ensureMoteLoop() {
+  if (!_moteLoopRunning) { _moteLoopRunning = true; requestAnimationFrame(animateMotes); }
+}
+function animateMotes() {
+  // Stop loop entirely when tab hidden or zooming — restart via _ensureMoteLoop
+  if (_motePaused || _zoomActive) { _moteLoopRunning = false; return; }
 
   // 30fps cap — skip entire frame (spawn + physics + render) every other tick.
   // Must be before ALL work to actually halve CPU/GPU cost.
@@ -5770,7 +5967,6 @@ function animateMotes() {
   if (_sparkleTimer % (6 * spawnDiv) === 0) _spawnLeyLineSparkles();
 
   if (motes.length === 0) {
-    _fpsUpdate();
     requestAnimationFrame(animateMotes);
     return;
   }
@@ -5846,10 +6042,9 @@ function animateMotes() {
   }
 
   _fpsMotes = writeIdx;
-  _fpsUpdate();
   requestAnimationFrame(animateMotes);
 }
-animateMotes();
+_ensureMoteLoop();
 
 // ── Layout persistence (localStorage) ──
 // ── SSE Connection (replaces poll + pollEvents + refreshTopology + fetchEnergy) ──
@@ -5863,13 +6058,23 @@ let _wifiMap = null;
   const sse = new EventSource(SSE_URL);
   let _sseRestoreMode = true;
 
+  // ── Stream attunement tracker (lights up loading screen indicators) ──
+  function _attuneStream(name) {
+    const el = document.querySelector(`.rl-stream[data-stream="${name}"]`);
+    if (el && !el.classList.contains('attuned')) el.classList.add('attuned');
+  }
+
   let _trafficRafPending = false;
   sse.addEventListener('traffic', e => {
+    _attuneStream('traffic');
     _sseTrafficMap = JSON.parse(e.data);
+    // Defer DOM-heavy traffic updates during zoom — flush on exit
+    if (_zoomActive) { _deferredTraffic = true; return; }
     if (!_trafficRafPending) {
       _trafficRafPending = true;
       requestAnimationFrame(() => {
         _trafficRafPending = false;
+        if (_zoomActive) { _deferredTraffic = true; return; }
         updateConnectionTrafficSSE(_sseTrafficMap);
         const fakeCollectd = _trafficToCollectd(_sseTrafficMap);
         _lastTopoCollectd = fakeCollectd;
@@ -5879,18 +6084,24 @@ let _wifiMap = null;
   });
 
   sse.addEventListener('realm-event', e => {
+    _attuneStream('events');
     const evt = JSON.parse(e.data);
     renderEvent(evt, _sseRestoreMode);
   });
 
   sse.addEventListener('topology', e => {
-    // Topology changes are rare. Re-use existing refreshTopology() which has DOM-preservation logic.
+    _attuneStream('topology');
     refreshTopology();
+    rebuildCensusIfNeeded();
   });
 
   sse.addEventListener('status', e => {
+    _attuneStream('status');
     const d = JSON.parse(e.data);
     _sseRestoreMode = false;
+    // Defer all DOM updates during zoom — just stash the latest data
+    // (but never defer the first-connect that dismisses the loading screen)
+    if (_zoomActive && liveOk) { _deferredStatus = d; if (d.wifi) _wifiMap = d.wifi; return; }
     updateUI(d);
     if (d.wifi) _wifiMap = d.wifi;
     if (!liveOk) {
@@ -5910,11 +6121,14 @@ let _wifiMap = null;
   });
 
   sse.addEventListener('energy', e => {
+    _attuneStream('energy');
     const data = JSON.parse(e.data);
+    if (_zoomActive) { _deferredEnergy = data; return; }
     updateEnergyPanel(data);
   });
 
   sse.addEventListener('latency', e => {
+    _attuneStream('latency');
     _latencyMap = JSON.parse(e.data);
     // Extract flat map for layout worker (Cartographer modes)
     if (_latencyMap.groups) {
@@ -5924,7 +6138,19 @@ let _wifiMap = null;
     } else {
       _latencyFlat = _latencyMap;
     }
+    if (_zoomActive) { _deferredLatency = true; return; }
     updateLatencyPanel();
+  });
+
+  sse.addEventListener('firewall', e => {
+    _attuneStream('firewall');
+    const d = JSON.parse(e.data);
+    if (!d.error) { _fwData = d; _renderFirewallPanel(); }
+  });
+
+  sse.addEventListener('wifi', e => {
+    const data = JSON.parse(e.data);
+    if (data && Object.keys(data).length) _renderWifiPanel(data);
   });
 
   sse.addEventListener('open', () => {
@@ -5949,7 +6175,7 @@ const SETTINGS_KEY = 'realm-map-settings-v3';
 
 // ── Panel Layout Modes (module-scope for persistence access) ──
 const _PANEL_IDS = ['realm-panel','legend','spellbook','quest-log','realm-codex','node-list',
-  'energy-panel','latency-panel','firewall-panel','wifi-panel','cartographer','debug-panel'];
+  'energy-panel','latency-panel','firewall-panel','wifi-panel','cartographer','debug-panel','scanner-panel'];
 const _MODE_DESCS = {
   manual: 'Panels stay where you place them.',
   auto: 'Panels auto-size and tile to fill the viewport beautifully.',
@@ -6191,7 +6417,7 @@ const _PERSIST_SLIDERS = [
   'layer-regions', 'layer-nodes', 'layer-labels', 'layer-sublabels',
   'layer-vlanlabels', 'layer-bubbles',
   'panel-titlebar', 'panel-search', 'panel-vitals', 'panel-legend',
-  'panel-codex', 'panel-spellbook', 'panel-questlog', 'panel-cartographer', 'panel-energy', 'panel-nodelist', 'panel-mirror', 'panel-latency', 'panel-firewall', 'panel-wifi',
+  'panel-codex', 'panel-spellbook', 'panel-questlog', 'panel-cartographer', 'panel-energy', 'panel-nodelist', 'panel-mirror', 'panel-latency', 'panel-firewall', 'panel-wifi', 'panel-scanner',
   'layer-compass', 'layer-sparkles', 'layer-vignette',
   'compass-scale', 'sparkle-density', 'ambient-glow', 'vignette',
   'dock-opacity', 'dock-scale', 'dock-bg', 'layer-parchment',
@@ -6202,10 +6428,12 @@ const _PERSIST_CHECKBOXES = [
   'vis-sublabels', 'vis-regions', 'vis-vlanlabels', 'vis-bubbles',
   'vis-compass', 'vis-sparkles', 'vis-vignette',
   'vis-titlebar', 'vis-search', 'vis-statuspanel', 'vis-legend', 'vis-spellbook',
-  'vis-codex', 'vis-questlog', 'vis-cartographer', 'vis-energy', 'vis-nodelist', 'vis-debug', 'vis-latency', 'vis-firewall', 'vis-wifi',
+  'vis-codex', 'vis-questlog', 'vis-cartographer', 'vis-energy', 'vis-nodelist', 'vis-debug', 'vis-latency', 'vis-firewall', 'vis-wifi', 'vis-scanner',
   'vis-map-vines', 'vis-loading-vines',
   'dock-emoji-icons', 'dock-rune-labels',
   'vis-fps-counter',
+  'perf-auto-detect', 'perf-gpu-zoom',
+  'bubble-fixed-size',
 ];
 
 // Debounce server saves (avoid hammering on every slider move)
@@ -6332,7 +6560,7 @@ export function restoreSettings() {
 export function saveLayout() {
   const layout = { panels: {}, nodes: {} };
   // Save panel positions
-  ['realm-panel','legend','spellbook','quest-log','realm-codex','node-list','debug-panel','cartographer','energy-panel','latency-panel','firewall-panel','wifi-panel'].forEach(id => {
+  ['realm-panel','legend','spellbook','quest-log','realm-codex','node-list','debug-panel','cartographer','energy-panel','latency-panel','firewall-panel','wifi-panel','scanner-panel'].forEach(id => {
     const el = document.getElementById(id);
     if (el && el.style.left) {
       const p = { left: el.style.left, top: el.style.top };
@@ -6570,6 +6798,7 @@ makeDraggable(document.getElementById('node-list'), '#node-list-header', [192,14
 makeDraggable(document.getElementById('latency-panel'), '.panel-header', [100,180,255]);
 makeDraggable(document.getElementById('firewall-panel'), '.panel-header', [220,160,80]);
 makeDraggable(document.getElementById('wifi-panel'), '.panel-header', [100,200,255]);
+makeDraggable(document.getElementById('scanner-panel'), '.panel-header', [220,180,80]);
 
 // Make all panels resizable with magical grip handles
 makeResizable(document.getElementById('realm-panel'), [240,216,144]);
@@ -6583,7 +6812,10 @@ makeResizable(document.getElementById('node-list'), [192,144,96]);
 makeResizable(document.getElementById('latency-panel'), [100,180,255]);
 makeResizable(document.getElementById('firewall-panel'), [220,160,80]);
 makeResizable(document.getElementById('wifi-panel'), [100,200,255]);
+makeResizable(document.getElementById('scanner-panel'), [220,180,80]);
 makeResizable(document.getElementById('debug-panel'), [120,80,200]);
+
+initScanner();
 makeResizable(document.getElementById('persona-editor'), [240,200,100]);
 
 // ── Draggable Map Nodes (mouse + touch) ──
@@ -6931,7 +7163,7 @@ if (_magicalSearchInput) {
   });
 }
 
-// ── Arcane Config (MCP server settings) ──
+// ── Arcane Config (external service settings) ──
 const _cfgFields = {
   'cfg-chat-model': { path: 'chat.deployment', also: 'chat.model' },
   'cfg-reasoning': { path: 'chat.reasoning_effort' },
@@ -7002,6 +7234,29 @@ function _saveArcaneConfig() {
 const _cfgSaveBtn = document.getElementById('cfg-save-btn');
 if (_cfgSaveBtn) _cfgSaveBtn.addEventListener('click', _saveArcaneConfig);
 loadArcaneConfig();
+
+// ── Herald Controls ──
+const _heraldStatus = document.getElementById('herald-status');
+function _heraldAction(action) {
+  const interval = document.getElementById('cfg-herald-interval')?.value || 90;
+  const url = `/herald?action=${action}&interval=${interval}`;
+  if (_heraldStatus) _heraldStatus.textContent = `${action}...`;
+  fetch(url).then(r => r.json()).then(d => {
+    if (_heraldStatus) {
+      if (d.error) _heraldStatus.textContent = d.error;
+      else if (d.pid) _heraldStatus.textContent = `Running (PID ${d.pid}, ${d.interval}s)`;
+      else if (d.stopped) _heraldStatus.textContent = 'Stopped';
+      else if (d.output) _heraldStatus.textContent = 'Round complete';
+      else if (d.running) _heraldStatus.textContent = `Running (PIDs: ${d.pids.join(',')})`;
+      else _heraldStatus.textContent = 'Not running';
+    }
+  }).catch(() => { if (_heraldStatus) _heraldStatus.textContent = 'Error'; });
+}
+document.getElementById('herald-start-btn')?.addEventListener('click', () => _heraldAction('start'));
+document.getElementById('herald-stop-btn')?.addEventListener('click', () => _heraldAction('stop'));
+document.getElementById('herald-once-btn')?.addEventListener('click', () => _heraldAction('once'));
+// Check herald status on load
+_heraldAction('status');
 
 // ── Arcane Mirror (Debug Panel) ──
 const _dbgPanel = document.getElementById('debug-panel');
@@ -7273,6 +7528,9 @@ if (_agPanel) {
     { method:'GET', path:'/codex-sync', desc:'Notion lore database', params:[{name:'force',type:'checkbox',label:'Force refresh'}] },
     { method:'GET', path:'/chat/sessions', desc:'Chat session list', params:[] },
     { method:'GET', path:'/chat/history', desc:'Chat history', params:[{name:'session',type:'text',placeholder:'session name'}] },
+    { method:'GET', path:'/collectd', desc:'All collectd RRD summaries', params:[{name:'host',type:'text',placeholder:'hostname (optional)'}] },
+    { method:'GET', path:'/observation', desc:'Fantasy narration + status', params:[] },
+    { method:'GET', path:'/herald', desc:'Herald daemon control', params:[{name:'action',type:'select',options:['status','start','stop','once']},{name:'interval',type:'text',placeholder:'90'}] },
     { method:'GET', path:'/debug', desc:'DB stats & diagnostics', params:[] },
     { method:'SSE', path:'/sse', desc:'Live event stream', params:[] },
     { method:'POST', path:'/event', desc:'Push map event', params:[{name:'type',type:'select',options:['speech','alert','quest','highlight']},{name:'node',type:'text',placeholder:'node id'},{name:'text',type:'textarea',placeholder:'Event text'}] },
@@ -7284,28 +7542,6 @@ if (_agPanel) {
     { method:'POST', path:'/personas', desc:'Update persona', params:[{name:'node',type:'text',placeholder:'node id'},{name:'name',type:'text',placeholder:'persona name'}] },
     { method:'POST', path:'/scan', desc:'Trigger WiFi scan', params:[] },
     { method:'DELETE', path:'/settings', desc:'Clear UI settings', params:[] },
-  ];
-
-  const _acMcpTools = [
-    { name:'get_system_status', desc:'Raw sensor JSON', params:[], group:'Observation' },
-    { name:'get_energy_status', desc:'HA energy data', params:[], group:'Observation' },
-    { name:'trigger_system_observation', desc:'Fantasy narration', params:[], group:'Observation' },
-    { name:'vocalize_message', desc:'Speak custom text', params:[{name:'text',type:'textarea',placeholder:'Text to speak'}], group:'Observation' },
-    { name:'commune_with_system', desc:'Voice conversation', params:[], group:'Observation' },
-    { name:'map_event', desc:'Push event to map', params:[{name:'type',type:'select',options:['speech','alert','quest','highlight']},{name:'node',type:'text',placeholder:'node id'},{name:'text',type:'textarea',placeholder:'Event text'}], group:'Map Events' },
-    { name:'map_node_chat', desc:'Node speaks via persona', params:[{name:'node',type:'text',placeholder:'node id'},{name:'prompt',type:'textarea',placeholder:'Prompt'}], group:'Map Events' },
-    { name:'get_map_events', desc:'Recent events', params:[{name:'since',type:'text',placeholder:'timestamp'}], group:'Map Events' },
-    { name:'get_node_personas', desc:'List all personas', params:[], group:'Personas' },
-    { name:'configure_persona', desc:'Create/update persona', params:[{name:'node',type:'text',placeholder:'node id'},{name:'name',type:'text',placeholder:'Name'},{name:'voice',type:'text',placeholder:'Voice'}], group:'Personas' },
-    { name:'delete_persona', desc:'Remove persona', params:[{name:'node',type:'text',placeholder:'node id'}], group:'Personas' },
-    { name:'herald_round', desc:'Multi-node voice round', params:[{name:'count',type:'text',placeholder:'2-5'}], group:'Personas' },
-    { name:'get_topology', desc:'Full topology', params:[], group:'Topology' },
-    { name:'configure_topology_node', desc:'Add/update node', params:[{name:'id',type:'text',placeholder:'node id'},{name:'label',type:'text',placeholder:'Label'}], group:'Topology' },
-    { name:'get_collectd_data', desc:'RRD metrics', params:[{name:'hostname',type:'text',placeholder:'hostname (optional)'}], group:'Topology' },
-    { name:'scan_wifi', desc:'AP scan', params:[{name:'action',type:'select',options:['scan','status']}], group:'Topology' },
-    { name:'sync_notion_quests', desc:'Notion todo sync', params:[{name:'force',type:'checkbox',label:'Force'}], group:'Topology' },
-    { name:'manage_map_server', desc:'HTTP server control', params:[{name:'action',type:'select',options:['status','start','stop','restart']}], group:'Services' },
-    { name:'manage_herald', desc:'Herald daemon', params:[{name:'action',type:'select',options:['status','start','stop','once']}], group:'Services' },
   ];
 
   function _acBuildForm(params) {
@@ -7348,22 +7584,6 @@ if (_agPanel) {
   apiContainer.innerHTML = apiHtml;
   document.getElementById('ac-api-count').textContent = _acEndpoints.length;
 
-  // Render MCP tools
-  const mcpContainer = document.getElementById('ac-mcp');
-  let mcpHtml = '', lastGroup = '';
-  for (const tool of _acMcpTools) {
-    if (tool.group !== lastGroup) {
-      mcpHtml += `<div class="codex-tool-group">${tool.group}</div>`;
-      lastGroup = tool.group;
-    }
-    mcpHtml += `<div class="ac-item" data-ac-type="mcp" data-ac-tool="${tool.name}">`;
-    mcpHtml += `<div class="ac-item-header"><span class="ac-method ac-method-mcp">MCP</span><span class="ac-path">${tool.name}</span><span class="ac-desc">${tool.desc}</span></div>`;
-    mcpHtml += `<div class="ac-form">${_acBuildForm(tool.params)}<button class="ac-invoke-btn">Cast</button><div class="ac-response" style="display:none"></div></div>`;
-    mcpHtml += `</div>`;
-  }
-  mcpContainer.innerHTML = mcpHtml;
-  document.getElementById('ac-mcp-count').textContent = _acMcpTools.length + ' spells';
-
   // Render scripts
   (async () => {
     const container = document.getElementById('ac-scripts');
@@ -7402,21 +7622,6 @@ if (_agPanel) {
     btn.classList.remove('ac-running'); btn.textContent = 'Invoke';
   }
 
-  async function _acInvokeMcp(item) {
-    const toolName = item.dataset.acTool;
-    const form = item.querySelector('.ac-form'), params = _acCollectParams(form);
-    const respEl = form.querySelector('.ac-response'), btn = form.querySelector('.ac-invoke-btn');
-    btn.classList.add('ac-running'); btn.textContent = 'Casting...';
-    respEl.style.display = 'block'; respEl.className = 'ac-response'; respEl.textContent = 'Weaving incantation...';
-    try {
-      const r = await fetch('/mcp/invoke', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ tool: toolName, arguments: params }) });
-      const text = await r.text();
-      try { respEl.textContent = JSON.stringify(JSON.parse(text), null, 2); } catch { respEl.textContent = text; }
-      if (!r.ok) respEl.classList.add('ac-error');
-    } catch (e) { respEl.textContent = 'Error: ' + e.message; respEl.classList.add('ac-error'); }
-    btn.classList.remove('ac-running'); btn.textContent = 'Cast';
-  }
-
   // Event delegation for grimoire
   _agPanel.addEventListener('click', e => {
     const toggle = e.target.closest('.ag-section-toggle');
@@ -7427,7 +7632,6 @@ if (_agPanel) {
     if (invokeBtn && !invokeBtn.classList.contains('ac-running')) {
       const item = invokeBtn.closest('.ac-item');
       if (item.dataset.acType === 'api') _acInvokeApi(item);
-      else if (item.dataset.acType === 'mcp') _acInvokeMcp(item);
       return;
     }
     const scriptBtn = e.target.closest('.ac-script-run');

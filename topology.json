@@ -1,6 +1,30 @@
 {
   "nodes": [
     {
+      "id": "hikcam1",
+      "label": "The First Eye",
+      "type": "device",
+      "ip": "10.0.10.133",
+      "mac": "98:8b:0a:31:ad:79",
+      "icon": "&#128247;",
+      "_role": "camera",
+      "x": 310,
+      "y": 700,
+      "_hostname": "hikcam1"
+    },
+    {
+      "id": "hikcam2",
+      "label": "The Second Eye",
+      "type": "device",
+      "ip": "10.0.10.158",
+      "mac": "44:47:cc:3e:57:c3",
+      "icon": "&#128247;",
+      "_role": "camera",
+      "x": 450,
+      "y": 700,
+      "_hostname": "hikcam2"
+    },
+    {
       "id": "gatekeeper",
       "type": "core",
       "ssh": "dhcp",
@@ -456,7 +480,7 @@
     },
     {
       "id": "gs308t",
-      "type": "infra",
+      "type": "tower",
       "collectd": "gs308t",
       "ssh": "gw",
       "x": 850,
@@ -1130,7 +1154,7 @@
       "label": "The Messenger",
       "sublabel": "Galaxy-Z-Flip3-5G \u2022 10.0.6.117",
       "ip": "10.0.6.117",
-      "mac": "7a:42:da:fd:1a:3a",
+      "mac": "ac:6c:90:f2:81:c7",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1520,#0f0a15)",
         "borderColor": "rgba(120,160,200,0.4)",
@@ -2792,29 +2816,6 @@
       "badge": 7
     },
     {
-      "id": "_unknown_3e7592ac0b69",
-      "type": "device",
-      "_auto": true,
-      "x": 2370,
-      "y": 750,
-      "ip": "10.0.11.220",
-      "mac": "3e:75:92:ac:0b:69",
-      "_last_seen": 1773528249.0501041,
-      "label": "Guest Device 0b69",
-      "icon": "&#128241;",
-      "sublabel": "10.0.11.220 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#a080c020,#0a0510)",
-        "borderColor": "#a080c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "phone",
-      "_vendor": null,
-      "_hostname": "Flip3"
-    },
-    {
       "id": "katana",
       "type": "core",
       "ip": "10.0.6.129",
@@ -3141,6 +3142,56 @@
       "_role": "tailscale"
     },
     {
+      "id": "_unknown_3e7592ac0b69",
+      "type": "device",
+      "_auto": true,
+      "x": 2370,
+      "y": 750,
+      "ip": "10.0.11.220",
+      "mac": "3e:75:92:ac:0b:69",
+      "_last_seen": 1773528249.0501041,
+      "label": "Flip3",
+      "icon": "&#128241;",
+      "sublabel": "10.0.11.220 \u2022 Randomized MAC",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#a080c020,#0a0510)",
+        "borderColor": "#a080c080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "phone",
+      "_vendor": null,
+      "_hostname": "Flip3",
+      "tip": {
+        "title": "Phone",
+        "stats": [
+          [
+            "Role",
+            "Phone"
+          ],
+          [
+            "IP",
+            "10.0.11.220"
+          ],
+          [
+            "MAC",
+            "3e:75:92:ac:0b:69"
+          ],
+          [
+            "MAC Type",
+            "Randomized (private)"
+          ],
+          [
+            "Network",
+            "Guest"
+          ]
+        ]
+      },
+      "_os": null,
+      "_model": null
+    },
+    {
       "id": "_unknown_60f6775f363d",
       "type": "device",
       "_auto": true,
@@ -3160,7 +3211,31 @@
         "fontSize": "14px"
       },
       "_role": "unknown",
-      "_vendor": null
+      "_vendor": null,
+      "tip": {
+        "title": "Unknown Device",
+        "stats": [
+          [
+            "Role",
+            "Unknown Device"
+          ],
+          [
+            "IP",
+            "10.0.6.106"
+          ],
+          [
+            "MAC",
+            "60:f6:77:5f:36:3d"
+          ],
+          [
+            "Network",
+            "Admin"
+          ]
+        ]
+      },
+      "_os": null,
+      "_model": null,
+      "_hostname": "Device 363d"
     },
     {
       "id": "_unknown_be68f45be203",
@@ -3168,12 +3243,12 @@
       "_auto": true,
       "x": 2300,
       "y": 850,
-      "ip": "10.0.11.221",
+      "ip": "10.0.11.224",
       "mac": "be:68:f4:5b:e2:03",
       "_last_seen": 1773545811.8251338,
-      "label": "Guest Device e203",
+      "label": "Galaxy-Z-Flip3-5G",
       "icon": "&#128241;",
-      "sublabel": "10.0.11.221 \u2022 Randomized MAC",
+      "sublabel": "10.0.11.224 \u2022 Samsung Z Flip Android",
       "iconStyle": {
         "background": "radial-gradient(circle,#a080c020,#0a0510)",
         "borderColor": "#a080c080",
@@ -3183,7 +3258,42 @@
       },
       "_role": "phone",
       "_vendor": null,
-      "_hostname": "Galaxy-Z-Flip3-5G"
+      "_hostname": "Galaxy-Z-Flip3-5G",
+      "tip": {
+        "title": "Samsung Z Flip",
+        "stats": [
+          [
+            "Model",
+            "Samsung Z Flip"
+          ],
+          [
+            "Role",
+            "Phone"
+          ],
+          [
+            "OS",
+            "Android"
+          ],
+          [
+            "IP",
+            "10.0.11.221"
+          ],
+          [
+            "MAC",
+            "be:68:f4:5b:e2:03"
+          ],
+          [
+            "MAC Type",
+            "Randomized (private)"
+          ],
+          [
+            "Network",
+            "Guest"
+          ]
+        ]
+      },
+      "_os": "Android",
+      "_model": "Samsung Z Flip"
     },
     {
       "id": "_unknown_483fda5750e1",
@@ -3194,7 +3304,7 @@
       "ip": "10.0.10.117",
       "mac": "48:3f:da:57:50:e1",
       "_last_seen": 1773555528.2544756,
-      "label": "ESP_5750E1",
+      "label": "ESP",
       "icon": "&#128202;",
       "sublabel": "10.0.10.117 \u2022 Espressif",
       "iconStyle": {
@@ -3206,7 +3316,38 @@
       },
       "_role": "sensor",
       "_vendor": "Espressif",
-      "_hostname": "ESP_5750E1"
+      "_hostname": "ESP_5750E1",
+      "tip": {
+        "title": "ESP",
+        "stats": [
+          [
+            "Model",
+            "ESP"
+          ],
+          [
+            "Vendor",
+            "Espressif"
+          ],
+          [
+            "Role",
+            "Sensor"
+          ],
+          [
+            "IP",
+            "10.0.10.117"
+          ],
+          [
+            "MAC",
+            "48:3f:da:57:50:e1"
+          ],
+          [
+            "Network",
+            "IoT"
+          ]
+        ]
+      },
+      "_os": null,
+      "_model": "ESP"
     },
     {
       "id": "_unknown_cca7c15e89f9",
@@ -3228,7 +3369,23 @@
         "fontSize": "14px"
       },
       "_role": "unknown",
-      "_vendor": null
+      "_vendor": null,
+      "tip": {
+        "title": "Unknown Device",
+        "stats": [
+          [
+            "Role",
+            "Unknown Device"
+          ],
+          [
+            "MAC",
+            "cc:a7:c1:5e:89:f9"
+          ]
+        ]
+      },
+      "_os": null,
+      "_model": null,
+      "_hostname": "Device 89f9"
     },
     {
       "id": "_unknown_40a3cc943680",
@@ -3240,18 +3397,52 @@
       "mac": "40:a3:cc:94:36:80",
       "_last_seen": 1773596474.446333,
       "label": "tablet",
-      "icon": "&#128223;",
+      "icon": "&#128123;",
       "sublabel": "10.0.6.113",
       "iconStyle": {
-        "background": "radial-gradient(circle,#80a0c020,#0a0510)",
-        "borderColor": "#80a0c080",
+        "background": "radial-gradient(circle,#80808020,#0a0510)",
+        "borderColor": "#80808080",
         "width": "32px",
         "height": "32px",
         "fontSize": "14px"
       },
-      "_role": "tablet",
+      "_role": "unknown",
       "_vendor": null,
-      "_hostname": "tablet"
+      "_hostname": "tablet",
+      "tip": {
+        "title": "Unknown Device",
+        "stats": [
+          [
+            "Role",
+            "Unknown Device"
+          ],
+          [
+            "IP",
+            "10.0.6.113"
+          ],
+          [
+            "MAC",
+            "40:a3:cc:94:36:80"
+          ],
+          [
+            "Network",
+            "Admin"
+          ]
+        ]
+      },
+      "_os": null,
+      "_model": null
+    },
+    {
+      "id": "cam3",
+      "label": "The Third Eye",
+      "type": "device",
+      "ip": "10.0.10.132",
+      "mac": "00:0d:c5:d7:27:96",
+      "icon": "&#128247;",
+      "_role": "camera",
+      "x": 380,
+      "y": 760
     }
   ],
   "connections": [
@@ -3291,12 +3482,6 @@
       "type": "wan"
     },
     {
-      "from": "gs308t",
-      "to": "mr8300-host",
-      "type": "ap",
-      "vlan": 6
-    },
-    {
       "from": "hp-switch",
       "to": "onhub-office",
       "type": "ap",
@@ -3315,26 +3500,8 @@
       "vlan": 6
     },
     {
-      "from": "gs308t",
-      "to": "ea6350-cl",
-      "type": "ap",
-      "vlan": 6
-    },
-    {
       "from": "hp-switch",
       "to": "eap225-outdoor",
-      "type": "ap",
-      "vlan": 6
-    },
-    {
-      "from": "cpe710-client",
-      "to": "ea6350v3-family",
-      "type": "ap",
-      "vlan": 6
-    },
-    {
-      "from": "gs308t",
-      "to": "onhub-family",
       "type": "ap",
       "vlan": 6
     },
@@ -3412,11 +3579,6 @@
       "vlan": 10
     },
     {
-      "from": "hp-switch",
-      "to": "cpe710-ap",
-      "type": "bridge"
-    },
-    {
       "from": "cpe710-ap",
       "to": "cpe710-client",
       "type": "bridge"
@@ -3429,11 +3591,6 @@
     {
       "from": "gigabeam0",
       "to": "gigabeam1",
-      "type": "bridge"
-    },
-    {
-      "from": "gigabeam1",
-      "to": "gs308t",
       "type": "bridge"
     },
     {
@@ -3516,7 +3673,7 @@
     },
     {
       "from": "users-air",
-      "to": "onhub-closet",
+      "to": "onhub-family",
       "type": "active",
       "vlan": 6
     },
@@ -3612,7 +3769,7 @@
     },
     {
       "from": "iphone",
-      "to": "onhub-family",
+      "to": "ea6350-cl",
       "type": "active",
       "vlan": 6
     },
@@ -3699,7 +3856,7 @@
     },
     {
       "from": "_unknown_be68f45be203",
-      "to": "onhub-bed",
+      "to": "wndr4300sw-shed",
       "type": "active"
     },
     {
@@ -3718,6 +3875,37 @@
       "type": "active"
     },
     {
+      "from": "ea6350v3-family",
+      "to": "cpe710-client",
+      "type": "ap",
+      "vlan": 6
+    },
+    {
+      "from": "gigabeam1",
+      "to": "gs308t",
+      "type": "trunk"
+    },
+    {
+      "from": "gs308t",
+      "to": "onhub-family",
+      "type": "ap"
+    },
+    {
+      "from": "hikcam1",
+      "to": "poe-switch",
+      "type": "infra"
+    },
+    {
+      "from": "hikcam2",
+      "to": "poe-switch",
+      "type": "infra"
+    },
+    {
+      "from": "cam3",
+      "to": "poe-switch",
+      "type": "infra"
+    },
+    {
       "from": "wrt1900ac-family",
       "to": "woodshed",
       "type": "trunk",
@@ -3726,9 +3914,23 @@
     },
     {
       "from": "wrt1900ac-family",
-      "to": "cpe710-client",
+      "to": "cpe710-ap",
       "type": "trunk",
       "label": "lan2\u2194br0",
+      "_lldp": true
+    },
+    {
+      "from": "gs308t",
+      "to": "ea6350-cl",
+      "type": "trunk",
+      "label": "lan5\u2194wan",
+      "_lldp": true
+    },
+    {
+      "from": "gs308t",
+      "to": "pixel-4",
+      "type": "trunk",
+      "label": "lan6\u2194wan",
       "_lldp": true
     }
   ],
