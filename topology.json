@@ -31,7 +31,7 @@
       "y": 280,
       "icon": "&#127984;",
       "label": "<REDACTED>",
-      "sublabel": "MR8300 \u2022 10.0.6.100",
+      "sublabel": "mr8300-host \u2022 10.0.6.100",
       "ip": "10.0.6.100",
       "collectd": "mr8300-host",
       "ssh": "glenn",
@@ -57,7 +57,8 @@
         ]
       },
       "mac": "30:23:03:82:5e:c0",
-      "_role": "router"
+      "_role": "router",
+      "_hostname": "mr8300-host"
     },
     {
       "id": "wrt1900ac-family",
@@ -66,7 +67,7 @@
       "y": 1000,
       "icon": "&#127984;",
       "label": "The Great Hall",
-      "sublabel": "WRT1900AC \u2022 10.0.6.114",
+      "sublabel": "wrt1900ac-family \u2022 10.0.6.114",
       "ip": "10.0.6.114",
       "collectd": "wrt1900ac-family",
       "ssh": "julia",
@@ -92,7 +93,8 @@
         ]
       },
       "mac": "94:10:3e:7e:7b:c5",
-      "_role": "router"
+      "_role": "router",
+      "_hostname": "wrt1900ac-family"
     },
     {
       "id": "ea6350v3-family",
@@ -101,7 +103,7 @@
       "y": 900,
       "icon": "&#127984;",
       "label": "The Inner Ward",
-      "sublabel": "EA6350v3 \u2022 10.0.6.135",
+      "sublabel": "ea6350v3-family \u2022 10.0.6.135",
       "ip": "10.0.6.135",
       "collectd": "ea6350v3-family",
       "iconStyle": {
@@ -126,7 +128,8 @@
         ]
       },
       "mac": "60:38:e0:96:1c:31",
-      "_role": "router"
+      "_role": "router",
+      "_hostname": "ea6350v3-family"
     },
     {
       "id": "ea6350-cl",
@@ -135,7 +138,7 @@
       "y": 280,
       "icon": "&#127984;",
       "label": "The Citadel Beacon",
-      "sublabel": "EA6350 \u2022 10.0.6.116",
+      "sublabel": "EA6350-CL \u2022 10.0.6.116",
       "ip": "10.0.6.116",
       "collectd": "EA6350-CL",
       "ssh": "cl",
@@ -161,7 +164,8 @@
         ]
       },
       "mac": "60:38:e0:a6:7d:d5",
-      "_role": "router"
+      "_role": "router",
+      "_hostname": "EA6350-CL"
     },
     {
       "id": "wndr4300sw-shed",
@@ -170,7 +174,7 @@
       "y": 500,
       "icon": "&#127984;",
       "label": "The Woodshed Watch",
-      "sublabel": "Shed AP \u2022 10.0.6.109",
+      "sublabel": "wndr4300sw-shed \u2022 10.0.6.109",
       "ip": "10.0.6.109",
       "collectd": "wndr4300sw-shed",
       "ssh": "willow",
@@ -196,7 +200,8 @@
         ]
       },
       "mac": "a0:63:91:8d:bd:4a",
-      "_role": "router"
+      "_role": "router",
+      "_hostname": "wndr4300sw-shed"
     },
     {
       "id": "onhub-closet",
@@ -205,7 +210,7 @@
       "y": 300,
       "icon": "&#127984;",
       "label": "The Hidden Chamber",
-      "sublabel": "Closet AP \u2022 10.0.6.102",
+      "sublabel": "onhub-closet \u2022 10.0.6.102",
       "ip": "10.0.6.102",
       "collectd": "onhub-closet",
       "ssh": "cl",
@@ -231,7 +236,8 @@
         ]
       },
       "mac": "2c:56:dc:df:bd:9d",
-      "_role": "ap"
+      "_role": "ap",
+      "_hostname": "onhub-closet"
     },
     {
       "id": "onhub-bed",
@@ -240,7 +246,7 @@
       "y": 850,
       "icon": "&#127984;",
       "label": "The Dreamer's Rest",
-      "sublabel": "Bedroom OnHub \u2022 10.0.6.246",
+      "sublabel": "onhub-bed \u2022 10.0.6.246",
       "ip": "10.0.6.246",
       "collectd": "onhub-bed",
       "iconStyle": {
@@ -265,7 +271,8 @@
         ]
       },
       "mac": "9c:5c:8e:cb:db:8d",
-      "_role": "ap"
+      "_role": "ap",
+      "_hostname": "onhub-bed"
     },
     {
       "id": "onhub-office",
@@ -274,7 +281,7 @@
       "y": 450,
       "icon": "&#127984;",
       "label": "The Scribe's Alcove",
-      "sublabel": "Office AP \u2022 10.0.6.101",
+      "sublabel": "onhub-office \u2022 10.0.6.101",
       "ip": "10.0.6.101",
       "collectd": "onhub-office",
       "iconStyle": {
@@ -299,7 +306,8 @@
         ]
       },
       "mac": "a4:2b:b0:b7:d3:a0",
-      "_role": "ap"
+      "_role": "ap",
+      "_hostname": "onhub-office"
     },
     {
       "id": "onhub-pumphouse",
@@ -308,7 +316,7 @@
       "y": 680,
       "icon": "&#127984;",
       "label": "The Pumphouse Keep",
-      "sublabel": "Pumphouse AP \u2022 10.0.6.111",
+      "sublabel": "onhub-pumphouse \u2022 10.0.6.111",
       "ip": "10.0.6.111",
       "collectd": "onhub-pumphouse",
       "iconStyle": {
@@ -333,7 +341,8 @@
         ]
       },
       "mac": "18:d6:c7:b6:d5:2d",
-      "_role": "ap"
+      "_role": "ap",
+      "_hostname": "onhub-pumphouse"
     },
     {
       "id": "onhub-family",
@@ -342,7 +351,7 @@
       "y": 950,
       "icon": "&#127984;",
       "label": "The Family Hearth",
-      "sublabel": "Family OnHub \u2022 10.0.6.141",
+      "sublabel": "onhub-family \u2022 10.0.6.141",
       "ip": "10.0.6.141",
       "collectd": "onhub-family",
       "iconStyle": {
@@ -367,7 +376,8 @@
         ]
       },
       "mac": "18:d6:c7:72:d8:65",
-      "_role": "ap"
+      "_role": "ap",
+      "_hostname": "onhub-family"
     },
     {
       "id": "eap225-outdoor",
@@ -376,7 +386,7 @@
       "y": 350,
       "icon": "&#127984;",
       "label": "The Sentinel",
-      "sublabel": "Outdoor AP \u2022 10.0.6.119",
+      "sublabel": "eap225-outdoor \u2022 10.0.6.119",
       "ip": "10.0.6.119",
       "collectd": "eap225-outdoor",
       "ssh": "kristen",
@@ -402,7 +412,8 @@
         ]
       },
       "mac": "10:27:f5:7a:02:aa",
-      "_role": "ap"
+      "_role": "ap",
+      "_hostname": "eap225-outdoor"
     },
     {
       "id": "hp-switch",
@@ -411,7 +422,7 @@
       "y": 650,
       "icon": "&#9879;",
       "label": "The Iron Spine",
-      "sublabel": "HP Switch \u2022 10.0.6.103",
+      "sublabel": "hp \u2022 10.0.6.103",
       "ip": "10.0.6.103",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a2030,#0c1520)",
@@ -440,7 +451,8 @@
         ]
       },
       "mac": "78:48:59:a8:25:97",
-      "_role": "switch"
+      "_role": "switch",
+      "_hostname": "hp"
     },
     {
       "id": "gs308t",
@@ -471,73 +483,8 @@
         ]
       },
       "mac": "34:98:b5:a7:89:21",
-      "_role": "switch"
-    },
-    {
-      "id": "gigabeam0",
-      "type": "bridge",
-      "x": 150,
-      "y": 250,
-      "icon": "&#128225;",
-      "label": "GigaBeam North",
-      "sublabel": "10.0.6.242",
-      "ip": "10.0.6.242",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a1030,#100820)"
-      },
-      "pulse": true,
-      "tip": {
-        "title": "GigaBeam North",
-        "stats": [
-          [
-            "Type",
-            "Mikrotik GigaBeam"
-          ],
-          [
-            "IP",
-            "10.0.6.242"
-          ],
-          [
-            "Role",
-            "60GHz Bridge"
-          ]
-        ]
-      },
-      "mac": "60:22:32:d2:5d:e7",
-      "_role": "bridge"
-    },
-    {
-      "id": "gigabeam1",
-      "type": "bridge",
-      "x": 280,
-      "y": 300,
-      "icon": "&#128225;",
-      "label": "GigaBeam South",
-      "sublabel": "10.0.6.243",
-      "ip": "10.0.6.243",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a1030,#100820)"
-      },
-      "pulse": true,
-      "tip": {
-        "title": "GigaBeam South",
-        "stats": [
-          [
-            "Type",
-            "Mikrotik GigaBeam"
-          ],
-          [
-            "IP",
-            "10.0.6.243"
-          ],
-          [
-            "Role",
-            "60GHz Bridge"
-          ]
-        ]
-      },
-      "mac": "60:22:32:d2:63:6a",
-      "_role": "bridge"
+      "_role": "switch",
+      "_hostname": "GS308T"
     },
     {
       "id": "cpe710-ap",
@@ -546,7 +493,7 @@
       "y": 350,
       "icon": "&#128225;",
       "label": "Sky Bridge Alpha",
-      "sublabel": "CPE710 \u2022 10.0.6.248",
+      "sublabel": "cpe710-ap \u2022 10.0.6.248",
       "ip": "10.0.6.248",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1030,#100820)"
@@ -570,7 +517,8 @@
         ]
       },
       "mac": "00:5f:67:81:8b:6a",
-      "_role": "bridge"
+      "_role": "bridge",
+      "_hostname": "cpe710-ap"
     },
     {
       "id": "cpe710-client",
@@ -579,7 +527,7 @@
       "y": 450,
       "icon": "&#128225;",
       "label": "Sky Bridge Omega",
-      "sublabel": "CPE710 \u2022 10.0.6.191",
+      "sublabel": "cpe710-client \u2022 10.0.6.191",
       "ip": "10.0.6.191",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1030,#100820)"
@@ -603,38 +551,8 @@
         ]
       },
       "mac": "5c:a6:e6:b7:8a:c0",
-      "_role": "bridge"
-    },
-    {
-      "id": "katana",
-      "type": "core",
-      "ip": "10.0.6.129",
-      "x": 100.5,
-      "y": 200.3,
-      "icon": "&#9876;",
-      "label": "Katana",
-      "sublabel": "The Citadel \u2022 10.0.6.129",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#2a1f0f,#1a1008)",
-        "width": "80px",
-        "height": "80px",
-        "fontSize": "36px",
-        "borderColor": "#f0d890"
-      },
-      "labelStyle": {
-        "fontSize": "16px"
-      },
-      "scaleBar": {
-        "width": "89%",
-        "gradient": "linear-gradient(90deg,#f09040,#f0d040)"
-      },
-      "pulse": true,
-      "tip": {
-        "title": "Katana \u2014 The Citadel",
-        "stats": []
-      },
-      "mac": "00:d8:61:bb:9f:8e",
-      "_role": "server"
+      "_role": "bridge",
+      "_hostname": "cpe710-client"
     },
     {
       "id": "oracle",
@@ -664,7 +582,7 @@
       "y": 700,
       "icon": "&#127968;",
       "label": "The Homestead",
-      "sublabel": "ha.jphe.in \u2022 10.0.6.108",
+      "sublabel": "ha \u2022 10.0.6.108",
       "ip": "10.0.6.108",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a2010,#101508)"
@@ -684,7 +602,8 @@
         ]
       },
       "mac": "52:54:00:40:91:ec",
-      "_role": "server"
+      "_role": "server",
+      "_hostname": "ha"
     },
     {
       "id": "nodered",
@@ -695,7 +614,7 @@
       "y": 550,
       "icon": "&#9881;",
       "label": "The Automaton",
-      "sublabel": "Node-RED \u2022 10.0.6.118",
+      "sublabel": "nodered \u2022 10.0.6.118",
       "ip": "10.0.6.118",
       "iconStyle": {
         "background": "radial-gradient(circle,#201510,#150e08)"
@@ -715,42 +634,8 @@
         ]
       },
       "mac": "a6:fb:2c:1b:6f:25",
-      "_role": "server"
-    },
-    {
-      "id": "woodshed",
-      "type": "device",
-      "x": 280,
-      "y": 430,
-      "icon": "&#127795;",
-      "label": "The Woodshed",
-      "sublabel": "woodshed \u2022 10.0.6.105",
-      "ip": "10.0.6.105",
-      "collectd": "woodshed",
-      "ssh": "woodshed",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a1510,#0f0a08)",
-        "borderColor": "rgba(140,100,60,0.4)",
-        "width": "44px",
-        "height": "44px",
-        "fontSize": "20px"
-      },
-      "pulse": true,
-      "mac": "d8:84:66:31:48:29",
-      "tip": {
-        "title": "Woodshed Device",
-        "stats": [
-          [
-            "Role",
-            "Shed endpoint"
-          ],
-          [
-            "IP",
-            "10.0.6.105"
-          ]
-        ]
-      },
-      "_role": "server"
+      "_role": "server",
+      "_hostname": "nodered"
     },
     {
       "id": "family-vm",
@@ -799,8 +684,8 @@
       "y": 520,
       "icon": "&#127752;",
       "label": "The Prismatic",
-      "sublabel": "WLED \u2022 10.0.6.149",
-      "ip": "10.0.6.149",
+      "sublabel": "WLED \u2022 10.0.11.207",
+      "ip": "10.0.11.207",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a0a1a,#10050f)",
         "borderColor": "rgba(200,100,255,0.4)",
@@ -830,7 +715,8 @@
           ]
         ]
       },
-      "_role": "wled"
+      "_role": "wled",
+      "_hostname": "wled-WLED"
     },
     {
       "id": "wled-aqi",
@@ -839,8 +725,8 @@
       "y": 420,
       "icon": "&#127752;",
       "label": "The AQI Crystal",
-      "sublabel": "WLED AQI \u2022 10.0.6.123",
-      "ip": "10.0.6.123",
+      "sublabel": "wled-AQI-Crystal \u2022 10.0.11.204",
+      "ip": "10.0.11.204",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a0a1a,#10050f)",
         "borderColor": "rgba(200,100,255,0.4)",
@@ -870,161 +756,8 @@
           ]
         ]
       },
-      "_role": "wled"
-    },
-    {
-      "id": "nest-circle",
-      "type": "cluster",
-      "x": 1550,
-      "y": 900,
-      "icon": "&#128293;",
-      "label": "The Nest Circle",
-      "sublabel": "Nest Thermostats \u2022 10.0.10.x",
-      "badge": 5,
-      "iconStyle": {
-        "background": "radial-gradient(circle,#2a1510,#1a0e08)"
-      },
-      "pulse": true,
-      "tip": {
-        "title": "The Nest Circle",
-        "stats": [
-          [
-            "Devices",
-            "5 Nest Thermostats"
-          ],
-          [
-            "VLAN",
-            "10.0.10.x"
-          ],
-          [
-            "Protocol",
-            "WiFi / Nest API"
-          ]
-        ]
-      },
-      "_role": "thermostat"
-    },
-    {
-      "id": "watchers",
-      "type": "cluster",
-      "x": 1400,
-      "y": 1000,
-      "icon": "&#128065;",
-      "label": "The Watchers",
-      "sublabel": "Hikvision Cameras \u2022 10.0.10.x",
-      "badge": 2,
-      "iconStyle": {
-        "background": "radial-gradient(circle,#201020,#150a15)"
-      },
-      "pulse": true,
-      "tip": {
-        "title": "The Watchers",
-        "stats": [
-          [
-            "Devices",
-            "2 Hikvision Cameras"
-          ],
-          [
-            "VLAN",
-            "10.0.10.x"
-          ],
-          [
-            "Protocol",
-            "RTSP / ONVIF"
-          ]
-        ]
-      },
-      "_role": "camera"
-    },
-    {
-      "id": "hikcams",
-      "type": "cluster",
-      "x": 440,
-      "y": 200,
-      "icon": "&#128065;",
-      "label": "The Watchers",
-      "sublabel": "HikVision Cams \u2022 10.0.10.x",
-      "badge": 2,
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a1010,#100808)",
-        "borderColor": "rgba(200,80,80,0.3)"
-      },
-      "pulse": true,
-      "tip": {
-        "title": "The Watchers",
-        "stats": [
-          [
-            "Devices",
-            "hikcam1 (.133), hikcam2 (.158)"
-          ],
-          [
-            "VLAN",
-            "10 IoT"
-          ]
-        ]
-      },
-      "_role": "camera"
-    },
-    {
-      "id": "voice-stones",
-      "type": "cluster",
-      "x": 1500,
-      "y": 1100,
-      "icon": "&#128302;",
-      "label": "The Voice Stones",
-      "sublabel": "Google Home \u2022 10.0.10.x",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#151530,#0a0a20)"
-      },
-      "pulse": true,
-      "tip": {
-        "title": "The Voice Stones",
-        "stats": [
-          [
-            "Devices",
-            "Google Home / Nest Speakers"
-          ],
-          [
-            "VLAN",
-            "10.0.10.x"
-          ],
-          [
-            "Protocol",
-            "Cast / Assistant"
-          ]
-        ]
-      },
-      "_role": "speaker"
-    },
-    {
-      "id": "google-home",
-      "type": "cluster",
-      "x": 1500,
-      "y": 470,
-      "icon": "&#127925;",
-      "label": "The Voice Stones",
-      "sublabel": "Google Home \u2022 10.0.10.x",
-      "badge": 2,
-      "iconStyle": {
-        "background": "radial-gradient(circle,#101520,#080a10)",
-        "borderColor": "rgba(80,160,220,0.3)"
-      },
-      "pulse": true,
-      "tip": {
-        "title": "The Voice Stones",
-        "stats": [
-          [
-            "Devices",
-            "Google Home, Home Mini"
-          ],
-          [
-            "VLAN",
-            "10 IoT"
-          ]
-        ]
-      },
-      "mac": "a4:77:33:3f:08:d6",
-      "_role": "speaker"
+      "_role": "wled",
+      "_hostname": "wled-AQI-Crystal"
     },
     {
       "id": "echo",
@@ -1033,7 +766,7 @@
       "y": 180,
       "icon": "&#128266;",
       "label": "The Echo Chamber",
-      "sublabel": "Amazon Echo \u2022 10.0.6.151",
+      "sublabel": "amazon-03339389b \u2022 10.0.6.151",
       "ip": "10.0.6.151",
       "iconStyle": {
         "background": "radial-gradient(circle,#101520,#080a10)",
@@ -1060,193 +793,8 @@
           ]
         ]
       },
-      "_role": "speaker"
-    },
-    {
-      "id": "kasa-spirits",
-      "type": "cluster",
-      "x": 1650,
-      "y": 1050,
-      "icon": "&#128161;",
-      "label": "The Kasa Spirits",
-      "sublabel": "Smart Plugs \u2022 10.0.10.x",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a2010,#101508)"
-      },
-      "pulse": true,
-      "tip": {
-        "title": "The Kasa Spirits",
-        "stats": [
-          [
-            "Devices",
-            "TP-Link Kasa Smart Plugs, Switches, Bulbs"
-          ],
-          [
-            "VLAN",
-            "10.0.10.x"
-          ],
-          [
-            "Protocol",
-            "WiFi / Kasa API"
-          ]
-        ]
-      },
-      "_role": "plug"
-    },
-    {
-      "id": "smart-plugs",
-      "type": "cluster",
-      "x": 1500,
-      "y": 550,
-      "icon": "&#128268;",
-      "label": "The Spark Sprites",
-      "sublabel": "Smart Plugs \u2022 10.0.10.x",
-      "badge": 4,
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a1a08,#101004)",
-        "borderColor": "rgba(200,180,60,0.3)"
-      },
-      "pulse": true,
-      "tip": {
-        "title": "The Spark Sprites",
-        "stats": [
-          [
-            "Devices",
-            "HS103, HS200, KL420, KL125"
-          ],
-          [
-            "VLAN",
-            "10 IoT"
-          ]
-        ]
-      },
-      "_role": "plug"
-    },
-    {
-      "id": "smart-hubs",
-      "type": "cluster",
-      "x": 440,
-      "y": 130,
-      "icon": "&#128300;",
-      "label": "The Binding Stones",
-      "sublabel": "Smart Hubs \u2022 10.0.10.x",
-      "badge": 3,
-      "iconStyle": {
-        "background": "radial-gradient(circle,#151510,#0a0a08)",
-        "borderColor": "rgba(160,160,80,0.3)"
-      },
-      "tip": {
-        "title": "The Binding Stones",
-        "stats": [
-          [
-            "Devices",
-            "SwitchBot Hub, 2x HiSmart"
-          ],
-          [
-            "VLAN",
-            "10 IoT"
-          ]
-        ]
-      },
-      "_role": "plug"
-    },
-    {
-      "id": "esp-swarm",
-      "type": "cluster",
-      "x": 1300,
-      "y": 1150,
-      "icon": "&#10022;",
-      "label": "The Sprite Swarm",
-      "sublabel": "ESP Devices \u2022 10.0.10.x",
-      "badge": 20,
-      "iconStyle": {
-        "background": "radial-gradient(circle,#102020,#081515)"
-      },
-      "pulse": true,
-      "tip": {
-        "title": "The Sprite Swarm",
-        "stats": [
-          [
-            "Devices",
-            "~20 ESP8266/ESP32"
-          ],
-          [
-            "VLAN",
-            "10.0.10.x"
-          ],
-          [
-            "Protocol",
-            "MQTT / ESPHome"
-          ]
-        ]
-      },
-      "_role": "sensor"
-    },
-    {
-      "id": "esp-office",
-      "type": "cluster",
-      "x": 1500,
-      "y": 380,
-      "icon": "&#127793;",
-      "label": "The Study Runes",
-      "sublabel": "ESP Sensors \u2022 Office",
-      "badge": 8,
-      "iconStyle": {
-        "background": "radial-gradient(circle,#0a1a0a,#050f05)",
-        "borderColor": "rgba(80,180,80,0.3)"
-      },
-      "pulse": true,
-      "tip": {
-        "title": "The Study Runes",
-        "stats": [
-          [
-            "Devices",
-            "8 ESP/sensor nodes"
-          ],
-          [
-            "Area",
-            "Office"
-          ],
-          [
-            "VLAN",
-            "10 IoT"
-          ]
-        ]
-      },
-      "_role": "sensor"
-    },
-    {
-      "id": "esp-outdoor",
-      "type": "cluster",
-      "x": 380,
-      "y": 260,
-      "icon": "&#127793;",
-      "label": "The Wild Runes",
-      "sublabel": "ESP Sensors \u2022 Outdoor",
-      "badge": 12,
-      "iconStyle": {
-        "background": "radial-gradient(circle,#0a1a0a,#050f05)",
-        "borderColor": "rgba(80,180,80,0.3)"
-      },
-      "pulse": true,
-      "tip": {
-        "title": "The Wild Runes",
-        "stats": [
-          [
-            "Devices",
-            "12 ESP/Tuya sensors"
-          ],
-          [
-            "Area",
-            "Outdoor / Shed"
-          ],
-          [
-            "VLAN",
-            "10 IoT"
-          ]
-        ]
-      },
-      "_role": "sensor"
+      "_role": "speaker",
+      "_hostname": "amazon-03339389b"
     },
     {
       "id": "esp32-bed1",
@@ -1255,8 +803,8 @@
       "y": 910,
       "icon": "&#128308;",
       "label": "Bed Rune I",
-      "sublabel": "esp32c3 \u2022 10.0.6.112",
-      "ip": "10.0.6.112",
+      "sublabel": "wled-WLED \u2022 10.0.11.216",
+      "ip": "10.0.11.216",
       "iconStyle": {
         "background": "radial-gradient(circle,#151510,#0a0a08)",
         "borderColor": "rgba(140,160,80,0.3)",
@@ -1282,7 +830,8 @@
           ]
         ]
       },
-      "_role": "sensor"
+      "_role": "sensor",
+      "_hostname": "wled-WLED"
     },
     {
       "id": "esp32-bed2",
@@ -1291,8 +840,8 @@
       "y": 970,
       "icon": "&#128308;",
       "label": "Bed Rune II",
-      "sublabel": "esp32c3 \u2022 10.0.6.147",
-      "ip": "10.0.6.147",
+      "sublabel": "esp32c3 \u2022 10.0.11.213",
+      "ip": "10.0.11.213",
       "iconStyle": {
         "background": "radial-gradient(circle,#151510,#0a0a08)",
         "borderColor": "rgba(140,160,80,0.3)",
@@ -1318,7 +867,8 @@
           ]
         ]
       },
-      "_role": "sensor"
+      "_role": "sensor",
+      "_hostname": "wled-WLED"
     },
     {
       "id": "esp32-bed3",
@@ -1327,8 +877,8 @@
       "y": 1030,
       "icon": "&#128308;",
       "label": "Bed Rune III",
-      "sublabel": "esp32c3 \u2022 10.0.6.148",
-      "ip": "10.0.6.148",
+      "sublabel": "wled-mamacloset \u2022 10.0.11.208",
+      "ip": "10.0.11.208",
       "iconStyle": {
         "background": "radial-gradient(circle,#151510,#0a0a08)",
         "borderColor": "rgba(140,160,80,0.3)",
@@ -1354,43 +904,8 @@
           ]
         ]
       },
-      "_role": "sensor"
-    },
-    {
-      "id": "esp32-a90c10",
-      "type": "device",
-      "x": 430,
-      "y": 480,
-      "icon": "&#128308;",
-      "label": "Rune A90C10",
-      "sublabel": "esp32 \u2022 10.0.6.132",
-      "ip": "10.0.6.132",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#151510,#0a0a08)",
-        "borderColor": "rgba(140,160,80,0.3)",
-        "width": "34px",
-        "height": "34px",
-        "fontSize": "14px"
-      },
-      "mac": "2c:bc:bb:a9:0c:10",
-      "tip": {
-        "title": "ESP32 A90C10",
-        "stats": [
-          [
-            "Model",
-            "ESP32"
-          ],
-          [
-            "Role",
-            "Sensor node"
-          ],
-          [
-            "IP",
-            "10.0.6.132"
-          ]
-        ]
-      },
-      "_role": "sensor"
+      "_role": "sensor",
+      "_hostname": "wled-mamacloset"
     },
     {
       "id": "shed-ble",
@@ -1399,7 +914,7 @@
       "y": 560,
       "icon": "&#128225;",
       "label": "The Whisper Stone",
-      "sublabel": "BLE Proxy \u2022 10.0.10.165",
+      "sublabel": "shed-ble-proxy \u2022 10.0.10.165",
       "ip": "10.0.10.165",
       "iconStyle": {
         "background": "radial-gradient(circle,#101510,#080a08)",
@@ -1426,79 +941,8 @@
           ]
         ]
       },
-      "_role": "sensor"
-    },
-    {
-      "id": "lg-washer",
-      "type": "device",
-      "x": 1420,
-      "y": 380,
-      "icon": "&#127754;",
-      "label": "The Tidecaller",
-      "sublabel": "LG Washer \u2022 10.0.6.107",
-      "ip": "10.0.6.107",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#101520,#080a10)",
-        "borderColor": "rgba(80,140,200,0.3)",
-        "width": "40px",
-        "height": "40px",
-        "fontSize": "18px"
-      },
-      "mac": "d4:8d:26:86:c5:b1",
-      "tip": {
-        "title": "LG Washer",
-        "stats": [
-          [
-            "Model",
-            "LG Smart Washer"
-          ],
-          [
-            "Role",
-            "Laundry \u2014 wash cycle"
-          ],
-          [
-            "IP",
-            "10.0.6.107"
-          ]
-        ]
-      },
-      "_role": "appliance"
-    },
-    {
-      "id": "lg-dryer",
-      "type": "device",
-      "x": 1420,
-      "y": 320,
-      "icon": "&#9728;",
-      "label": "The Hearthwind",
-      "sublabel": "LG Dryer \u2022 10.0.6.130",
-      "ip": "10.0.6.130",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#201510,#150a08)",
-        "borderColor": "rgba(200,140,80,0.3)",
-        "width": "40px",
-        "height": "40px",
-        "fontSize": "18px"
-      },
-      "mac": "44:27:45:53:a2:f1",
-      "tip": {
-        "title": "LG Dryer",
-        "stats": [
-          [
-            "Model",
-            "LG Smart Dryer"
-          ],
-          [
-            "Role",
-            "Laundry \u2014 dry cycle"
-          ],
-          [
-            "IP",
-            "10.0.6.130"
-          ]
-        ]
-      },
-      "_role": "appliance"
+      "_role": "sensor",
+      "_hostname": "shed-ble-proxy"
     },
     {
       "id": "bed-air",
@@ -1534,143 +978,8 @@
           ]
         ]
       },
-      "_role": "appliance"
-    },
-    {
-      "id": "iot-closet",
-      "type": "cluster",
-      "x": 820,
-      "y": 230,
-      "icon": "&#128161;",
-      "label": "The Hidden Sprites",
-      "sublabel": "IoT \u2022 Closet AP",
-      "badge": 6,
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a1510,#0f0a08)",
-        "borderColor": "rgba(200,160,80,0.3)"
-      },
-      "tip": {
-        "title": "The Hidden Sprites",
-        "stats": [
-          [
-            "Devices",
-            "Nest, WSD bulb, air purifier, misc"
-          ],
-          [
-            "AP",
-            "onhub-closet"
-          ],
-          [
-            "VLAN",
-            "10 IoT"
-          ]
-        ]
-      },
-      "_role": "appliance"
-    },
-    {
-      "id": "iot-pumphouse",
-      "type": "cluster",
-      "x": 310,
-      "y": 750,
-      "icon": "&#128167;",
-      "label": "The Well Sprites",
-      "sublabel": "IoT \u2022 Pumphouse",
-      "badge": 2,
-      "iconStyle": {
-        "background": "radial-gradient(circle,#0a151a,#050a0f)",
-        "borderColor": "rgba(80,140,200,0.3)"
-      },
-      "tip": {
-        "title": "The Well Sprites",
-        "stats": [
-          [
-            "Devices",
-            "lwip0, pumphouse-radar"
-          ],
-          [
-            "AP",
-            "onhub-pumphouse"
-          ],
-          [
-            "VLAN",
-            "10 IoT"
-          ]
-        ]
-      },
-      "_role": "appliance"
-    },
-    {
-      "id": "roomba",
-      "type": "device",
-      "x": 1280,
-      "y": 780,
-      "icon": "&#129302;",
-      "label": "The Floor Golem",
-      "sublabel": "Roomba \u2022 10.0.6.120",
-      "ip": "10.0.6.120",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#151515,#0a0a0a)",
-        "borderColor": "rgba(100,200,100,0.3)",
-        "width": "40px",
-        "height": "40px",
-        "fontSize": "18px"
-      },
-      "mac": "c0:e4:34:16:c0:a5",
-      "tip": {
-        "title": "Roomba",
-        "stats": [
-          [
-            "Model",
-            "iRobot Roomba"
-          ],
-          [
-            "Role",
-            "Floor cleaning"
-          ],
-          [
-            "IP",
-            "10.0.6.120"
-          ]
-        ]
-      },
-      "_role": "vacuum"
-    },
-    {
-      "id": "irobot",
-      "type": "device",
-      "x": 680,
-      "y": 370,
-      "icon": "&#129302;",
-      "label": "The Second Golem",
-      "sublabel": "iRobot \u2022 10.0.6.142",
-      "ip": "10.0.6.142",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#151515,#0a0a0a)",
-        "borderColor": "rgba(100,200,100,0.3)",
-        "width": "40px",
-        "height": "40px",
-        "fontSize": "18px"
-      },
-      "mac": "50:14:79:16:0c:0f",
-      "tip": {
-        "title": "iRobot Braava",
-        "stats": [
-          [
-            "Model",
-            "iRobot Braava"
-          ],
-          [
-            "Role",
-            "Floor mopping"
-          ],
-          [
-            "IP",
-            "10.0.6.142"
-          ]
-        ]
-      },
-      "_role": "vacuum"
+      "_role": "appliance",
+      "_hostname": "ESP_59C259"
     },
     {
       "id": "wandering-golems",
@@ -1680,7 +989,7 @@
       "icon": "&#129302;",
       "label": "The Wandering Golems",
       "sublabel": "Roombas \u2022 10.0.10.x",
-      "badge": 2,
+      "badge": "2",
       "iconStyle": {
         "background": "radial-gradient(circle,#151a20,#0a0f15)"
       },
@@ -1702,7 +1011,23 @@
           ]
         ]
       },
-      "_role": "vacuum"
+      "_role": "vacuum",
+      "members": [
+        {
+          "label": "The Floor Golem",
+          "ip": "10.0.11.205",
+          "mac": "c0e43416c0a5",
+          "hw": "Roomba-69F8470871419720",
+          "ap": "onhub-bed"
+        },
+        {
+          "label": "The Second Golem",
+          "ip": "10.0.11.210",
+          "mac": "501479160c0f",
+          "hw": "iRobot-BAC6EAEB20894EA2B661EEDF498509CF",
+          "ap": "onhub-closet"
+        }
+      ]
     },
     {
       "id": "goodwe",
@@ -1711,8 +1036,8 @@
       "y": 200,
       "icon": "&#9788;",
       "label": "The Sunstone",
-      "sublabel": "Solar Inverter \u2022 10.0.6.244",
-      "ip": "10.0.6.244",
+      "sublabel": "HF-LPT230 \u2022 10.0.10.84",
+      "ip": "10.0.10.84",
       "iconStyle": {
         "background": "radial-gradient(circle,#2a2a08,#1a1a04)",
         "borderColor": "rgba(240,200,60,0.4)"
@@ -1735,7 +1060,8 @@
         ]
       },
       "mac": "28:9c:6e:01:01:6a",
-      "_role": "inverter"
+      "_role": "inverter",
+      "_hostname": "HF-LPT230"
     },
     {
       "id": "apcupsmini1",
@@ -1764,7 +1090,7 @@
       "y": 600,
       "icon": "&#9889;",
       "label": "The Lightning Post",
-      "sublabel": "NeoCharge \u2022 10.0.10.234",
+      "sublabel": "NeoCharge-P12-930 \u2022 10.0.10.234",
       "ip": "10.0.10.234",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1a08,#101004)",
@@ -1792,7 +1118,8 @@
           ]
         ]
       },
-      "_role": "ev_charger"
+      "_role": "ev_charger",
+      "_hostname": "NeoCharge-P12-930"
     },
     {
       "id": "flip3",
@@ -1801,9 +1128,9 @@
       "y": 240,
       "icon": "&#128241;",
       "label": "The Messenger",
-      "sublabel": "Flip3 \u2022 10.0.6.133",
-      "ip": "10.0.6.133",
-      "mac": "3e:75:92:ac:0b:69",
+      "sublabel": "Galaxy-Z-Flip3-5G \u2022 10.0.6.117",
+      "ip": "10.0.6.117",
+      "mac": "7a:42:da:fd:1a:3a",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1520,#0f0a15)",
         "borderColor": "rgba(120,160,200,0.4)",
@@ -1832,7 +1159,8 @@
           ]
         ]
       },
-      "_role": "phone"
+      "_role": "phone",
+      "_hostname": "Galaxy-Z-Flip3-5G"
     },
     {
       "id": "flip3-5g",
@@ -1841,8 +1169,8 @@
       "y": 280,
       "icon": "&#128241;",
       "label": "The Wanderer",
-      "sublabel": "Z Flip3 5G \u2022 10.0.6.138",
-      "ip": "10.0.6.138",
+      "sublabel": "Z Flip3 5G \u2022 10.0.11.200",
+      "ip": "10.0.11.200",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1520,#0f0a15)",
         "borderColor": "rgba(120,160,200,0.4)",
@@ -1868,7 +1196,8 @@
           ]
         ]
       },
-      "_role": "phone"
+      "_role": "phone",
+      "_hostname": "Flip3"
     },
     {
       "id": "s24-ultra",
@@ -1917,8 +1246,8 @@
       "y": 1020,
       "icon": "&#128241;",
       "label": "The Seer's Eye",
-      "sublabel": "Pixel 7 \u2022 10.0.6.146",
-      "ip": "10.0.6.146",
+      "sublabel": "Pixel-7 \u2022 10.0.11.209",
+      "ip": "10.0.11.209",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1520,#0f0a15)",
         "borderColor": "rgba(100,180,100,0.4)",
@@ -1926,7 +1255,7 @@
         "height": "40px",
         "fontSize": "18px"
       },
-      "mac": "b6:73:87:88:71:45",
+      "mac": "c6:c8:21:a7:b1:9a",
       "tip": {
         "title": "Pixel 7",
         "stats": [
@@ -1944,7 +1273,8 @@
           ]
         ]
       },
-      "_role": "phone"
+      "_role": "phone",
+      "_hostname": "Pixel-7"
     },
     {
       "id": "pixel-4",
@@ -1953,8 +1283,8 @@
       "y": 340,
       "icon": "&#128241;",
       "label": "The Old Herald",
-      "sublabel": "Pixel 4 \u2022 10.0.11.197",
-      "ip": "10.0.11.197",
+      "sublabel": "Pixel-4 \u2022 10.0.11.222",
+      "ip": "10.0.11.222",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1520,#0f0a15)",
         "borderColor": "rgba(100,180,100,0.3)",
@@ -1962,7 +1292,7 @@
         "height": "38px",
         "fontSize": "16px"
       },
-      "mac": "da:22:5c:dc:bc:80",
+      "mac": "ee:0e:15:13:15:58",
       "tip": {
         "title": "Pixel 4",
         "stats": [
@@ -1980,7 +1310,8 @@
           ]
         ]
       },
-      "_role": "phone"
+      "_role": "phone",
+      "_hostname": "Pixel-4"
     },
     {
       "id": "iphone",
@@ -1989,8 +1320,8 @@
       "y": 1080,
       "icon": "&#128241;",
       "label": "The Apple Shard",
-      "sublabel": "iPhone \u2022 10.0.6.113",
-      "ip": "10.0.6.113",
+      "sublabel": "iPhone \u2022 10.0.11.223",
+      "ip": "10.0.11.223",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1520,#0f0a15)",
         "borderColor": "rgba(160,160,160,0.4)",
@@ -1998,7 +1329,7 @@
         "height": "40px",
         "fontSize": "18px"
       },
-      "mac": "42:20:07:ca:66:6d",
+      "mac": "fe:95:48:b6:11:4c",
       "tip": {
         "title": "iPhone",
         "stats": [
@@ -2020,7 +1351,8 @@
           ]
         ]
       },
-      "_role": "phone"
+      "_role": "phone",
+      "_hostname": "iPhone"
     },
     {
       "id": "tab-s5e",
@@ -2029,8 +1361,8 @@
       "y": 350,
       "icon": "\ud83e\ude9e",
       "label": "Scrying Slate",
-      "sublabel": "Tab S5e",
-      "ip": "10.0.6.128",
+      "sublabel": "Galaxy-Tab-S5e \u2022 10.0.6.249",
+      "ip": "10.0.6.249",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1520,#0f0a15)",
         "borderColor": "rgba(120,140,200,0.5)",
@@ -2059,8 +1391,9 @@
           ]
         ]
       },
-      "mac": "0e:0f:98:6d:ea:5f",
-      "_role": "tablet"
+      "mac": "aa:36:98:2b:b3:e3",
+      "_role": "tablet",
+      "_hostname": "Galaxy-Tab-S5e"
     },
     {
       "id": "ipad",
@@ -2069,7 +1402,7 @@
       "y": 580,
       "icon": "&#128195;",
       "label": "The Ancient Slate",
-      "sublabel": "iPad 3rd Gen \u2022 10.0.10.223",
+      "sublabel": "iPad-3rd-gen \u2022 10.0.10.223",
       "ip": "10.0.10.223",
       "iconStyle": {
         "background": "radial-gradient(circle,#151520,#0a0a15)",
@@ -2096,7 +1429,8 @@
           ]
         ]
       },
-      "_role": "tablet"
+      "_role": "tablet",
+      "_hostname": "iPad-3rd-gen"
     },
     {
       "id": "kindle",
@@ -2141,7 +1475,7 @@
       "y": 220,
       "icon": "&#128187;",
       "label": "The Spare Tome",
-      "sublabel": "Latitude 5490 \u2022 10.0.11.141",
+      "sublabel": "jp-Latitude-5490 \u2022 10.0.11.141",
       "ip": "10.0.11.141",
       "iconStyle": {
         "background": "radial-gradient(circle,#151520,#0a0a15)",
@@ -2168,7 +1502,8 @@
           ]
         ]
       },
-      "_role": "laptop"
+      "_role": "laptop",
+      "_hostname": "jp-Latitude-5490"
     },
     {
       "id": "latitude-7390",
@@ -2177,7 +1512,7 @@
       "y": 550,
       "icon": "&#128187;",
       "label": "The Wandering Codex",
-      "sublabel": "Latitude 7390 \u2022 10.0.6.156",
+      "sublabel": "jp-Latitude-7390 \u2022 10.0.6.156",
       "ip": "10.0.6.156",
       "iconStyle": {
         "background": "radial-gradient(circle,#151520,#0a0a15)",
@@ -2204,7 +1539,8 @@
           ]
         ]
       },
-      "_role": "laptop"
+      "_role": "laptop",
+      "_hostname": "jp-Latitude-7390"
     },
     {
       "id": "users-air",
@@ -2213,7 +1549,7 @@
       "y": 1080,
       "icon": "&#128187;",
       "label": "The Windborne Tome",
-      "sublabel": "MacBook Air \u2022 10.0.10.152",
+      "sublabel": "users-Air \u2022 10.0.10.152",
       "ip": "10.0.10.152",
       "iconStyle": {
         "background": "radial-gradient(circle,#151520,#0a0a15)",
@@ -2240,42 +1576,8 @@
           ]
         ]
       },
-      "_role": "laptop"
-    },
-    {
-      "id": "wolf-creek",
-      "type": "device",
-      "x": 1100,
-      "y": 150,
-      "icon": "&#128187;",
-      "label": "Wolf Creek Tome",
-      "sublabel": "WolfCreekLaptop \u2022 10.0.11.185",
-      "ip": "10.0.11.185",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#151520,#0a0a15)",
-        "borderColor": "rgba(140,100,80,0.3)",
-        "width": "40px",
-        "height": "40px",
-        "fontSize": "18px"
-      },
-      "tip": {
-        "title": "Wolf Creek Laptop",
-        "stats": [
-          [
-            "Model",
-            "Laptop"
-          ],
-          [
-            "Role",
-            "Portable device"
-          ],
-          [
-            "IP",
-            "10.0.11.185"
-          ]
-        ]
-      },
-      "_role": "laptop"
+      "_role": "laptop",
+      "_hostname": "air"
     },
     {
       "id": "game",
@@ -2284,7 +1586,7 @@
       "y": 700,
       "icon": "&#127918;",
       "label": "The Arena",
-      "sublabel": "Ubuntu \u2022 10.0.6.160",
+      "sublabel": "game \u2022 10.0.6.160",
       "ip": "10.0.6.160",
       "collectd": "game",
       "ssh": "game",
@@ -2321,7 +1623,8 @@
         ]
       },
       "mac": "00:c0:ca:a4:72:b0",
-      "_role": "desktop"
+      "_role": "desktop",
+      "_hostname": "game"
     },
     {
       "id": "roku",
@@ -2330,8 +1633,8 @@
       "y": 210,
       "icon": "&#128253;",
       "label": "The Crystal Mirror",
-      "sublabel": "Roku 3 \u2022 10.0.6.249",
-      "ip": "10.0.6.249",
+      "sublabel": "Roku3 \u2022 10.0.11.201",
+      "ip": "10.0.11.201",
       "iconStyle": {
         "background": "radial-gradient(circle,#15101a,#0a0810)",
         "borderColor": "rgba(120,80,180,0.3)",
@@ -2357,7 +1660,8 @@
           ]
         ]
       },
-      "_role": "tv"
+      "_role": "tv",
+      "_hostname": "Roku3"
     },
     {
       "id": "ts-android",
@@ -2477,160 +1781,6 @@
           [
             "IP",
             "100.122.165.30"
-          ]
-        ]
-      },
-      "_role": "tailscale"
-    },
-    {
-      "id": "ts-terra",
-      "type": "tailscale",
-      "tsHost": "terra",
-      "collectd": "terra",
-      "ssh": "terra",
-      "ip": "100.71.19.39",
-      "x": 1968,
-      "y": 715,
-      "online": true,
-      "icon": "&#127757;",
-      "label": "Terra",
-      "sublabel": "Linux \u2022 100.71.19.39",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a1a10,#0f0f08)",
-        "width": "50px",
-        "height": "50px",
-        "fontSize": "22px"
-      },
-      "pulse": true,
-      "tip": {
-        "title": "Terra",
-        "stats": [
-          [
-            "Type",
-            "Linux"
-          ],
-          [
-            "IP",
-            "100.71.19.39"
-          ]
-        ]
-      },
-      "_role": "tailscale"
-    },
-    {
-      "id": "ts-openclaw",
-      "type": "tailscale",
-      "tsHost": "openclaw",
-      "ip": "100.69.161.127",
-      "x": 2268,
-      "y": 665,
-      "online": true,
-      "icon": "&#128062;",
-      "label": "OpenClaw",
-      "sublabel": "Linux \u2022 100.69.161.127",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#2a1010,#1a0808)",
-        "width": "50px",
-        "height": "50px",
-        "fontSize": "22px"
-      },
-      "pulse": true,
-      "collectd": "openclaw",
-      "ssh": "openclaw",
-      "tip": {
-        "title": "OpenClaw",
-        "stats": [
-          [
-            "Type",
-            "Linux"
-          ],
-          [
-            "IP",
-            "100.69.161.127"
-          ]
-        ]
-      },
-      "_role": "tailscale"
-    },
-    {
-      "id": "ts-pikvm",
-      "type": "tailscale",
-      "tsHost": "pikvm",
-      "x": 2118,
-      "y": 1015,
-      "online": false,
-      "icon": "&#128065;",
-      "label": "PiKVM",
-      "sublabel": "Dormant",
-      "tip": {
-        "title": "PiKVM",
-        "stats": [
-          [
-            "Status",
-            "Dormant"
-          ]
-        ]
-      },
-      "_role": "tailscale"
-    },
-    {
-      "id": "ts-nitro",
-      "type": "tailscale",
-      "tsHost": "nitro",
-      "x": 2318,
-      "y": 915,
-      "online": false,
-      "icon": "&#128167;",
-      "label": "Nitro",
-      "sublabel": "Dormant",
-      "tip": {
-        "title": "Nitro",
-        "stats": [
-          [
-            "Status",
-            "Dormant"
-          ]
-        ]
-      },
-      "_role": "tailscale"
-    },
-    {
-      "id": "ts-gig",
-      "type": "tailscale",
-      "tsHost": "gig",
-      "x": 2518,
-      "y": 515,
-      "online": false,
-      "icon": "&#128190;",
-      "label": "Gig",
-      "sublabel": "Dormant",
-      "tip": {
-        "title": "Gig",
-        "stats": [
-          [
-            "Status",
-            "Dormant"
-          ]
-        ]
-      },
-      "_role": "tailscale"
-    },
-    {
-      "id": "ts-7050",
-      "type": "tailscale",
-      "tsHost": "7050",
-      "x": 2468,
-      "y": 815,
-      "online": false,
-      "icon": "&#9881;",
-      "label": "7050",
-      "sublabel": "Dormant",
-      "tip": {
-        "title": "7050",
-        "stats": [
-          [
-            "Status",
-            "Dormant"
           ]
         ]
       },
@@ -2867,7 +2017,7 @@
       "icon": "&#9832;",
       "label": "The Steam Works",
       "sublabel": "LG Washer+Dryer \u2022 10.0.10.x",
-      "badge": 2,
+      "badge": "2",
       "iconStyle": {
         "background": "radial-gradient(circle,#201a15,#151008)"
       },
@@ -2889,564 +2039,1162 @@
           ]
         ]
       },
-      "_role": "server"
+      "_role": "server",
+      "members": [
+        {
+          "label": "The Tidecaller",
+          "ip": "10.0.11.211",
+          "mac": "d48d2686c5b1",
+          "hw": "LG_Smart_Laundry2_open",
+          "ap": "onhub-office"
+        },
+        {
+          "label": "The Hearthwind",
+          "ip": "10.0.11.217",
+          "mac": "44274553a2f1",
+          "hw": "LG_Smart_Dryer2_open",
+          "ap": "onhub-office"
+        }
+      ]
     },
     {
-      "id": "_unknown_7cf666a8c8e9",
+      "id": "woodshed",
+      "type": "tower",
+      "x": 400,
+      "y": 440,
+      "icon": "&#127984;",
+      "label": "The Timber Keep",
+      "sublabel": "woodshed \u2022 10.0.6.105",
+      "ip": "10.0.6.105",
+      "collectd": "woodshed",
+      "ssh": "woodshed",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a1510,#0f0a08)",
+        "borderColor": "rgba(140,100,60,0.4)",
+        "width": "44px",
+        "height": "44px",
+        "fontSize": "20px"
+      },
+      "pulse": true,
+      "mac": "d8:84:66:31:48:29",
+      "tip": {
+        "title": "Woodshed Device",
+        "stats": [
+          [
+            "Role",
+            "Shed endpoint"
+          ],
+          [
+            "IP",
+            "10.0.6.105"
+          ]
+        ]
+      },
+      "_role": "server",
+      "_hostname": "woodshed"
+    },
+    {
+      "id": "shed-switch",
+      "type": "infra",
+      "x": 450,
+      "y": 550,
+      "icon": "&#x1F500;",
+      "label": "The Shed Spine",
+      "sublabel": "Unmanaged Switch"
+    },
+    {
+      "id": "poe-switch",
+      "type": "infra",
+      "label": "The Watcher's Forge",
+      "sublabel": "PoE Switch",
+      "icon": "&#x1F500;",
+      "x": 380,
+      "y": 620
+    },
+    {
+      "id": "nest-circle",
+      "type": "cluster",
+      "x": 1550,
+      "y": 900,
+      "icon": "&#128293;",
+      "label": "The Nest Circle",
+      "sublabel": "Nest Thermostats \u2022 10.0.10.x",
+      "badge": 5,
+      "iconStyle": {
+        "background": "radial-gradient(circle,#2a1510,#1a0e08)"
+      },
+      "pulse": true,
+      "tip": {
+        "title": "The Nest Circle",
+        "stats": [
+          [
+            "Devices",
+            "5 Nest Thermostats"
+          ],
+          [
+            "VLAN",
+            "10.0.10.x"
+          ],
+          [
+            "Protocol",
+            "WiFi / Nest API"
+          ]
+        ]
+      },
+      "_role": "thermostat",
+      "members": [
+        {
+          "label": "Hearth Keeper I",
+          "ip": "10.0.10.123",
+          "mac": "14c14e61276c",
+          "hw": "Nest-Thermostat-276C",
+          "ap": "onhub-office"
+        },
+        {
+          "label": "Hearth Keeper II",
+          "ip": "10.0.10.80",
+          "mac": "14c14e6d333f",
+          "hw": "Nest-Thermostat-333F",
+          "ap": "onhub-office"
+        },
+        {
+          "label": "Hearth Keeper III",
+          "ip": "10.0.10.118",
+          "mac": "ac678428b56d",
+          "hw": "Nest-Thermostat-B56D",
+          "ap": "onhub-closet"
+        },
+        {
+          "label": "Hearth Keeper IV",
+          "ip": "10.0.10.119",
+          "mac": "d8eb466182d1",
+          "hw": "Nest-Thermostat-82D1",
+          "ap": "onhub-closet"
+        },
+        {
+          "label": "Hearth Keeper V",
+          "ip": "10.0.10.249",
+          "mac": "14c14e2616b5",
+          "hw": "Nest-Thermostat-16B5",
+          "ap": "onhub-office"
+        }
+      ]
+    },
+    {
+      "id": "kasa-spirits",
+      "type": "cluster",
+      "x": 1650,
+      "y": 1050,
+      "icon": "&#128161;",
+      "label": "The Kasa Spirits",
+      "sublabel": "Smart Plugs \u2022 10.0.10.x",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a2010,#101508)"
+      },
+      "pulse": true,
+      "tip": {
+        "title": "The Kasa Spirits",
+        "stats": [
+          [
+            "Devices",
+            "TP-Link Kasa Smart Plugs, Switches, Bulbs"
+          ],
+          [
+            "VLAN",
+            "10.0.10.x"
+          ],
+          [
+            "Protocol",
+            "WiFi / Kasa API"
+          ]
+        ]
+      },
+      "_role": "plug",
+      "members": [
+        {
+          "label": "Kasa Plug I",
+          "ip": "10.0.10.173",
+          "mac": "6032b17282e1",
+          "hw": "TP-Link HS103",
+          "ap": "wndr4300sw-shed"
+        },
+        {
+          "label": "The Wall Switch",
+          "ip": "10.0.10.108",
+          "mac": "e848b8aa3933",
+          "hw": "TP-Link HS200",
+          "ap": "onhub-office"
+        },
+        {
+          "label": "The Floodlight",
+          "ip": "10.0.10.134",
+          "mac": "b0a7b9933d17",
+          "hw": "Kasa KL420",
+          "ap": "onhub-office"
+        },
+        {
+          "label": "The Dusk Bulb",
+          "ip": "10.0.10.129",
+          "mac": "fc584a862e9e",
+          "hw": "WSD-bulb-m0",
+          "ap": "eap225-outdoor"
+        },
+        {
+          "label": "The Glow Sprite",
+          "ip": "10.0.10.187",
+          "mac": "c006c3f658f5",
+          "hw": "Kasa KL125",
+          "ap": "onhub-office"
+        },
+        {
+          "label": "Kasa Spirit VI",
+          "ip": "10.0.10.81",
+          "mac": "6032b1728d22",
+          "hw": "TP-Link 8d22",
+          "ap": "onhub-office"
+        },
+        {
+          "label": "Kasa Spirit VII",
+          "ip": "10.0.10.103",
+          "mac": "6032b17294da",
+          "hw": "TP-Link 94da",
+          "ap": "onhub-office"
+        },
+        {
+          "label": "Kasa Spirit VIII",
+          "ip": "10.0.10.159",
+          "mac": "6032b17279c0",
+          "hw": "TP-Link 79c0",
+          "ap": "onhub-office"
+        },
+        {
+          "label": "Kasa Spirit IX",
+          "ip": "10.0.10.90",
+          "mac": "6c5ab0ee29bf",
+          "hw": "TP-Link 29bf",
+          "ap": "onhub-office"
+        },
+        {
+          "label": "Kasa Spirit X",
+          "ip": "10.0.10.237",
+          "mac": "6c5ab0ee112e",
+          "hw": "TP-Link 112e",
+          "ap": "eap225-outdoor"
+        },
+        {
+          "label": "Kasa Spirit XI",
+          "ip": "10.0.10.190",
+          "mac": "c006c3f652f8",
+          "hw": "Kasa 52f8",
+          "ap": "eap225-outdoor"
+        },
+        {
+          "label": "Kasa Spirit XII",
+          "ip": "10.0.10.121",
+          "mac": "c006c3f65895",
+          "hw": "Kasa 5895",
+          "ap": "eap225-outdoor"
+        },
+        {
+          "label": "Kasa Spirit XIII",
+          "ip": "10.0.10.229",
+          "mac": "909a4a4755bf",
+          "hw": "Kasa 55bf",
+          "ap": "eap225-outdoor"
+        },
+        {
+          "label": "The Meross Sprite",
+          "ip": "10.0.10.231",
+          "mac": "48e1e96f3cb8",
+          "hw": "Meross 3cb8",
+          "ap": "eap225-outdoor"
+        },
+        {
+          "label": "Kasa Spirit XV",
+          "ip": "10.0.10.161",
+          "mac": "909a4a474ca9",
+          "hw": "Kasa 4ca9",
+          "ap": "wndr4300sw-shed"
+        },
+        {
+          "label": "Kasa Spirit XVI",
+          "ip": "10.0.10.194",
+          "mac": "909a4a4753ab",
+          "hw": "Kasa 53ab",
+          "ap": "wndr4300sw-shed"
+        }
+      ],
+      "badge": 16
+    },
+    {
+      "id": "smart-hubs",
+      "type": "cluster",
+      "x": 440,
+      "y": 130,
+      "icon": "&#128300;",
+      "label": "The Binding Stones",
+      "sublabel": "Smart Hubs \u2022 10.0.10.x",
+      "badge": 4,
+      "iconStyle": {
+        "background": "radial-gradient(circle,#151510,#0a0a08)",
+        "borderColor": "rgba(160,160,80,0.3)"
+      },
+      "tip": {
+        "title": "The Binding Stones",
+        "stats": [
+          [
+            "Devices",
+            "SwitchBot Hub, 2x HiSmart"
+          ],
+          [
+            "VLAN",
+            "10 IoT"
+          ]
+        ]
+      },
+      "_role": "plug",
+      "members": [
+        {
+          "label": "The Switch Imp",
+          "ip": "10.0.10.143",
+          "mac": "68c63ad2b03d",
+          "hw": "SwitchBot Hub Mini",
+          "ap": "onhub-office"
+        },
+        {
+          "label": "Binding Stone II",
+          "ip": "10.0.10.139",
+          "mac": "ca2c4fac00a1",
+          "hw": "HiSmart-01-ca2c4fac0",
+          "ap": "onhub-office"
+        },
+        {
+          "label": "Binding Stone III",
+          "ip": "10.0.10.138",
+          "mac": "ca2c4fad7ef5",
+          "hw": "HiSmart-01-ca2c4fad7",
+          "ap": "onhub-office"
+        },
+        {
+          "label": "The Gecko Stone",
+          "ip": "10.0.10.243",
+          "mac": "b43a31d1771e",
+          "hw": "gecko_os-71E",
+          "ap": "wndr4300sw-shed"
+        }
+      ]
+    },
+    {
+      "id": "esp-swarm",
+      "type": "cluster",
+      "x": 1300,
+      "y": 1150,
+      "icon": "&#10022;",
+      "label": "The Sprite Swarm",
+      "sublabel": "ESP Devices \u2022 10.0.10.x",
+      "badge": 16,
+      "iconStyle": {
+        "background": "radial-gradient(circle,#102020,#081515)"
+      },
+      "pulse": true,
+      "tip": {
+        "title": "The Sprite Swarm",
+        "stats": [
+          [
+            "Devices",
+            "~20 ESP8266/ESP32"
+          ],
+          [
+            "VLAN",
+            "10.0.10.x"
+          ],
+          [
+            "Protocol",
+            "MQTT / ESPHome"
+          ]
+        ]
+      },
+      "_role": "sensor",
+      "members": [
+        {
+          "label": "Sprite I",
+          "ip": "10.0.10.101",
+          "mac": "e868e7d50978",
+          "hw": "ESP_D50978",
+          "ap": "onhub-closet"
+        },
+        {
+          "label": "Sprite II",
+          "ip": "10.0.10.110",
+          "mac": "600194a441c1",
+          "hw": "ESP_A441C1",
+          "ap": "onhub-office"
+        },
+        {
+          "label": "Sprite III",
+          "ip": "10.0.10.86",
+          "mac": "bcddc282ed19",
+          "hw": "ESP_82ED19",
+          "ap": "onhub-office"
+        },
+        {
+          "label": "Sprite IV",
+          "ip": "10.0.10.82",
+          "mac": "bcddc282eff7",
+          "hw": "ESP_82EFF7",
+          "ap": "eap225-outdoor"
+        },
+        {
+          "label": "Sprite V",
+          "ip": "10.0.10.107",
+          "mac": "e868e7cfaa92",
+          "hw": "ESP_CFAA92",
+          "ap": "eap225-outdoor"
+        },
+        {
+          "label": "Sprite VI",
+          "ip": "10.0.10.91",
+          "mac": "24a160393fb0",
+          "hw": "ESP_393FB0",
+          "ap": "eap225-outdoor"
+        },
+        {
+          "label": "Sprite VII",
+          "ip": "10.0.10.89",
+          "mac": "ac67b2d1f2e4",
+          "hw": "espressif",
+          "ap": "eap225-outdoor"
+        },
+        {
+          "label": "Sprite VIII",
+          "ip": "10.0.10.88",
+          "mac": "483fda6a0ea8",
+          "hw": "ESP_6A0EA8",
+          "ap": "eap225-outdoor"
+        },
+        {
+          "label": "Sprite IX",
+          "ip": "10.0.10.98",
+          "mac": "2cf43208cff0",
+          "hw": "ESP_08CFF0",
+          "ap": "wndr4300sw-shed"
+        },
+        {
+          "label": "Sprite X",
+          "ip": "10.0.10.100",
+          "mac": "b4e62d79b610",
+          "hw": "ESP_79B610",
+          "ap": "wndr4300sw-shed"
+        },
+        {
+          "label": "Sprite XI",
+          "ip": "10.0.10.247",
+          "mac": "18de50775aff",
+          "hw": "lwip0",
+          "ap": "onhub-pumphouse"
+        },
+        {
+          "label": "Sprite XII",
+          "ip": "10.0.10.155",
+          "mac": "b8060d2b2e26",
+          "hw": "Espressif 2e26",
+          "ap": "onhub-closet"
+        },
+        {
+          "label": "Sprite XIII",
+          "ip": "10.0.10.104",
+          "mac": "b8060d2b4a5d",
+          "hw": "Espressif 4a5d",
+          "ap": "onhub-office"
+        },
+        {
+          "label": "Sprite XIV",
+          "ip": "",
+          "mac": "18de50215b77",
+          "hw": "Espressif 5b77"
+        },
+        {
+          "label": "Sprite XV",
+          "ip": "",
+          "mac": "18de5069afec",
+          "hw": "Espressif afec"
+        },
+        {
+          "label": "Sprite XVI",
+          "ip": "",
+          "mac": "b8060d7c942f",
+          "hw": "Espressif 942f"
+        }
+      ]
+    },
+    {
+      "id": "iot-pumphouse",
+      "type": "cluster",
+      "x": 310,
+      "y": 750,
+      "icon": "&#128167;",
+      "label": "The Well Sprites",
+      "sublabel": "IoT \u2022 Pumphouse",
+      "badge": 1,
+      "iconStyle": {
+        "background": "radial-gradient(circle,#0a151a,#050a0f)",
+        "borderColor": "rgba(80,140,200,0.3)"
+      },
+      "tip": {
+        "title": "The Well Sprites",
+        "stats": [
+          [
+            "Devices",
+            "lwip0, pumphouse-radar"
+          ],
+          [
+            "AP",
+            "onhub-pumphouse"
+          ],
+          [
+            "VLAN",
+            "10 IoT"
+          ]
+        ]
+      },
+      "_role": "appliance",
+      "members": [
+        {
+          "label": "The Groundseer",
+          "ip": "10.0.10.128",
+          "mac": "f0f5bdfd3504",
+          "hw": "pumphouse-radar",
+          "ap": "eap225-outdoor"
+        }
+      ]
+    },
+    {
+      "id": "tuya-sprites",
+      "type": "cluster",
+      "x": 1700,
+      "y": 1100,
+      "icon": "&#9889;",
+      "label": "The Tuya Sprites",
+      "sublabel": "Tuya Smart Devices \u2022 10.0.10.x",
+      "badge": 16,
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a1520,#0f0d12)"
+      },
+      "pulse": true,
+      "tip": {
+        "title": "The Tuya Sprites",
+        "stats": [
+          [
+            "Devices",
+            "Tuya IoT"
+          ],
+          [
+            "VLAN",
+            "10.0.10.x"
+          ]
+        ]
+      },
+      "members": [
+        {
+          "label": "Tuya Sprite I",
+          "ip": "10.0.10.113",
+          "mac": "7cf666a8c8e9",
+          "hw": "Tuya c8e9",
+          "ap": "eap225-outdoor"
+        },
+        {
+          "label": "Tuya Sprite II",
+          "ip": "10.0.10.96",
+          "mac": "b4e84212e7ac",
+          "hw": "bl606a0",
+          "ap": "eap225-outdoor"
+        },
+        {
+          "label": "Tuya Sprite III",
+          "ip": "10.0.10.84",
+          "mac": "508bb9f31b25",
+          "hw": "Tuya 1b25"
+        },
+        {
+          "label": "Tuya Sprite IV",
+          "ip": "10.0.10.157",
+          "mac": "7cf666a9efe8",
+          "hw": "Tuya efe8",
+          "ap": "eap225-outdoor"
+        },
+        {
+          "label": "Tuya Sprite V",
+          "ip": "10.0.10.99",
+          "mac": "508bb9995cca",
+          "hw": "Tuya 5cca",
+          "ap": "onhub-office"
+        },
+        {
+          "label": "Tuya Sprite VI",
+          "ip": "10.0.11.206",
+          "mac": "f8172dde19f6",
+          "hw": "Tuya 19f6",
+          "ap": "onhub-office"
+        },
+        {
+          "label": "Tuya Sprite VII",
+          "ip": "10.0.10.94",
+          "mac": "381f8d9ca309",
+          "hw": "Tuya a309",
+          "ap": "onhub-office"
+        },
+        {
+          "label": "Tuya Sprite VIII",
+          "ip": "10.0.10.147",
+          "mac": "a88055d547f0",
+          "hw": "Tuya 47f0",
+          "ap": "onhub-office"
+        },
+        {
+          "label": "Tuya Sprite IX",
+          "ip": "10.0.10.105",
+          "mac": "c482e188b558",
+          "hw": "Tuya b558",
+          "ap": "onhub-office"
+        },
+        {
+          "label": "Tuya Sprite X",
+          "ip": "10.0.10.97",
+          "mac": "c482e188adeb",
+          "hw": "Tuya adeb",
+          "ap": "onhub-office"
+        },
+        {
+          "label": "Tuya Sprite XI",
+          "ip": "10.0.10.106",
+          "mac": "7cf6668d92fc",
+          "hw": "Tuya 92fc",
+          "ap": "onhub-office"
+        },
+        {
+          "label": "Tuya Sprite XII",
+          "ip": "10.0.10.95",
+          "mac": "c482e13f8e26",
+          "hw": "Tuya 8e26",
+          "ap": "eap225-outdoor"
+        },
+        {
+          "label": "Tuya Sprite XIII",
+          "ip": "10.0.10.115",
+          "mac": "a88055ab3651",
+          "hw": "Tuya 3651",
+          "ap": "eap225-outdoor"
+        },
+        {
+          "label": "Tuya Sprite XIV",
+          "ip": "10.0.10.109",
+          "mac": "c482e13f8c56",
+          "hw": "Tuya 8c56",
+          "ap": "wndr4300sw-shed"
+        },
+        {
+          "label": "Tuya Sprite XV",
+          "ip": "10.0.10.167",
+          "mac": "d81f12d36dba",
+          "hw": "Tuya 6dba",
+          "ap": "wndr4300sw-shed"
+        },
+        {
+          "label": "Tuya Sprite XVI",
+          "ip": "10.0.10.114",
+          "mac": "d81f12d39678",
+          "hw": "Tuya 9678",
+          "ap": "wndr4300sw-shed"
+        }
+      ]
+    },
+    {
+      "id": "voice-stones",
+      "type": "cluster",
+      "x": 1500,
+      "y": 1100,
+      "icon": "&#128302;",
+      "label": "The Voice Stones",
+      "sublabel": "Google Home \u2022 10.0.10.x",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#151530,#0a0a20)"
+      },
+      "pulse": true,
+      "tip": {
+        "title": "The Voice Stones",
+        "stats": [
+          [
+            "Devices",
+            "Google Home / Nest Speakers"
+          ],
+          [
+            "VLAN",
+            "10.0.10.x"
+          ],
+          [
+            "Protocol",
+            "Cast / Assistant"
+          ]
+        ]
+      },
+      "_role": "speaker",
+      "members": [
+        {
+          "label": "Voice Stone I",
+          "ip": "10.0.6.124",
+          "mac": "24e50fd7011d",
+          "hw": "Google 011d",
+          "ap": "onhub-closet"
+        },
+        {
+          "label": "Voice Stone II",
+          "ip": "10.0.10.92",
+          "mac": "dce55b876747",
+          "hw": "Google 6747",
+          "ap": "onhub-closet"
+        },
+        {
+          "label": "Voice Stone III",
+          "ip": "10.0.10.137",
+          "mac": "d4f547644abc",
+          "hw": "Google 4abc",
+          "ap": "onhub-office"
+        },
+        {
+          "label": "Voice Stone IV",
+          "ip": "10.0.10.111",
+          "mac": "f0ef86158ca1",
+          "hw": "Google 8ca1",
+          "ap": "eap225-outdoor"
+        },
+        {
+          "label": "Voice Stone V",
+          "ip": "10.0.10.144",
+          "mac": "3c8d204806fd",
+          "hw": "Google 06fd",
+          "ap": "eap225-outdoor"
+        },
+        {
+          "label": "Voice Stone VI",
+          "ip": "10.0.10.120",
+          "mac": "d4f54743e5d3",
+          "hw": "Google e5d3",
+          "ap": "onhub-office"
+        },
+        {
+          "label": "Voice Stone VII",
+          "ip": "",
+          "mac": "a477333f08d6",
+          "hw": "Google Home",
+          "ap": "wndr4300sw-shed"
+        }
+      ],
+      "badge": 7
+    },
+    {
+      "id": "_unknown_3e7592ac0b69",
       "type": "device",
       "_auto": true,
       "x": 2370,
-      "y": 1300,
-      "icon": "&#128268;",
-      "label": "wlan0",
-      "sublabel": "10.0.10.113 \u2022 Tuya",
-      "ip": "10.0.10.113",
-      "mac": "7c:f6:66:a8:c8:e9",
+      "y": 750,
+      "ip": "10.0.11.220",
+      "mac": "3e:75:92:ac:0b:69",
+      "_last_seen": 1773528249.0501041,
+      "label": "Guest Device 0b69",
+      "icon": "&#128241;",
+      "sublabel": "10.0.11.220 \u2022 Randomized MAC",
       "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
+        "background": "radial-gradient(circle,#a080c020,#0a0510)",
+        "borderColor": "#a080c080",
         "width": "32px",
         "height": "32px",
         "fontSize": "14px"
       },
-      "_role": "plug",
-      "_vendor": "Tuya"
+      "_role": "phone",
+      "_vendor": null,
+      "_hostname": "Flip3"
     },
     {
-      "id": "_unknown_6032b17282e1",
+      "id": "katana",
+      "type": "core",
+      "ip": "10.0.6.129",
+      "x": 100.5,
+      "y": 200.3,
+      "icon": "&#9876;",
+      "label": "The Citadel Throne",
+      "sublabel": "katana \u2022 10.0.6.129",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#2a1f0f,#1a1008)",
+        "width": "80px",
+        "height": "80px",
+        "fontSize": "36px",
+        "borderColor": "#f0d890"
+      },
+      "labelStyle": {
+        "fontSize": "16px"
+      },
+      "scaleBar": {
+        "width": "89%",
+        "gradient": "linear-gradient(90deg,#f09040,#f0d040)"
+      },
+      "pulse": true,
+      "tip": {
+        "title": "The Citadel Throne",
+        "stats": []
+      },
+      "mac": "00:d8:61:bb:9f:8e",
+      "_role": "server",
+      "_hostname": "katana"
+    },
+    {
+      "id": "gigabeam0",
+      "type": "bridge",
+      "x": 150,
+      "y": 250,
+      "icon": "&#128225;",
+      "label": "The North Star",
+      "sublabel": "gigabeam0 \u2022 10.0.6.242",
+      "ip": "10.0.6.242",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a1030,#100820)"
+      },
+      "pulse": true,
+      "tip": {
+        "title": "The North Star",
+        "stats": [
+          [
+            "Type",
+            "Mikrotik GigaBeam"
+          ],
+          [
+            "IP",
+            "10.0.6.242"
+          ],
+          [
+            "Role",
+            "60GHz Bridge"
+          ]
+        ]
+      },
+      "mac": "60:22:32:d2:5d:e7",
+      "_role": "bridge",
+      "_hostname": "gigabeam0"
+    },
+    {
+      "id": "gigabeam1",
+      "type": "bridge",
+      "x": 280,
+      "y": 300,
+      "icon": "&#128225;",
+      "label": "The South Star",
+      "sublabel": "gigabeam1 \u2022 10.0.6.243",
+      "ip": "10.0.6.243",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a1030,#100820)"
+      },
+      "pulse": true,
+      "tip": {
+        "title": "The South Star",
+        "stats": [
+          [
+            "Type",
+            "Mikrotik GigaBeam"
+          ],
+          [
+            "IP",
+            "10.0.6.243"
+          ],
+          [
+            "Role",
+            "60GHz Bridge"
+          ]
+        ]
+      },
+      "mac": "60:22:32:d2:63:6a",
+      "_role": "bridge",
+      "_hostname": "gigabeam1"
+    },
+    {
+      "id": "esp32-a90c10",
+      "type": "device",
+      "x": 430,
+      "y": 480,
+      "icon": "&#128308;",
+      "label": "The Hearthstone Rune",
+      "sublabel": "esp32-A90C10 \u2022 10.0.11.212",
+      "ip": "10.0.11.212",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#151510,#0a0a08)",
+        "borderColor": "rgba(140,160,80,0.3)",
+        "width": "34px",
+        "height": "34px",
+        "fontSize": "14px"
+      },
+      "mac": "2c:bc:bb:a9:0c:10",
+      "tip": {
+        "title": "The Hearthstone Rune",
+        "stats": [
+          [
+            "Model",
+            "ESP32"
+          ],
+          [
+            "Role",
+            "Sensor node"
+          ],
+          [
+            "IP",
+            "10.0.6.132"
+          ]
+        ]
+      },
+      "_role": "sensor",
+      "_hostname": "esp32-A90C10"
+    },
+    {
+      "id": "wolf-creek",
+      "type": "device",
+      "x": 1100,
+      "y": 150,
+      "icon": "&#128187;",
+      "label": "The Wolf Creek Tome",
+      "sublabel": "WolfCreek Laptop \u2022 10.0.11.185",
+      "ip": "10.0.11.185",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#151520,#0a0a15)",
+        "borderColor": "rgba(140,100,80,0.3)",
+        "width": "40px",
+        "height": "40px",
+        "fontSize": "18px"
+      },
+      "tip": {
+        "title": "The Wolf Creek Tome",
+        "stats": [
+          [
+            "Model",
+            "Laptop"
+          ],
+          [
+            "Role",
+            "Portable device"
+          ],
+          [
+            "IP",
+            "10.0.11.185"
+          ]
+        ]
+      },
+      "_role": "laptop"
+    },
+    {
+      "id": "ts-terra",
+      "type": "tailscale",
+      "tsHost": "terra",
+      "collectd": "terra",
+      "ssh": "terra",
+      "ip": "100.71.19.39",
+      "x": 1968,
+      "y": 715,
+      "online": true,
+      "icon": "&#127757;",
+      "label": "The Earthbound",
+      "sublabel": "Linux \u2022 100.71.19.39",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#1a1a10,#0f0f08)",
+        "width": "50px",
+        "height": "50px",
+        "fontSize": "22px"
+      },
+      "pulse": true,
+      "tip": {
+        "title": "The Earthbound",
+        "stats": [
+          [
+            "Type",
+            "Linux"
+          ],
+          [
+            "IP",
+            "100.71.19.39"
+          ]
+        ]
+      },
+      "_role": "tailscale"
+    },
+    {
+      "id": "ts-openclaw",
+      "type": "tailscale",
+      "tsHost": "openclaw",
+      "ip": "100.69.161.127",
+      "x": 2268,
+      "y": 665,
+      "online": true,
+      "icon": "&#128062;",
+      "label": "The Open Claw",
+      "sublabel": "Linux \u2022 100.69.161.127",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#2a1010,#1a0808)",
+        "width": "50px",
+        "height": "50px",
+        "fontSize": "22px"
+      },
+      "pulse": true,
+      "collectd": "openclaw",
+      "ssh": "openclaw",
+      "tip": {
+        "title": "The Open Claw",
+        "stats": [
+          [
+            "Type",
+            "Linux"
+          ],
+          [
+            "IP",
+            "100.69.161.127"
+          ]
+        ]
+      },
+      "_role": "tailscale"
+    },
+    {
+      "id": "ts-pikvm",
+      "type": "tailscale",
+      "tsHost": "pikvm",
+      "x": 2118,
+      "y": 1015,
+      "online": false,
+      "icon": "&#128065;",
+      "label": "The Remote Eye",
+      "sublabel": "PiKVM \u2022 Dormant",
+      "tip": {
+        "title": "The Remote Eye",
+        "stats": [
+          [
+            "Status",
+            "Dormant"
+          ]
+        ]
+      },
+      "_role": "tailscale"
+    },
+    {
+      "id": "ts-nitro",
+      "type": "tailscale",
+      "tsHost": "nitro",
+      "x": 2318,
+      "y": 915,
+      "online": false,
+      "icon": "&#128167;",
+      "label": "The Swift Bolt",
+      "sublabel": "Acer Nitro \u2022 Dormant",
+      "tip": {
+        "title": "The Swift Bolt",
+        "stats": [
+          [
+            "Status",
+            "Dormant"
+          ]
+        ]
+      },
+      "_role": "tailscale"
+    },
+    {
+      "id": "ts-gig",
+      "type": "tailscale",
+      "tsHost": "gig",
+      "x": 2518,
+      "y": 515,
+      "online": false,
+      "icon": "&#128190;",
+      "label": "The Far Reach",
+      "sublabel": "Remote Node \u2022 Dormant",
+      "tip": {
+        "title": "The Far Reach",
+        "stats": [
+          [
+            "Status",
+            "Dormant"
+          ]
+        ]
+      },
+      "_role": "tailscale"
+    },
+    {
+      "id": "ts-7050",
+      "type": "tailscale",
+      "tsHost": "7050",
+      "x": 2468,
+      "y": 815,
+      "online": false,
+      "icon": "&#9881;",
+      "label": "The Chromatic",
+      "sublabel": "Chromebook \u2022 Dormant",
+      "tip": {
+        "title": "The Chromatic",
+        "stats": [
+          [
+            "Status",
+            "Dormant"
+          ]
+        ]
+      },
+      "_role": "tailscale"
+    },
+    {
+      "id": "_unknown_60f6775f363d",
       "type": "device",
       "_auto": true,
-      "x": 2370,
-      "y": 1450,
-      "icon": "&#128268;",
-      "label": "HS103",
-      "sublabel": "10.0.10.173 \u2022 TP-Link",
-      "ip": "10.0.10.173",
-      "mac": "60:32:b1:72:82:e1",
+      "x": 2510,
+      "y": 800,
+      "ip": "10.0.6.106",
+      "mac": "60:f6:77:5f:36:3d",
+      "_last_seen": 1773534894.9827955,
+      "label": "Device 363d",
+      "icon": "&#128123;",
+      "sublabel": "10.0.6.106",
       "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
+        "background": "radial-gradient(circle,#80808020,#0a0510)",
+        "borderColor": "#80808080",
         "width": "32px",
         "height": "32px",
         "fontSize": "14px"
       },
-      "_role": "plug",
-      "_vendor": "TP-Link"
+      "_role": "unknown",
+      "_vendor": null
     },
     {
-      "id": "_unknown_14c14e61276c",
+      "id": "_unknown_be68f45be203",
       "type": "device",
       "_auto": true,
-      "x": 2440,
-      "y": 1100,
-      "icon": "&#128123;",
-      "label": "Nest-Thermostat-276C",
-      "sublabel": "10.0.10.123 \u2022 14:c1:4e...",
-      "ip": "10.0.10.123",
-      "mac": "14:c1:4e:61:27:6c",
+      "x": 2300,
+      "y": 850,
+      "ip": "10.0.11.221",
+      "mac": "be:68:f4:5b:e2:03",
+      "_last_seen": 1773545811.8251338,
+      "label": "Guest Device e203",
+      "icon": "&#128241;",
+      "sublabel": "10.0.11.221 \u2022 Randomized MAC",
       "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
+        "background": "radial-gradient(circle,#a080c020,#0a0510)",
+        "borderColor": "#a080c080",
         "width": "32px",
         "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
+        "fontSize": "14px"
       },
-      "_role": "thermostat"
+      "_role": "phone",
+      "_vendor": null,
+      "_hostname": "Galaxy-Z-Flip3-5G"
     },
     {
-      "id": "_unknown_14c14e6d333f",
+      "id": "_unknown_483fda5750e1",
       "type": "device",
       "_auto": true,
-      "x": 2440,
-      "y": 1150,
-      "icon": "&#128123;",
-      "label": "Nest-Thermostat-333F",
-      "sublabel": "10.0.10.80 \u2022 14:c1:4e...",
-      "ip": "10.0.10.80",
-      "mac": "14:c1:4e:6d:33:3f",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      },
-      "_role": "thermostat"
-    },
-    {
-      "id": "_unknown_ac678428b56d",
-      "type": "device",
-      "_auto": true,
-      "x": 2440,
-      "y": 800,
-      "icon": "&#128123;",
-      "label": "Nest-Thermostat-B56D",
-      "sublabel": "10.0.10.118 \u2022 ac:67:84...",
-      "ip": "10.0.10.118",
-      "mac": "ac:67:84:28:b5:6d",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      },
-      "_role": "thermostat"
-    },
-    {
-      "id": "_unknown_d8eb466182d1",
-      "type": "device",
-      "_auto": true,
-      "x": 2440,
-      "y": 750,
-      "icon": "&#128123;",
-      "label": "Nest-Thermostat-82D1",
-      "sublabel": "10.0.10.119 \u2022 d8:eb:46...",
-      "ip": "10.0.10.119",
-      "mac": "d8:eb:46:61:82:d1",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      },
-      "_role": "thermostat"
-    },
-    {
-      "id": "_unknown_f0f5bdfd3504",
-      "type": "device",
-      "_auto": true,
-      "x": 2370,
+      "x": 2580,
       "y": 1250,
-      "icon": "&#128123;",
-      "label": "pumphouse-radar",
-      "sublabel": "10.0.10.128 \u2022 f0:f5:bd...",
-      "ip": "10.0.10.128",
-      "mac": "f0:f5:bd:fd:35:04",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      },
-      "_role": "sensor"
-    },
-    {
-      "id": "_unknown_b4e84212e7ac",
-      "type": "device",
-      "_auto": true,
-      "x": 2370,
-      "y": 1350,
-      "icon": "&#128123;",
-      "label": "bl606a0",
-      "sublabel": "10.0.10.96 \u2022 b4:e8:42...",
-      "ip": "10.0.10.96",
-      "mac": "b4:e8:42:12:e7:ac",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      },
-      "_role": "sensor"
-    },
-    {
-      "id": "_unknown_f24a37407ca1",
-      "type": "device",
-      "_auto": true,
-      "x": 2300,
-      "y": 750,
-      "icon": "&#128123;",
-      "label": "Galaxy-Tab-A7-Lite",
-      "sublabel": "10.0.6.157 \u2022 f2:4a:37...",
-      "ip": "10.0.6.157",
-      "mac": "f2:4a:37:40:7c:a1",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      },
-      "_role": "tablet"
-    },
-    {
-      "id": "_unknown_e848b8aa3933",
-      "type": "device",
-      "_auto": true,
-      "x": 2510,
-      "y": 950,
-      "icon": "&#128123;",
-      "label": "HS200",
-      "sublabel": "10.0.10.108 \u2022 e8:48:b8...",
-      "ip": "10.0.10.108",
-      "mac": "e8:48:b8:aa:39:33",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      },
-      "_role": "plug"
-    },
-    {
-      "id": "_unknown_b0a7b9933d17",
-      "type": "device",
-      "_auto": true,
-      "x": 2370,
-      "y": 1050,
-      "icon": "&#128123;",
-      "label": "KL420",
-      "sublabel": "10.0.10.134 \u2022 b0:a7:b9...",
-      "ip": "10.0.10.134",
-      "mac": "b0:a7:b9:93:3d:17",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      },
-      "_role": "plug"
-    },
-    {
-      "id": "_unknown_68c63ad2b03d",
-      "type": "device",
-      "_auto": true,
-      "x": 2370,
-      "y": 1100,
-      "icon": "&#128123;",
-      "label": "SwitchBot-HubMini-D2",
-      "sublabel": "10.0.10.143 \u2022 68:c6:3a...",
-      "ip": "10.0.10.143",
-      "mac": "68:c6:3a:d2:b0:3d",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      },
-      "_role": "plug"
-    },
-    {
-      "id": "_unknown_ca2c4fac00a1",
-      "type": "device",
-      "_auto": true,
-      "x": 2370,
-      "y": 800,
-      "icon": "&#128123;",
-      "label": "HiSmart-01-ca2c4fac0",
-      "sublabel": "10.0.10.139 \u2022 ca:2c:4f...",
-      "ip": "10.0.10.139",
-      "mac": "ca:2c:4f:ac:00:a1",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      },
-      "_role": "plug"
-    },
-    {
-      "id": "_unknown_ca2c4fad7ef5",
-      "type": "device",
-      "_auto": true,
-      "x": 2370,
-      "y": 1000,
-      "icon": "&#128123;",
-      "label": "HiSmart-01-ca2c4fad7",
-      "sublabel": "10.0.10.138 \u2022 ca:2c:4f...",
-      "ip": "10.0.10.138",
-      "mac": "ca:2c:4f:ad:7e:f5",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      },
-      "_role": "plug"
-    },
-    {
-      "id": "_unknown_fc584a862e9e",
-      "type": "device",
-      "_auto": true,
-      "x": 2510,
-      "y": 750,
-      "icon": "&#128123;",
-      "label": "WSD-bulb-m0",
-      "sublabel": "10.0.10.129 \u2022 fc:58:4a...",
-      "ip": "10.0.10.129",
-      "mac": "fc:58:4a:86:2e:9e",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      },
-      "_role": "plug"
-    },
-    {
-      "id": "_unknown_c006c3f658f5",
-      "type": "device",
-      "_auto": true,
-      "x": 2300,
-      "y": 1050,
-      "icon": "&#128123;",
-      "label": "KL125",
-      "sublabel": "10.0.10.187 \u2022 c0:06:c3...",
-      "ip": "10.0.10.187",
-      "mac": "c0:06:c3:f6:58:f5",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      },
-      "_role": "plug"
-    },
-    {
-      "id": "_unknown_e868e7d50978",
-      "type": "device",
-      "_auto": true,
-      "x": 2300,
-      "y": 800,
-      "icon": "&#128123;",
-      "label": "ESP_D50978",
-      "sublabel": "10.0.10.101 \u2022 e8:68:e7...",
-      "ip": "10.0.10.101",
-      "mac": "e8:68:e7:d5:09:78",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      },
-      "_role": "sensor"
-    },
-    {
-      "id": "_unknown_600194a441c1",
-      "type": "device",
-      "_auto": true,
-      "x": 2300,
-      "y": 1150,
-      "icon": "&#128123;",
-      "label": "ESP_A441C1",
-      "sublabel": "10.0.10.110 \u2022 60:01:94...",
-      "ip": "10.0.10.110",
-      "mac": "60:01:94:a4:41:c1",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      },
-      "_role": "sensor"
-    },
-    {
-      "id": "_unknown_bcddc282ed19",
-      "type": "device",
-      "_auto": true,
-      "x": 2510,
-      "y": 1000,
-      "icon": "&#128123;",
-      "label": "ESP_82ED19",
-      "sublabel": "10.0.10.86 \u2022 bc:dd:c2...",
-      "ip": "10.0.10.86",
-      "mac": "bc:dd:c2:82:ed:19",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      },
-      "_role": "sensor"
-    },
-    {
-      "id": "_unknown_bcddc282eff7",
-      "type": "device",
-      "_auto": true,
-      "x": 2300,
-      "y": 1200,
-      "icon": "&#128123;",
-      "label": "ESP_82EFF7",
-      "sublabel": "10.0.10.82 \u2022 bc:dd:c2...",
-      "ip": "10.0.10.82",
-      "mac": "bc:dd:c2:82:ef:f7",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      },
-      "_role": "sensor"
-    },
-    {
-      "id": "_unknown_e868e7cfaa92",
-      "type": "device",
-      "_auto": true,
-      "x": 2370,
-      "y": 1200,
-      "icon": "&#128123;",
-      "label": "ESP_CFAA92",
-      "sublabel": "10.0.10.107 \u2022 e8:68:e7...",
-      "ip": "10.0.10.107",
-      "mac": "e8:68:e7:cf:aa:92",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      },
-      "_role": "sensor"
-    },
-    {
-      "id": "_unknown_24a160393fb0",
-      "type": "device",
-      "_auto": true,
-      "x": 2440,
-      "y": 1200,
-      "icon": "&#128123;",
-      "label": "ESP_393FB0",
-      "sublabel": "10.0.10.91 \u2022 24:a1:60...",
-      "ip": "10.0.10.91",
-      "mac": "24:a1:60:39:3f:b0",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      },
-      "_role": "sensor"
-    },
-    {
-      "id": "_unknown_ac67b2d1f2e4",
-      "type": "device",
-      "_auto": true,
-      "x": 2510,
-      "y": 1200,
-      "icon": "&#128123;",
-      "label": "espressif",
-      "sublabel": "10.0.10.89 \u2022 ac:67:b2...",
-      "ip": "10.0.10.89",
-      "mac": "ac:67:b2:d1:f2:e4",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      },
-      "_role": "sensor"
-    },
-    {
-      "id": "_unknown_483fda6a0ea8",
-      "type": "device",
-      "_auto": true,
-      "x": 2300,
-      "y": 1250,
-      "icon": "&#128123;",
-      "label": "ESP_6A0EA8",
-      "sublabel": "10.0.10.88 \u2022 48:3f:da...",
-      "ip": "10.0.10.88",
-      "mac": "48:3f:da:6a:0e:a8",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      },
-      "_role": "sensor"
-    },
-    {
-      "id": "_unknown_2cf43208cff0",
-      "type": "device",
-      "_auto": true,
-      "x": 2510,
-      "y": 1400,
-      "icon": "&#128123;",
-      "label": "ESP_08CFF0",
-      "sublabel": "10.0.10.98 \u2022 2c:f4:32...",
-      "ip": "10.0.10.98",
-      "mac": "2c:f4:32:08:cf:f0",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      },
-      "_role": "sensor"
-    },
-    {
-      "id": "_unknown_b4e62d79b610",
-      "type": "device",
-      "_auto": true,
-      "x": 2300,
-      "y": 1450,
-      "icon": "&#128123;",
-      "label": "ESP_79B610",
-      "sublabel": "10.0.10.100 \u2022 b4:e6:2d...",
-      "ip": "10.0.10.100",
-      "mac": "b4:e6:2d:79:b6:10",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#1a0a20,#0a0510)",
-        "borderColor": "rgba(160,100,200,0.3)",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px",
-        "opacity": "0.7"
-      },
-      "_role": "sensor"
-    },
-    {
-      "id": "_unknown_18de50775aff",
-      "type": "device",
-      "_auto": true,
-      "x": 2300,
-      "y": 750,
       "ip": "10.0.10.117",
-      "mac": "18:de:50:77:5a:ff",
-      "_last_seen": 1773438838.5462613,
-      "label": "lwip0",
+      "mac": "48:3f:da:57:50:e1",
+      "_last_seen": 1773555528.2544756,
+      "label": "ESP_5750E1",
       "icon": "&#128202;",
       "sublabel": "10.0.10.117 \u2022 Espressif",
       "iconStyle": {
@@ -3457,856 +3205,21 @@
         "fontSize": "14px"
       },
       "_role": "sensor",
-      "_vendor": "Espressif"
+      "_vendor": "Espressif",
+      "_hostname": "ESP_5750E1"
     },
     {
-      "id": "_unknown_e626b4346803",
-      "type": "device",
-      "_auto": true,
-      "x": 2370,
-      "y": 750,
-      "ip": "10.0.6.145",
-      "mac": "e6:26:b4:34:68:03",
-      "_last_seen": 1773438838.5486033,
-      "label": "Admin Device 6803",
-      "icon": "&#128123;",
-      "sublabel": "10.0.6.145 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "unknown",
-      "_vendor": null
-    },
-    {
-      "id": "_unknown_508bb9f31b25",
-      "type": "device",
-      "_auto": true,
-      "x": 2440,
-      "y": 750,
-      "ip": "10.0.10.84",
-      "mac": "50:8b:b9:f3:1b:25",
-      "_last_seen": 1773438838.554094,
-      "label": "Tuya 1b25",
-      "icon": "&#128268;",
-      "sublabel": "10.0.10.84 \u2022 Tuya",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "plug",
-      "_vendor": "Tuya"
-    },
-    {
-      "id": "_unknown_7cf666a9efe8",
-      "type": "device",
-      "_auto": true,
-      "x": 2510,
-      "y": 750,
-      "ip": "10.0.10.157",
-      "mac": "7c:f6:66:a9:ef:e8",
-      "_last_seen": 1773438838.5563667,
-      "label": "Tuya efe8",
-      "icon": "&#128268;",
-      "sublabel": "10.0.10.157 \u2022 Tuya",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "plug",
-      "_vendor": "Tuya"
-    },
-    {
-      "id": "_unknown_b8060d2b2e26",
-      "type": "device",
-      "_auto": true,
-      "x": 2580,
-      "y": 750,
-      "ip": "10.0.10.155",
-      "mac": "b8:06:0d:2b:2e:26",
-      "_last_seen": 1773438838.5585876,
-      "label": "Espressif 2e26",
-      "icon": "&#128202;",
-      "sublabel": "10.0.10.155 \u2022 Espressif",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#60c06020,#0a0510)",
-        "borderColor": "#60c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "sensor",
-      "_vendor": "Espressif"
-    },
-    {
-      "id": "_unknown_24e50fd7011d",
-      "type": "device",
-      "_auto": true,
-      "x": 2650,
-      "y": 750,
-      "ip": "10.0.6.124",
-      "mac": "24:e5:0f:d7:01:1d",
-      "_last_seen": 1773438838.5607936,
-      "label": "Google 011d",
-      "icon": "&#128266;",
-      "sublabel": "10.0.6.124 \u2022 Google",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#6090c020,#0a0510)",
-        "borderColor": "#6090c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "speaker",
-      "_vendor": "Google"
-    },
-    {
-      "id": "_unknown_60f6775f363d",
-      "type": "device",
-      "_auto": true,
-      "x": 2300,
-      "y": 800,
-      "ip": "10.0.6.126",
-      "mac": "60:f6:77:5f:36:3d",
-      "_last_seen": 1773438838.5630076,
-      "label": "Device 363d",
-      "icon": "&#128123;",
-      "sublabel": "10.0.6.126",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "unknown",
-      "_vendor": null
-    },
-    {
-      "id": "_unknown_dce55b876747",
+      "id": "_unknown_cca7c15e89f9",
       "type": "device",
       "_auto": true,
       "x": 2370,
       "y": 800,
-      "ip": "10.0.10.92",
-      "mac": "dc:e5:5b:87:67:47",
-      "_last_seen": 1773438838.5653157,
-      "label": "Google 6747",
-      "icon": "&#128266;",
-      "sublabel": "10.0.10.92 \u2022 Google",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#6090c020,#0a0510)",
-        "borderColor": "#6090c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "speaker",
-      "_vendor": "Google"
-    },
-    {
-      "id": "_unknown_508bb9995cca",
-      "type": "device",
-      "_auto": true,
-      "x": 2440,
-      "y": 800,
-      "ip": "10.0.10.99",
-      "mac": "50:8b:b9:99:5c:ca",
-      "_last_seen": 1773438838.5675495,
-      "label": "Tuya 5cca",
-      "icon": "&#128268;",
-      "sublabel": "10.0.10.99 \u2022 Tuya",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "plug",
-      "_vendor": "Tuya"
-    },
-    {
-      "id": "_unknown_f8172dde19f6",
-      "type": "device",
-      "_auto": true,
-      "x": 2510,
-      "y": 800,
-      "ip": "10.0.6.115",
-      "mac": "f8:17:2d:de:19:f6",
-      "_last_seen": 1773438838.5697076,
-      "label": "Tuya 19f6",
-      "icon": "&#128268;",
-      "sublabel": "10.0.6.115 \u2022 Tuya",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "plug",
-      "_vendor": "Tuya"
-    },
-    {
-      "id": "_unknown_b8060d2b4a5d",
-      "type": "device",
-      "_auto": true,
-      "x": 2580,
-      "y": 800,
-      "ip": "10.0.10.104",
-      "mac": "b8:06:0d:2b:4a:5d",
-      "_last_seen": 1773438838.5722227,
-      "label": "Espressif 4a5d",
-      "icon": "&#128202;",
-      "sublabel": "10.0.10.104 \u2022 Espressif",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#60c06020,#0a0510)",
-        "borderColor": "#60c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "sensor",
-      "_vendor": "Espressif"
-    },
-    {
-      "id": "_unknown_6032b1728d22",
-      "type": "device",
-      "_auto": true,
-      "x": 2650,
-      "y": 800,
-      "ip": "10.0.10.81",
-      "mac": "60:32:b1:72:8d:22",
-      "_last_seen": 1773438838.5744336,
-      "label": "TP-Link 8d22",
-      "icon": "&#128268;",
-      "sublabel": "10.0.10.81 \u2022 TP-Link",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "plug",
-      "_vendor": "TP-Link"
-    },
-    {
-      "id": "_unknown_6032b17294da",
-      "type": "device",
-      "_auto": true,
-      "x": 2300,
-      "y": 850,
-      "ip": "10.0.10.103",
-      "mac": "60:32:b1:72:94:da",
-      "_last_seen": 1773438838.5765793,
-      "label": "TP-Link 94da",
-      "icon": "&#128268;",
-      "sublabel": "10.0.10.103 \u2022 TP-Link",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "plug",
-      "_vendor": "TP-Link"
-    },
-    {
-      "id": "_unknown_6032b17279c0",
-      "type": "device",
-      "_auto": true,
-      "x": 2370,
-      "y": 850,
-      "ip": "10.0.10.159",
-      "mac": "60:32:b1:72:79:c0",
-      "_last_seen": 1773438838.578831,
-      "label": "TP-Link 79c0",
-      "icon": "&#128268;",
-      "sublabel": "10.0.10.159 \u2022 TP-Link",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "plug",
-      "_vendor": "TP-Link"
-    },
-    {
-      "id": "_unknown_6c5ab0ee29bf",
-      "type": "device",
-      "_auto": true,
-      "x": 2440,
-      "y": 850,
-      "ip": "10.0.10.90",
-      "mac": "6c:5a:b0:ee:29:bf",
-      "_last_seen": 1773438838.5811534,
-      "label": "TP-Link 29bf",
-      "icon": "&#128268;",
-      "sublabel": "10.0.10.90 \u2022 TP-Link",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "plug",
-      "_vendor": "TP-Link"
-    },
-    {
-      "id": "_unknown_381f8d9ca309",
-      "type": "device",
-      "_auto": true,
-      "x": 2510,
-      "y": 850,
-      "ip": "10.0.10.94",
-      "mac": "38:1f:8d:9c:a3:09",
-      "_last_seen": 1773438838.5834355,
-      "label": "Tuya a309",
-      "icon": "&#128268;",
-      "sublabel": "10.0.10.94 \u2022 Tuya",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "plug",
-      "_vendor": "Tuya"
-    },
-    {
-      "id": "_unknown_a88055d547f0",
-      "type": "device",
-      "_auto": true,
-      "x": 2580,
-      "y": 850,
-      "ip": "10.0.10.147",
-      "mac": "a8:80:55:d5:47:f0",
-      "_last_seen": 1773438838.5857623,
-      "label": "Tuya 47f0",
-      "icon": "&#128268;",
-      "sublabel": "10.0.10.147 \u2022 Tuya",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "plug",
-      "_vendor": "Tuya"
-    },
-    {
-      "id": "_unknown_c482e188b558",
-      "type": "device",
-      "_auto": true,
-      "x": 2650,
-      "y": 850,
-      "ip": "10.0.10.105",
-      "mac": "c4:82:e1:88:b5:58",
-      "_last_seen": 1773438838.5880377,
-      "label": "Tuya b558",
-      "icon": "&#128268;",
-      "sublabel": "10.0.10.105 \u2022 Tuya",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "plug",
-      "_vendor": "Tuya"
-    },
-    {
-      "id": "_unknown_c482e188adeb",
-      "type": "device",
-      "_auto": true,
-      "x": 2300,
-      "y": 900,
-      "ip": "10.0.10.97",
-      "mac": "c4:82:e1:88:ad:eb",
-      "_last_seen": 1773438838.5903814,
-      "label": "Tuya adeb",
-      "icon": "&#128268;",
-      "sublabel": "10.0.10.97 \u2022 Tuya",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "plug",
-      "_vendor": "Tuya"
-    },
-    {
-      "id": "_unknown_7cf6668d92fc",
-      "type": "device",
-      "_auto": true,
-      "x": 2370,
-      "y": 900,
-      "ip": "10.0.10.106",
-      "mac": "7c:f6:66:8d:92:fc",
-      "_last_seen": 1773438838.5926335,
-      "label": "Tuya 92fc",
-      "icon": "&#128268;",
-      "sublabel": "10.0.10.106 \u2022 Tuya",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "plug",
-      "_vendor": "Tuya"
-    },
-    {
-      "id": "_unknown_d4f547644abc",
-      "type": "device",
-      "_auto": true,
-      "x": 2440,
-      "y": 900,
-      "ip": "10.0.10.137",
-      "mac": "d4:f5:47:64:4a:bc",
-      "_last_seen": 1773438838.594849,
-      "label": "Google 4abc",
-      "icon": "&#128266;",
-      "sublabel": "10.0.10.137 \u2022 Google",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#6090c020,#0a0510)",
-        "borderColor": "#6090c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "speaker",
-      "_vendor": "Google"
-    },
-    {
-      "id": "_unknown_14c14e2616b5",
-      "type": "device",
-      "_auto": true,
-      "x": 2510,
-      "y": 900,
-      "ip": "10.0.10.246",
-      "mac": "14:c1:4e:26:16:b5",
-      "_last_seen": 1773438838.5970523,
-      "label": "Nest-Thermostat-16B5",
-      "icon": "&#127777;",
-      "sublabel": "10.0.10.246 \u2022 Nest",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#60c0c020,#0a0510)",
-        "borderColor": "#60c0c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "thermostat",
-      "_vendor": "Nest"
-    },
-    {
-      "id": "_unknown_c482e13f8e26",
-      "type": "device",
-      "_auto": true,
-      "x": 2580,
-      "y": 900,
-      "ip": "10.0.10.95",
-      "mac": "c4:82:e1:3f:8e:26",
-      "_last_seen": 1773438838.5992727,
-      "label": "Tuya 8e26",
-      "icon": "&#128268;",
-      "sublabel": "10.0.10.95 \u2022 Tuya",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "plug",
-      "_vendor": "Tuya"
-    },
-    {
-      "id": "_unknown_6c5ab0ee112e",
-      "type": "device",
-      "_auto": true,
-      "x": 2650,
-      "y": 900,
-      "ip": "10.0.10.237",
-      "mac": "6c:5a:b0:ee:11:2e",
-      "_last_seen": 1773438838.60149,
-      "label": "TP-Link 112e",
-      "icon": "&#128268;",
-      "sublabel": "10.0.10.237 \u2022 TP-Link",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "plug",
-      "_vendor": "TP-Link"
-    },
-    {
-      "id": "_unknown_a88055ab3651",
-      "type": "device",
-      "_auto": true,
-      "x": 2300,
-      "y": 950,
-      "ip": "10.0.10.115",
-      "mac": "a8:80:55:ab:36:51",
-      "_last_seen": 1773438838.6036623,
-      "label": "Tuya 3651",
-      "icon": "&#128268;",
-      "sublabel": "10.0.10.115 \u2022 Tuya",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "plug",
-      "_vendor": "Tuya"
-    },
-    {
-      "id": "_unknown_c006c3f652f8",
-      "type": "device",
-      "_auto": true,
-      "x": 2370,
-      "y": 950,
-      "ip": "10.0.10.190",
-      "mac": "c0:06:c3:f6:52:f8",
-      "_last_seen": 1773438838.6058612,
-      "label": "Kasa 52f8",
-      "icon": "&#128268;",
-      "sublabel": "10.0.10.190 \u2022 Kasa",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "plug",
-      "_vendor": "Kasa"
-    },
-    {
-      "id": "_unknown_c006c3f65895",
-      "type": "device",
-      "_auto": true,
-      "x": 2440,
-      "y": 950,
-      "ip": "10.0.10.121",
-      "mac": "c0:06:c3:f6:58:95",
-      "_last_seen": 1773438838.6082342,
-      "label": "Kasa 5895",
-      "icon": "&#128268;",
-      "sublabel": "10.0.10.121 \u2022 Kasa",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "plug",
-      "_vendor": "Kasa"
-    },
-    {
-      "id": "_unknown_909a4a4755bf",
-      "type": "device",
-      "_auto": true,
-      "x": 2510,
-      "y": 950,
-      "ip": "10.0.10.229",
-      "mac": "90:9a:4a:47:55:bf",
-      "_last_seen": 1773438838.6104696,
-      "label": "Kasa 55bf",
-      "icon": "&#128268;",
-      "sublabel": "10.0.10.229 \u2022 Kasa",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "plug",
-      "_vendor": "Kasa"
-    },
-    {
-      "id": "_unknown_48e1e96f3cb8",
-      "type": "device",
-      "_auto": true,
-      "x": 2580,
-      "y": 950,
-      "ip": "10.0.10.231",
-      "mac": "48:e1:e9:6f:3c:b8",
-      "_last_seen": 1773438838.6127436,
-      "label": "Meross 3cb8",
-      "icon": "&#128268;",
-      "sublabel": "10.0.10.231 \u2022 Meross",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "plug",
-      "_vendor": "Meross"
-    },
-    {
-      "id": "_unknown_f0ef86158ca1",
-      "type": "device",
-      "_auto": true,
-      "x": 2650,
-      "y": 950,
-      "ip": "10.0.10.111",
-      "mac": "f0:ef:86:15:8c:a1",
-      "_last_seen": 1773438838.6150923,
-      "label": "Google 8ca1",
-      "icon": "&#128266;",
-      "sublabel": "10.0.10.111 \u2022 Google",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#6090c020,#0a0510)",
-        "borderColor": "#6090c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "speaker",
-      "_vendor": "Google"
-    },
-    {
-      "id": "_unknown_3c8d204806fd",
-      "type": "device",
-      "_auto": true,
-      "x": 2300,
-      "y": 1000,
-      "ip": "10.0.10.144",
-      "mac": "3c:8d:20:48:06:fd",
-      "_last_seen": 1773438838.6173606,
-      "label": "Google 06fd",
-      "icon": "&#128266;",
-      "sublabel": "10.0.10.144 \u2022 Google",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#6090c020,#0a0510)",
-        "borderColor": "#6090c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "speaker",
-      "_vendor": "Google"
-    },
-    {
-      "id": "_unknown_c482e13f8c56",
-      "type": "device",
-      "_auto": true,
-      "x": 2370,
-      "y": 1000,
-      "ip": "10.0.10.109",
-      "mac": "c4:82:e1:3f:8c:56",
-      "_last_seen": 1773438838.6195931,
-      "label": "Tuya 8c56",
-      "icon": "&#128268;",
-      "sublabel": "10.0.10.109 \u2022 Tuya",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "plug",
-      "_vendor": "Tuya"
-    },
-    {
-      "id": "_unknown_909a4a474ca9",
-      "type": "device",
-      "_auto": true,
-      "x": 2440,
-      "y": 1000,
-      "ip": "10.0.10.161",
-      "mac": "90:9a:4a:47:4c:a9",
-      "_last_seen": 1773438838.6217976,
-      "label": "Kasa 4ca9",
-      "icon": "&#128268;",
-      "sublabel": "10.0.10.161 \u2022 Kasa",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "plug",
-      "_vendor": "Kasa"
-    },
-    {
-      "id": "_unknown_909a4a4753ab",
-      "type": "device",
-      "_auto": true,
-      "x": 2510,
-      "y": 1000,
-      "ip": "10.0.10.194",
-      "mac": "90:9a:4a:47:53:ab",
-      "_last_seen": 1773438838.6240604,
-      "label": "Kasa 53ab",
-      "icon": "&#128268;",
-      "sublabel": "10.0.10.194 \u2022 Kasa",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "plug",
-      "_vendor": "Kasa"
-    },
-    {
-      "id": "_unknown_d81f12d36dba",
-      "type": "device",
-      "_auto": true,
-      "x": 2580,
-      "y": 1000,
-      "ip": "10.0.10.167",
-      "mac": "d8:1f:12:d3:6d:ba",
-      "_last_seen": 1773438838.6264818,
-      "label": "Tuya 6dba",
-      "icon": "&#128268;",
-      "sublabel": "10.0.10.167 \u2022 Tuya",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "plug",
-      "_vendor": "Tuya"
-    },
-    {
-      "id": "_unknown_d81f12d39678",
-      "type": "device",
-      "_auto": true,
-      "x": 2650,
-      "y": 1000,
-      "ip": "10.0.10.114",
-      "mac": "d8:1f:12:d3:96:78",
-      "_last_seen": 1773438838.6287773,
-      "label": "Tuya 9678",
-      "icon": "&#128268;",
-      "sublabel": "10.0.10.114 \u2022 Tuya",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "plug",
-      "_vendor": "Tuya"
-    },
-    {
-      "id": "_unknown_b43a31d1771e",
-      "type": "device",
-      "_auto": true,
-      "x": 2300,
-      "y": 1050,
-      "ip": "10.0.10.243",
-      "mac": "b4:3a:31:d1:77:1e",
-      "_last_seen": 1773438838.6310036,
-      "label": "gecko_os-71E",
-      "icon": "&#128123;",
-      "sublabel": "10.0.10.243",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "unknown",
-      "_vendor": null
-    },
-    {
-      "id": "_unknown_c8bd699f1417",
-      "type": "device",
-      "_auto": true,
-      "x": 2300,
-      "y": 750,
-      "ip": "10.0.6.137",
-      "mac": "c8:bd:69:9f:14:17",
-      "_last_seen": 1773439643.621053,
-      "label": "Device 1417",
-      "icon": "&#128123;",
-      "sublabel": "10.0.6.137",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "unknown",
-      "_vendor": null
-    },
-    {
-      "id": "_unknown_d4f54743e5d3",
-      "type": "device",
-      "_auto": true,
-      "x": 2300,
-      "y": 750,
-      "ip": "10.0.10.120",
-      "mac": "d4:f5:47:43:e5:d3",
-      "_last_seen": 1773439917.129956,
-      "label": "Google e5d3",
-      "icon": "&#128266;",
-      "sublabel": "10.0.10.120 \u2022 Google",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#6090c020,#0a0510)",
-        "borderColor": "#6090c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "speaker",
-      "_vendor": "Google"
-    },
-    {
-      "id": "_unknown_30d53eee3926",
-      "type": "device",
-      "_auto": true,
-      "x": 2300,
-      "y": 750,
       "ip": null,
-      "mac": "30:d5:3e:ee:39:26",
-      "_last_seen": 1773440373.0167844,
-      "label": "Device 3926",
+      "mac": "cc:a7:c1:5e:89:f9",
+      "_last_seen": 1773577094.6406665,
+      "label": "Device 89f9",
       "icon": "&#128123;",
-      "sublabel": "30:d5:3e...",
+      "sublabel": "cc:a7:c1...",
       "iconStyle": {
         "background": "radial-gradient(circle,#80808020,#0a0510)",
         "borderColor": "#80808080",
@@ -4316,6 +3229,29 @@
       },
       "_role": "unknown",
       "_vendor": null
+    },
+    {
+      "id": "_unknown_40a3cc943680",
+      "type": "device",
+      "_auto": true,
+      "x": 2650,
+      "y": 850,
+      "ip": "10.0.6.113",
+      "mac": "40:a3:cc:94:36:80",
+      "_last_seen": 1773596474.446333,
+      "label": "tablet",
+      "icon": "&#128223;",
+      "sublabel": "10.0.6.113",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#80a0c020,#0a0510)",
+        "borderColor": "#80a0c080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "tablet",
+      "_vendor": null,
+      "_hostname": "tablet"
     }
   ],
   "connections": [
@@ -4374,19 +3310,7 @@
     },
     {
       "from": "hp-switch",
-      "to": "wndr4300sw-shed",
-      "type": "ap",
-      "vlan": 6
-    },
-    {
-      "from": "hp-switch",
       "to": "onhub-pumphouse",
-      "type": "ap",
-      "vlan": 6
-    },
-    {
-      "from": "hp-switch",
-      "to": "wrt1900ac-family",
       "type": "ap",
       "vlan": 6
     },
@@ -4447,7 +3371,7 @@
     },
     {
       "from": "tab-s5e",
-      "to": "wndr4300sw-shed",
+      "to": "onhub-closet",
       "type": "active",
       "vlan": 6
     },
@@ -4460,12 +3384,6 @@
     {
       "from": "gatekeeper",
       "to": "kasa-spirits",
-      "type": "vlan",
-      "vlan": 10
-    },
-    {
-      "from": "gatekeeper",
-      "to": "watchers",
       "type": "vlan",
       "vlan": 10
     },
@@ -4580,7 +3498,7 @@
     },
     {
       "from": "flip3",
-      "to": "onhub-bed",
+      "to": "onhub-closet",
       "type": "active",
       "vlan": 6
     },
@@ -4603,36 +3521,6 @@
       "vlan": 6
     },
     {
-      "from": "woodshed",
-      "to": "wndr4300sw-shed",
-      "type": "active",
-      "vlan": 6
-    },
-    {
-      "from": "lg-washer",
-      "to": "onhub-office",
-      "type": "active",
-      "vlan": 6
-    },
-    {
-      "from": "lg-dryer",
-      "to": "onhub-office",
-      "type": "active",
-      "vlan": 6
-    },
-    {
-      "from": "roomba",
-      "to": "onhub-bed",
-      "type": "active",
-      "vlan": 6
-    },
-    {
-      "from": "irobot",
-      "to": "onhub-closet",
-      "type": "active",
-      "vlan": 6
-    },
-    {
       "from": "roku",
       "to": "mr8300-host",
       "type": "active",
@@ -4646,7 +3534,7 @@
     },
     {
       "from": "wled-main",
-      "to": "onhub-office",
+      "to": "onhub-closet",
       "type": "active",
       "vlan": 6
     },
@@ -4670,7 +3558,7 @@
     },
     {
       "from": "esp32-bed3",
-      "to": "onhub-bed",
+      "to": "onhub-closet",
       "type": "active",
       "vlan": 6
     },
@@ -4681,44 +3569,8 @@
       "vlan": 8
     },
     {
-      "from": "smart-plugs",
-      "to": "onhub-office",
-      "type": "active",
-      "vlan": 10
-    },
-    {
-      "from": "esp-outdoor",
-      "to": "eap225-outdoor",
-      "type": "active",
-      "vlan": 10
-    },
-    {
-      "from": "esp-office",
-      "to": "onhub-office",
-      "type": "active",
-      "vlan": 10
-    },
-    {
-      "from": "google-home",
-      "to": "wndr4300sw-shed",
-      "type": "active",
-      "vlan": 10
-    },
-    {
-      "from": "hikcams",
-      "to": "eap225-outdoor",
-      "type": "active",
-      "vlan": 10
-    },
-    {
       "from": "smart-hubs",
       "to": "eap225-outdoor",
-      "type": "active",
-      "vlan": 10
-    },
-    {
-      "from": "iot-closet",
-      "to": "onhub-closet",
       "type": "active",
       "vlan": 10
     },
@@ -4760,7 +3612,7 @@
     },
     {
       "from": "iphone",
-      "to": "onhub-closet",
+      "to": "onhub-family",
       "type": "active",
       "vlan": 6
     },
@@ -4778,7 +3630,7 @@
     },
     {
       "from": "s24-ultra",
-      "to": "wndr4300sw-shed",
+      "to": "onhub-bed",
       "type": "active",
       "vlan": 6
     },
@@ -4807,163 +3659,37 @@
       "vlan": 6
     },
     {
-      "from": "_unknown_f24a37407ca1",
-      "to": "onhub-bed",
-      "type": "active"
+      "from": "hp-switch",
+      "to": "shed-switch",
+      "type": "infra",
+      "vlan": 6
     },
     {
-      "from": "_unknown_d8eb466182d1",
-      "to": "onhub-closet",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_fc584a862e9e",
-      "to": "onhub-closet",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_e868e7d50978",
-      "to": "onhub-closet",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_ca2c4fac00a1",
-      "to": "onhub-closet",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_ac678428b56d",
-      "to": "onhub-closet",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_e848b8aa3933",
-      "to": "onhub-office",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_ca2c4fad7ef5",
-      "to": "onhub-office",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_bcddc282ed19",
-      "to": "onhub-office",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_c006c3f658f5",
-      "to": "onhub-office",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_b0a7b9933d17",
-      "to": "onhub-office",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_68c63ad2b03d",
-      "to": "onhub-office",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_14c14e61276c",
-      "to": "onhub-office",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_600194a441c1",
-      "to": "onhub-office",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_14c14e6d333f",
-      "to": "onhub-office",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_bcddc282eff7",
-      "to": "eap225-outdoor",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_e868e7cfaa92",
-      "to": "eap225-outdoor",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_24a160393fb0",
-      "to": "eap225-outdoor",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_ac67b2d1f2e4",
-      "to": "eap225-outdoor",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_483fda6a0ea8",
-      "to": "eap225-outdoor",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_f0f5bdfd3504",
-      "to": "eap225-outdoor",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_7cf666a8c8e9",
-      "to": "eap225-outdoor",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_b4e84212e7ac",
-      "to": "eap225-outdoor",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_2cf43208cff0",
+      "from": "shed-switch",
       "to": "wndr4300sw-shed",
-      "type": "active"
+      "type": "ap",
+      "vlan": 6
     },
     {
-      "from": "_unknown_b4e62d79b610",
-      "to": "wndr4300sw-shed",
-      "type": "active"
+      "from": "shed-switch",
+      "to": "wrt1900ac-family",
+      "type": "ap",
+      "vlan": 6
     },
     {
-      "from": "_unknown_6032b17282e1",
-      "to": "wndr4300sw-shed",
-      "type": "active"
+      "from": "shed-switch",
+      "to": "poe-switch",
+      "type": "infra"
     },
     {
-      "from": "_unknown_18de50775aff",
-      "to": "onhub-pumphouse",
-      "type": "active"
+      "from": "tuya-sprites",
+      "to": "gatekeeper",
+      "type": "active",
+      "vlan": 10
     },
     {
-      "from": "_unknown_e626b4346803",
-      "to": "onhub-family",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_508bb9f31b25",
-      "to": "onhub-closet",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_7cf666a9efe8",
-      "to": "onhub-closet",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_b8060d2b2e26",
-      "to": "onhub-closet",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_24e50fd7011d",
-      "to": "onhub-closet",
+      "from": "_unknown_3e7592ac0b69",
+      "to": "onhub-office",
       "type": "active"
     },
     {
@@ -4972,169 +3698,38 @@
       "type": "active"
     },
     {
-      "from": "_unknown_dce55b876747",
+      "from": "_unknown_be68f45be203",
+      "to": "onhub-bed",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_483fda5750e1",
+      "to": "wndr4300sw-shed",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_cca7c15e89f9",
       "to": "onhub-closet",
       "type": "active"
     },
     {
-      "from": "_unknown_508bb9995cca",
-      "to": "onhub-office",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_f8172dde19f6",
-      "to": "onhub-office",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_b8060d2b4a5d",
-      "to": "onhub-office",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_6032b1728d22",
-      "to": "onhub-office",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_6032b17294da",
-      "to": "onhub-office",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_6032b17279c0",
-      "to": "onhub-office",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_6c5ab0ee29bf",
-      "to": "onhub-office",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_381f8d9ca309",
-      "to": "onhub-office",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_a88055d547f0",
-      "to": "onhub-office",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_c482e188b558",
-      "to": "onhub-office",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_c482e188adeb",
-      "to": "onhub-office",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_7cf6668d92fc",
-      "to": "onhub-office",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_d4f547644abc",
-      "to": "onhub-office",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_14c14e2616b5",
-      "to": "onhub-office",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_c482e13f8e26",
-      "to": "eap225-outdoor",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_6c5ab0ee112e",
-      "to": "eap225-outdoor",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_a88055ab3651",
-      "to": "eap225-outdoor",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_c006c3f652f8",
-      "to": "eap225-outdoor",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_c006c3f65895",
-      "to": "eap225-outdoor",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_909a4a4755bf",
-      "to": "eap225-outdoor",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_48e1e96f3cb8",
-      "to": "eap225-outdoor",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_f0ef86158ca1",
-      "to": "eap225-outdoor",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_3c8d204806fd",
-      "to": "eap225-outdoor",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_c482e13f8c56",
-      "to": "wndr4300sw-shed",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_909a4a474ca9",
-      "to": "wndr4300sw-shed",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_909a4a4753ab",
-      "to": "wndr4300sw-shed",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_d81f12d36dba",
-      "to": "wndr4300sw-shed",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_d81f12d39678",
-      "to": "wndr4300sw-shed",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_b43a31d1771e",
-      "to": "wndr4300sw-shed",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_c8bd699f1417",
+      "from": "_unknown_40a3cc943680",
       "to": "onhub-closet",
       "type": "active"
     },
     {
-      "from": "_unknown_d4f54743e5d3",
-      "to": "onhub-office",
-      "type": "active"
+      "from": "wrt1900ac-family",
+      "to": "woodshed",
+      "type": "trunk",
+      "label": "lan3\u2194eth0",
+      "_lldp": true
     },
     {
-      "from": "_unknown_30d53eee3926",
-      "to": "eap225-outdoor",
-      "type": "active"
+      "from": "wrt1900ac-family",
+      "to": "cpe710-client",
+      "type": "trunk",
+      "label": "lan2\u2194br0",
+      "_lldp": true
     }
   ],
   "regions": [

@@ -126,6 +126,21 @@ let _conjureAngle = 0;   // Conjure orbit animation
 let _conjureRaf = 0;     // rAF handle for conjure orbit
 let _anchoredDrag = null; // For dragging anchored/conjured runes
 
+// ── HUD Settings ──
+const HUD_POSITIONS = {
+  'top-left':     { top: '10px', left: '10px', right: 'auto', bottom: 'auto' },
+  'top-right':    { top: '10px', left: 'auto', right: '10px', bottom: 'auto' },
+  'bottom-left':  { top: 'auto', left: '10px', right: 'auto', bottom: '60px' },
+  'bottom-right': { top: 'auto', left: 'auto', right: '10px', bottom: '60px' },
+};
+let _hudPosition = 'top-left';
+let _hudOpacity = 1.0;
+let _hudScale = 1.0;
+let _hudDraggable = false;
+let _hudCustomPos = null; // { x, y } when position === 'custom'
+let _hudEl = null;
+let _hudDragState = null;
+
 // ── Initialization ──
 export function initPanelManager() {
   _createAnchorOverlay();
@@ -140,54 +155,6 @@ function _createSealedDock() {
   _sealedDock = document.createElement('div');
   _sealedDock.id = 'sealed-dock';
   _sealedDock.className = 'sealed-dock';
-
-  // Scattered treasure layer (gems, coins, arcane items)
-  const treasures = document.createElement('div');
-  treasures.className = 'dock-treasures';
-  treasures.innerHTML = `<svg viewBox="0 0 800 80" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-    <!-- Gold coins -->
-    <ellipse cx="45" cy="58" rx="7" ry="5" fill="rgba(200,170,60,0.25)" stroke="rgba(220,190,80,0.3)" stroke-width="0.5"/>
-    <ellipse cx="48" cy="56" rx="7" ry="5" fill="rgba(180,150,50,0.2)" stroke="rgba(200,170,60,0.25)" stroke-width="0.5"/>
-    <ellipse cx="140" cy="62" rx="6" ry="4.5" fill="rgba(200,170,60,0.22)" stroke="rgba(220,190,80,0.28)" stroke-width="0.5"/>
-    <ellipse cx="340" cy="60" rx="7" ry="5" fill="rgba(190,160,55,0.2)" stroke="rgba(210,180,70,0.26)" stroke-width="0.5"/>
-    <ellipse cx="343" cy="58" rx="6.5" ry="4.5" fill="rgba(210,180,70,0.18)" stroke="rgba(220,190,80,0.24)" stroke-width="0.5"/>
-    <ellipse cx="520" cy="63" rx="6" ry="4.5" fill="rgba(195,165,58,0.2)" stroke="rgba(215,185,75,0.25)" stroke-width="0.5"/>
-    <ellipse cx="680" cy="59" rx="7" ry="5" fill="rgba(200,170,60,0.22)" stroke="rgba(220,190,80,0.28)" stroke-width="0.5"/>
-    <ellipse cx="683" cy="57" rx="6.5" ry="4.5" fill="rgba(185,155,52,0.18)" stroke="rgba(205,175,68,0.24)" stroke-width="0.5"/>
-    <ellipse cx="760" cy="61" rx="6" ry="4.5" fill="rgba(200,170,60,0.2)" stroke="rgba(220,190,80,0.26)" stroke-width="0.5"/>
-    <!-- Gems — ruby -->
-    <path d="M95 52l4-6 4 6-4 4z" fill="rgba(200,50,60,0.35)" stroke="rgba(255,80,90,0.3)" stroke-width="0.5"/>
-    <path d="M95 52l4 4 4-4" fill="rgba(240,70,80,0.15)" stroke="none"/>
-    <!-- Gems — emerald -->
-    <path d="M250 55l3-5h5l3 5-3 5h-5z" fill="rgba(40,180,80,0.3)" stroke="rgba(60,220,100,0.25)" stroke-width="0.5"/>
-    <path d="M253 50h5l3 5" fill="rgba(80,220,120,0.12)" stroke="none"/>
-    <!-- Gems — sapphire -->
-    <path d="M440 53l5-4 5 4-5 6z" fill="rgba(50,80,200,0.35)" stroke="rgba(80,120,255,0.3)" stroke-width="0.5"/>
-    <path d="M440 53l5 6 5-6" fill="rgba(80,120,255,0.15)" stroke="none"/>
-    <!-- Gems — amethyst -->
-    <path d="M600 54l3-5 4 1 2 5-3 4h-4z" fill="rgba(140,60,200,0.3)" stroke="rgba(180,100,255,0.25)" stroke-width="0.5"/>
-    <path d="M603 49l4 1 2 5" fill="rgba(180,100,255,0.12)" stroke="none"/>
-    <!-- Small arcane crystal shards -->
-    <path d="M190 60l2-8 1.5 0 1 8z" fill="rgba(100,200,220,0.25)" stroke="rgba(140,230,250,0.2)" stroke-width="0.4"/>
-    <path d="M193 60l-1-8 1.5 0" fill="rgba(160,240,255,0.1)" stroke="none"/>
-    <path d="M470 58l1.5-7 1.5 0 0.8 7z" fill="rgba(100,200,220,0.2)" stroke="rgba(140,230,250,0.18)" stroke-width="0.4"/>
-    <!-- Tiny scattered trinkets — rings, keys -->
-    <circle cx="310" cy="64" r="3.5" fill="none" stroke="rgba(200,170,70,0.25)" stroke-width="1"/>
-    <circle cx="310" cy="64" r="1.5" fill="rgba(180,50,50,0.25)"/>
-    <path d="M560 62h6v2h-1v2h-1v-2h-1v2h-1v-2h-1v-2z" fill="rgba(200,170,70,0.2)" stroke="rgba(220,190,80,0.15)" stroke-width="0.3"/>
-    <path d="M560 63a3 3 0 110-1" fill="none" stroke="rgba(200,170,70,0.2)" stroke-width="0.8"/>
-    <!-- Tiny scroll -->
-    <rect x="720" y="58" width="12" height="6" rx="3" fill="rgba(180,160,120,0.2)" stroke="rgba(200,180,140,0.2)" stroke-width="0.4"/>
-    <line x1="723" y1="60" x2="729" y2="60" stroke="rgba(120,100,60,0.15)" stroke-width="0.3"/>
-    <line x1="723" y1="62" x2="728" y2="62" stroke="rgba(120,100,60,0.12)" stroke-width="0.3"/>
-    <!-- Sparkle points on gems -->
-    <circle cx="97" cy="50" r="1" fill="rgba(255,200,200,0.5)" class="gem-sparkle"/>
-    <circle cx="256" cy="53" r="1" fill="rgba(200,255,200,0.5)" class="gem-sparkle"/>
-    <circle cx="443" cy="51" r="1" fill="rgba(200,200,255,0.5)" class="gem-sparkle"/>
-    <circle cx="605" cy="52" r="1" fill="rgba(230,200,255,0.5)" class="gem-sparkle"/>
-    <circle cx="191" cy="54" r="0.8" fill="rgba(200,240,255,0.4)" class="gem-sparkle"/>
-  </svg>`;
-  _sealedDock.appendChild(treasures);
 
   // Ornamental corner flourishes
   const ornL = document.createElement('div');
@@ -262,7 +229,11 @@ function _createSealedDock() {
   hudGems.appendChild(gemsNum);
   hud.appendChild(hudGems);
 
-  _sealedDock.appendChild(hud);
+  // Append HUD to body (not dock) to escape transform containment
+  _hudEl = hud;
+  document.body.appendChild(hud);
+  _applyHudSettings();
+  _attachHudDrag();
 
   // Container for sealed panel icons
   const tray = document.createElement('div');
@@ -1638,6 +1609,14 @@ function _saveFormation() {
     visible: [],
     anchors: {},
     minimized: [],
+    sealMode: _sealMode,
+    autoSnap: _autoSnap,
+    showAnchors: _showAnchors,
+    hudPosition: _hudPosition,
+    hudOpacity: _hudOpacity,
+    hudScale: _hudScale,
+    hudDraggable: _hudDraggable,
+    hudCustomPos: _hudCustomPos,
   };
 
   Object.keys(PANELS).forEach(id => {
@@ -1668,7 +1647,18 @@ function _saveFormation() {
 function _loadFormation() {
   const saved = _loadSavedFormation();
   if (saved) {
+    // Restore settings before UI creation so buttons/checkboxes init correctly
+    if (saved.sealMode) _sealMode = saved.sealMode;
+    if (saved.autoSnap != null) _autoSnap = saved.autoSnap;
+    if (saved.showAnchors != null) _showAnchors = saved.showAnchors;
+    if (saved.hudPosition) _hudPosition = saved.hudPosition;
+    if (saved.hudOpacity != null) _hudOpacity = saved.hudOpacity;
+    if (saved.hudScale != null) _hudScale = saved.hudScale;
+    if (saved.hudDraggable != null) _hudDraggable = saved.hudDraggable;
+    if (saved.hudCustomPos) _hudCustomPos = saved.hudCustomPos;
     applyFormation('grimoire-binding');
+    // Migrate runes to saved seal mode (applyFormation always loads into dock)
+    if (_sealMode !== 'dock') _migrateSealedRunes(_sealMode);
   }
 }
 
@@ -1738,6 +1728,7 @@ function _injectFormationUI() {
       sealGrid.querySelectorAll('.seal-mode-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       _migrateSealedRunes(id);
+      _saveFormation();
     });
 
     sealGrid.appendChild(btn);
@@ -1755,7 +1746,7 @@ function _injectFormationUI() {
   const snapCb = document.createElement('input');
   snapCb.type = 'checkbox';
   snapCb.checked = _autoSnap;
-  snapCb.addEventListener('change', () => { _autoSnap = snapCb.checked; });
+  snapCb.addEventListener('change', () => { _autoSnap = snapCb.checked; _saveFormation(); });
   snapRow.appendChild(snapCb);
   snapRow.appendChild(document.createTextNode(' Auto-snap to anchors'));
   settingsWrap.appendChild(snapRow);
@@ -1766,7 +1757,7 @@ function _injectFormationUI() {
   const anchorCb = document.createElement('input');
   anchorCb.type = 'checkbox';
   anchorCb.checked = _showAnchors;
-  anchorCb.addEventListener('change', () => { _showAnchors = anchorCb.checked; });
+  anchorCb.addEventListener('change', () => { _showAnchors = anchorCb.checked; _saveFormation(); });
   anchorRow.appendChild(anchorCb);
   anchorRow.appendChild(document.createTextNode(' Show anchor overlay'));
   settingsWrap.appendChild(anchorRow);
@@ -1777,6 +1768,138 @@ function _injectFormationUI() {
   section.appendChild(body);
 
   enchantPage.insertBefore(section, enchantPage.firstChild);
+
+  // ── HUD Settings Section ──
+  const hudSection = document.createElement('div');
+  hudSection.className = 'legend-section';
+  hudSection.dataset.section = 'hud-settings';
+
+  const hudHeader = document.createElement('div');
+  hudHeader.className = 'legend-section-header';
+  hudHeader.dataset.accent = 'gold';
+
+  const hudChevron = document.createElement('span');
+  hudChevron.className = 'legend-chevron';
+  hudChevron.textContent = '\u25BE';
+
+  const hudIcon = document.createElement('span');
+  hudIcon.className = 'sec-icon';
+  hudIcon.textContent = '\u2726'; // ✦
+
+  hudHeader.appendChild(hudChevron);
+  hudHeader.appendChild(hudIcon);
+  hudHeader.appendChild(document.createTextNode(' HUD Settings'));
+
+  const hudBody = document.createElement('div');
+  hudBody.className = 'legend-section-body';
+
+  // ─ Position row ─
+  const posLabel = document.createElement('div');
+  posLabel.className = 'hud-setting-label';
+  posLabel.textContent = 'Position';
+  hudBody.appendChild(posLabel);
+
+  const posGrid = document.createElement('div');
+  posGrid.className = 'hud-pos-grid';
+
+  const posPresets = [
+    { id: 'top-left', icon: '◤', title: 'Top Left' },
+    { id: 'top-right', icon: '◥', title: 'Top Right' },
+    { id: 'bottom-left', icon: '◣', title: 'Bottom Left' },
+    { id: 'bottom-right', icon: '◢', title: 'Bottom Right' },
+  ];
+
+  posPresets.forEach(preset => {
+    const btn = document.createElement('button');
+    btn.className = 'hud-pos-btn' + (_hudPosition === preset.id ? ' active' : '');
+    btn.dataset.pos = preset.id;
+    btn.title = preset.title;
+    btn.textContent = preset.icon;
+    btn.addEventListener('click', () => {
+      _hudPosition = preset.id;
+      _hudCustomPos = null;
+      _applyHudSettings();
+      _saveFormation();
+      posGrid.querySelectorAll('.hud-pos-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+    posGrid.appendChild(btn);
+  });
+
+  hudBody.appendChild(posGrid);
+
+  // ─ Draggable toggle ─
+  const dragRow = document.createElement('label');
+  dragRow.className = 'seal-setting-row';
+  const dragCb = document.createElement('input');
+  dragCb.type = 'checkbox';
+  dragCb.checked = _hudDraggable;
+  dragCb.addEventListener('change', () => {
+    _hudDraggable = dragCb.checked;
+    _applyHudSettings();
+    _saveFormation();
+  });
+  dragRow.appendChild(dragCb);
+  dragRow.appendChild(document.createTextNode(' Drag to reposition'));
+  hudBody.appendChild(dragRow);
+
+  // ─ Opacity slider ─
+  const opacRow = document.createElement('div');
+  opacRow.className = 'hud-slider-row';
+  const opacLabel = document.createElement('span');
+  opacLabel.className = 'hud-slider-label';
+  opacLabel.textContent = 'Opacity';
+  const opacVal = document.createElement('span');
+  opacVal.className = 'hud-slider-val';
+  opacVal.textContent = Math.round(_hudOpacity * 100) + '%';
+  const opacSlider = document.createElement('input');
+  opacSlider.type = 'range';
+  opacSlider.className = 'hud-slider';
+  opacSlider.min = '20';
+  opacSlider.max = '100';
+  opacSlider.value = Math.round(_hudOpacity * 100);
+  opacSlider.addEventListener('input', () => {
+    _hudOpacity = opacSlider.value / 100;
+    opacVal.textContent = opacSlider.value + '%';
+    _applyHudSettings();
+  });
+  opacSlider.addEventListener('change', () => _saveFormation());
+  opacRow.appendChild(opacLabel);
+  opacRow.appendChild(opacSlider);
+  opacRow.appendChild(opacVal);
+  hudBody.appendChild(opacRow);
+
+  // ─ Scale slider ─
+  const scaleRow = document.createElement('div');
+  scaleRow.className = 'hud-slider-row';
+  const scaleLabel = document.createElement('span');
+  scaleLabel.className = 'hud-slider-label';
+  scaleLabel.textContent = 'Scale';
+  const scaleVal = document.createElement('span');
+  scaleVal.className = 'hud-slider-val';
+  scaleVal.textContent = Math.round(_hudScale * 100) + '%';
+  const scaleSlider = document.createElement('input');
+  scaleSlider.type = 'range';
+  scaleSlider.className = 'hud-slider';
+  scaleSlider.min = '50';
+  scaleSlider.max = '200';
+  scaleSlider.value = Math.round(_hudScale * 100);
+  scaleSlider.addEventListener('input', () => {
+    _hudScale = scaleSlider.value / 100;
+    scaleVal.textContent = scaleSlider.value + '%';
+    _applyHudSettings();
+  });
+  scaleSlider.addEventListener('change', () => _saveFormation());
+  scaleRow.appendChild(scaleLabel);
+  scaleRow.appendChild(scaleSlider);
+  scaleRow.appendChild(scaleVal);
+  hudBody.appendChild(scaleRow);
+
+  hudSection.appendChild(hudHeader);
+  hudSection.appendChild(hudBody);
+
+  // Insert after seal modes section
+  section.after(hudSection);
 }
 
 function _flashSaveEffect() {
@@ -1851,6 +1974,76 @@ function setEmojiIcons(enabled) {
 
 window.setEmojiIcons = setEmojiIcons;
 
+// ── HUD Settings Engine ──
+
+function _applyHudSettings() {
+  if (!_hudEl) return;
+  _hudEl.style.opacity = _hudOpacity;
+  _hudEl.style.setProperty('--hud-scale', _hudScale);
+  _hudEl.style.transform = `scale(${_hudScale})`;
+  _hudEl.style.transformOrigin = 'top left';
+  _hudEl.classList.toggle('hud-draggable', _hudDraggable);
+
+  if (_hudPosition === 'custom' && _hudCustomPos) {
+    _hudEl.style.top = _hudCustomPos.y + 'px';
+    _hudEl.style.left = _hudCustomPos.x + 'px';
+    _hudEl.style.right = 'auto';
+    _hudEl.style.bottom = 'auto';
+  } else {
+    const pos = HUD_POSITIONS[_hudPosition] || HUD_POSITIONS['top-left'];
+    _hudEl.style.top = pos.top;
+    _hudEl.style.left = pos.left;
+    _hudEl.style.right = pos.right;
+    _hudEl.style.bottom = pos.bottom;
+  }
+}
+
+function _attachHudDrag() {
+  if (!_hudEl) return;
+  _hudEl.addEventListener('pointerdown', (e) => {
+    if (!_hudDraggable) return;
+    e.preventDefault();
+    const rect = _hudEl.getBoundingClientRect();
+    _hudDragState = {
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: rect.left,
+      origY: rect.top,
+    };
+    _hudEl.setPointerCapture(e.pointerId);
+    _hudEl.classList.add('hud-dragging');
+  });
+
+  _hudEl.addEventListener('pointermove', (e) => {
+    if (!_hudDragState) return;
+    const dx = e.clientX - _hudDragState.startX;
+    const dy = e.clientY - _hudDragState.startY;
+    const x = Math.max(0, Math.min(window.innerWidth - 100, _hudDragState.origX + dx));
+    const y = Math.max(0, Math.min(window.innerHeight - 32, _hudDragState.origY + dy));
+    _hudEl.style.top = y + 'px';
+    _hudEl.style.left = x + 'px';
+    _hudEl.style.right = 'auto';
+    _hudEl.style.bottom = 'auto';
+  });
+
+  const endDrag = () => {
+    if (!_hudDragState) return;
+    _hudDragState = null;
+    _hudEl.classList.remove('hud-dragging');
+    // Save custom position
+    _hudPosition = 'custom';
+    _hudCustomPos = {
+      x: parseInt(_hudEl.style.left) || 10,
+      y: parseInt(_hudEl.style.top) || 10,
+    };
+    _saveFormation();
+    // Update UI button states
+    document.querySelectorAll('.hud-pos-btn').forEach(b => b.classList.remove('active'));
+  };
+  _hudEl.addEventListener('pointerup', endDrag);
+  _hudEl.addEventListener('pointercancel', endDrag);
+}
+
 // ── Dock HUD ──
 
 function _animateCount(el, from, to, duration) {
@@ -1865,17 +2058,16 @@ function _animateCount(el, from, to, duration) {
 }
 
 function updateDockHUD(stats, animate) {
-  const dock = document.getElementById('sealed-dock');
-  if (!dock) return;
-  const levelEl = dock.querySelector('.hud-level-num');
-  const xpFill = dock.querySelector('.hud-xp-fill');
-  const xpText = dock.querySelector('.hud-xp-text');
-  const goldEl = dock.querySelector('.hud-gold-num');
-  const gemsEl = dock.querySelector('.hud-gems-num');
+  if (!_hudEl) return;
+  const levelEl = _hudEl.querySelector('.hud-level-num');
+  const xpFill = _hudEl.querySelector('.hud-xp-fill');
+  const xpText = _hudEl.querySelector('.hud-xp-text');
+  const goldEl = _hudEl.querySelector('.hud-gold-num');
+  const gemsEl = _hudEl.querySelector('.hud-gems-num');
   if (!levelEl) return;
 
-  const xpRange = stats.xp_next - stats.xp_level_start;
-  const pct = xpRange > 0 ? Math.min(100, (stats.xp_in_level / xpRange) * 100) : 0;
+  const rawPct = stats.xp_next > 0 ? Math.min(100, (stats.xp_in_level / stats.xp_next) * 100) : 0;
+  const pct = Math.max(5, rawPct);  // always show a sliver of mana
 
   if (animate) {
     const oldLevel = parseInt(levelEl.textContent) || 1;
@@ -1884,12 +2076,8 @@ function updateDockHUD(stats, animate) {
     if (stats.level !== oldLevel) levelEl.textContent = stats.level;
     _animateCount(goldEl, oldGold, stats.gold, 600);
     _animateCount(gemsEl, oldGems, stats.gems, 600);
-    // Pulse effect
-    const hud = dock.querySelector('.dock-hud');
-    if (hud) {
-      hud.classList.add('hud-pulse');
-      setTimeout(() => hud.classList.remove('hud-pulse'), 800);
-    }
+    _hudEl.classList.add('hud-pulse');
+    setTimeout(() => _hudEl.classList.remove('hud-pulse'), 800);
   } else {
     levelEl.textContent = stats.level;
     goldEl.textContent = stats.gold;
@@ -1897,7 +2085,7 @@ function updateDockHUD(stats, animate) {
   }
 
   xpFill.style.width = pct + '%';
-  xpText.textContent = stats.xp_in_level + '/' + (stats.xp_next - stats.xp_level_start);
+  xpText.textContent = stats.xp_in_level + '/' + stats.xp_next;
 }
 
 window.updateDockHUD = updateDockHUD;

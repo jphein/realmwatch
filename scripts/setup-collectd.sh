@@ -6,15 +6,11 @@
 set -e
 
 KATANA_LAN="10.0.6.129"
-KATANA_TS=$(ssh katana "tailscale ip -4" 2>/dev/null || echo "100.96.209.70")
+KATANA_TS_FALLBACK="100.96.209.70"
 HOST=$(hostname)
-USE_TS=false
 
 if [[ "$1" == "--ts" ]]; then
-  USE_TS=true
-fi
-
-if $USE_TS; then
+  KATANA_TS=$(ssh -o ConnectTimeout=3 katana "tailscale ip -4" 2>/dev/null || echo "$KATANA_TS_FALLBACK")
   SERVER_IP="$KATANA_TS"
 else
   SERVER_IP="$KATANA_LAN"

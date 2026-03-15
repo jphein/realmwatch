@@ -233,6 +233,65 @@ def get_events_since(since_ts):
     return realm_db.get_events_since(since_ts)
 
 
+def _compute_sublabels(status, topo_nodes):
+    """Pre-compute sublabel text for all nodes — eliminates client-side hostname matching."""
+    from traffic_precompute import _match_host
+
+    sublabels = {}
+    node_status = status.get("astral", {}).get("nodes", {})
+    collectd = status.get("collectd", {})
+    ha = status.get("ha", {})
+    wifi = status.get("wifi", {})
+    wled = status.get("wled", {})
+
+    # Build case-insensitive status lookup (mirrors client findStatusKey)
+    status_lower = {k.lower().replace("-", ""): v for k, v in node_status.items()}
+
+    for n in topo_nodes:
+        nid = n["id"]
+        ip = n.get("ip", "")
+
+        # HA sublabels (already pre-computed by ha_bridge)
+        ha_info = ha.get(nid)
+        if ha_info and ha_info.get("sublabel"):
+            sublabels[nid] = ha_info["sublabel"]
+            continue
+
+        # WLED state
+        wled_info = wled.get(nid)
+        if wled_info and wled_info.get("online"):
+            sublabels[nid] = f'On \u2022 {wled_info.get("effect", "Solid")}' if wled_info.get("on") else "Off"
+            continue
+
+        # WiFi signal
+        wifi_info = wifi.get(nid)
+        if wifi_info and wifi_info.get("signal") is not None:
+            sublabels[nid] = f'{wifi_info["signal"]} dBm \u2022 {wifi_info.get("ap", "")}'
+            continue
+
+        if not ip:
+            continue
+
+        # Online status
+        nid_norm = nid.lower().replace("-", "")
+        online = status_lower.get(nid_norm, False)
+
+        # Collectd match: use explicit collectd host first, then traffic_precompute matcher
+        cd = None
+        if n.get("collectd") and n["collectd"] in collectd:
+            cd = collectd[n["collectd"]]
+        else:
+            cd = _match_host(collectd, nid)
+
+        if cd and cd.get("load_1") is not None:
+            mem_str = f' \u2022 {cd["mem_pct"]}%' if cd.get("mem_pct") is not None else ""
+            sublabels[nid] = f'Load {cd["load_1"]:.2f}{mem_str} \u2022 {ip}'
+        else:
+            sublabels[nid] = f'{"Online" if online else "Offline"} \u2022 {ip}'
+
+    return sublabels
+
+
 def build_status():
     """Build the full status blob (shared by /status endpoint and SSE broker)."""
     status = engine.get_status()
@@ -248,6 +307,8 @@ def build_status():
     status["groups"] = node_roles.get_ha_map()
     # Update latency prober with current WiFi clients
     latency_prober.set_wifi_nodes(status.get("wifi", {}))
+    # Pre-compute sublabels (saves client hostname matching + string formatting)
+    status["sublabels"] = _compute_sublabels(status, topo_nodes)
     return status
 
 

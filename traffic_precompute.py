@@ -69,6 +69,18 @@ def compute_traffic(topology_nodes):
         # Raw log-scale intensity: 0->1 mapped over 1 KB/s -> 10 MB/s
         # Matches app.js: Math.max(0, Math.min(1, (Math.log10(total + 1) - 3) / 4))
         raw = max(0.0, min(1.0, (math.log10(total + 1) - 3) / 4))
+        # Pre-compute tier and direction for the client
+        tier = "high" if raw > 0.65 else "med" if raw > 0.35 else "low" if raw > 0.15 else ""
+        direction = "reverse" if rx > tx else "normal"
         result[nid] = {"rx": round(rx, 1), "tx": round(tx, 1),
-                       "total": round(total, 1), "intensity": round(raw, 4)}
+                       "total": round(total, 1), "intensity": round(raw, 4),
+                       "tier": tier, "dir": direction}
+
+    # Mark top-N nodes for dash animation and glow (saves client-side sort)
+    if result:
+        by_intensity = sorted(result.items(), key=lambda x: x[1]["intensity"], reverse=True)
+        for i, (nid, data) in enumerate(by_intensity):
+            data["animate"] = i < 8   # MAX_ANIMATED_CONNS
+            data["glow"] = i < 3 and data["intensity"] > 0.3  # TOP_GLOW_COUNT
+
     return result

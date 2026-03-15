@@ -65,6 +65,16 @@ function _emitSparks(loadEl, stage) {
 window._advanceLoadStage = _advanceLoadStage;
 
 (async () => {
+  // Failsafe: dismiss loading screen after 8s even if SSE never connects
+  setTimeout(() => {
+    const el = document.getElementById('realm-loading');
+    if (el && !el.classList.contains('dismissed')) {
+      console.warn('Realm Map: loading screen failsafe — dismissing after timeout');
+      el.classList.add('dismissed');
+      setTimeout(() => { el.style.display = 'none'; }, 1300);
+    }
+  }, 8000);
+
   _advanceLoadStage(1);          // Stage 1: topology loading
   await loadTopology();
   _advanceLoadStage(2);          // Stage 2: topology done, app loading

@@ -349,94 +349,51 @@ function updateLatencyPanel() {
   const panel = document.getElementById('latency-panel');
   if (!panel || panel.style.display === 'none') return;
 
-  const nodes = _buildNodeLookup();
-  const entries = Object.entries(_latencyMap).sort((a, b) => a[1] - b[1]);
-  if (!entries.length) { body.textContent = 'Probing...'; return; }
+  // Server sends pre-grouped data: {summary, groups}
+  const data = _latencyMap;
+  if (data.groups) {
+    // Pre-grouped from server — skip all sorting/grouping
+    if (summary) summary.textContent = `${data.summary.count} nodes \u2022 avg ${data.summary.avg}ms`;
+    const frag = document.createDocumentFragment();
+    for (const group of data.groups) {
+      const title = document.createElement('div');
+      title.className = 'latency-group-title';
+      title.textContent = group.name;
+      frag.appendChild(title);
+      for (const e of group.entries) {
+        frag.appendChild(_makeLatencyRow(e));
+      }
+    }
+    body.textContent = '';
+    body.appendChild(frag);
+    return;
+  }
 
-  // Summary
+  // Fallback: flat {node_id: rtt} map (legacy / direct fetch)
+  const nodes = _buildNodeLookup();
+  const entries = Object.entries(data).sort((a, b) => a[1] - b[1]);
+  if (!entries.length) { body.textContent = 'Probing...'; return; }
   const rtts = entries.map(e => e[1]);
   const avg = rtts.reduce((s, v) => s + v, 0) / rtts.length;
   const max = rtts[rtts.length - 1];
   if (summary) summary.textContent = `${entries.length} nodes \u2022 avg ${avg.toFixed(1)}ms`;
-
-  // Group by VLAN
-  const groups = {};
-  const tsGroup = [];
+  const frag = document.createDocumentFragment();
   for (const [id, rtt] of entries) {
     const n = nodes[id];
-    const ip = n?.ip || '';
-    const parts = ip.split('.');
-    if (id.startsWith('ts-')) {
-      tsGroup.push([id, rtt, n]);
-    } else if (parts.length === 4) {
-      const vlan = parseInt(parts[2]);
-      if (!groups[vlan]) groups[vlan] = [];
-      groups[vlan].push([id, rtt, n]);
-    } else {
-      if (!groups[0]) groups[0] = [];
-      groups[0].push([id, rtt, n]);
-    }
+    frag.appendChild(_makeLatencyRow({id, rtt, label: n?.label || id, icon: n?.icon || '?',
+      hue: _latencyHue(rtt), pct: Math.min(rtt / Math.max(max, 1) * 100, 100)}));
   }
-
-  const frag = document.createDocumentFragment();
-  const vlanOrder = [6, 8, 10, 11];
-  for (const vlan of vlanOrder) {
-    const items = groups[vlan];
-    if (!items) continue;
-    const title = document.createElement('div');
-    title.className = 'latency-group-title';
-    title.textContent = _vlanNames[vlan] || `VLAN ${vlan}`;
-    frag.appendChild(title);
-    for (const [id, rtt, n] of items) {
-      frag.appendChild(_makeLatencyRow(id, rtt, n, max));
-    }
-  }
-  // Other VLANs
-  for (const vlan of Object.keys(groups).map(Number).sort()) {
-    if (vlanOrder.includes(vlan) || vlan === 0) continue;
-    const items = groups[vlan];
-    const title = document.createElement('div');
-    title.className = 'latency-group-title';
-    title.textContent = `VLAN ${vlan}`;
-    frag.appendChild(title);
-    for (const [id, rtt, n] of items) {
-      frag.appendChild(_makeLatencyRow(id, rtt, n, max));
-    }
-  }
-  // Tailscale
-  if (tsGroup.length) {
-    const title = document.createElement('div');
-    title.className = 'latency-group-title';
-    title.textContent = 'Tailscale';
-    frag.appendChild(title);
-    for (const [id, rtt, n] of tsGroup) {
-      frag.appendChild(_makeLatencyRow(id, rtt, n, max));
-    }
-  }
-  // Unknown
-  if (groups[0]) {
-    const title = document.createElement('div');
-    title.className = 'latency-group-title';
-    title.textContent = 'Other';
-    frag.appendChild(title);
-    for (const [id, rtt, n] of groups[0]) {
-      frag.appendChild(_makeLatencyRow(id, rtt, n, max));
-    }
-  }
-
   body.textContent = '';
   body.appendChild(frag);
 }
 
-function _makeLatencyRow(id, rtt, n, maxRtt) {
+function _makeLatencyRow(e) {
   const row = document.createElement('div');
   row.className = 'latency-row';
-  const hue = _latencyHue(rtt);
-  const pct = Math.min(rtt / Math.max(maxRtt, 1) * 100, 100);
-  row.innerHTML = `<span class="latency-icon">${n?.icon || '?'}</span>`
-    + `<span class="latency-label">${n?.label || id}</span>`
-    + `<span class="latency-bar"><span class="latency-fill" style="width:${pct}%;background:hsl(${hue},70%,50%)"></span></span>`
-    + `<span class="latency-val">${rtt < 1 ? rtt.toFixed(2) : rtt.toFixed(1)} ms</span>`;
+  row.innerHTML = `<span class="latency-icon">${e.icon}</span>`
+    + `<span class="latency-label">${e.label}</span>`
+    + `<span class="latency-bar"><span class="latency-fill" style="width:${e.pct}%;background:hsl(${e.hue},70%,50%)"></span></span>`
+    + `<span class="latency-val">${e.rtt < 1 ? e.rtt.toFixed(2) : e.rtt.toFixed(1)} ms</span>`;
   return row;
 }
 
@@ -727,8 +684,12 @@ function buildCollectdExtra(cd) {
   return extra;
 }
 
+// Mark tooltip stats dirty — rebuilt lazily on hover instead of every 10s
+let _tipsDirty = true;
+
 function updateInfraNodes(d) {
   const nodeStatus = d.astral.nodes || {};
+  const sublabels = d.sublabels || {};
   let towersOnline = 0, towersTotal = 0;
 
   Object.entries(infraNodes).forEach(([tipKey, info]) => {
@@ -736,45 +697,59 @@ function updateInfraNodes(d) {
     const statusKey = findStatusKey(nodeStatus, tipKey);
     const online = statusKey ? nodeStatus[statusKey] : false;
 
-    if (n.sub) n.sub.textContent = online ? `Online \u2022 ${info.ip}` : `Offline \u2022 ${info.ip}`;
+    // Use server-precomputed sublabel when available (eliminates hostname matching)
+    if (sublabels[tipKey]) {
+      if (n.sub) n.sub.textContent = sublabels[tipKey];
+    } else {
+      if (n.sub) n.sub.textContent = online ? `Online \u2022 ${info.ip}` : `Offline \u2022 ${info.ip}`;
+    }
     if (n.pulse) n.pulse.style.display = online ? '' : 'none';
     if (n.el) n.el.style.opacity = online ? '1' : '0.35';
 
     if (n.isTower) { towersTotal++; if (online) towersOnline++; }
-
-    if (d.collectd && tips[tipKey]) {
-      const cd = findCollectd(d.collectd, tipKey, statusKey);
-      if (cd) {
-        const extra = buildCollectdExtra(cd);
-        const base = tips[tipKey].stats.filter(s => ["Model", "IP", "OS", "Role", "Service", "Hostname"].includes(s[0]));
-        tips[tipKey].stats = [...base, ...extra, ['Status', online ? 'Online' : 'Offline']];
-        if (n.sub && cd.load_1 != null) {
-          const memStr = cd.mem_pct != null ? ` \u2022 ${cd.mem_pct}%` : '';
-          n.sub.textContent = `Load ${cd.load_1.toFixed(2)}${memStr} \u2022 ${info.ip}`;
-        }
-      }
-    }
-    if (tips[tipKey]) {
-      const stats = tips[tipKey].stats;
-      if (!stats.some(s => s[0] === 'Status')) stats.push(['Status', online ? 'Online' : 'Offline']);
-    }
   });
 
+  _tipsDirty = true;  // Tooltip stats will be rebuilt on next hover
   DOM.towersOnline.textContent = towersOnline;
   DOM.towersTotal.textContent = towersTotal;
 }
 
+function _rebuildTipStats(tipKey) {
+  if (!lastStatus || !tips[tipKey]) return;
+  const d = lastStatus;
+  const nodeStatus = d.astral?.nodes || {};
+  const statusKey = findStatusKey(nodeStatus, tipKey);
+  const online = statusKey ? nodeStatus[statusKey] : false;
+
+  if (d.collectd) {
+    const cd = findCollectd(d.collectd, tipKey, statusKey);
+    if (cd) {
+      const extra = buildCollectdExtra(cd);
+      const base = tips[tipKey].stats.filter(s => ["Model", "IP", "OS", "Role", "Service", "Hostname"].includes(s[0]));
+      tips[tipKey].stats = [...base, ...extra, ['Status', online ? 'Online' : 'Offline']];
+    }
+  }
+  // HA status
+  const haInfo = d.ha?.[tipKey];
+  if (haInfo?.sublabel) {
+    const existing = tips[tipKey].stats.filter(s => s[0] !== 'HA Status');
+    existing.push(['HA Status', haInfo.sublabel]);
+    tips[tipKey].stats = existing;
+  }
+  if (!tips[tipKey].stats.some(s => s[0] === 'Status')) {
+    tips[tipKey].stats.push(['Status', online ? 'Online' : 'Offline']);
+  }
+}
+
 function updateHASublabels(d) {
   const ha = d.ha;
+  const sublabels = d.sublabels || {};
   if (!ha) return;
   for (const [nodeId, info] of Object.entries(ha)) {
-    const n = getNodeDOM(nodeId);
-    if (n.sub) n.sub.textContent = info.sublabel;
-    // Also inject into tooltip
-    if (tips[nodeId]) {
-      const existing = tips[nodeId].stats.filter(s => s[0] !== 'HA Status');
-      existing.push(['HA Status', info.sublabel]);
-      tips[nodeId].stats = existing;
+    // Only set sublabel if server didn't already provide one
+    if (!sublabels[nodeId]) {
+      const n = getNodeDOM(nodeId);
+      if (n.sub) n.sub.textContent = info.sublabel;
     }
   }
 }
@@ -1181,8 +1156,8 @@ export function updateConnectionTrafficSSE(trafficMap) {
     const intensity = Math.min(1, traffic.intensity * trafficScale);
     const sw = +(baseW + intensity * 8 * trafficScale).toFixed(1);
     const speed = +Math.max(2, 20 - intensity * 18).toFixed(1);
-    const dir = traffic.rx > traffic.tx ? 'reverse' : 'normal';
-    const tier = intensity > 0.65 ? 'conn-traffic-high' : intensity > 0.35 ? 'conn-traffic-med' : intensity > 0.15 ? 'conn-traffic-low' : '';
+    const dir = traffic.dir || (traffic.rx > traffic.tx ? 'reverse' : 'normal');
+    const tier = traffic.tier ? ('conn-traffic-' + traffic.tier) : (intensity > 0.65 ? 'conn-traffic-high' : intensity > 0.35 ? 'conn-traffic-med' : intensity > 0.15 ? 'conn-traffic-low' : '');
 
     if (sw !== cache.sw) { line.style.setProperty('--sw', sw); cache.sw = sw; }
     if (speed !== cache.speed) { line.style.setProperty('--speed', speed + 's'); cache.speed = speed; }
@@ -1204,27 +1179,41 @@ export function updateConnectionTrafficSSE(trafficMap) {
     }
 
     // Collect for animation budget (only top N get dash animation)
-    trafficData.push({ line, cache, intensity });
+    trafficData.push({ line, cache, intensity, traffic });
   });
 
-  // Only the top N connections by intensity get the expensive dash animation.
-  // All others get static stroke styling but no animation (saves ~50 SVG repaints/frame).
-  trafficData.sort((a, b) => b.intensity - a.intensity);
-  const topAnimated = new Set(trafficData.slice(0, MAX_ANIMATED_CONNS).map(d => d.line));
-  for (const { line, cache } of trafficData) {
-    const shouldAnimate = topAnimated.has(line);
-    if (shouldAnimate && !cache.animated) { line.classList.add('conn-animated'); cache.animated = true; }
-    else if (!shouldAnimate && cache.animated) { line.classList.remove('conn-animated'); cache.animated = false; }
-  }
-  const topLines = new Set(trafficData.filter(d => d.intensity > 0.3).slice(0, TOP_GLOW_COUNT).map(d => d.line));
-  trafficData.forEach(({ line, cache }) => {
-    const shouldGlow = topLines.has(line);
-    if (shouldGlow !== cache.glow) {
-      if (shouldGlow) line.classList.add('conn-glow');
-      else line.classList.remove('conn-glow');
-      cache.glow = shouldGlow;
+  // Use server-provided animate/glow flags if available; fall back to client-side sort
+  const hasServerFlags = trafficData.length > 0 && trafficData[0].traffic?.animate !== undefined;
+  if (hasServerFlags) {
+    for (const { line, cache, traffic } of trafficData) {
+      const shouldAnimate = !!traffic.animate;
+      if (shouldAnimate !== cache.animated) {
+        if (shouldAnimate) line.classList.add('conn-animated'); else line.classList.remove('conn-animated');
+        cache.animated = shouldAnimate;
+      }
+      const shouldGlow = !!traffic.glow;
+      if (shouldGlow !== cache.glow) {
+        if (shouldGlow) line.classList.add('conn-glow'); else line.classList.remove('conn-glow');
+        cache.glow = shouldGlow;
+      }
     }
-  });
+  } else {
+    trafficData.sort((a, b) => b.intensity - a.intensity);
+    const topAnimated = new Set(trafficData.slice(0, MAX_ANIMATED_CONNS).map(d => d.line));
+    for (const { line, cache } of trafficData) {
+      const shouldAnimate = topAnimated.has(line);
+      if (shouldAnimate && !cache.animated) { line.classList.add('conn-animated'); cache.animated = true; }
+      else if (!shouldAnimate && cache.animated) { line.classList.remove('conn-animated'); cache.animated = false; }
+    }
+    const topLines = new Set(trafficData.filter(d => d.intensity > 0.3).slice(0, TOP_GLOW_COUNT).map(d => d.line));
+    trafficData.forEach(({ line, cache }) => {
+      const shouldGlow = topLines.has(line);
+      if (shouldGlow !== cache.glow) {
+        if (shouldGlow) line.classList.add('conn-glow'); else line.classList.remove('conn-glow');
+        cache.glow = shouldGlow;
+      }
+    });
+  }
 
   for (const tipKey of Object.keys(_nodeDOM)) {
     const n = _nodeDOM[tipKey];
@@ -3042,8 +3031,8 @@ export function panToNode(x, y) {
 }
 
 canvas.addEventListener('mousedown', e => {
-  // Don't start pan if clicking an interactive element (bubble, panel, button)
-  if (e.target.closest('.speech-bubble, .panel, button, a, input, textarea, select')) return;
+  // Don't start pan if clicking an interactive element (bubble, panel, button, node)
+  if (e.target.closest('.speech-bubble, .panel, button, a, input, textarea, select, .realm-node')) return;
   dragging = true;
   lastX = e.clientX; lastY = e.clientY;
   _enterZoomMode();  // Activate immediately — prevents repaint gap between zoom→pan
@@ -3061,7 +3050,7 @@ window.addEventListener('mouseup', () => { if (dragging) { dragging = false; sav
 // ── Touch: pan & pinch-to-zoom ──
 let _touchPanning = false, _lastTouch = null, _pinchDist = null;
 canvas.addEventListener('touchstart', e => {
-  if (e.target.closest('.speech-bubble, .panel, button, a, input, textarea, select')) return;
+  if (e.target.closest('.speech-bubble, .panel, button, a, input, textarea, select, .realm-node')) return;
   _enterZoomMode();  // Activate immediately on touch
   if (e.touches.length === 2) {
     _pinchDist = Math.hypot(
@@ -3075,9 +3064,10 @@ canvas.addEventListener('touchstart', e => {
   }
 }, { passive: true });
 canvas.addEventListener('touchmove', e => {
+  if (!_touchPanning && _pinchDist === null) return;  // Not panning or pinching — skip (e.g. node drag)
+  e.preventDefault();  // Block browser scroll/refresh for ALL map gestures
   _enterZoomMode();  // Lock raster BEFORE transform changes
   if (e.touches.length === 2 && _pinchDist !== null) {
-    e.preventDefault();
     const newDist = Math.hypot(
       e.touches[1].clientX - e.touches[0].clientX,
       e.touches[1].clientY - e.touches[0].clientY
@@ -3129,6 +3119,8 @@ document.getElementById('map-world').addEventListener('mouseover', e => {
   const key = node.dataset.tip;
   const data = tips[key];
   if (!data) return;
+  // Lazy rebuild: only compute stats for the hovered node (saves ~60 node rebuilds per tick)
+  if (_tipsDirty && infraNodes[key]) _rebuildTipStats(key);
   let html = `<h3>${data.title}</h3>`;
   data.stats.forEach(([k, v]) => {
     html += `<div class="stat-line"><span>${k}</span><span class="stat-val">${v}</span></div>`;
@@ -4965,6 +4957,7 @@ function buildNodeList() {
   const countEl = document.getElementById('nl-count');
   if (!body) return;
   body.innerHTML = '';
+  _censusSubCache = null;  // Invalidate DOM cache on rebuild
 
   // Group nodes by type
   const groups = {};
@@ -5031,32 +5024,35 @@ export function updateNodeListStatus(d) {
 // Build the node list from topology
 buildNodeList();
 
-function updateCensusSubLabels(d) {
-  if (!d) return;
+// Cache census DOM refs to avoid querySelectorAll every 10s
+let _censusSubCache = null;
+function _buildCensusSubCache() {
+  _censusSubCache = [];
   document.querySelectorAll('.nl-item').forEach(item => {
     const id = item.dataset.nodeId;
-    if (!id) return;
     const subEl = item.querySelector('.nl-sub');
-    if (!subEl) return;
-    // Show live HA sublabel if available
-    const haInfo = d.ha?.[id];
-    if (haInfo?.sublabel) {
-      subEl.textContent = haInfo.sublabel;
-      return;
-    }
-    // Show WLED state
-    const wledInfo = d.wled?.[id];
-    if (wledInfo?.online) {
-      subEl.textContent = wledInfo.on ? `On \u2022 ${wledInfo.effect || 'Solid'}` : 'Off';
-      return;
-    }
-    // Show WiFi signal
-    const wifi = d.wifi?.[id];
-    if (wifi?.signal != null) {
-      subEl.textContent = `${wifi.signal} dBm \u2022 ${wifi.ap || ''}`;
-      return;
-    }
+    if (id && subEl) _censusSubCache.push({ id, subEl });
   });
+}
+
+function updateCensusSubLabels(d) {
+  if (!d) return;
+  if (!_censusSubCache) _buildCensusSubCache();
+  const sublabels = d.sublabels || {};
+  for (const { id, subEl } of _censusSubCache) {
+    // Use server-precomputed sublabel when available
+    if (sublabels[id]) {
+      subEl.textContent = sublabels[id];
+    } else {
+      // Fallback: HA > WLED > WiFi
+      const haInfo = d.ha?.[id];
+      if (haInfo?.sublabel) { subEl.textContent = haInfo.sublabel; continue; }
+      const wledInfo = d.wled?.[id];
+      if (wledInfo?.online) { subEl.textContent = wledInfo.on ? `On \u2022 ${wledInfo.effect || 'Solid'}` : 'Off'; continue; }
+      const wifi = d.wifi?.[id];
+      if (wifi?.signal != null) { subEl.textContent = `${wifi.signal} dBm \u2022 ${wifi.ap || ''}`; }
+    }
+  }
 }
 
 // Rebuild census when topology refreshes
@@ -5243,7 +5239,7 @@ export function autoArrangeLayout(mode) {
     worldH: WORLD_H,
     mode: _layoutMode,
     nodeVlans: _nodeVlans,
-    latencyMap: _latencyMap,
+    latencyMap: _latencyFlat || _latencyMap,
     wifiMap: _wifiMap,
   });
 }
@@ -5477,6 +5473,15 @@ document.getElementById('layout-reset-btn')?.addEventListener('click', resetToOr
     });
   }
 
+  // Rune labels toggle — always show labels under dock icons
+  const runeLabelCb = document.getElementById('dock-rune-labels');
+  if (runeLabelCb) {
+    runeLabelCb.addEventListener('change', () => {
+      document.getElementById('sealed-dock')?.classList.toggle('show-rune-labels', runeLabelCb.checked);
+      saveSettings();
+    });
+  }
+
   // FPS counter toggle
   const fpsCb = document.getElementById('vis-fps-counter');
   if (fpsCb) {
@@ -5511,6 +5516,7 @@ document.getElementById('layout-reset-btn')?.addEventListener('click', resetToOr
       loadEl.querySelector('.rl-sparks').innerHTML = '';
       const stageText = loadEl.querySelector('.rl-stage-text');
       if (stageText) stageText.textContent = 'Igniting the arcane sigil';
+      loadEl.style.display = '';
       loadEl.classList.remove('dismissed');
       // Re-trigger vine trace animations by cloning paths
       loadEl.querySelectorAll('.rl-vines path[stroke]').forEach(p => {
@@ -5533,7 +5539,10 @@ document.getElementById('layout-reset-btn')?.addEventListener('click', resetToOr
         setTimeout(() => adv(3), 3000);
         setTimeout(() => adv(4), 4200);
       }
-      setTimeout(() => loadEl.classList.add('dismissed'), 5500);
+      setTimeout(() => {
+        loadEl.classList.add('dismissed');
+        setTimeout(() => { loadEl.style.display = 'none'; }, 1300);
+      }, 5500);
     });
   }
 
@@ -5847,6 +5856,7 @@ animateMotes();
 let _sseTrafficMap = null;
 let _sseConnected = false;
 let _latencyMap = null;
+let _latencyFlat = null; // flat {node_id: rtt} for layout worker
 let _wifiMap = null;
 
 (function initSSE() {
@@ -5890,7 +5900,11 @@ let _wifiMap = null;
       if (window._advanceLoadStage) window._advanceLoadStage(4);
       const loadEl = document.getElementById('realm-loading');
       if (loadEl && !loadEl.classList.contains('dismissed')) {
-        setTimeout(() => loadEl.classList.add('dismissed'), 1200);
+        setTimeout(() => {
+          loadEl.classList.add('dismissed');
+          // Kill loading screen entirely after fade (1.2s transition) — stops 15 animations from burning GPU
+          setTimeout(() => { loadEl.style.display = 'none'; }, 1300);
+        }, 1200);
       }
     }
   });
@@ -5902,6 +5916,14 @@ let _wifiMap = null;
 
   sse.addEventListener('latency', e => {
     _latencyMap = JSON.parse(e.data);
+    // Extract flat map for layout worker (Cartographer modes)
+    if (_latencyMap.groups) {
+      const flat = {};
+      for (const g of _latencyMap.groups) for (const entry of g.entries) flat[entry.id] = entry.rtt;
+      _latencyFlat = flat;
+    } else {
+      _latencyFlat = _latencyMap;
+    }
     updateLatencyPanel();
   });
 
@@ -6182,7 +6204,7 @@ const _PERSIST_CHECKBOXES = [
   'vis-titlebar', 'vis-search', 'vis-statuspanel', 'vis-legend', 'vis-spellbook',
   'vis-codex', 'vis-questlog', 'vis-cartographer', 'vis-energy', 'vis-nodelist', 'vis-debug', 'vis-latency', 'vis-firewall', 'vis-wifi',
   'vis-map-vines', 'vis-loading-vines',
-  'dock-emoji-icons',
+  'dock-emoji-icons', 'dock-rune-labels',
   'vis-fps-counter',
 ];
 

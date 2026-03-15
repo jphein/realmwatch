@@ -119,6 +119,73 @@ def get_latency_map():
     return _latency_map
 
 
+def get_latency_grouped(topo_nodes=None):
+    """Return pre-sorted, pre-grouped latency data for the client.
+
+    Returns {summary: {count, avg, max}, groups: [{name, entries: [{id, rtt, label, icon, hue, pct}]}]}
+    Eliminates client-side sort, VLAN grouping, and hue calculation.
+    """
+    lmap = _latency_map
+    if not lmap:
+        return None
+
+    # Build node lookup from topology
+    node_info = {}
+    if topo_nodes:
+        for n in topo_nodes:
+            node_info[n["id"]] = {"label": n.get("label", n["id"]), "icon": n.get("icon", "?"), "ip": n.get("ip", "")}
+
+    # Sort all entries by RTT
+    sorted_entries = sorted(lmap.items(), key=lambda x: x[1])
+    max_rtt = sorted_entries[-1][1] if sorted_entries else 1
+    avg_rtt = sum(v for _, v in sorted_entries) / len(sorted_entries)
+
+    # Group by VLAN
+    vlan_groups = {}
+    ts_entries = []
+    other_entries = []
+
+    for nid, rtt in sorted_entries:
+        info = node_info.get(nid, {"label": nid, "icon": "?", "ip": ""})
+        ip = info.get("ip") or _node_to_ip.get(nid, "")
+        hue = max(0, 120 - rtt * 4)  # green→red
+        pct = min(rtt / max(max_rtt, 0.01) * 100, 100)
+        entry = {"id": nid, "rtt": rtt, "label": info["label"], "icon": info["icon"],
+                 "hue": round(hue, 1), "pct": round(pct, 1)}
+
+        if nid.startswith("ts-"):
+            ts_entries.append(entry)
+        elif ip:
+            parts = ip.split(".")
+            if len(parts) == 4:
+                vlan = int(parts[2])
+                vlan_groups.setdefault(vlan, []).append(entry)
+            else:
+                other_entries.append(entry)
+        else:
+            other_entries.append(entry)
+
+    VLAN_NAMES = {6: "The Citadel", 8: "Guest Marches", 10: "Enchanted Quarters", 11: "Family Hearth"}
+    VLAN_ORDER = [6, 8, 10, 11]
+
+    groups = []
+    for vlan in VLAN_ORDER:
+        if vlan in vlan_groups:
+            groups.append({"name": VLAN_NAMES.get(vlan, f"VLAN {vlan}"), "entries": vlan_groups[vlan]})
+    for vlan in sorted(vlan_groups.keys()):
+        if vlan not in VLAN_ORDER:
+            groups.append({"name": f"VLAN {vlan}", "entries": vlan_groups[vlan]})
+    if ts_entries:
+        groups.append({"name": "Tailscale", "entries": ts_entries})
+    if other_entries:
+        groups.append({"name": "Other", "entries": other_entries})
+
+    return {
+        "summary": {"count": len(sorted_entries), "avg": round(avg_rtt, 1), "max": round(max_rtt, 1)},
+        "groups": groups,
+    }
+
+
 def get_subnet(node_id):
     """Return VLAN number from node IP (3rd octet), or None."""
     ip = _node_to_ip.get(node_id)

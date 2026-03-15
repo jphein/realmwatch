@@ -147,14 +147,52 @@ def get_setting(namespace, key, default=None):
 # ── Events ──
 
 def push_event(event):
-    """Store an event. Returns event dict with db id injected."""
+    """Store an event. Returns event dict with db id injected.
+    Quest-type events also auto-create a structured quest card."""
     event["ts"] = time.time()
     c = _conn()
     cur = c.execute("INSERT INTO events (ts, type, data) VALUES (?, ?, ?)",
                     (event["ts"], event.get("type"), json.dumps(event)))
     c.commit()
     event["id"] = cur.lastrowid
+
+    # Auto-create structured quest card for quest-type events
+    if event.get("type") == "quest" and event.get("text"):
+        _auto_create_quest(event)
+
     return event
+
+
+def _auto_create_quest(event):
+    """Parse a quest event's text into a structured quest card."""
+    import re
+    text = event["text"]
+    node = event.get("node", "katana")
+
+    # Split "Title — description" or "Title - description"
+    m = re.split(r"\s*[—–]\s*", text, maxsplit=1)
+    title = m[0].strip() if m else text[:60]
+    description = m[1].strip() if len(m) > 1 else ""
+
+    # Generate stable ID from title
+    quest_id = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:40]
+
+    # Skip if quest with this ID already exists
+    if get_quest(quest_id):
+        return
+
+    actions = [{"type": "pan", "node": node, "label": "View Node"}]
+    quest = {
+        "id": quest_id,
+        "title": title,
+        "description": description,
+        "node": node,
+        "status": "active",
+        "sort_order": 0,
+        "actions": actions,
+        "created_at": event.get("ts", time.time()),
+    }
+    upsert_quest(quest)
 
 
 def get_events_since(since_ts):

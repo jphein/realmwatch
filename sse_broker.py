@@ -35,8 +35,14 @@ class SSEBroker:
 
     def add_client(self):
         """Register a new SSE client. Returns a Queue that receives (event_type, data_json) tuples.
-        Replays all persistent events (quests, alerts, oracle) and recent speech."""
+        Sends initial status snapshot, then replays persistent events."""
         q = queue.Queue(maxsize=1000)
+        # Send current status immediately so loading screen can dismiss
+        try:
+            status = self._status_fn()
+            q.put_nowait(("status", json.dumps(status, separators=(',', ':'))))
+        except Exception:
+            pass
         try:
             # Always replay ALL quests, alerts, oracle, system events
             all_events = realm_db.get_events_since(0)
@@ -124,12 +130,13 @@ class SSEBroker:
                     except Exception:
                         pass
 
-                # -- Latency: every 6th tick (30s) --
+                # -- Latency: every 6th tick (30s) — send pre-grouped data --
                 if tick % 6 == 0 and self._latency_fn:
                     try:
-                        latency = self._latency_fn()
-                        if latency:
-                            self._check_and_push("latency", latency)
+                        from latency_prober import get_latency_grouped
+                        grouped = get_latency_grouped(topo_nodes)
+                        if grouped:
+                            self._check_and_push("latency", grouped)
                     except Exception:
                         pass
 

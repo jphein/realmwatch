@@ -371,10 +371,14 @@ export function renderTopology(topo) {
 
 // ── Load topology (async) ──
 export async function loadTopology() {
-  const r = await fetch('/topology');
-  if (r.ok) {
-    const topo = await r.json();
-    renderTopology(topo);
+  try {
+    const r = await fetch('/topology');
+    if (r.ok) {
+      const topo = await r.json();
+      renderTopology(topo);
+    }
+  } catch (e) {
+    console.error('Realm Map: topology load failed', e);
   }
 }
 
