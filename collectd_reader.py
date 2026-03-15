@@ -1,8 +1,30 @@
 #!/usr/bin/env python3
 """Read collectd RRD data from /var/lib/collectd/rrd/.
 
-Provides host summaries (load, memory, uptime, interfaces, CPU, thermal)
-for the realm map by reading the latest values from RRD files via rrdtool.
+Synchronous RRD reader — no background thread. Each call to get_host_summary()
+shells out to rrdtool and returns immediately; results are cached for CACHE_TTL
+seconds so repeated calls within the same SSE tick are cheap.
+
+Data flow:
+  /var/lib/collectd/rrd/<hostname>/ → rrdtool lastupdate/fetch → summary dict
+
+Threading:
+  No locks — per-host cache is a simple dict; reads/writes are GIL-safe for
+  the single-value _cache[hostname] = (ts, summary) assignment pattern.
+
+Configuration:
+  RRD_BASE   = "/var/lib/collectd/rrd"  # collectd RRD directory
+  _CACHE_TTL = 5.0                      # seconds between re-reads per host
+
+Metrics collected per host (where available):
+  load_1/5/15, mem_used/total/pct, uptime, cpu_cores, conntrack,
+  temp (max thermal zone), dhcp_leases, interfaces (rx_bps/tx_bps per iface),
+  ping/ping_drop/ping_stddev (per target), disk_used/free/pct, swap_used,
+  procs_running, fork_rate
+
+Public API (imported by map_server, sse_broker, traffic_precompute):
+  get_host_summary(hostname) -> dict | None
+  get_all_summaries()        -> {hostname: dict}
 """
 
 import os

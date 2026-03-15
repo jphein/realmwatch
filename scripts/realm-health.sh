@@ -1,5 +1,14 @@
 #!/usr/bin/env bash
-# Realm health check — quick status of all services and ports
+# Quick health check — processes, ports, database, and environment tokens.
+#
+# Usage:
+#   ./scripts/realm-health.sh
+#
+# Description:
+#   Checks each Realm service with pgrep, verifies :8777 is responding,
+#   inspects realm.db size and row counts (if sqlite3 is available), and
+#   shows whether required API tokens (NOTION_TOKEN, HA_TOKEN, AZURE_API_KEY)
+#   are set in the current environment. Color-coded output: green=OK, red=down.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

@@ -1,9 +1,28 @@
 #!/usr/bin/env bash
-# Install and configure collectd on an OpenWrt AP to send metrics to katana.
+# Install collectd + lldpd on OpenWrt APs and configure metrics forwarding to katana.
+#
 # Usage:
-#   ./scripts/setup-collectd-openwrt.sh onhub-closet
-#   ./scripts/setup-collectd-openwrt.sh 10.0.6.102
-#   ./scripts/setup-collectd-openwrt.sh --all
+#   ./scripts/setup-collectd-openwrt.sh onhub-closet   # by AP name
+#   ./scripts/setup-collectd-openwrt.sh 10.0.6.102     # by IP
+#   ./scripts/setup-collectd-openwrt.sh --all           # all 12 known APs
+#
+# Description:
+#   For each AP:
+#   1. Installs collectd packages via opkg:
+#      collectd, collectd-mod-{cpu,memory,load,interface,network,uptime,ping,iwinfo,df}
+#   2. Writes /etc/collectd.conf (Hostname=<ap_name>, sends to katana:25826, 30s interval)
+#   3. Enables and starts collectd
+#   4. Installs lldpd and configures it on physical ports (DSA: lan1-4+wan, else eth0/eth1)
+#      lldpd enables ap_scanner's ethernet topology auto-detection
+#   Skips APs that already have collectd running and pointed at katana (idempotent).
+#
+# Configuration:
+#   KATANA_IP      = 10.0.6.129
+#   COLLECTD_PORT  = 25826
+#   INTERVAL       = 30 seconds
+#
+# Requires: ssh key auth to APs (root@<ip>)
+# See also: setup-collectd-ap.sh to add the WiFi client exec plugin after this
 set -euo pipefail
 
 G='\033[0;32m'; R='\033[0;31m'; Y='\033[0;33m'; C='\033[0;36m'; N='\033[0m'

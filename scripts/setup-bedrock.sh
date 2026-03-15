@@ -1,6 +1,22 @@
 #!/usr/bin/env bash
-# Setup Claude Code to use Amazon Bedrock with Opus 4.6
-# Usage: ./scripts/setup-bedrock.sh
+# One-time setup: configure Claude Code to use Amazon Bedrock (Opus 4.6).
+#
+# Usage:
+#   ./scripts/setup-bedrock.sh
+#
+# Description:
+#   Walks through 4 steps:
+#   1. Installs AWS CLI v2 if missing
+#   2. Runs `aws configure` if no credentials exist (prompts for key/secret/region)
+#   3. Lists available Claude models in Bedrock (requires bedrock:ListInferenceProfiles)
+#   4. Appends CLAUDE_CODE_USE_BEDROCK=1 + AWS_REGION env vars to ~/.bashrc or ~/.zshrc
+#
+# After running:
+#   source ~/.bashrc  (or open a new terminal)
+#   claude
+#
+# To switch providers later:
+#   source scripts/claude-provider.sh bedrock|vertex|direct
 set -euo pipefail
 
 echo "=== Claude Code + Amazon Bedrock Setup ==="

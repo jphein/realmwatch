@@ -1,7 +1,24 @@
 #!/usr/bin/env bash
-# Switch Claude Code between API providers: bedrock, vertex, azure, direct
-# Usage: source scripts/claude-provider.sh [bedrock|vertex|azure|direct]
-#   or:  . scripts/claude-provider.sh bedrock
+# Switch Claude Code between API providers by setting environment variables.
+#
+# Usage (MUST be sourced, not executed):
+#   source scripts/claude-provider.sh bedrock   # Amazon Bedrock (Opus 4.6, us-west-1)
+#   source scripts/claude-provider.sh vertex    # Google Vertex AI (Opus 4.6)
+#   source scripts/claude-provider.sh direct    # Direct Anthropic API (ANTHROPIC_API_KEY)
+#   source scripts/claude-provider.sh           # show current provider
+#
+# Description:
+#   Clears all provider env vars, then sets the appropriate ones for the chosen
+#   provider. Must be sourced (not executed) so that `export` affects the current
+#   shell session where you'll run `claude`.
+#
+# Provider env vars:
+#   bedrock: CLAUDE_CODE_USE_BEDROCK=1, AWS_REGION=us-west-1
+#   vertex:  CLAUDE_CODE_USE_VERTEX=1, CLOUD_ML_REGION=us-west1,
+#            ANTHROPIC_VERTEX_PROJECT_ID (auto-read from gcloud config)
+#   direct:  only ANTHROPIC_DEFAULT_OPUS_MODEL (requires ANTHROPIC_API_KEY in env)
+#
+# Setup scripts: scripts/setup-bedrock.sh, scripts/setup-vertex.sh
 
 PROVIDER="${1:-}"
 

@@ -1,13 +1,23 @@
 #!/bin/sh
-# collectd exec plugin — WiFi client metrics per AP.
-# Optimized for minimal overhead: single iwinfo+awk pass, 60s interval.
+# collectd exec plugin — per-client WiFi signal metrics for OpenWrt APs.
 #
-# Metrics per client (MAC with underscores):
-#   wifi_clients-<MAC>/signal_power  — signal dBm (gauge U:0)
-#   wifi_clients-<MAC>/snr           — SNR (gauge 0:U)
-#   wifi_clients-<MAC>/bitrate-tx    — TX Mbit/s (gauge)
-#   wifi_clients-<MAC>/bitrate-rx    — RX Mbit/s (gauge)
-#   wifi_clients/count               — total clients (gauge)
+# Deployed to: /usr/local/bin/collectd-wifi-clients.sh  (on each AP)
+# Deployed by: setup-collectd-ap.sh
+#
+# Description:
+#   Runs as a collectd exec plugin. Loops forever, sleeping COLLECTD_INTERVAL
+#   seconds between iterations. Each iteration iterates all wireless interfaces
+#   (iwinfo), collects assoclists, and emits PUTVAL lines for each client.
+#
+# Metrics emitted (MAC address with colons replaced by underscores):
+#   <host>/wifi_clients-<MAC>/signal_power  — signal strength (dBm, gauge)
+#   <host>/wifi_clients-<MAC>/snr           — signal-to-noise ratio (gauge)
+#   <host>/wifi_clients-<MAC>/bitrate-tx    — TX rate (Mbit/s, gauge)
+#   <host>/wifi_clients-<MAC>/bitrate-rx    — RX rate (Mbit/s, gauge)
+#   <host>/wifi_clients/count               — total associated clients (gauge)
+#
+# Design: single iwinfo+awk pass per interval for minimal CPU overhead.
+# Requires: iwinfo (standard on OpenWrt)
 
 HOSTNAME="${COLLECTD_HOSTNAME:-$(cat /proc/sys/kernel/hostname)}"
 INTERVAL="${COLLECTD_INTERVAL:-60}"

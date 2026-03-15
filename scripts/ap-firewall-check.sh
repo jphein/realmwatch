@@ -1,7 +1,22 @@
 #!/usr/bin/env bash
-# Check gatekeeper firewall rules relevant to VLAN zones.
-# Shows fw4 zones, forwarding rules, and port-specific rules.
-# Usage: ./scripts/ap-firewall-check.sh
+# Audit gatekeeper fw4 firewall: zones, forwarding rules, custom rules.
+#
+# Usage:
+#   ./scripts/ap-firewall-check.sh
+#
+# Description:
+#   SSH to gatekeeper (10.0.6.1) and dumps three sections:
+#     - fw4 Zones: name, networks, input/output/forward policies
+#     - Forwarding rules: src → dest VLAN-to-VLAN permissions
+#     - Custom rules: non-default rules with src/dest/proto/port/target
+#       (boilerplate DHCP/ping/ICMPv6 rules are filtered out)
+#
+#   fw4 zone name reminder (gatekeeper naming is counterintuitive):
+#     lan=IoT/VLAN10  iot=Guest/VLAN8  admin=Admin/VLAN6  family=Family/VLAN11
+#
+#   Use alongside firewall_parser.py for live nft ruleset analysis.
+#
+# Requires: ssh key auth to gatekeeper (root@10.0.6.1)
 set -euo pipefail
 
 G='\033[0;32m'; R='\033[0;31m'; Y='\033[0;33m'; C='\033[0;36m'; N='\033[0m'

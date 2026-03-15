@@ -1,5 +1,51 @@
 #!/usr/bin/env python3
-"""Parse nftables JSON ruleset into structured zone/VLAN data for the firewall panel."""
+"""Parse nftables JSON ruleset into structured zone/VLAN data for the firewall panel.
+
+Called by map_server's /firewall endpoint: map_server SSH-hops to gatekeeper,
+runs `nft -j list ruleset`, then passes the JSON here to parse. Results are
+cached for CACHE_TTL seconds so repeated browser polls don't re-SSH.
+
+Data flow:
+  map_server → SSH → gatekeeper `nft -j list ruleset`
+  → parse_nft_json(raw_json)
+  → {zones, wan, vlans, suggestions, ts}
+  → update_cache() → get_cached() → /firewall HTTP response
+
+Threading:
+  _lock guards _cache / _cache_ts. Cache reads (get_cached) and writes
+  (update_cache) are the only shared state; parse_nft_json is pure.
+
+Configuration:
+  _CACHE_TTL = 30.0  # seconds
+
+VLAN registry (VLANS dict):
+  Complete mapping of VLAN IDs 3-38 with label, type, status, description.
+  Exported to frontend for the full VLAN table display.
+
+fw4 zone-name quirk (gatekeeper-specific):
+  fw4 zone "lan"    = VLAN 10  (IoT)    ← confusingly named
+  fw4 zone "iot"    = VLAN 8   (Guest)  ← confusingly named
+  fw4 zone "admin"  = VLAN 6   (Admin)
+  fw4 zone "family" = VLAN 11  (Family)
+
+Per-zone output fields:
+  counters:    accept_bytes/pkts, reject_bytes/pkts
+  dns_redirect: True if dstnat_{zone} has a redirect rule
+  dns_queries: packet count of redirected DNS queries
+  blocked_ips: [{ip, pkts, bytes}] — IPs blocked to WAN
+  can_reach:   [zone_name, ...] — zones this zone can forward to
+
+Suggestions (firewall_parser._generate_suggestions):
+  Rule-based analysis across all zones. Flags missing DNS redirects,
+  inter-VLAN access leaks, inactive block rules, WAN redundancy gaps.
+
+Public API (imported by map_server):
+  parse_nft_json(raw_json)  -> dict | None
+  get_cached()              -> dict | None
+  update_cache(parsed)
+  VLANS                     # full VLAN registry dict
+  ZONE_VLAN                 # fw4 zone name → VLAN ID
+"""
 
 import json
 import time

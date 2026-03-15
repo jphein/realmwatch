@@ -1,7 +1,28 @@
 """Pre-compute per-node traffic intensity from collectd data.
 
-Moves hostname matching, best-interface selection, and log-scale
-intensity computation from the browser to the server.
+Thin compute layer called on every /status request. Moves hostname matching,
+best-interface selection, and log-scale intensity computation from the browser
+to the server so the frontend receives ready-to-render values.
+
+Data flow:
+  topology nodes + collectd_reader.get_all_summaries()
+  → hostname matching (exact / prefix / fuzzy)
+  → best interface selection (highest rx+tx)
+  → log-scale intensity [0..1] over 1 KB/s → 10 MB/s
+  → tier/direction/animate/glow flags
+  → {node_id: traffic_dict}
+
+Threading:
+  No state. Called synchronously; collectd_reader handles its own caching.
+
+Intensity scale (matches former app.js getNodeTraffic()):
+  raw = max(0, min(1, (log10(total_bps + 1) - 3) / 4))
+  tier: high > 0.65, med > 0.35, low > 0.15
+  top-8 nodes get animate=True; top-3 (intensity > 0.3) get glow=True
+
+Public API (imported by map_server):
+  compute_traffic(topology_nodes) -> {node_id: {rx, tx, total, intensity,
+                                                 tier, dir, animate, glow}}
 """
 
 import math

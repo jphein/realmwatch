@@ -1,7 +1,21 @@
 #!/usr/bin/env bash
-# AP Audit — SSH into all APs and dump SSID→Network→VLAN mappings.
-# Usage: ./scripts/ap-audit.sh
-#   or:  ./scripts/ap-audit.sh onhub-closet   (single AP)
+# Audit all APs: SSID→network mappings, VLAN system, interfaces, collectd status.
+#
+# Usage:
+#   ./scripts/ap-audit.sh               # all 12 APs
+#   ./scripts/ap-audit.sh onhub-closet  # single AP by name
+#   ./scripts/ap-audit.sh 10.0.6.102    # single AP by IP
+#
+# Description:
+#   SSH into each AP and dumps:
+#     - Every wifi-iface: SSID, network, mode, 802.11r status, enabled/disabled
+#     - VLAN system type: DSA (bridge-vlan) or swconfig (switch_vlan)
+#     - Network interfaces: device and protocol
+#     - Collectd: running + which server IP it's sending to
+#   Useful for verifying SSID→VLAN assignments are consistent across APs
+#   and confirming collectd is sending to 10.0.6.129 (katana).
+#
+# Requires: ssh key auth or manual password (no sshpass here)
 set -euo pipefail
 
 G='\033[0;32m'; R='\033[0;31m'; Y='\033[0;33m'; C='\033[0;36m'; N='\033[0m'

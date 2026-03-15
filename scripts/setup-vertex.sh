@@ -1,6 +1,23 @@
 #!/usr/bin/env bash
-# Setup Claude Code to use Google Vertex AI with Opus 4.6
-# Usage: ./scripts/setup-vertex.sh
+# One-time setup: configure Claude Code to use Google Vertex AI (Opus 4.6).
+#
+# Usage:
+#   ./scripts/setup-vertex.sh
+#
+# Description:
+#   Walks through 5 steps:
+#   1. Installs Google Cloud SDK (~/.google-cloud-sdk) if missing
+#   2. Authenticates via `gcloud auth login` (browser-based)
+#   3. Selects or prompts for a GCP project ID
+#   4. Enables the Vertex AI API and checks Claude model availability in us-east5
+#   5. Updates scripts/claude-provider.sh with the project ID
+#
+# After running:
+#   source scripts/claude-provider.sh vertex
+#   claude
+#
+# To switch providers:
+#   source scripts/claude-provider.sh bedrock|vertex|direct
 set -euo pipefail
 
 GCLOUD="$HOME/google-cloud-sdk/bin/gcloud"

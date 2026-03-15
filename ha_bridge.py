@@ -1,8 +1,48 @@
 #!/usr/bin/env python3
 """Home Assistant bridge — polls HA REST API, maps entities to topology nodes.
 
-Entity→node mappings stored in realm.db settings (namespace 'ha', key 'entity_map').
-Seeded by node_roles.migrate_to_db() on first run.
+Background daemon thread polls /api/states every POLL_INTERVAL seconds and
+builds two products: (1) node sublabels from entity states, and (2) a device
+index (by MAC and IP) for enriching auto-discovered unknown nodes.
+
+Data flow:
+  HA REST /api/states + /api/config/device_registry
+  → _build_node_states()  → {node_id: {sublabel, source}}  → _cache["nodes"]
+  → _build_device_index() → {by_mac, by_ip}                → _cache["devices"]
+  map_server  ← get_ha_states()           → node sublabels in /status
+  node_roles  ← get_device_enrichment()   → MAC/IP lookup for unknown nodes
+
+Threading:
+  _poll_loop() runs in a daemon thread started by start_ha_bridge().
+  _lock guards _cache dict; get_ha_states() and get_device_enrichment() both
+  return copies, not references. Device registry is fetched less often
+  (REGISTRY_TTL=300s) since it rarely changes.
+
+Configuration:
+  HA_URL         = env HA_URL or "https://10.0.6.108:8123"
+  POLL_INTERVAL  = 30   # seconds between full entity state polls
+  _REGISTRY_TTL  = 300  # seconds between device registry refreshes
+  SSL validation is disabled (self-signed cert on local HA instance).
+
+Entity→node mapping:
+  Config is stored in realm.db (namespace 'ha', key 'entity_map') and seeded
+  by node_roles.migrate_to_db() on first run. Each mapping has a 'fn' key
+  pointing to a label function (_LABEL_FNS dispatch table). Supported types:
+    climate_cluster, solar, camera_cluster, speaker_cluster, switch_cluster,
+    wled, fan, vacuum, ups, dehumidifier, phone, media_state, echo, ha_self,
+    radar, lg_appliance, humidifier, rgb, smart_bulb, thermostat_single
+
+Device index (get_device_enrichment):
+  Combines device_tracker entity attributes (ip, mac, battery, charging)
+  with device registry metadata (manufacturer, model, sw_version).
+  Used by node_roles.enrich_unknown_node() as Signal 5 of 6.
+
+Public API (imported by map_server, node_roles):
+  start_ha_bridge()                     -> Thread | None
+  get_ha_states()                       -> {node_id: {sublabel, source}}
+  get_device_enrichment(mac, ip)        -> dict
+  poll_once()                           -> int  (node count)
+  call_service(domain, service, entity_id, data)  -> {ok, status|error}
 """
 
 import json
@@ -22,7 +62,7 @@ def _get_token():
     """Get HA token dynamically (allows .env to load after import)."""
     return os.environ.get("HA_TOKEN", "")
 
-_cache = {"ts": 0, "nodes": {}, "entity_count": 0}
+_cache = {"ts": 0, "nodes": {}, "entity_count": 0, "devices": {}}
 _lock = threading.Lock()
 
 _ssl_ctx = ssl.create_default_context()
@@ -45,6 +85,31 @@ def _fetch_states():
     except Exception as e:
         print(f"[HA Bridge] Fetch error: {e}")
         return []
+
+
+def _fetch_device_registry():
+    """Fetch HA device registry. Returns list of device dicts with:
+    id, name, manufacturer, model, sw_version, hw_version, connections, identifiers.
+
+    The 'connections' field contains [['mac', 'xx:xx:xx:xx:xx:xx']] tuples.
+    The 'identifiers' field contains integration-specific IDs.
+    """
+    token = _get_token()
+    if not token:
+        return []
+    for path in ("/api/config/device_registry", "/api/config/device_registry/list"):
+        try:
+            req = urllib.request.Request(
+                f"{HA_URL}{path}",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            resp = urllib.request.urlopen(req, context=_ssl_ctx, timeout=10)
+            data = json.loads(resp.read())
+            if isinstance(data, list):
+                return data
+        except Exception:
+            continue
+    return []
 
 
 def _call_service(domain, service, entity_id, data=None):
@@ -364,6 +429,101 @@ _LABEL_FNS = {
 }
 
 
+def _build_device_index(all_states, device_registry=None):
+    """Index device_tracker entities + device registry by MAC and IP.
+
+    Combines device_tracker entity attributes (ip, mac, battery) with
+    device registry metadata (manufacturer, model, sw_version).
+
+    Returns: {
+        "by_mac": {mac: {friendly_name, ip, manufacturer, model, battery, ...}},
+        "by_ip":  {ip:  {friendly_name, mac, manufacturer, model, battery, ...}},
+    }
+    """
+    by_mac = {}
+    by_ip = {}
+    states = {s["entity_id"]: s for s in all_states}
+
+    # Phase 1: Index device registry by MAC (manufacturer, model, sw_version)
+    registry_by_mac = {}
+    for dev in (device_registry or []):
+        mfr = dev.get("manufacturer") or ""
+        model = dev.get("model") or ""
+        sw = dev.get("sw_version") or ""
+        name = dev.get("name_by_user") or dev.get("name") or ""
+        # 'connections' contains [['mac', 'xx:xx:xx:xx:xx:xx']]
+        for conn in (dev.get("connections") or []):
+            if isinstance(conn, (list, tuple)) and len(conn) >= 2 and conn[0] == "mac":
+                dmac = conn[1].lower()
+                registry_by_mac[dmac] = {
+                    "manufacturer": mfr, "model": model,
+                    "sw_version": sw, "registry_name": name,
+                }
+
+    # Phase 2: Index device_tracker entities
+    for s in all_states:
+        eid = s["entity_id"]
+        if not eid.startswith("device_tracker."):
+            continue
+        attrs = s.get("attributes", {})
+        mac = (attrs.get("mac") or "").lower()
+        ip = attrs.get("ip") or ""
+        friendly = attrs.get("friendly_name") or ""
+        source = attrs.get("source_type") or ""
+        hostname = attrs.get("host_name") or ""
+
+        info = {
+            "friendly_name": friendly,
+            "ip": ip,
+            "mac": mac,
+            "source_type": source,
+            "hostname": hostname,
+            "entity_id": eid,
+        }
+
+        # Merge device registry data if available
+        reg = registry_by_mac.get(mac, {})
+        if reg:
+            info["manufacturer"] = reg.get("manufacturer", "")
+            info["model"] = reg.get("model", "")
+            info["sw_version"] = reg.get("sw_version", "")
+            if reg.get("registry_name") and not friendly:
+                info["friendly_name"] = reg["registry_name"]
+
+        # Try to find battery sensor for this device
+        # HA companion apps create sensor.{slug}_battery_level
+        slug = eid.replace("device_tracker.", "")
+        batt_eid = f"sensor.{slug}_battery_level"
+        batt_val = states.get(batt_eid, {}).get("state")
+        if batt_val and batt_val not in ("unavailable", "unknown"):
+            try:
+                info["battery"] = int(float(batt_val))
+            except (ValueError, TypeError):
+                pass
+        charging_eid = f"binary_sensor.{slug}_is_charging"
+        charging_val = states.get(charging_eid, {}).get("state")
+        if charging_val and charging_val not in ("unavailable", "unknown"):
+            info["charging"] = charging_val == "on"
+
+        if mac:
+            by_mac[mac] = info
+        if ip:
+            by_ip[ip] = info
+
+    # Phase 3: Add registry-only devices (not in device_tracker but have MACs)
+    for dmac, reg in registry_by_mac.items():
+        if dmac not in by_mac and (reg.get("manufacturer") or reg.get("model")):
+            by_mac[dmac] = {
+                "friendly_name": reg.get("registry_name", ""),
+                "manufacturer": reg.get("manufacturer", ""),
+                "model": reg.get("model", ""),
+                "sw_version": reg.get("sw_version", ""),
+                "mac": dmac,
+            }
+
+    return {"by_mac": by_mac, "by_ip": by_ip}
+
+
 def _build_node_states(all_states, entity_count):
     """Map HA entities to topology node sublabels using DB-backed config."""
     states = {s["entity_id"]: s for s in all_states}
@@ -392,16 +552,47 @@ def get_ha_states():
         return dict(_cache.get("nodes", {}))
 
 
+def get_device_enrichment(mac=None, ip=None):
+    """Look up HA device_tracker data for enrichment by MAC or IP.
+
+    Returns dict with available fields: friendly_name, battery, charging,
+    source_type, hostname. Returns empty dict if no match.
+    """
+    with _lock:
+        devices = _cache.get("devices", {})
+    if not devices:
+        return {}
+    info = None
+    if mac:
+        info = devices.get("by_mac", {}).get(mac.lower())
+    if not info and ip:
+        info = devices.get("by_ip", {}).get(ip)
+    return dict(info) if info else {}
+
+
+_registry_cache = {"ts": 0, "data": []}
+_REGISTRY_TTL = 300  # refresh device registry every 5 min (rarely changes)
+
+
 def poll_once():
     """Run a single poll cycle. Returns node count."""
     all_states = _fetch_states()
     if not all_states:
         return 0
+    # Device registry: fetch less often (stable data, larger payload)
+    now = time.time()
+    if now - _registry_cache["ts"] > _REGISTRY_TTL:
+        reg = _fetch_device_registry()
+        if reg:
+            _registry_cache["data"] = reg
+            _registry_cache["ts"] = now
     nodes = _build_node_states(all_states, len(all_states))
+    devices = _build_device_index(all_states, _registry_cache["data"])
     with _lock:
         _cache["ts"] = time.time()
         _cache["nodes"] = nodes
         _cache["entity_count"] = len(all_states)
+        _cache["devices"] = devices
     return len(nodes)
 
 

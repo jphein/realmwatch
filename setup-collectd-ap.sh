@@ -1,10 +1,20 @@
 #!/bin/bash
-# Deploy collectd WiFi client metrics to OpenWrt APs.
-# Usage: ./setup-collectd-ap.sh <AP_IP> [AP_IP2 ...]
-#   or:  ./setup-collectd-ap.sh all    (deploys to all tower nodes in topology.json)
+# Deploy the collectd WiFi client exec plugin to OpenWrt APs.
 #
-# Installs collectd-mod-exec and the wifi-clients exec script,
-# then restarts collectd. Metrics flow to katana via collectd network plugin.
+# Usage:
+#   ./setup-collectd-ap.sh <AP_IP> [AP_IP2 ...]
+#   ./setup-collectd-ap.sh all   # auto-resolves IPs from topology.json
+#
+# Description:
+#   Installs collectd-mod-exec on each AP (if missing), uploads
+#   collectd-wifi-clients.sh, appends the <Plugin exec> block to
+#   /etc/collectd.conf (idempotent), and restarts collectd.
+#
+#   The exec plugin runs collectd-wifi-clients.sh every 60s, emitting
+#   per-client signal/SNR/bitrate metrics under wifi_clients-<MAC>/.
+#
+# Requires: sshpass, collectd already running on APs (see setup-collectd-openwrt.sh)
+# Note:     Uses hardcoded password via sshpass (AP root password).
 
 set -e
 

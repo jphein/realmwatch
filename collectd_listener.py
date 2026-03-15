@@ -1,9 +1,32 @@
 #!/usr/bin/env python3
-"""Lightweight collectd network protocol listener.
+"""Lightweight collectd network protocol listener — UDP 25826.
 
-Receives collectd binary protocol packets on UDP 25826 and stores
-the latest metrics per host. The map_server can query these for
-live AP/router stats.
+Complements collectd_reader: where collectd_reader reads historical RRD files
+on disk, this listener receives live push packets directly from collectd's
+network plugin. Useful for hosts that don't write RRD locally (e.g. APs that
+send metrics directly to katana over UDP).
+
+Data flow:
+  collectd (remote host) --UDP 25826--> _parse_packet() --> _metrics dict
+  map_server/sse_broker  <-- get_host_summary() / get_metrics() <-- _metrics
+
+Threading:
+  _listener_loop() runs in a daemon thread started by start_listener().
+  _metrics is a nested dict; writes are protected by _lock.
+  get_metrics() returns a shallow copy snapshot.
+
+Configuration:
+  PORT = 25826  # collectd default UDP port
+
+Binary protocol parsing:
+  Decodes collectd's native binary format (part-type/length TLV frames).
+  Supports COUNTER, GAUGE, DERIVE, ABSOLUTE DS types.
+  Maintains context across parts within a packet (host, plugin, type, etc.).
+
+Public API (imported by map_server):
+  start_listener()            -> Thread
+  get_metrics()               -> {hostname: {key: {values, ts}}}
+  get_host_summary(hostname)  -> dict | None
 """
 
 import struct

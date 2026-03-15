@@ -1,11 +1,22 @@
 #!/usr/bin/env bash
-# Add a VLAN interface to an OpenWrt AP.
-# Handles both DSA (bridge-vlan) and swconfig (switch_vlan) automatically.
+# Add a VLAN interface to a single OpenWrt AP (DSA or swconfig, auto-detected).
 #
 # Usage:
 #   ./scripts/ap-add-vlan.sh --ap onhub-closet --vlan 11 --name family
 #   ./scripts/ap-add-vlan.sh --ap wndr4300sw-shed --vlan 11 --name family
 #   ./scripts/ap-add-vlan.sh --dry-run --ap onhub-bed --vlan 11 --name family
+#
+# Description:
+#   Detects whether the AP uses DSA (bridge-vlan) or swconfig (switch_vlan)
+#   by checking the UCI network config, then runs the appropriate uci commands
+#   to add the VLAN. For DSA: adds a bridge-vlan entry and br-lan.<VID> interface.
+#   For swconfig: adds a switch_vlan, a bridge device, and a network interface.
+#   Port list is copied from VLAN 6 (admin) as a template.
+#   Idempotent: exits cleanly if the interface already exists.
+#   --dry-run prints the uci commands without executing them.
+#
+# Requires: ssh key auth to AP (root@<ip>)
+# See also: ap-audit.sh to inspect current VLAN config before making changes
 set -euo pipefail
 
 G='\033[0;32m'; R='\033[0;31m'; Y='\033[0;33m'; C='\033[0;36m'; N='\033[0m'

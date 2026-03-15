@@ -1,7 +1,43 @@
-"""Background latency prober — pings wired node IPs from katana every 30s.
+"""Background latency prober — batch-pings wired node IPs from katana.
 
-Produces a latency map: {node_id: rtt_ms} consumed by layout modes.
-Uses fping for batch pinging (falls back to sequential ping if unavailable).
+Runs fping against all wired topology nodes every PROBE_INTERVAL seconds and
+produces a {node_id: rtt_ms} map consumed by the map server and SSE broker.
+WiFi nodes are excluded (their latency is estimated from SNR data instead).
+Falls back to sequential ping if fping is not installed.
+
+Data flow:
+  topology.json (IPs) → fping batch probe → {ip: rtt_ms}
+  → {node_id: rtt_ms}  [atomic reference swap]
+  → get_latency_map() / get_latency_grouped() / estimate_latency()
+
+Threading:
+  _probe_loop() runs in a daemon thread started by start().
+  _latency_map is replaced atomically (dict reference swap) — no lock needed
+  for reads; writes happen only in the probe thread.
+
+Configuration:
+  _PROBE_INTERVAL  = 30    # seconds between probe rounds
+  _FPING_TIMEOUT   = 500   # ms per-host timeout for fping
+
+WiFi exclusion:
+  set_wifi_nodes(wifi_dict) is called by sse_broker to keep the WiFi node set
+  current so they are skipped from fping probing.
+
+Latency estimation (estimate_latency):
+  Both WiFi same AP   →  10 ms
+  Both WiFi diff APs  →  25 ms
+  One WiFi            →  SNR-based wifi_ms + wired RTT
+  Both wired same /24 →  max(rtt_a, rtt_b)   (same switch)
+  Both wired cross-subnet → rtt_a + rtt_b
+
+Public API (imported by map_server, sse_broker):
+  start()                           # start background probe thread
+  stop()                            # signal thread to exit
+  set_wifi_nodes(wifi_dict)         # update WiFi exclusion set
+  get_latency_map()                 -> {node_id: rtt_ms}
+  get_latency_grouped(topo_nodes)   -> {summary, groups}
+  estimate_latency(a, b, wifi_map)  -> float | None
+  get_subnet(node_id)               -> int | None
 """
 
 import json

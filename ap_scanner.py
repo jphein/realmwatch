@@ -1,16 +1,67 @@
 #!/usr/bin/env python3
-"""Background AP scanner — detects WiFi client roaming and updates topology connections.
+"""Background AP scanner — WiFi roaming, DHCP identity, LLDP ethernet topology.
 
-Node identity resolution order:
-  1. MAC match — topology node has a "mac" field matching the client MAC
-  2. IP match  — DHCP lease IP matches a topology node's "ip" field
-When a MAC-matched node's IP has changed, the topology is auto-updated.
-Unknown MACs (not matching any node) are tracked in scan results.
+Runs scan_and_update() every SCAN_INTERVAL seconds (driven by map_server).
+Parallel-SSHes to all tower-type nodes in topology to collect iwinfo assoclists
+and DHCP leases, then reconciles results against the topology.
 
-WiFi signal data (dBm, SNR, TX/RX rates) is collected per-client and
-stored in memory for the map server — no collectd exec plugin needed.
+Data flow:
+  SSH → gatekeeper /tmp/dhcp.leases + `uci show dhcp` (static leases)
+  SSH → each AP  `iwinfo <iface> assoclist`   → {mac: signal_data}
+  SSH → each AP  `lldpctl -f json`            → LLDP neighbor list (every 7 cycles)
+  → identity resolution → roaming detection → unknown node auto-creation
+  → realm_db / topology.json write-through → SSE push
+
+Threading:
+  scan_and_update() is called from map_server's background scan thread.
+  All SSH calls within a scan run in a ThreadPoolExecutor (one worker per AP).
+  _last_scan dict is protected by _lock; reference is replaced atomically
+  after each scan. _event_callback and _topo_callback are set once at startup.
+
+Configuration:
+  SCAN_INTERVAL          = 90    # seconds between full scans
+  ETHERNET_DETECT_INTERVAL = 7   # scan cycles between LLDP runs (~10 min)
+  OFFLINE_THRESHOLD      = 120   # seconds before a node is declared offline
+  SSH_OPTS               = ["-o", "ConnectTimeout=4", "-o", "StrictHostKeyChecking=no"]
+  GATEKEEPER             = "10.0.6.1"
+
+Node identity resolution (3 priorities):
+  Priority 1 — MAC field  : node has a 'mac' field matching the seen MAC.
+               Only trusted if the MAC is currently visible on an AP (prevents
+               stale DHCP leases from hijacking identity).
+  Priority 2 — IP match   : DHCP lease IP matches a node's 'ip' field.
+               Fallback for nodes without a stored MAC.
+  Priority 3 — Hostname   : DHCP hostname fuzzy-matches a node ID.
+               Handles Android MAC randomization — hostname is stable even as
+               the MAC rotates. Auto-updates the node's 'mac' field on match.
+
+Unknown node auto-creation:
+  Every MAC seen on WiFi (or in DHCP leases) that doesn't resolve to a topology
+  node gets a _unknown_<mac> node created automatically. node_roles.enrich_unknown_node()
+  runs the 6-signal pipeline to assign icon, label, role, and persona.
+  Nodes persist until manually deleted; offline ones are kept with _last_seen.
+  Denied MACs (realm.db scanner.denied_macs) and cluster member MACs are skipped.
+
+LLDP ethernet topology detection (detect_ethernet_topology):
+  Run every ETHERNET_DETECT_INTERVAL scan cycles. SSH to each AP, run lldpctl,
+  parse neighbor data, match remote names/IPs to topology nodes, deduplicate
+  bidirectional links, filter false positives from switch flooding.
+  CDP on uplink ports is discarded; LLDP uplink-to-uplink requires bidirectional
+  confirmation. Results are used to update 'trunk' connection types.
+
+Public API (imported by map_server):
+  scan_and_update()        -> summary dict
+  get_last_scan()          -> last scan result dict
+  get_wifi_signal()        -> {node_id: {ap, signal, snr, tx_rate, rx_rate}}
+  detect_ethernet_topology() -> [{from_node, from_port, to_node, to_port}]
+  get_lldp_info(mac, ip, hostname) -> dict
+
+Callbacks (set by map_server at startup):
+  _event_callback(evt)    push SSE event (speech/alert/highlight)
+  _topo_callback()        push topology refresh to browser
 """
 
+import hashlib
 import json
 import os
 import re
@@ -37,10 +88,14 @@ _ethernet_tick = 0
 _last_scan = realm_db.get_wifi_scan() or {"ts": 0, "ap_clients": {}, "leases": 0, "unknown": [], "wifi": {}}
 _lock = threading.Lock()
 _event_callback = None  # set by map_server to push_event
+_topo_callback = None   # set by map_server to push topology via SSE
 
 # Track node online/offline state across scans
 _node_online_state = {}  # node_id → {"online": bool, "last_seen": ts, "ap": ap_id}
 OFFLINE_THRESHOLD = 300  # 5 minutes without seeing = offline
+
+# LLDP neighbor cache for enrichment lookups
+_lldp_cache = {"by_mac": {}, "by_ip": {}, "by_name": {}}
 
 # Regex for parsing iwinfo assoclist output
 _MAC_RE = re.compile(r'^([0-9A-Fa-f:]{17})\s+(-?\d+)\s+dBm\s*/\s*(-?\d+)\s+dBm\s+\(SNR\s+(\d+)\)', re.MULTILINE)
@@ -70,6 +125,30 @@ def _get_dhcp_leases():
             mac = parts[1].lower()
             leases[mac] = (parts[2], parts[3])
     return leases
+
+
+def _get_static_dhcp_leases():
+    """Fetch static DHCP host entries from gatekeeper UCI config.
+    Returns {mac: (ip, hostname)} — includes offline devices absent from /tmp/dhcp.leases.
+    """
+    raw = _ssh(GATEKEEPER, "uci show dhcp 2>/dev/null | grep -E '\\.(mac|ip|name)='")
+    if not raw:
+        return {}
+    entries = {}
+    for line in raw.strip().splitlines():
+        m = re.match(r'dhcp\.([\w]+)\.(mac|ip|name)=\'(.+?)\'', line)
+        if not m:
+            continue
+        key, field, val = m.group(1), m.group(2), m.group(3)
+        entries.setdefault(key, {})[field] = val
+    result = {}
+    for entry in entries.values():
+        mac = entry.get("mac", "").lower()
+        ip = entry.get("ip", "")
+        name = entry.get("name", "")
+        if mac and ip:
+            result[mac] = (ip, name or ip)
+    return result
 
 
 def _get_ap_clients_with_signal(ap_ip):
@@ -150,13 +229,18 @@ def scan_and_update():
     leases = {}
     ap_clients = {}  # ap_node_id → {mac: {signal data}}
 
-    with ThreadPoolExecutor(max_workers=len(ap_nodes) + 1) as pool:
+    with ThreadPoolExecutor(max_workers=len(ap_nodes) + 2) as pool:
         lease_future = pool.submit(_get_dhcp_leases)
+        static_lease_future = pool.submit(_get_static_dhcp_leases)
         ap_futures = {}
         for node_id, ip in ap_nodes.items():
             ap_futures[pool.submit(_get_ap_clients_with_signal, ip)] = node_id
 
         leases = lease_future.result()
+        # Merge static leases — adds offline devices absent from /tmp/dhcp.leases
+        for mac, (ip, hostname) in static_lease_future.result().items():
+            if mac not in leases:
+                leases[mac] = (ip, hostname)
         for future in as_completed(ap_futures):
             node_id = ap_futures[future]
             ap_clients[node_id] = future.result()
@@ -298,7 +382,7 @@ def scan_and_update():
                     conn["from"] = ap_id
                 changes.append({"node": node_id, "from_ap": old_ap, "to_ap": ap_id})
 
-                # Fire speech event on the receiving AP with signal info
+                # Fire speech event on the device that roamed
                 node_label = node_by_id.get(node_id, {}).get("label", node_id)
                 ap_label = node_by_id.get(ap_id, {}).get("label", ap_id)
                 old_ap_label = node_by_id.get(old_ap, {}).get("label", old_ap)
@@ -308,8 +392,8 @@ def scan_and_update():
                 signal = sig_info.get("signal")
                 signal_str = f" (signal: {signal} dBm)" if signal else ""
                 _fire_event(
-                    "speech", ap_id,
-                    f"{node_label} roamed from {old_ap_label} to {ap_label}.{signal_str}",
+                    "speech", node_id,
+                    f"Roamed from {old_ap_label} to {ap_label}.{signal_str}",
                     color="#a0d0ff",
                     from_ap=old_ap, to_ap=ap_id, signal=signal
                 )
@@ -378,6 +462,14 @@ def scan_and_update():
             conn = {"from": node_id, "to": u["ap"], "type": "active"}
             topo["connections"].append(conn)
             auto_added += 1
+            # Fire alert on the new node itself
+            alert_name = hn or "Unknown Traveler"
+            _fire_event(
+                "alert", node_id,
+                f"A new presence emerges: {alert_name} ({u.get('ip', 'no IP')})",
+                color="#ffcc00",
+                mac=mac, hostname=alert_name, ip=u.get("ip")
+            )
         else:
             # Update last-seen timestamp and IP for existing auto-nodes
             existing = existing_auto[node_id]
@@ -389,22 +481,61 @@ def scan_and_update():
     if auto_added:
         print(f"[AP Scanner] Added {auto_added} new auto-nodes")
 
-    # --- Fire events for newly discovered nodes ---
-    for i, u in enumerate(unknown):
-        mac = u["mac"]
-        node_id = f"_unknown_{mac.replace(':', '')}"
-        if node_id not in existing_auto:
-            # This is a brand new device!
-            ap_label = node_by_id.get(u["ap"], {}).get("label", u["ap"])
-            hostname = u.get("hostname") or "Unknown Traveler"
-            if hostname == "*":
-                hostname = "Unknown Traveler"
+    # --- Auto-create nodes for wired DHCP devices not yet in topology ---
+    # Covers cameras, wired switches, servers, etc. that never appear in iwinfo.
+    # Static leases (merged above) also catch offline devices like cam3.
+    WIRED_BASE_X = UNKNOWN_BASE_X + 500
+    wired_added = 0
+    wired_idx = 0
+    for mac, (ip, hostname) in leases.items():
+        if mac in mac_to_node:
+            continue  # already resolves to a topology node
+        if mac in mac_to_ap:
+            continue  # already handled as WiFi unknown above
+        mac_clean = mac.replace(":", "").lower()
+        if mac_clean in _skip_macs:
+            continue
+        node_id = f"_unknown_{mac_clean}"
+        seen_auto.add(node_id)
+        if node_id in existing_auto:
+            existing = existing_auto[node_id]
+            existing["_last_seen"] = time.time()
+            if ip and existing.get("ip") != ip:
+                existing["ip"] = ip
+            realm_db.set_node(node_id, existing)
+        else:
+            hn = hostname if hostname and hostname != "*" else None
+            enriched, persona = node_roles.enrich_unknown_node(node_id, mac, hn, ip)
+            col = wired_idx % UNKNOWN_COLS
+            row = wired_idx // UNKNOWN_COLS
+            new_node = {
+                "id": node_id, "type": "device", "_auto": True,
+                "x": WIRED_BASE_X + col * 70,
+                "y": UNKNOWN_BASE_Y + row * 50,
+                "ip": ip,
+                "mac": mac,
+                "_last_seen": time.time(),
+                "_wired": True,
+                **enriched,
+            }
+            topo["nodes"].append(new_node)
+            realm_db.set_node(node_id, new_node)
+            if not realm_db.get_persona(node_id):
+                realm_db.set_persona(node_id, persona)
+            wired_added += 1
+            alert_name = hn or "Unknown Wired Device"
             _fire_event(
-                "alert", u["ap"],
-                f"A new presence emerges: {hostname} ({u.get('ip', 'no IP')})",
+                "alert", node_id,
+                f"Wired presence detected: {alert_name} ({ip})",
                 color="#ffcc00",
-                mac=mac, hostname=hostname, ip=u.get("ip")
+                mac=mac, hostname=alert_name, ip=ip,
             )
+        wired_idx += 1
+    if wired_added:
+        print(f"[AP Scanner] Added {wired_added} new wired auto-nodes")
+
+    # Events for newly discovered nodes are fired inline during node creation
+    # above (inside the `if node_id not in existing_auto` block).
 
     # --- Enrich existing auto-nodes that lack role/icon data ---
     enriched_count = 0
@@ -462,8 +593,8 @@ def scan_and_update():
                 if offline_duration > 60:  # Only announce if was offline > 1 min
                     mins = int(offline_duration / 60)
                     _fire_event(
-                        "speech", ap_id or node_id,
-                        f"{node_label} has returned after {mins}m away.",
+                        "speech", node_id,
+                        f"Returned after {mins}m away.",
                         color="#80ff80"
                     )
                     online_events.append(node_id)
@@ -484,15 +615,18 @@ def scan_and_update():
             last_ap = state.get("ap")
             ap_label = node_by_id.get(last_ap, {}).get("label", "unknown") if last_ap else "the realm"
             _fire_event(
-                "speech", last_ap or "gatekeeper",
-                f"{node_label} has departed from {ap_label}.",
+                "speech", node_id,
+                f"Departed from {ap_label}.",
                 color="#ffa080"
             )
             _node_online_state[node_id]["online"] = False
             offline_events.append(node_id)
 
-    if changes or ip_updates or auto_added or enriched_count:
+    if changes or ip_updates or auto_added or wired_added or enriched_count:
         _save_topo(topo)
+        # Push topology immediately so browser has new nodes before alert events arrive
+        if _topo_callback:
+            _topo_callback()
 
     with _lock:
         _last_scan["ts"] = time.time()
@@ -522,6 +656,27 @@ def get_wifi_signal():
     """Get per-node WiFi signal data from last scan."""
     with _lock:
         return dict(_last_scan.get("wifi", {}))
+
+
+def get_lldp_info(mac=None, ip=None, hostname=None):
+    """Look up LLDP neighbor data by MAC, IP, or hostname.
+
+    Returns dict with remote_name, remote_port, seen_by, protocol,
+    or empty dict if no match.
+    """
+    if mac:
+        info = _lldp_cache.get("by_mac", {}).get(mac.lower())
+        if info:
+            return dict(info)
+    if ip:
+        info = _lldp_cache.get("by_ip", {}).get(ip)
+        if info:
+            return dict(info)
+    if hostname:
+        info = _lldp_cache.get("by_name", {}).get(hostname.lower())
+        if info:
+            return dict(info)
+    return {}
 
 
 # ── Ethernet topology detection via LLDP ──
@@ -649,28 +804,66 @@ def detect_ethernet_topology():
     if not all_neighbors:
         return []
 
+    # Cache LLDP data for enrichment lookups
+    by_mac = {}
+    by_ip = {}
+    by_name = {}
+    for ap_id, neighbors in all_neighbors.items():
+        for nb in neighbors:
+            info = {
+                "seen_by": ap_id,
+                "local_port": nb["local_port"],
+                "remote_name": nb["remote_name"],
+                "remote_port": nb["remote_port"],
+                "remote_ip": nb["remote_ip"],
+                "remote_mac": nb["remote_mac"],
+                "protocol": nb["protocol"],
+            }
+            if nb["remote_mac"]:
+                by_mac[nb["remote_mac"].lower()] = info
+            if nb["remote_ip"]:
+                by_ip[nb["remote_ip"]] = info
+            if nb["remote_name"]:
+                by_name[nb["remote_name"].lower()] = info
+    _lldp_cache["by_mac"] = by_mac
+    _lldp_cache["by_ip"] = by_ip
+    _lldp_cache["by_name"] = by_name
+
     # Build detected links (deduplicated)
     detected = []  # {from_node, from_port, to_node, to_port, protocol}
     seen_pairs = set()
 
     for ap_id, neighbors in all_neighbors.items():
         for nb in neighbors:
-            # Resolve remote to a known node
+            # Resolve remote to a known node.
+            # Name match runs first for CDPv1 (CDP system-name is reliable hostname;
+            # the CDP management IP may be from any VLAN and can collide with client IPs).
+            # IP match runs first for LLDP (LLDP chassis-ID is often a MAC, not hostname).
             remote_node = None
-            # Try IP match
-            if nb["remote_ip"] and nb["remote_ip"] in node_by_ip:
-                remote_node = node_by_ip[nb["remote_ip"]]
-            # Try name match
-            if not remote_node and nb["remote_name"]:
-                rname = nb["remote_name"].lower().strip()
+            rname = nb["remote_name"].lower().strip() if nb["remote_name"] else ""
+
+            def _name_match(rname):
+                if not rname or len(rname) < 3:  # skip short/empty names ("id", etc.)
+                    return None
                 if rname in node_by_name:
-                    remote_node = node_by_name[rname]
-                else:
-                    # Fuzzy: check if any known node name is a prefix of remote name
-                    for pattern, nid in node_by_name.items():
-                        if pattern in rname or rname in pattern:
-                            remote_node = nid
-                            break
+                    return node_by_name[rname]
+                # Fuzzy: require minimum length and both strings must be substantial
+                for pattern, nid in node_by_name.items():
+                    if len(pattern) >= 4 and (pattern in rname or rname in pattern):
+                        return nid
+                return None
+
+            if nb["protocol"] != "LLDP":
+                # CDPv1: name first, then IP as fallback
+                remote_node = _name_match(rname)
+                if not remote_node and nb["remote_ip"] and nb["remote_ip"] in node_by_ip:
+                    remote_node = node_by_ip[nb["remote_ip"]]
+            else:
+                # LLDP: IP first (chassis-ID may be MAC not name), then name
+                if nb["remote_ip"] and nb["remote_ip"] in node_by_ip:
+                    remote_node = node_by_ip[nb["remote_ip"]]
+                if not remote_node:
+                    remote_node = _name_match(rname)
 
             if not remote_node or remote_node == ap_id:
                 continue
@@ -692,24 +885,50 @@ def detect_ethernet_topology():
     if not detected:
         return []
 
+    pre_filter_detected = list(detected)  # save before reliable filter (for clique detection)
+
     # Filter out false direct-connection links caused by switches forwarding
     # L2 discovery frames.  Rules:
-    #  - If BOTH sides are uplink ports, a switch is relaying the frames → skip.
-    #  - CDP on an uplink port sees everything on the switch → skip.
-    #  - LLDP or CDP on a dedicated LAN port (lan2, lan3, etc.) = direct connection → keep.
+    #  - Non-uplink local port (lan1-8, etc.) = direct wired connection → always keep.
+    #  - CDP on an uplink port = switch-broadcast, unreliable → skip.
+    #  - LLDP uplink-to-uplink: keep only if we see it bidirectionally (both ends report
+    #    the same pair), which proves it is a direct cable, not switch flooding.
     UPLINK_PORTS = {"wan", "eth0", "eth1", "br0"}
+    # Build bidirectional LLDP pairs for uplink-to-uplink validation
+    lldp_uplink_pairs = set()
+    for link in detected:
+        if link["protocol"] == "LLDP":
+            from_up = link["from_port"] in UPLINK_PORTS
+            to_up = link["to_port"] in UPLINK_PORTS
+            if from_up and to_up:
+                lldp_uplink_pairs.add(tuple(sorted([link["from_node"], link["to_node"]])))
     reliable = []
     for link in detected:
         from_is_uplink = link["from_port"] in UPLINK_PORTS
         to_is_uplink = link["to_port"] in UPLINK_PORTS
-        if from_is_uplink and to_is_uplink:
-            # Both sides are uplinks — switch is forwarding frames between them
+        if not from_is_uplink:
+            # Non-uplink local port → definite direct connection
+            reliable.append(link)
+        elif link["protocol"] != "LLDP":
+            # CDP on an uplink = switch-broadcast, skip
             continue
-        if link["protocol"] != "LLDP" and from_is_uplink:
-            # CDP on an uplink = visible through switch, not direct
-            continue
-        reliable.append(link)
-    detected = reliable
+        elif from_is_uplink and to_is_uplink:
+            # LLDP uplink↔uplink: keep only if seen bidirectionally
+            pair = tuple(sorted([link["from_node"], link["to_node"]]))
+            if pair in lldp_uplink_pairs:
+                reliable.append(link)
+        else:
+            # LLDP, from is uplink but to is not — keep
+            reliable.append(link)
+    # Deduplicate after bidirectional expansion
+    seen_reliable = set()
+    deduped = []
+    for link in reliable:
+        pair = tuple(sorted([link["from_node"], link["to_node"]]))
+        if pair not in seen_reliable:
+            seen_reliable.add(pair)
+            deduped.append(link)
+    detected = deduped
 
     if not detected:
         return []
@@ -718,16 +937,103 @@ def detect_ethernet_topology():
     existing_conns = topo.get("connections", [])
     # Keep all non-LLDP connections
     kept = [c for c in existing_conns if not c.get("_lldp")]
-    # Add detected links
+
+    # Build a map of node → set of neighbours in existing (manual) topology
+    # so we can skip auto-detected links between nodes that already share a
+    # common switch parent (unmanaged switches forward LLDP, making all ports
+    # appear directly connected even when they're not).
+    manual_neighbours = {}
+    for c in kept:
+        manual_neighbours.setdefault(c["from"], set()).add(c["to"])
+        manual_neighbours.setdefault(c["to"], set()).add(c["from"])
+
+    def _share_common_parent(a, b):
+        return bool(manual_neighbours.get(a, set()) & manual_neighbours.get(b, set()))
+
+    # Add detected links (skip pairs that already share a common switch parent)
     for link in detected:
+        a, b = link["from_node"], link["to_node"]
+        if _share_common_parent(a, b):
+            print(f"[AP Scanner] LLDP: skipping {a}↔{b} (share common parent — unmanaged switch)")
+            continue
         label = f"{link['from_port']}↔{link['to_port']}" if link["from_port"] and link["to_port"] else ""
         kept.append({
-            "from": link["from_node"],
-            "to": link["to_node"],
+            "from": a,
+            "to": b,
             "type": ETHERNET_CONN_TYPE,
             "label": label,
             "_lldp": True,
         })
+
+    # ── Unmanaged switch clique detection ──
+    # When 3+ nodes all see each other in the pre-filter LLDP/CDP data (full clique),
+    # but share no existing direct topology connections or common parents, an unmanaged
+    # switch is bridging them.  Auto-create a synthetic infra node to represent it.
+    if len(pre_filter_detected) >= 3:
+        clique_adj = {}
+        for link in pre_filter_detected:
+            a, b = link["from_node"], link["to_node"]
+            clique_adj.setdefault(a, set()).add(b)
+            clique_adj.setdefault(b, set()).add(a)
+
+        def _find_cliques_bk():
+            """Bron-Kerbosch: returns all maximal cliques of size >= 3."""
+            cliques_found = []
+            def _bk(R, P, X):
+                if not P and not X:
+                    if len(R) >= 3:
+                        cliques_found.append(frozenset(R))
+                    return
+                if not P:
+                    return
+                u = max(P | X, key=lambda v: len(clique_adj.get(v, set()) & P))
+                for v in P - clique_adj.get(u, set()):
+                    _bk(R | {v}, P & clique_adj.get(v, set()), X & clique_adj.get(v, set()))
+                    P = P - {v}
+                    X = X | {v}
+            _bk(set(), set(clique_adj.keys()), set())
+            return cliques_found
+
+        existing_direct = {tuple(sorted([c["from"], c["to"]])) for c in kept}
+        node_pos = {n["id"]: (n.get("x", 0), n.get("y", 0)) for n in topo["nodes"]}
+
+        for clique in _find_cliques_bk():
+            members = sorted(clique)
+            pairs = [tuple(sorted([members[i], members[j]]))
+                     for i in range(len(members))
+                     for j in range(i + 1, len(members))]
+            # Skip if any pair is already directly wired
+            if any(p in existing_direct for p in pairs):
+                continue
+            # Skip if any pair shares a common parent (already-known switch)
+            if any(_share_common_parent(p[0], p[1]) for p in pairs):
+                continue
+            sw_id = f"_auto_switch_{hashlib.md5(','.join(members).encode()).hexdigest()[:8]}"
+            if not any(n["id"] == sw_id for n in topo["nodes"]):
+                avg_x = int(sum(node_pos.get(m, (0, 0))[0] for m in members) / len(members))
+                avg_y = int(sum(node_pos.get(m, (0, 0))[1] for m in members) / len(members))
+                sw_node = {
+                    "id": sw_id,
+                    "label": "Unmanaged Switch",
+                    "type": "infra",
+                    "x": avg_x,
+                    "y": avg_y,
+                    "_auto_switch": True,
+                }
+                topo["nodes"].append(sw_node)
+                realm_db.set_node(sw_id, sw_node)
+                print(f"[AP Scanner] LLDP clique: new unmanaged switch {sw_id} → {members}")
+            for m in members:
+                p = tuple(sorted([m, sw_id]))
+                if p not in existing_direct:
+                    kept.append({
+                        "from": m,
+                        "to": sw_id,
+                        "type": ETHERNET_CONN_TYPE,
+                        "_lldp": True,
+                        "_auto_switch": sw_id,
+                    })
+                    existing_direct.add(p)
 
     realm_db.set_connections(kept)
     realm_db.save_topology_json(TOPOLOGY_FILE)
@@ -761,7 +1067,9 @@ def _scanner_loop():
                     print(f"[AP Scanner] LLDP error: {e}")
 
         except Exception as e:
+            import traceback
             print(f"[AP Scanner] Error: {e}")
+            traceback.print_exc()
         time.sleep(SCAN_INTERVAL)
 
 

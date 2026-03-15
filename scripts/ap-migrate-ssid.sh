@@ -1,12 +1,20 @@
 #!/usr/bin/env bash
-# Migrate an SSID's network across all APs (or a subset).
-# Handles the roam/5GHz-roam → family migration pattern.
+# Migrate an SSID to a different OpenWrt network interface across all APs.
 #
 # Usage:
 #   ./scripts/ap-migrate-ssid.sh --ssid "roam" --network family
 #   ./scripts/ap-migrate-ssid.sh --ssid "roam" --network family --ap onhub-closet
 #   ./scripts/ap-migrate-ssid.sh --ssid "goodwe" --network lan --ap wndr4300sw-shed
 #   ./scripts/ap-migrate-ssid.sh --dry-run --ssid "roam" --network family
+#
+# Description:
+#   Finds every wifi-iface with the given SSID on each AP, changes its
+#   'network' UCI option to the target network, commits, and runs `wifi reload`.
+#   Skips APs where the SSID is not present or already on the correct network.
+#   --dry-run shows what would change without making any modifications.
+#   Without --ap, runs across all 12 APs (in series, not parallel).
+#
+# Requires: ssh key auth to APs (root@<ip>)
 set -euo pipefail
 
 G='\033[0;32m'; R='\033[0;31m'; Y='\033[0;33m'; C='\033[0;36m'; N='\033[0m'

@@ -1,7 +1,24 @@
 #!/bin/bash
-# Setup collectd on an Ubuntu host to send metrics to katana.
-# Usage: ssh HOST 'bash -s' < setup-collectd.sh
-#   or:  ssh HOST 'bash -s -- --ts' < setup-collectd.sh  (use Tailscale IP for katana)
+# Install and configure collectd on an Ubuntu/Debian host to send metrics to katana.
+#
+# Usage:
+#   ssh HOST 'bash -s' < scripts/setup-collectd.sh          # LAN IP for katana
+#   ssh HOST 'bash -s -- --ts' < scripts/setup-collectd.sh  # Tailscale IP
+#
+# Description:
+#   Installs collectd if missing, writes /etc/collectd/collectd.conf to send
+#   metrics to katana (10.0.6.129) on UDP 25826, then enables and starts the
+#   service. With --ts, fetches katana's current Tailscale IP at runtime
+#   (for hosts not on the LAN, e.g. remote VMs).
+#
+#   Hostname is taken from `hostname` on the remote host — ensure it matches
+#   the node ID in topology.json for collectd_reader.py to correlate data.
+#
+# Plugins enabled: cpu, memory, load, disk, df, interface, processes, swap,
+#                  uptime, network
+#
+# This is the canonical version. Root-level setup-collectd.sh is an older copy
+# kept for backward compatibility (pipe directly from project root).
 
 set -e
 

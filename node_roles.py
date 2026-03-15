@@ -1,8 +1,49 @@
 #!/usr/bin/env python3
-"""Node role definitions — categorizes nodes by function for auto-stats.
+"""Node role definitions and 6-signal enrichment pipeline for discovered devices.
 
-Instance data (node roles, OUI map) stored in realm.db.
-Seed data (_SEED_*) used only for initial DB migration.
+Two responsibilities:
+  1. Role schema (ROLES dict) — 30+ roles with icon, color, stats sources,
+     and description. Used by the frontend to style node cards.
+  2. Enrichment pipeline (enrich_unknown_node) — called by ap_scanner when a
+     new MAC is seen on the network. Combines 6 signals to identify the device
+     and generate a label, sublabel, icon, and persona.
+
+Enrichment pipeline (enrich_unknown_node):
+  Signal 1: Hostname pattern matching  — most reliable; 40+ regex patterns
+  Signal 2: OUI vendor lookup          — MAC prefix → vendor + default role
+  Signal 3: Randomized MAC heuristic   — locally-administered bit + VLAN → phone
+  Signal 4: TCP port probe             — quick scan of 11 ports (SSH, SMB, etc.)
+  Signal 5: Home Assistant device_tracker + device registry (manufacturer/model)
+  Signal 6: LLDP neighbor data        — authoritative hostname for wired devices
+
+Seed data vs live data:
+  _SEED_OUI, _SEED_NODE_ROLES, _SEED_HA_MAP are migration-only defaults.
+  After migrate_to_db() runs once, all data lives in realm.db settings table
+  and is loaded into in-memory caches on first access. Modify live data via
+  the realm.db settings API, not these seed dicts.
+
+Threading:
+  No locks. Cache reads/writes (_oui_cache, _ha_map_cache) are synchronous.
+  enrich_unknown_node() makes network calls (port probe, HA, LLDP lookups)
+  and is called from ap_scanner's ThreadPoolExecutor, so it must be thread-safe
+  for reads — it is, since it only reads from caches and makes local calls.
+
+Configuration:
+  All instance data (OUI map, node roles, HA map) is stored in realm.db.
+  reload_caches() forces a re-read after settings changes.
+
+Public API (imported by ap_scanner, ha_bridge, map_server):
+  enrich_unknown_node(node_id, mac, hostname, ip) -> (node_data, persona)
+  get_role(node_id, node_data)                    -> str
+  get_role_info(node_id, node_data)               -> dict
+  get_all_roles()                                 -> ROLES dict
+  get_nodes_by_role()                             -> {role: [node_id, ...]}
+  oui_lookup(mac)                                 -> (vendor, role)
+  get_ha_map()                                    -> {node_id: config}
+  migrate_to_db()                                 # idempotent seed on first run
+  reload_caches()                                 # force DB re-read
+  ROLES                                           # role schema dict
+  ROLE_ICONS                                      # role → HTML entity icon
 """
 
 import realm_db
@@ -37,19 +78,80 @@ _SEED_OUI = {
     "48:e1:e9": ("Meross", "plug"),
     # Samsung
     "f2:4a:37": ("Samsung", "tablet"), "8e:85:90": ("Samsung", "phone"),
+    "00:1e:e2": ("Samsung", "phone"), "84:25:19": ("Samsung", "phone"),
+    "a8:7c:01": ("Samsung", "phone"), "6c:f3:73": ("Samsung", "phone"),
     # Google
     "a4:77:33": ("Google", "speaker"), "f4:f5:d8": ("Google", "speaker"),
     "24:e5:0f": ("Google", "speaker"), "dc:e5:5b": ("Google", "speaker"),
     "d4:f5:47": ("Google", "speaker"), "f0:ef:86": ("Google", "speaker"),
-    "3c:8d:20": ("Google", "speaker"),
+    "3c:8d:20": ("Google", "speaker"), "30:fd:38": ("Google", "speaker"),
+    "54:60:09": ("Google", "speaker"),
     # Apple
-    "f0:18:98": ("Apple", "phone"),
+    "f0:18:98": ("Apple", "phone"), "10:94:bb": ("Apple", "laptop"),
+    "3c:06:30": ("Apple", "laptop"), "ac:bc:32": ("Apple", "laptop"),
+    "a8:88:08": ("Apple", "laptop"), "14:7d:da": ("Apple", "phone"),
+    "f0:b4:29": ("Apple", "phone"), "28:6a:ba": ("Apple", "laptop"),
+    "88:66:5a": ("Apple", "laptop"), "c8:89:f3": ("Apple", "phone"),
+    # Dell
+    "f8:bc:12": ("Dell", "laptop"), "18:db:f2": ("Dell", "laptop"),
+    "b0:83:fe": ("Dell", "laptop"), "00:14:22": ("Dell", "laptop"),
+    "d4:be:d9": ("Dell", "laptop"), "24:b6:fd": ("Dell", "laptop"),
+    "74:e6:e2": ("Dell", "laptop"), "e4:b9:7a": ("Dell", "laptop"),
+    "f4:8e:38": ("Dell", "laptop"), "98:90:96": ("Dell", "laptop"),
+    # HP / HPE
+    "00:1a:4b": ("HP", "laptop"), "3c:d9:2b": ("HP", "laptop"),
+    "a0:d3:c1": ("HP", "laptop"), "c8:b5:b7": ("HP", "laptop"),
+    "ec:8e:b5": ("HP", "laptop"), "10:1f:74": ("HP", "laptop"),
+    "e4:11:5b": ("HP", "laptop"), "68:b5:99": ("HP", "laptop"),
+    "fc:15:b4": ("HP", "laptop"),
+    # Lenovo
+    "50:5b:c2": ("Lenovo", "laptop"), "70:72:0d": ("Lenovo", "laptop"),
+    "e8:6a:64": ("Lenovo", "laptop"), "00:06:1b": ("Lenovo", "laptop"),
+    "c8:21:58": ("Lenovo", "laptop"), "8c:16:45": ("Lenovo", "laptop"),
+    "b0:c4:20": ("Lenovo", "laptop"),
+    # Intel (often in laptops/desktops)
+    "00:1e:64": ("Intel", "laptop"), "f8:0f:f9": ("Intel", "laptop"),
+    "ac:fd:ce": ("Intel", "laptop"), "dc:1b:a1": ("Intel", "laptop"),
+    "3c:58:c2": ("Intel", "laptop"),
+    # Microsoft (Surface)
+    "28:18:78": ("Microsoft", "laptop"), "00:15:5d": ("Microsoft", "vm"),
+    "7c:1e:52": ("Microsoft", "laptop"),
     # Hikvision
     "c0:56:e3": ("Hikvision", "camera"), "bc:ad:28": ("Hikvision", "camera"),
     # Roku
     "b0:a7:37": ("Roku", "tv"), "d8:31:34": ("Roku", "tv"),
+    "dc:3a:5e": ("Roku", "tv"), "b0:ee:45": ("Roku", "tv"),
     # Amazon
-    "fc:65:de": ("Amazon", "speaker"),
+    "fc:65:de": ("Amazon", "speaker"), "44:65:0d": ("Amazon", "speaker"),
+    "a0:02:dc": ("Amazon", "speaker"), "74:c2:46": ("Amazon", "tablet"),
+    # Raspberry Pi
+    "b8:27:eb": ("RPi", "server"), "dc:a6:32": ("RPi", "server"),
+    "e4:5f:01": ("RPi", "server"), "d8:3a:dd": ("RPi", "server"),
+    # iRobot (Roomba)
+    "50:14:79": ("iRobot", "vacuum"),
+    # Sonos
+    "00:0e:58": ("Sonos", "speaker"), "b8:e9:37": ("Sonos", "speaker"),
+    # Wyze
+    "2c:aa:8e": ("Wyze", "camera"),
+    # Ring
+    "4c:e1:73": ("Ring", "camera"),
+    # LG
+    "00:1c:62": ("LG", "tv"), "64:99:5d": ("LG", "tv"),
+    "a8:23:fe": ("LG", "tv"),
+    # Sony (PlayStation)
+    "00:d9:d1": ("Sony PS", "tv"), "fc:0f:e6": ("Sony PS", "tv"),
+    "00:04:1f": ("Sony PS", "tv"),
+    # Nintendo
+    "58:2f:40": ("Nintendo", "tv"), "98:b6:e9": ("Nintendo", "tv"),
+    "00:1f:32": ("Nintendo", "tv"),
+    # Xbox
+    "60:45:bd": ("Xbox", "tv"), "c8:3f:26": ("Xbox", "tv"),
+    # Printer vendors
+    "00:1b:a9": ("Brother", "printer"), "30:05:5c": ("Brother", "printer"),
+    "00:80:77": ("Brother", "printer"),
+    "00:18:fe": ("Canon", "printer"), "18:0c:ac": ("Canon", "printer"),
+    "00:00:48": ("Epson", "printer"),
+    "a4:5d:36": ("HP", "printer"),
 }
 
 # ── Seed data: Node→Role mappings (migration only) ──
@@ -388,6 +490,13 @@ ROLES = {
         "stats": ["online", "ip", "os", "link", "traffic", "key_expiry"],
         "desc": "Tailscale-connected remote device"
     },
+    # Printer
+    "printer": {
+        "icon": "\U0001f5a8\ufe0f", "color": "#a0a080", "title": "Printer",
+        "sources": ["ha"],
+        "stats": ["state", "ink", "jobs"],
+        "desc": "Network printer / scanner"
+    },
     # Unknown
     "unknown": {
         "icon": "\u2753", "color": "#808080", "title": "Unknown Device",
@@ -476,6 +585,7 @@ ROLE_ICONS = {
     "inverter": "&#9728;", "ups": "&#128267;", "ev_charger": "&#9889;",
     "phone": "&#128241;", "tablet": "&#128223;", "laptop": "&#128187;",
     "desktop": "&#128421;", "tv": "&#128250;", "tailscale": "&#128279;",
+    "printer": "&#128424;",
     "unknown": "&#128123;",
 }
 
@@ -490,6 +600,9 @@ ROLE_PERSONAS = {
     "appliance": {"voice": "industrious", "personality": "A tireless worker in the domestic forge."},
     "vacuum": {"voice": "determined", "personality": "A wandering golem, cleaning the realm's floors."},
     "tv": {"voice": "dramatic", "personality": "A window to other realms, showing visions and tales."},
+    "printer": {"voice": "methodical", "personality": "A meticulous scribe, inscribing scrolls on command."},
+    "laptop": {"voice": "clever", "personality": "A traveling scholar, carrying knowledge between realms."},
+    "desktop": {"voice": "commanding", "personality": "A stationary tower of arcane computation."},
     "unknown": {"voice": "mysterious", "personality": "A wandering spirit, identity not yet revealed."},
 }
 
@@ -517,48 +630,192 @@ def _vlan_label(ip):
     return None
 
 
+def _probe_ports(ip, timeout=1.5):
+    """Quick TCP probe of key ports to fingerprint a device. Returns dict of findings."""
+    import socket
+    # port → (service, role_hint, os_hint)
+    PROBES = {
+        22:    ("SSH", "server", "Linux"),
+        80:    ("HTTP", None, None),
+        443:   ("HTTPS", None, None),
+        445:   ("SMB", "desktop", "Windows"),
+        548:   ("AFP", "laptop", "macOS"),
+        631:   ("IPP", "printer", None),
+        3389:  ("RDP", "desktop", "Windows"),
+        5353:  ("mDNS", None, None),
+        8009:  ("Chromecast", "tv", None),
+        9100:  ("RAW Print", "printer", None),
+        62078: ("iSync", "phone", "iOS"),
+    }
+    results = {"open_ports": [], "role_hint": None, "os_hint": None}
+    for port, (service, role_hint, os_hint) in PROBES.items():
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(timeout)
+            if s.connect_ex((ip, port)) == 0:
+                results["open_ports"].append((port, service))
+                if role_hint and not results["role_hint"]:
+                    results["role_hint"] = role_hint
+                if os_hint and not results["os_hint"]:
+                    results["os_hint"] = os_hint
+            s.close()
+        except (socket.error, OSError):
+            pass
+    return results
+
+
+# Hostname → (role, os, model) patterns
+_HOSTNAME_PATTERNS = [
+    # Windows
+    (r"^DESKTOP-", "desktop", "Windows", None),
+    (r"^LAPTOP-", "laptop", "Windows", None),
+    (r"^WIN-", "desktop", "Windows", None),
+    # Apple
+    (r"(?i)macbook.?pro", "laptop", "macOS", "MacBook Pro"),
+    (r"(?i)macbook.?air", "laptop", "macOS", "MacBook Air"),
+    (r"(?i)macbook", "laptop", "macOS", "MacBook"),
+    (r"(?i)imac", "desktop", "macOS", "iMac"),
+    (r"(?i)iphone", "phone", "iOS", "iPhone"),
+    (r"(?i)ipad", "tablet", "iPadOS", "iPad"),
+    (r"(?i)apple.?tv", "tv", "tvOS", "Apple TV"),
+    (r"(?i)users?-air", "laptop", "macOS", "MacBook Air"),
+    (r"(?i)air$", "laptop", "macOS", "MacBook Air"),
+    # Samsung
+    (r"(?i)galaxy.?s\d", "phone", "Android", "Samsung Galaxy"),
+    (r"(?i)galaxy.?z.?flip", "phone", "Android", "Samsung Z Flip"),
+    (r"(?i)galaxy.?z.?fold", "phone", "Android", "Samsung Z Fold"),
+    (r"(?i)galaxy.?tab", "tablet", "Android", "Samsung Galaxy Tab"),
+    (r"(?i)galaxy.?note", "phone", "Android", "Samsung Note"),
+    (r"(?i)galaxy", "phone", "Android", "Samsung Galaxy"),
+    (r"(?i)SM-[A-Z]\d{3}", "phone", "Android", "Samsung"),
+    # Google
+    (r"(?i)pixel.?\d", "phone", "Android", "Google Pixel"),
+    (r"(?i)chromecast", "tv", "ChromeOS", "Chromecast"),
+    (r"(?i)chromebook", "laptop", "ChromeOS", "Chromebook"),
+    # Android generic
+    (r"(?i)android", "phone", "Android", None),
+    (r"(?i)oneplus", "phone", "Android", "OnePlus"),
+    (r"(?i)xiaomi|redmi|poco", "phone", "Android", None),
+    (r"(?i)oppo|realme", "phone", "Android", None),
+    # IoT
+    (r"(?i)^esp[_-]", "sensor", None, "ESP"),
+    (r"(?i)^wled", "wled", None, "WLED"),
+    (r"(?i)nest.?therm", "thermostat", None, "Nest Thermostat"),
+    (r"(?i)nest.?cam", "camera", None, "Nest Cam"),
+    (r"(?i)^kasa|^hs[12]\d\d|^kl[0-9]", "plug", None, "TP-Link Kasa"),
+    (r"(?i)^hs300", "plug", None, "Kasa Power Strip"),
+    (r"(?i)switchbot", "plug", None, "SwitchBot"),
+    (r"(?i)hismart", "plug", None, "HiSmart"),
+    (r"(?i)^roku", "tv", None, "Roku"),
+    (r"(?i)roomba|irobot", "vacuum", None, "iRobot Roomba"),
+    (r"(?i)ring.?door", "camera", None, "Ring Doorbell"),
+    (r"(?i)^sonos", "speaker", None, "Sonos"),
+    (r"(?i)echo|alexa", "speaker", None, "Amazon Echo"),
+    # Printers
+    (r"(?i)brother|laserjet|officejet|deskjet|epson", "printer", None, None),
+    # Linux hostnames
+    (r"(?i)raspberr?y", "server", "Linux", "Raspberry Pi"),
+    (r"(?i)^ubuntu|^debian|^fedora|^arch|^centos", "server", "Linux", None),
+]
+
+
 def enrich_unknown_node(node_id, mac, hostname=None, ip=None):
     """Generate enriched node data for a newly discovered unknown device.
 
+    Uses OUI vendor lookup, hostname pattern matching, and optional port probing.
     Returns (node_data_dict, persona_dict).
     """
+    import re
+
     vendor, oui_role = oui_lookup(mac)
     randomized = _is_randomized_mac(mac)
 
-    # Determine role: stored > OUI > hostname pattern > VLAN guess > unknown
+    # ── Determine role + OS + model from multiple signals ──
     role = oui_role or "unknown"
+    os_hint = None
+    model_hint = None
+
+    # Signal 1: Hostname pattern matching (most reliable)
     if hostname:
         hn = hostname.lower()
-        if "wled" in hn:
-            role = "wled"
-        elif "esp" in hn:
-            role = "sensor"
-        elif "nest" in hn or "thermo" in hn:
-            role = "thermostat"
-        elif "kasa" in hn or "hs1" in hn or "hs2" in hn or "kl" in hn:
-            role = "plug"
-        elif "cam" in hn or "hik" in hn:
-            role = "camera"
-        elif "roku" in hn:
-            role = "tv"
-        elif "iphone" in hn or "pixel" in hn or "galaxy" in hn:
-            role = "phone"
-        elif "ipad" in hn or "tab" in hn:
-            role = "tablet"
+        for pattern, pat_role, pat_os, pat_model in _HOSTNAME_PATTERNS:
+            if re.search(pattern, hostname):
+                role = pat_role
+                os_hint = pat_os
+                model_hint = pat_model
+                break
 
-    # Randomized MACs on guest/family VLANs are likely phones/tablets
+    # Signal 2: OUI vendor → refine role if still generic
+    if role == "unknown" and vendor:
+        vendor_lower = vendor.lower()
+        if vendor_lower in ("dell", "hp", "lenovo", "intel", "microsoft"):
+            role = "laptop"  # default for PC vendors; port probe may override to desktop
+        elif vendor_lower in ("apple",):
+            role = "laptop"
+        elif vendor_lower in ("samsung",):
+            role = "phone"
+
+    # Signal 3: Randomized MACs on guest/family VLANs → likely phone/tablet
     if randomized and role == "unknown" and ip:
         vlan = _vlan_label(ip)
         if vlan in ("Guest", "Family"):
             role = "phone"
 
+    # Signal 4: Port probe (only for devices with an IP, quick timeout)
+    probe = None
+    if ip and role in ("unknown", "laptop", "desktop"):
+        try:
+            probe = _probe_ports(ip)
+            if probe["role_hint"] and role == "unknown":
+                role = probe["role_hint"]
+            if probe["os_hint"] and not os_hint:
+                os_hint = probe["os_hint"]
+        except Exception:
+            pass
+
+    # Signal 5: Home Assistant device_tracker + device registry enrichment
+    ha_info = {}
+    try:
+        import ha_bridge
+        ha_info = ha_bridge.get_device_enrichment(mac=mac, ip=ip)
+        if ha_info:
+            # HA friendly_name can provide a better label
+            if ha_info.get("friendly_name") and not model_hint and (not hostname or hostname == "*"):
+                hostname = ha_info["friendly_name"]
+            # HA hostname can fill gaps
+            if ha_info.get("hostname") and not hostname:
+                hostname = ha_info["hostname"]
+            # Device registry: manufacturer + model (authoritative)
+            if ha_info.get("manufacturer") and not vendor:
+                vendor = ha_info["manufacturer"]
+            if ha_info.get("model") and not model_hint:
+                model_hint = ha_info["model"]
+    except Exception:
+        pass
+
+    # Signal 6: LLDP neighbor data (ethernet-connected devices)
+    lldp_info = {}
+    try:
+        import ap_scanner
+        lldp_info = ap_scanner.get_lldp_info(mac=mac, ip=ip, hostname=hostname)
+        if lldp_info:
+            # LLDP SysName is authoritative for hostname
+            if lldp_info.get("remote_name") and not hostname:
+                hostname = lldp_info["remote_name"]
+    except Exception:
+        pass
+
     role_info = ROLES.get(role, ROLES["unknown"])
     mac_suffix = mac[-5:].replace(":", "")
     vlan = _vlan_label(ip)
 
-    # Build label
-    if hostname:
+    # ── Build label (prioritize model > vendor+hostname > vendor+suffix) ──
+    if model_hint and hostname and hostname != "*":
+        label = model_hint if model_hint.lower() in hostname.lower() else hostname[:20]
+    elif hostname and hostname != "*":
         label = hostname[:20]
+    elif model_hint:
+        label = model_hint
     elif vendor:
         label = f"{vendor} {mac_suffix}"
     elif randomized and vlan:
@@ -566,15 +823,63 @@ def enrich_unknown_node(node_id, mac, hostname=None, ip=None):
     else:
         label = f"Device {mac_suffix}"
 
-    # Sublabel
+    # ── Build sublabel (IP + vendor + OS + model) ──
     parts = []
     if ip:
         parts.append(ip)
+    detail_parts = []
     if vendor:
-        parts.append(vendor)
+        detail_parts.append(vendor)
+    if model_hint and model_hint != label:
+        detail_parts.append(model_hint)
+    if os_hint:
+        detail_parts.append(os_hint)
+    if detail_parts:
+        parts.append(" ".join(detail_parts))
     elif randomized:
         parts.append("Randomized MAC")
+    if probe and probe["open_ports"]:
+        svcs = [svc for _, svc in probe["open_ports"][:3]]
+        parts.append(" ".join(svcs))
+    if ha_info.get("battery") is not None:
+        batt_icon = "\u26a1" if ha_info.get("charging") else "\U0001f50b"
+        parts.append(f"{batt_icon}{ha_info['battery']}%")
     sublabel = " \u2022 ".join(parts) if parts else mac[:8] + "..."
+
+    # ── Build tip with detailed stats ──
+    title = model_hint or (f"{vendor} {role_info['title']}" if vendor else role_info["title"])
+    tip_stats = []
+    if model_hint:
+        tip_stats.append(["Model", model_hint])
+    if vendor:
+        tip_stats.append(["Vendor", vendor])
+    tip_stats.append(["Role", role_info["title"]])
+    if os_hint:
+        tip_stats.append(["OS", os_hint])
+    if ip:
+        tip_stats.append(["IP", ip])
+    tip_stats.append(["MAC", mac])
+    if probe and probe["open_ports"]:
+        tip_stats.append(["Services", ", ".join(svc for _, svc in probe["open_ports"])])
+    if randomized:
+        tip_stats.append(["MAC Type", "Randomized (private)"])
+    if vlan:
+        tip_stats.append(["Network", vlan])
+    if ha_info.get("battery") is not None:
+        charging = ha_info.get("charging")
+        batt_str = f"{ha_info['battery']}%"
+        if charging:
+            batt_str += " \u26a1"
+        tip_stats.append(["Battery", batt_str])
+    if ha_info.get("sw_version"):
+        tip_stats.append(["SW Version", ha_info["sw_version"]])
+    if ha_info.get("source_type"):
+        tip_stats.append(["HA Source", ha_info["source_type"]])
+    if lldp_info.get("remote_port"):
+        seen_by = lldp_info.get("seen_by", "")
+        tip_stats.append(["Ethernet Port", f"{lldp_info['remote_port']} (via {seen_by})"])
+    if lldp_info.get("protocol"):
+        tip_stats.append(["Discovery", lldp_info["protocol"]])
 
     icon = ROLE_ICONS.get(role, ROLE_ICONS["unknown"])
     color = role_info.get("color", "#808080")
@@ -588,8 +893,14 @@ def enrich_unknown_node(node_id, mac, hostname=None, ip=None):
             "borderColor": f"{color}80",
             "width": "32px", "height": "32px", "fontSize": "14px",
         },
+        "tip": {"title": title, "stats": tip_stats},
         "_role": role,
         "_vendor": vendor,
+        "_os": os_hint,
+        "_model": model_hint,
+        "_hostname": hostname,
+        "_ha_entity": ha_info.get("entity_id"),
+        "_ha_battery": ha_info.get("battery"),
     }
 
     template = ROLE_PERSONAS.get(role, ROLE_PERSONAS["unknown"])
