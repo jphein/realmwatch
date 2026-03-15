@@ -2018,6 +2018,22 @@ export function addLogEntry(evt, nodeEl) {
   logCount++;
   setTimeout(() => entry.classList.remove('log-entry-new'), 3000);
 
+  // Event rewards — only for SSE events with a DB id, not local/transient
+  if (evt.id && !evt._local && !_rewardedEvents.has(evt.id)) {
+    _rewardedEvents.add(evt.id);
+    fetch('/player/reward', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source: 'event', id: String(evt.id) }),
+    }).then(r => r.json()).then(res => {
+      if (res.granted && res.reward) {
+        _floatRewardText(entry, res.reward);
+        window.updateDockHUD?.(res, true);
+        if (res.level_up) _celebrateLevelUp(res.level);
+      }
+    }).catch(() => {});
+  }
+
   while (body.children.length > MAX_LOG) {
     body.removeChild(body.lastChild);
   }
@@ -2029,6 +2045,74 @@ const _dismissedQuests = JSON.parse(localStorage.getItem('realm-dismissed-quests
 const _completedQuests = JSON.parse(localStorage.getItem('realm-completed-quests') || '[]');
 function _saveDismissed() { localStorage.setItem('realm-dismissed-quests', JSON.stringify(_dismissedQuests)); }
 function _saveCompleted() { localStorage.setItem('realm-completed-quests', JSON.stringify(_completedQuests)); }
+
+// ── Player Reward System ──
+const _rewardedEvents = new Set();
+
+function _floatRewardText(anchor, reward) {
+  const parts = [];
+  if (reward.xp) parts.push(`+${reward.xp} XP`);
+  if (reward.gold) parts.push(`+${reward.gold}g`);
+  if (reward.gems) parts.push(`+${reward.gems} gem`);
+  if (!parts.length) return;
+  const el = document.createElement('div');
+  el.className = 'reward-float';
+  el.textContent = parts.join(' ');
+  const rect = anchor.getBoundingClientRect();
+  el.style.left = (rect.left + rect.width / 2) + 'px';
+  el.style.top = rect.top + 'px';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1500);
+}
+
+function _celebrateLevelUp(level) {
+  // Golden flash overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'level-up-overlay';
+  document.body.appendChild(overlay);
+  // Rising level badge
+  const badge = document.createElement('div');
+  badge.className = 'level-up-badge';
+  const circle = document.createElement('div');
+  circle.className = 'lub-circle';
+  circle.textContent = level;
+  badge.appendChild(circle);
+  const text = document.createElement('div');
+  text.className = 'lub-text';
+  text.textContent = 'LEVEL UP';
+  badge.appendChild(text);
+  document.body.appendChild(badge);
+  // Pulse dock HUD level badge
+  const dockLevel = document.querySelector('.hud-level');
+  if (dockLevel) dockLevel.classList.add('hud-level-up');
+  setTimeout(() => {
+    overlay.remove();
+    badge.remove();
+    if (dockLevel) dockLevel.classList.remove('hud-level-up');
+  }, 3000);
+}
+
+function _checkParentAutoReward(parentId) {
+  setTimeout(() => {
+    fetch('/quests').then(r => r.json()).then(quests => {
+      const parent = quests.find(q => q.id === parentId);
+      if (!parent || !parent.children?.length) return;
+      const allDone = parent.children.every(c => c.status === 'completed');
+      if (!allDone) return;
+      fetch('/player/reward', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: 'quest', id: parentId }),
+      }).then(r => r.json()).then(res => {
+        if (!res.granted) return;
+        const card = document.querySelector(`.quest-card[data-quest-id="${parentId}"]`);
+        if (card) _floatRewardText(card, res.reward);
+        window.updateDockHUD?.(res, true);
+        if (res.level_up) _celebrateLevelUp(res.level);
+      }).catch(() => {});
+    }).catch(() => {});
+  }, 500);
+}
 
 // ── Quest Card System (structured quests with interactive actions) ──
 const _ACTION_ICONS = {
@@ -2073,6 +2157,7 @@ function _renderQuestCards(quests) {
     const isComplete = quest.status === 'completed' || allDone;
     const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
     card.className = 'quest-card' + (isComplete ? ' quest-card--done' : '');
+    card.dataset.questId = quest.id;
 
     // Header (click to expand)
     const header = document.createElement('div');
@@ -2146,8 +2231,18 @@ function _renderQuestCards(quests) {
         e.stopPropagation();
         if (completeBtn.disabled) return;
         completeBtn.disabled = true;
-        // Trigger reward burst
-        _spawnQuestReward(card, completeBtn);
+        // Grant reward via server
+        fetch('/player/reward', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source: 'quest', id: quest.id }),
+        }).then(r => r.json()).then(res => {
+          _spawnQuestReward(card, completeBtn, res.granted ? res.reward : null);
+          window.updateDockHUD?.(res, true);
+          if (res.level_up) _celebrateLevelUp(res.level);
+        }).catch(() => {
+          _spawnQuestReward(card, completeBtn, null);
+        });
         // Mark completed after animation peaks
         setTimeout(() => {
           fetch('/quest-update', {
@@ -2179,6 +2274,19 @@ function _renderQuestCards(quests) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: sub.id, status: newStatus }),
         }).then(() => _refreshQuestCards()).catch(() => {});
+        // Grant reward only when toggling TO completed
+        if (!isDone) {
+          fetch('/player/reward', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source: 'sub', id: sub.id }),
+          }).then(r => r.json()).then(res => {
+            if (res.granted) _floatRewardText(subEl, res.reward);
+            window.updateDockHUD?.(res, true);
+            if (res.level_up) _celebrateLevelUp(res.level);
+          }).catch(() => {});
+          _checkParentAutoReward(quest.id);
+        }
         // Immediate visual feedback
         subEl.classList.toggle('quest-sub--done');
         subEl.classList.add('quest-sub--completing');
@@ -2216,7 +2324,7 @@ function _renderQuestCards(quests) {
 // ── Quest Reward Burst ──
 const _REWARD_RUNES = ['\u16A0','\u16A2','\u16A6','\u16B1','\u16B7','\u16C1','\u16C7','\u16C8','\u16CF','\u16D6'];
 const _REWARD_GEMS = ['💎','✦','⬥','◆','🔮','⚜','✧','★'];
-function _spawnQuestReward(card, btn) {
+function _spawnQuestReward(card, btn, reward) {
   const rect = btn.getBoundingClientRect();
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
@@ -2253,8 +2361,14 @@ function _spawnQuestReward(card, btn) {
   // XP banner
   const xp = document.createElement('div');
   xp.className = 'qr-xp';
-  const xpVal = (Math.floor(Math.random() * 5) + 1) * 50;
-  xp.textContent = `+${xpVal} XP`;
+  if (reward) {
+    const parts = [`+${reward.xp} XP`];
+    if (reward.gold) parts.push(`+${reward.gold}g`);
+    if (reward.gems) parts.push(`+${reward.gems} gem`);
+    xp.textContent = parts.join(' ');
+  } else {
+    xp.textContent = '+?? XP';
+  }
   container.appendChild(xp);
   // Golden flash on the card
   const flash = document.createElement('div');
@@ -2287,6 +2401,10 @@ function _loadQuestLog() {
 setTimeout(() => {
   addLogEntry({ type: 'system', node: 'katana', text: 'The Realm Map has been inscribed.', ts: Date.now()/1000 });
   _loadQuestLog();
+  // Load player stats into dock HUD
+  fetch('/player').then(r => r.json()).then(stats => {
+    window.updateDockHUD?.(stats, false);
+  }).catch(() => {});
 }, 800);
 
 // Track active speech bubbles for repositioning during drag
