@@ -4411,12 +4411,22 @@ document.querySelector('.legend-section[data-section="effects"]')?.classList.add
         setPerfTier(qSel.value);
       }
       qVal.textContent = _perfTier;
+      _applyPerfClasses();
       _topoHash = '';
       if (_topoEnabled) renderTopoLayer(_lastTopoCollectd);
       saveSettings();
     });
   }
+  _applyPerfClasses();
 })();
+
+function _applyPerfClasses() {
+  const b = document.body;
+  b.classList.toggle('perf-no-dash', !_PERF.dashAnims);
+  b.classList.toggle('perf-no-breath', !_PERF.runeBreath);
+  b.classList.toggle('perf-no-filters', !_PERF.svgFilters);
+  b.classList.toggle('perf-no-vine-anim', !_PERF.vineAnims);
+}
 
 // ── Realm Search ──
 const _realmSearch = document.getElementById('realm-search');

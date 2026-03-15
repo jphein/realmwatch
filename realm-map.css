@@ -1773,6 +1773,16 @@
   #map-world.zooming .conn-bridge,
   #map-world.zooming .conn-bridge-inner { animation-play-state: paused; }
 
+  /* Mobile performance: disable expensive non-composited animations */
+  .perf-no-dash .conn-animated,
+  .perf-no-dash .conn-portal,
+  .perf-no-dash .conn-bridge,
+  .perf-no-dash .conn-bridge-inner { animation: none !important; }
+  .perf-no-breath .sealed-rune { animation: rune-float 3s ease-in-out infinite !important; }
+  .perf-no-filters .vine-cluster { filter: none !important; }
+  .perf-no-filters .vine-cluster .vine-glow { display: none; }
+  .perf-no-vine-anim .vine-cluster { animation: none !important; }
+
   /* Pulse animation for online nodes */
   .pulse-ring {
     position: absolute;
@@ -5968,13 +5978,20 @@
     position: relative;
   }
 
-  /* Hide runes past the 5th on mobile */
+  /* Hide runes past the 5th on mobile — use visibility instead of display
+     to prevent animation restart flash when drawer opens */
   @media (max-width: 768px) {
     .dock-tray .sealed-rune:nth-child(n+6) {
-      display: none;
+      visibility: hidden;
+      width: 0;
+      height: 0;
+      margin: 0;
+      overflow: hidden;
     }
     .dock-expanded .dock-tray .sealed-rune:nth-child(n+6) {
-      display: flex;
+      visibility: visible;
+      width: 56px;
+      height: 56px;
     }
     .dock-expanded .dock-tray {
       display: grid;

@@ -24,4 +24,8 @@ export const _PERF = {
   get moteGlow()      { return _perfTier !== 'low'; },
   get moteStarCross() { return _perfTier === 'high'; },
   get dragLineThrottle() { return _perfTier === 'low' ? 3 : 1; },
+  get dashAnims()     { return !_isMobile || _perfTier === 'high'; },
+  get svgFilters()    { return !_isMobile || _perfTier === 'high'; },
+  get vineAnims()     { return !_isMobile || _perfTier === 'high'; },
+  get runeBreath()    { return _perfTier !== 'low'; },
 };
