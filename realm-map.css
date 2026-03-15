@@ -4010,6 +4010,85 @@
     transition: all 0.3s;
   }
 
+  /* ── Reward Float Text ── */
+  .reward-float {
+    position: fixed;
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: #f5d070;
+    text-shadow: 0 0 6px rgba(255, 200, 60, 0.6), 0 0 12px rgba(200, 150, 40, 0.4), 0 1px 2px rgba(0,0,0,0.8);
+    pointer-events: none;
+    z-index: 99999;
+    transform: translateX(-50%);
+    animation: reward-float-rise 1.4s ease-out forwards;
+    white-space: nowrap;
+  }
+  @keyframes reward-float-rise {
+    0% { opacity: 1; transform: translateX(-50%) translateY(0); }
+    60% { opacity: 1; }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-60px); }
+  }
+
+  /* ── Level-Up Celebration ── */
+  .level-up-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99998;
+    pointer-events: none;
+    animation: level-up-flash 2.5s ease-out forwards;
+  }
+  @keyframes level-up-flash {
+    0% { background: rgba(255, 215, 0, 0); }
+    10% { background: rgba(255, 215, 0, 0.3); }
+    30% { background: rgba(255, 200, 60, 0.15); }
+    100% { background: rgba(255, 215, 0, 0); }
+  }
+  .level-up-badge {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
+    animation: level-badge-rise 2.8s ease-out forwards;
+  }
+  @keyframes level-badge-rise {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+    15% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+    30% { transform: translate(-50%, -50%) scale(1); }
+    70% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8) translateY(-30px); }
+  }
+  .lub-circle {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, #d4a846, #8a6d2b);
+    border: 2px solid rgba(255, 215, 0, 0.6);
+    box-shadow: 0 0 20px rgba(255, 200, 60, 0.6), 0 0 40px rgba(200, 170, 60, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Cinzel', serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff8e0;
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
+  }
+  .lub-text {
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: #f5d070;
+    letter-spacing: 0.3em;
+    text-shadow: 0 0 10px rgba(255, 200, 60, 0.6), 0 0 20px rgba(200, 170, 60, 0.3);
+  }
+
   /* Oracle response bubbles in log — right-aligned like chat */
   .log-entry.log-oracle_response {
     background: rgba(160,120,255,0.05);
