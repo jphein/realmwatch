@@ -85,6 +85,12 @@ def init():
         CREATE INDEX IF NOT EXISTS idx_quests_parent ON quests(parent_id);
     """)
     c.commit()
+    # Migration: add rewards column to quests (idempotent)
+    try:
+        c.execute("ALTER TABLE quests ADD COLUMN rewards TEXT")
+        c.commit()
+    except Exception:
+        pass  # Column already exists
 
 
 # ── Settings ──
@@ -141,22 +147,25 @@ def get_setting(namespace, key, default=None):
 # ── Events ──
 
 def push_event(event):
-    """Store an event. All events persist until explicitly deleted."""
+    """Store an event. Returns event dict with db id injected."""
     event["ts"] = time.time()
     c = _conn()
-    c.execute("INSERT INTO events (ts, type, data) VALUES (?, ?, ?)",
-              (event["ts"], event.get("type"), json.dumps(event)))
+    cur = c.execute("INSERT INTO events (ts, type, data) VALUES (?, ?, ?)",
+                    (event["ts"], event.get("type"), json.dumps(event)))
     c.commit()
+    event["id"] = cur.lastrowid
     return event
 
 
 def get_events_since(since_ts):
     c = _conn()
-    rows = c.execute("SELECT data FROM events WHERE ts > ? ORDER BY ts", (since_ts,)).fetchall()
+    rows = c.execute("SELECT id, data FROM events WHERE ts > ? ORDER BY ts", (since_ts,)).fetchall()
     out = []
     for r in rows:
         try:
-            out.append(json.loads(r["data"]))
+            evt = json.loads(r["data"])
+            evt["id"] = r["id"]
+            out.append(evt)
         except (json.JSONDecodeError, TypeError):
             pass
     return out
@@ -175,6 +184,7 @@ def get_quests():
             "sort_order": r["sort_order"],
             "actions": json.loads(r["actions"]) if r["actions"] else [],
             "created_at": r["created_at"], "completed_at": r["completed_at"],
+            "rewards": json.loads(r["rewards"]) if r["rewards"] else None,
             "children": [],
         }
         by_id[q["id"]] = q
@@ -203,6 +213,7 @@ def get_quest(quest_id):
         "sort_order": r["sort_order"],
         "actions": json.loads(r["actions"]) if r["actions"] else [],
         "created_at": r["created_at"], "completed_at": r["completed_at"],
+        "rewards": json.loads(r["rewards"]) if r["rewards"] else None,
     }
 
 
@@ -210,8 +221,8 @@ def upsert_quest(quest):
     """Insert or update a quest."""
     c = _conn()
     c.execute("""INSERT OR REPLACE INTO quests
-        (id, title, description, parent_id, node, status, actions, sort_order, created_at, completed_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", (
+        (id, title, description, parent_id, node, status, actions, sort_order, created_at, completed_at, rewards)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", (
         quest["id"], quest["title"], quest.get("description"),
         quest.get("parent_id"), quest.get("node"),
         quest.get("status", "active"),
@@ -219,6 +230,7 @@ def upsert_quest(quest):
         quest.get("sort_order", 0),
         quest.get("created_at", time.time()),
         quest.get("completed_at"),
+        json.dumps(quest["rewards"]) if quest.get("rewards") else None,
     ))
     c.commit()
 
@@ -258,6 +270,109 @@ def delete_quest_by_text(quest_text):
             deleted += 1
     c.commit()
     return deleted
+
+
+# ── Player Rewards ──
+
+_REWARD_TIERS = {
+    "quest":                 {"xp": 200, "gold": 50, "gems": 5},
+    "sub":                   {"xp": 50,  "gold": 10, "gems": 1},
+    "event_alert":           {"xp": 15,  "gold": 5,  "gems": 0},
+    "event_oracle_response": {"xp": 20,  "gold": 8,  "gems": 1},
+    "event_default":         {"xp": 5,   "gold": 2,  "gems": 0},
+}
+
+
+def calc_level(total_xp):
+    """Derive level info from total XP. Threshold N->N+1 = floor(N * 100 * 1.5^(N-1))."""
+    level = 1
+    cumulative = 0
+    while True:
+        threshold = int(level * 100 * (1.5 ** (level - 1)))
+        if cumulative + threshold > total_xp:
+            return {
+                "level": level,
+                "xp_next": threshold,
+                "xp_in_level": total_xp - cumulative,
+                "xp_level_start": cumulative,
+            }
+        cumulative += threshold
+        level += 1
+
+
+def get_player_stats():
+    """Return current player stats with derived level info."""
+    data = get_settings("player")
+    xp = data.get("xp", 0)
+    gold = data.get("gold", 0)
+    gems = data.get("gems", 0)
+    lvl = calc_level(xp)
+    return {"xp": xp, "gold": gold, "gems": gems, **lvl}
+
+
+def _get_reward_for(source, source_id):
+    """Determine reward amounts based on source type and id."""
+    if source == "quest":
+        quest = get_quest(source_id)
+        if quest and quest.get("rewards"):
+            return quest["rewards"]
+        return _REWARD_TIERS["quest"]
+    elif source == "sub":
+        quest = get_quest(source_id)
+        if quest and quest.get("parent_id"):
+            parent = get_quest(quest["parent_id"])
+            if parent and parent.get("rewards") and isinstance(parent["rewards"], dict) and parent["rewards"].get("sub"):
+                return parent["rewards"]["sub"]
+        return _REWARD_TIERS["sub"]
+    elif source == "event":
+        c = _conn()
+        row = c.execute("SELECT data FROM events WHERE id = ?", (source_id,)).fetchone()
+        if row:
+            try:
+                evt = json.loads(row["data"])
+                etype = evt.get("type", "")
+                tier_key = f"event_{etype}" if f"event_{etype}" in _REWARD_TIERS else "event_default"
+                return _REWARD_TIERS[tier_key]
+            except (json.JSONDecodeError, TypeError):
+                pass
+        return _REWARD_TIERS["event_default"]
+    return {"xp": 0, "gold": 0, "gems": 0}
+
+
+def grant_reward(source, source_id):
+    """Grant a reward. Deduplicates by source:source_id in player_rewards namespace."""
+    dedup_key = f"{source}:{source_id}"
+    existing = get_setting("player_rewards", dedup_key)
+    if existing:
+        stats = get_player_stats()
+        return {"granted": False, **stats}
+
+    reward = _get_reward_for(source, source_id)
+    xp = max(0, reward.get("xp", 0))
+    gold = max(0, reward.get("gold", 0))
+    gems = max(0, reward.get("gems", 0))
+
+    data = get_settings("player")
+    old_xp = data.get("xp", 0)
+    new_xp = old_xp + xp
+    new_gold = data.get("gold", 0) + gold
+    new_gems = data.get("gems", 0) + gems
+
+    old_level = calc_level(old_xp)["level"]
+    new_lvl = calc_level(new_xp)
+
+    set_settings("player", {"xp": new_xp, "gold": new_gold, "gems": new_gems})
+    set_settings("player_rewards", {dedup_key: True})
+
+    return {
+        "granted": True,
+        "reward": {"xp": xp, "gold": gold, "gems": gems},
+        "level_up": new_lvl["level"] > old_level,
+        "old_level": old_level,
+        "new_level": new_lvl["level"],
+        "xp": new_xp, "gold": new_gold, "gems": new_gems,
+        **new_lvl,
+    }
 
 
 # ── Personas ──
