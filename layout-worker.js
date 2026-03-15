@@ -135,6 +135,9 @@ self.onmessage = function(e) {
     case 'latency-cartograph': layoutLatencyCartograph(); break;
     case 'golden-resonance': layoutGoldenResonance(); break;
     case 'latency-forge': layoutLatencyForge(); break;
+    case 'spectral-sigil': layoutSpectralSigil(); break;
+    case 'arcane-mandala': layoutArcaneMandala(); break;
+    case 'stress-atlas': layoutStressAtlas(); break;
     default: layoutWorldTree();
   }
 
@@ -822,12 +825,288 @@ self.onmessage = function(e) {
     }
   }
 
+  // ── Spectral Sigil: Eigenvector layout — crystalline star chart ──
+  // Uses power iteration on the graph Laplacian to find the 2nd and 3rd
+  // smallest eigenvectors (Fiedler vectors). Reveals deep topological symmetry.
+  function layoutSpectralSigil() {
+    // Build Laplacian L = D - A
+    const L = new Array(N);
+    for (let i = 0; i < N; i++) {
+      L[i] = new Float64Array(N);
+      L[i][i] = degree[i];
+    }
+    for (const [a, b] of connIdx) {
+      L[a][b] -= 1;
+      L[b][a] -= 1;
+    }
+
+    // Power iteration to find smallest non-trivial eigenvectors
+    // We use inverse iteration with shift: solve (L - σI)^{-1} v = λv
+    // But for small N, use explicit deflated power iteration on (maxλI - L)
+    // to find the LARGEST eigenvectors of the flipped matrix.
+
+    // First, estimate max eigenvalue (Gershgorin bound)
+    let maxLam = 0;
+    for (let i = 0; i < N; i++) {
+      let rowSum = 0;
+      for (let j = 0; j < N; j++) rowSum += Math.abs(L[i][j]);
+      if (rowSum > maxLam) maxLam = rowSum;
+    }
+
+    // M = maxLam * I - L  (flips spectrum: smallest eigenvalues of L become largest of M)
+    const M = new Array(N);
+    for (let i = 0; i < N; i++) {
+      M[i] = new Float64Array(N);
+      for (let j = 0; j < N; j++) M[i][j] = -L[i][j];
+      M[i][i] += maxLam;
+    }
+
+    function matVec(mat, v) {
+      const r = new Float64Array(N);
+      for (let i = 0; i < N; i++) {
+        let s = 0;
+        for (let j = 0; j < N; j++) s += mat[i][j] * v[j];
+        r[i] = s;
+      }
+      return r;
+    }
+
+    function normalize(v) {
+      let s = 0;
+      for (let i = 0; i < N; i++) s += v[i] * v[i];
+      s = Math.sqrt(s) || 1;
+      for (let i = 0; i < N; i++) v[i] /= s;
+      return v;
+    }
+
+    function dot(a, b) {
+      let s = 0;
+      for (let i = 0; i < N; i++) s += a[i] * b[i];
+      return s;
+    }
+
+    function deflate(v, against) {
+      const d = dot(v, against);
+      for (let i = 0; i < N; i++) v[i] -= d * against[i];
+      return v;
+    }
+
+    // Find top 3 eigenvectors of M (= bottom 3 of L)
+    const ITERS = 200;
+    const evecs = [];
+
+    // The first eigenvector of L is always [1,1,...1]/√N (trivial)
+    const trivial = new Float64Array(N).fill(1 / Math.sqrt(N));
+    evecs.push(trivial);
+
+    for (let ev = 1; ev <= 2; ev++) {
+      let v = new Float64Array(N);
+      for (let i = 0; i < N; i++) v[i] = Math.random() - 0.5;
+      normalize(v);
+
+      for (let iter = 0; iter < ITERS; iter++) {
+        v = matVec(M, v);
+        // Deflate against all previously found eigenvectors
+        for (const prev of evecs) deflate(v, prev);
+        normalize(v);
+      }
+      evecs.push(v);
+    }
+
+    // Use 2nd and 3rd eigenvectors as x, y coordinates
+    const v2 = evecs[1], v3 = evecs[2];
+    for (let i = 0; i < N; i++) {
+      pos[i] = { x: CX + v2[i] * W * 0.4, y: CY + v3[i] * H * 0.4 };
+    }
+  }
+
+  // ── Arcane Mandala: Concentric VLAN rings with angular sectors ──
+  // Each VLAN occupies a ring radius and angular wedge. Core nodes at center,
+  // infrastructure on inner rings, devices on outer. Within each ring, nodes
+  // spread evenly across their VLAN's wedge.
+  function layoutArcaneMandala() {
+    // Group by VLAN
+    const vlanGroups = {};
+    for (let i = 0; i < N; i++) {
+      const v = (nodeVlans && nodeVlans[i]) || 6;
+      if (!vlanGroups[v]) vlanGroups[v] = [];
+      vlanGroups[v].push(i);
+    }
+    const vlans = Object.keys(vlanGroups).map(Number).sort((a, b) => {
+      if (a === 6) return -1; if (b === 6) return 1;
+      return vlanGroups[b].length - vlanGroups[a].length;
+    });
+
+    // Each VLAN gets a wedge (angular sector)
+    const numVlans = vlans.length;
+    const wedgeSize = (Math.PI * 2) / numVlans;
+    const maxR = Math.min(W, H) * 0.44;
+
+    // Tier radii: core=0, infra=0.2, tower/bridge=0.45, portal/cluster=0.65, device/ts=0.85
+    const tierRadius = { core: 0, infra: 0.2, tower: 0.45, bridge: 0.45, portal: 0.65, cluster: 0.65, device: 0.85, tailscale: 0.95 };
+
+    for (let vi = 0; vi < numVlans; vi++) {
+      const vlan = vlans[vi];
+      const group = vlanGroups[vlan];
+      const wedgeStart = vi * wedgeSize - Math.PI / 2;
+
+      // Sort by tier (inner first), then by degree
+      group.sort((a, b) => {
+        const ra = tierRadius[nodes[a].type] || 0.85;
+        const rb = tierRadius[nodes[b].type] || 0.85;
+        if (ra !== rb) return ra - rb;
+        return degree[b] - degree[a];
+      });
+
+      // Group nodes by their tier ring
+      const tiers = {};
+      for (const idx of group) {
+        const r = tierRadius[nodes[idx].type] || 0.85;
+        const rKey = Math.round(r * 100);
+        if (!tiers[rKey]) tiers[rKey] = { r, nodes: [] };
+        tiers[rKey].nodes.push(idx);
+      }
+
+      for (const tier of Object.values(tiers)) {
+        const tierNodes = tier.nodes;
+        const r = tier.r * maxR;
+
+        if (r === 0) {
+          // Core nodes go to center
+          for (let j = 0; j < tierNodes.length; j++) {
+            const a = wedgeStart + (j + 0.5) * wedgeSize / Math.max(tierNodes.length, 1);
+            pos[tierNodes[j]] = {
+              x: CX + Math.cos(a) * maxR * 0.08,
+              y: CY + Math.sin(a) * maxR * 0.08,
+            };
+          }
+        } else {
+          // Distribute evenly within the wedge at this radius
+          for (let j = 0; j < tierNodes.length; j++) {
+            const frac = (j + 0.5) / tierNodes.length;
+            const a = wedgeStart + frac * wedgeSize;
+            // Slight radial jitter for visual interest
+            const rJitter = r + (j % 2 === 0 ? -1 : 1) * maxR * 0.03;
+            pos[tierNodes[j]] = {
+              x: CX + Math.cos(a) * rJitter,
+              y: CY + Math.sin(a) * rJitter * 0.86,
+            };
+          }
+        }
+      }
+    }
+  }
+
+  // ── Stress Atlas: Graph-distance-preserving MDS layout (SMACOF) ──
+  // Computes all-pairs shortest path distances, then iteratively finds 2D
+  // positions that preserve those distances. Produces topographic, map-like
+  // layouts where visual distance = network distance.
+  function layoutStressAtlas() {
+    // All-pairs shortest path (BFS — unweighted)
+    const dist = new Array(N);
+    for (let i = 0; i < N; i++) {
+      dist[i] = new Float32Array(N).fill(Infinity);
+      dist[i][i] = 0;
+      const q = [i];
+      let qi2 = 0;
+      while (qi2 < q.length) {
+        const cur = q[qi2++];
+        for (const nb of neighbors[cur]) {
+          if (dist[i][nb] === Infinity) {
+            dist[i][nb] = dist[i][cur] + 1;
+            q.push(nb);
+          }
+        }
+      }
+    }
+
+    // Initialize positions: use spectral layout for a good start
+    // (2 eigenvectors of Laplacian, quick power iteration)
+    const Lm = new Array(N);
+    for (let i = 0; i < N; i++) {
+      Lm[i] = new Float64Array(N);
+      Lm[i][i] = degree[i];
+    }
+    for (const [a, b] of connIdx) { Lm[a][b] -= 1; Lm[b][a] -= 1; }
+
+    let maxLam = 0;
+    for (let i = 0; i < N; i++) maxLam = Math.max(maxLam, 2 * degree[i]);
+    const Mm = new Array(N);
+    for (let i = 0; i < N; i++) {
+      Mm[i] = new Float64Array(N);
+      for (let j = 0; j < N; j++) Mm[i][j] = -Lm[i][j];
+      Mm[i][i] += maxLam;
+    }
+
+    function mv(mat, v) {
+      const r = new Float64Array(N);
+      for (let i = 0; i < N; i++) { let s = 0; for (let j = 0; j < N; j++) s += mat[i][j] * v[j]; r[i] = s; }
+      return r;
+    }
+    function nrm(v) { let s = 0; for (let i = 0; i < N; i++) s += v[i]*v[i]; s = Math.sqrt(s)||1; for (let i = 0; i < N; i++) v[i]/=s; return v; }
+    function dt(a,b) { let s=0; for (let i=0; i<N; i++) s+=a[i]*b[i]; return s; }
+    function dfl(v,u) { const d=dt(v,u); for (let i=0; i<N; i++) v[i]-=d*u[i]; return v; }
+
+    const trivial2 = new Float64Array(N).fill(1/Math.sqrt(N));
+    const evs = [trivial2];
+    for (let e = 1; e <= 2; e++) {
+      let v = new Float64Array(N); for (let i=0; i<N; i++) v[i] = Math.random()-0.5; nrm(v);
+      for (let it = 0; it < 100; it++) { v = mv(Mm, v); for (const p of evs) dfl(v, p); nrm(v); }
+      evs.push(v);
+    }
+
+    // Initialize from spectral
+    for (let i = 0; i < N; i++) {
+      pos[i] = { x: CX + evs[1][i] * W * 0.3, y: CY + evs[2][i] * H * 0.3 };
+    }
+
+    // SMACOF iteration — minimize stress = Σ w_ij (||xi-xj|| - d_ij)^2
+    // w_ij = 1/d_ij^2 (inverse distance weighting)
+    const SMACOF_STEPS = 80;
+    const idealScale = edgeLen * 1.2; // 1 graph hop = this many pixels
+
+    for (let step = 0; step < SMACOF_STEPS; step++) {
+      const newX = new Float64Array(N);
+      const newY = new Float64Array(N);
+      const wSum = new Float64Array(N);
+
+      for (let i = 0; i < N; i++) {
+        for (let j = 0; j < N; j++) {
+          if (i === j) continue;
+          const dij = dist[i][j];
+          if (dij === Infinity) continue;
+          const targetDist = dij * idealScale;
+          const w = 1 / (dij * dij); // weight
+
+          const dx = pos[i].x - pos[j].x;
+          const dy = pos[i].y - pos[j].y;
+          const currDist = Math.sqrt(dx*dx + dy*dy) || 0.01;
+
+          newX[i] += w * (pos[j].x + targetDist * dx / currDist);
+          newY[i] += w * (pos[j].y + targetDist * dy / currDist);
+          wSum[i] += w;
+        }
+      }
+
+      for (let i = 0; i < N; i++) {
+        if (wSum[i] > 0) {
+          pos[i].x = newX[i] / wSum[i];
+          pos[i].y = newY[i] / wSum[i];
+        }
+      }
+
+      if ((step + 1) % 20 === 0) {
+        self.postMessage({ type: 'progress', step: step + 1, total: SMACOF_STEPS });
+      }
+    }
+  }
+
   // ══════════════════════════════════════════════
   // ── SHARED: Overlap-removal force simulation ──
   // ══════════════════════════════════════════════
 
   // Latency Forge runs its own extended force sim — skip the shared one
-  const skipSharedSim = (mode === 'latency-forge');
+  const skipSharedSim = (mode === 'latency-forge' || mode === 'stress-atlas');
 
   if (!skipSharedSim) {
     const vel = new Array(N);

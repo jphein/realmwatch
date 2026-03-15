@@ -68,8 +68,9 @@ _SEED_NODE_ROLES = {
     "gigabeam0": "bridge", "gigabeam1": "bridge",
     "cpe710-ap": "bridge", "cpe710-client": "bridge",
     # Servers
+    "woodshed": "ap",
     "katana": "server", "oracle": "server", "ha": "server",
-    "nodered": "server", "woodshed": "server", "family-vm": "vm",
+    "nodered": "server", "family-vm": "vm",
     # WLED
     "wled-main": "wled", "wled-aqi": "wled",
     # Thermostats
@@ -409,7 +410,7 @@ def get_role(node_id, node_data=None):
     nid = node_id.lower()
     if nid.startswith("wled"):
         return "wled"
-    if nid.startswith("onhub") or nid.startswith("eap"):
+    if nid.startswith("onhub") or nid.startswith("eap") or nid.startswith("woodshed"):
         return "ap"
     if nid.startswith("ts-"):
         return "tailscale"

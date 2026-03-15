@@ -43,42 +43,7 @@ self.onmessage = function(e) {
     }
   }
 
-  // 2) Carve river valleys along connections
-  if (connections) {
-    const nodeMap = new Map();
-    for (const n of nodes) nodeMap.set(n.id, n);
-    for (const c of connections) {
-      const fn = nodeMap.get(c.from), tn = nodeMap.get(c.to);
-      if (!fn || !tn) continue;
-      const tFrom = trafficMap.get(c.from), tTo = trafficMap.get(c.to);
-      const tr = (tFrom && tTo) ? (tFrom.total > tTo.total ? tFrom : tTo) : (tFrom || tTo);
-      let I = 0;
-      if (tr && tr.total > 0) I = Math.max(0, Math.min(1, (Math.log10(tr.total + 1) - 3) / 4));
-      const rw = sigma * (riverWidth + I * 0.5);
-      const rd = riverDepth + I * (1 - riverDepth) * 0.5;
-      const irw = 1 / (2 * rw * rw);
-      const rw3 = (rw * 3) | 0;
-      const ax = fn.x / sx + pad, ay = fn.y / sy + pad, bx = tn.x / sx + pad, by = tn.y / sy + pad;
-      const dist = Math.hypot(bx - ax, by - ay);
-      const steps = Math.max(4, (dist / 2) | 0);
-      for (let s = 0; s <= steps; s++) {
-        const t = s / steps;
-        const px = ax + (bx - ax) * t, py = ay + (by - ay) * t;
-        const lx0 = Math.max(0, (px - rw3) | 0), lx1 = Math.min(W - 1, (px + rw3) | 0);
-        const ly0 = Math.max(0, (py - rw3) | 0), ly1 = Math.min(H - 1, (py + rw3) | 0);
-        for (let y = ly0; y <= ly1; y++) {
-          const dy2 = (y - py) * (y - py);
-          const row = y * W;
-          for (let x = lx0; x <= lx1; x++) {
-            const dx = x - px, d = (dx * dx + dy2) * irw;
-            if (d < 8) hmap[row + x] *= 1 - rd * Math.exp(-d);
-          }
-        }
-      }
-    }
-  }
-
-  // 3) Marching squares → SVG path strings
+  // 2) Marching squares → SVG path strings
   const nC = contours;
   const cStep = nC > 0 ? 1 / (nC + 1) : 0;
   const topoHaloRes = perfTier === 'low' ? 2 : 1;

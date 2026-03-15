@@ -67,9 +67,22 @@ def init():
             ts        REAL NOT NULL,
             data      TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS quests (
+            id          TEXT PRIMARY KEY,
+            title       TEXT NOT NULL,
+            description TEXT,
+            parent_id   TEXT,
+            node        TEXT,
+            status      TEXT NOT NULL DEFAULT 'active',
+            actions     TEXT,
+            sort_order  INTEGER DEFAULT 0,
+            created_at  REAL,
+            completed_at REAL
+        );
         CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts);
         CREATE INDEX IF NOT EXISTS idx_conn_from ON connections(from_node);
         CREATE INDEX IF NOT EXISTS idx_conn_to ON connections(to_node);
+        CREATE INDEX IF NOT EXISTS idx_quests_parent ON quests(parent_id);
     """)
     c.commit()
 
@@ -127,19 +140,12 @@ def get_setting(namespace, key, default=None):
 
 # ── Events ──
 
-MAX_EVENTS = 500
-
-
 def push_event(event):
-    """Store an event. Returns the event with ts set."""
+    """Store an event. All events persist until explicitly deleted."""
     event["ts"] = time.time()
     c = _conn()
     c.execute("INSERT INTO events (ts, type, data) VALUES (?, ?, ?)",
               (event["ts"], event.get("type"), json.dumps(event)))
-    c.commit()
-    # Trim old events
-    c.execute("""DELETE FROM events WHERE id NOT IN
-                 (SELECT id FROM events ORDER BY ts DESC LIMIT ?)""", (MAX_EVENTS,))
     c.commit()
     return event
 
@@ -154,6 +160,104 @@ def get_events_since(since_ts):
         except (json.JSONDecodeError, TypeError):
             pass
     return out
+
+
+def get_quests():
+    """Return all quests as a nested tree (main quests with children)."""
+    c = _conn()
+    rows = c.execute("SELECT * FROM quests ORDER BY sort_order, created_at").fetchall()
+    quests = []
+    by_id = {}
+    for r in rows:
+        q = {
+            "id": r["id"], "title": r["title"], "description": r["description"],
+            "parent_id": r["parent_id"], "node": r["node"], "status": r["status"],
+            "sort_order": r["sort_order"],
+            "actions": json.loads(r["actions"]) if r["actions"] else [],
+            "created_at": r["created_at"], "completed_at": r["completed_at"],
+            "children": [],
+        }
+        by_id[q["id"]] = q
+        if q["parent_id"] and q["parent_id"] in by_id:
+            by_id[q["parent_id"]]["children"].append(q)
+        else:
+            quests.append(q)
+    # Re-parent any children that appeared before their parent
+    orphans = [q for q in quests if q["parent_id"]]
+    for o in orphans:
+        if o["parent_id"] in by_id:
+            quests.remove(o)
+            by_id[o["parent_id"]]["children"].append(o)
+    return quests
+
+
+def get_quest(quest_id):
+    """Return a single quest by ID."""
+    c = _conn()
+    r = c.execute("SELECT * FROM quests WHERE id = ?", (quest_id,)).fetchone()
+    if not r:
+        return None
+    return {
+        "id": r["id"], "title": r["title"], "description": r["description"],
+        "parent_id": r["parent_id"], "node": r["node"], "status": r["status"],
+        "sort_order": r["sort_order"],
+        "actions": json.loads(r["actions"]) if r["actions"] else [],
+        "created_at": r["created_at"], "completed_at": r["completed_at"],
+    }
+
+
+def upsert_quest(quest):
+    """Insert or update a quest."""
+    c = _conn()
+    c.execute("""INSERT OR REPLACE INTO quests
+        (id, title, description, parent_id, node, status, actions, sort_order, created_at, completed_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", (
+        quest["id"], quest["title"], quest.get("description"),
+        quest.get("parent_id"), quest.get("node"),
+        quest.get("status", "active"),
+        json.dumps(quest.get("actions", [])),
+        quest.get("sort_order", 0),
+        quest.get("created_at", time.time()),
+        quest.get("completed_at"),
+    ))
+    c.commit()
+
+
+def update_quest_status(quest_id, status):
+    """Update quest status. Returns True if found."""
+    c = _conn()
+    completed_at = time.time() if status == "completed" else None
+    r = c.execute("UPDATE quests SET status = ?, completed_at = ? WHERE id = ?",
+                  (status, completed_at, quest_id))
+    c.commit()
+    return r.rowcount > 0
+
+
+def delete_quest(quest_id):
+    """Delete a quest and its children. Returns count deleted."""
+    c = _conn()
+    # Delete children first
+    children = c.execute("SELECT id FROM quests WHERE parent_id = ?", (quest_id,)).fetchall()
+    count = 0
+    for child in children:
+        count += delete_quest(child["id"])
+    c.execute("DELETE FROM quests WHERE id = ?", (quest_id,))
+    c.commit()
+    return count + 1
+
+
+def delete_quest_by_text(quest_text):
+    """Legacy: delete quest events from events table by text."""
+    c = _conn()
+    rows = c.execute("SELECT id, data FROM events WHERE type = 'quest'").fetchall()
+    deleted = 0
+    for r in rows:
+        data = json.loads(r["data"])
+        if data.get("text") == quest_text:
+            c.execute("DELETE FROM events WHERE id = ?", (r["id"],))
+            deleted += 1
+    c.commit()
+    return deleted
 
 
 # ── Personas ──

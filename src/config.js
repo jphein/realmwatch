@@ -5,7 +5,9 @@ export const WORLD_SCALE = WORLD_W / 3200;  // 1.5
 
 export const _isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
 export const _cpuCores = navigator.hardwareConcurrency || 2;
-export let _perfTier = _isMobile ? (_cpuCores >= 6 ? 'medium' : 'low') : 'high';
+// Default desktop to medium (180 motes, glow on, no star-cross).
+// 'high' (400 motes + star-cross + glow halos) costs 116% renderer on Vulkan/NVIDIA.
+export let _perfTier = _isMobile ? (_cpuCores >= 6 ? 'medium' : 'low') : 'medium';
 export function setPerfTier(t) { _perfTier = t; }
 
 export let _mapTilt = 0;

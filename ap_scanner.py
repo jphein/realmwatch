@@ -28,6 +28,11 @@ SCAN_INTERVAL = 90  # seconds
 
 # Connection types that represent WiFi links (eligible for roaming updates)
 WIFI_CONN_TYPES = {"active"}
+# Connection type for auto-detected ethernet links
+ETHERNET_CONN_TYPE = "trunk"
+# How often to run ethernet topology detection (in scan cycles, ~90s each)
+ETHERNET_DETECT_INTERVAL = 7  # ~every 10 minutes
+_ethernet_tick = 0
 
 _last_scan = realm_db.get_wifi_scan() or {"ts": 0, "ap_clients": {}, "leases": 0, "unknown": [], "wifi": {}}
 _lock = threading.Lock()
@@ -234,8 +239,8 @@ def scan_and_update():
                         })
                 break
 
-    # --- Auto-update IPs for MAC-matched nodes ---
-    for mac, (lease_ip, _hostname) in leases.items():
+    # --- Auto-update IPs and persist DHCP hostnames for MAC-matched nodes ---
+    for mac, (lease_ip, lease_hostname) in leases.items():
         node_id = mac_to_node.get(mac)
         if not node_id:
             continue
@@ -245,6 +250,10 @@ def scan_and_update():
         # Only update if this node has a mac field (intentional MAC-based identity)
         if not node.get("mac"):
             continue
+        # Persist DHCP hostname on the node (real device identity)
+        if lease_hostname and lease_hostname != "*" and node.get("_hostname") != lease_hostname:
+            node["_hostname"] = lease_hostname
+            realm_db.update_node(node_id, {"_hostname": lease_hostname})
         current_ip = node.get("ip", "")
         if current_ip and current_ip != lease_ip:
             node["ip"] = lease_ip
@@ -320,6 +329,19 @@ def scan_and_update():
     # --- Auto-create/update unknown nodes on the map ---
     # All unknown MACs get a node (nameless devices use OUI vendor for label).
     # Nodes persist even when offline — only removed manually.
+    # Skip MACs absorbed into cluster members + denied MACs (transient devices).
+    _skip_macs = set()
+    for n in topo["nodes"]:
+        for m in n.get("members", []):
+            mac_str = m.get("mac", "")
+            if mac_str:
+                _skip_macs.add(mac_str.lower().replace(":", ""))
+    # Load denied MACs list (transient/randomized devices we don't want re-added)
+    _denied = realm_db.get_setting("scanner", "denied_macs") or ""
+    for mac_str in _denied.split(","):
+        mac_str = mac_str.strip().lower().replace(":", "")
+        if mac_str:
+            _skip_macs.add(mac_str)
     UNKNOWN_BASE_X, UNKNOWN_BASE_Y = 2300, 750  # right side of map
     UNKNOWN_COLS = 6
     existing_auto = {n["id"]: n for n in topo["nodes"] if n.get("_auto")}
@@ -328,7 +350,10 @@ def scan_and_update():
     for i, u in enumerate(unknown):
         hostname = u.get("hostname") or "*"
         mac = u["mac"]
-        node_id = f"_unknown_{mac.replace(':', '')}"
+        mac_clean = mac.replace(":", "").lower()
+        if mac_clean in _skip_macs:
+            continue  # absorbed into a cluster's members
+        node_id = f"_unknown_{mac_clean}"
         seen_auto.add(node_id)
         if node_id not in existing_auto:
             col, row = i % UNKNOWN_COLS, i // UNKNOWN_COLS
@@ -499,8 +524,223 @@ def get_wifi_signal():
         return dict(_last_scan.get("wifi", {}))
 
 
+# ── Ethernet topology detection via LLDP ──
+
+def _get_lldp_neighbors(ap_ip):
+    """Fetch LLDP/CDP neighbors from an AP via lldpctl JSON output.
+    Returns list of {local_port, remote_name, remote_port, remote_ip, remote_mac, protocol}.
+
+    lldpctl JSON structure:
+      lldp.interface = [{local_port: {via, chassis: {remote_hostname: {id, descr, mgmt-ip}}, port: {descr}}}]
+    The chassis dict key IS the remote hostname.
+    """
+    raw = _ssh(ap_ip, "lldpctl -f json 2>/dev/null", timeout=5)
+    if not raw:
+        return []
+    try:
+        data = json.loads(raw)
+    except (json.JSONDecodeError, ValueError):
+        return []
+    neighbors = []
+    lldp = data.get("lldp", {})
+    ifaces = lldp.get("interface", {})
+    # Can be list of single-key dicts or a dict
+    if isinstance(ifaces, dict):
+        iface_items = list(ifaces.items())
+    elif isinstance(ifaces, list):
+        iface_items = []
+        for entry in ifaces:
+            if isinstance(entry, dict):
+                iface_items.extend(entry.items())
+    else:
+        return []
+
+    for local_port, info in iface_items:
+        entries = info if isinstance(info, list) else [info]
+        for entry in entries:
+            chassis = entry.get("chassis", {})
+            port = entry.get("port", {})
+            via = entry.get("via", "LLDP")
+
+            # Chassis dict key is the remote hostname (e.g., "woodshed", "CPE710")
+            remote_name = ""
+            remote_mac = ""
+            remote_ip = ""
+            for hostname, cdata in chassis.items():
+                if not isinstance(cdata, dict):
+                    continue
+                remote_name = hostname
+                # MAC from id field
+                cid = cdata.get("id", {})
+                if isinstance(cid, dict) and cid.get("type") == "mac":
+                    remote_mac = cid.get("value", "")
+                # Management IP — string or list (may include IPv6)
+                mgmt = cdata.get("mgmt-ip", "")
+                if isinstance(mgmt, str) and "." in mgmt:
+                    remote_ip = mgmt
+                elif isinstance(mgmt, list):
+                    for m in mgmt:
+                        if isinstance(m, str) and "." in m:
+                            remote_ip = m
+                            break
+                break  # only one chassis entry per neighbor
+
+            # Remote port description
+            remote_port = ""
+            if isinstance(port, dict):
+                remote_port = port.get("descr", "")
+                if not remote_port:
+                    pid = port.get("id", {})
+                    if isinstance(pid, dict):
+                        remote_port = pid.get("value", "")
+
+            if remote_name:
+                neighbors.append({
+                    "local_port": local_port,
+                    "remote_name": remote_name,
+                    "remote_port": remote_port,
+                    "remote_ip": remote_ip,
+                    "remote_mac": remote_mac,
+                    "protocol": via,
+                })
+    return neighbors
+
+
+def detect_ethernet_topology():
+    """Scan all APs for LLDP neighbors and update trunk connections in topology.
+    Returns list of detected links: [{from_node, from_port, to_node, to_port}].
+    """
+    topo = _load_topo()
+    ap_nodes = {}
+    node_by_ip = {}
+    node_by_name = {}
+    for n in topo["nodes"]:
+        if n.get("type") == "tower" and n.get("ip"):
+            ap_nodes[n["id"]] = n["ip"]
+        ip = n.get("ip", "")
+        if ip:
+            node_by_ip[ip] = n["id"]
+        # Index by hostname patterns for matching LLDP SysName
+        nid = n["id"].lower()
+        node_by_name[nid] = n["id"]
+        # Also index without suffixes (e.g., "wrt1900ac-family" → "wrt1900ac")
+        for sep in ("-", "_"):
+            if sep in nid:
+                node_by_name[nid.split(sep)[0]] = n["id"]
+
+    if not ap_nodes:
+        return []
+
+    # Parallel LLDP collection from all APs
+    all_neighbors = {}  # ap_node_id → [neighbor_dicts]
+    with ThreadPoolExecutor(max_workers=len(ap_nodes)) as pool:
+        futures = {}
+        for node_id, ip in ap_nodes.items():
+            futures[pool.submit(_get_lldp_neighbors, ip)] = node_id
+        for future in as_completed(futures):
+            node_id = futures[future]
+            try:
+                result = future.result()
+                if result:
+                    all_neighbors[node_id] = result
+            except Exception:
+                pass
+
+    if not all_neighbors:
+        return []
+
+    # Build detected links (deduplicated)
+    detected = []  # {from_node, from_port, to_node, to_port, protocol}
+    seen_pairs = set()
+
+    for ap_id, neighbors in all_neighbors.items():
+        for nb in neighbors:
+            # Resolve remote to a known node
+            remote_node = None
+            # Try IP match
+            if nb["remote_ip"] and nb["remote_ip"] in node_by_ip:
+                remote_node = node_by_ip[nb["remote_ip"]]
+            # Try name match
+            if not remote_node and nb["remote_name"]:
+                rname = nb["remote_name"].lower().strip()
+                if rname in node_by_name:
+                    remote_node = node_by_name[rname]
+                else:
+                    # Fuzzy: check if any known node name is a prefix of remote name
+                    for pattern, nid in node_by_name.items():
+                        if pattern in rname or rname in pattern:
+                            remote_node = nid
+                            break
+
+            if not remote_node or remote_node == ap_id:
+                continue
+
+            # Deduplicate (A→B == B→A)
+            pair = tuple(sorted([ap_id, remote_node]))
+            if pair in seen_pairs:
+                continue
+            seen_pairs.add(pair)
+
+            detected.append({
+                "from_node": ap_id,
+                "from_port": nb["local_port"],
+                "to_node": remote_node,
+                "to_port": nb["remote_port"],
+                "protocol": nb["protocol"],
+            })
+
+    if not detected:
+        return []
+
+    # Filter out false direct-connection links caused by switches forwarding
+    # L2 discovery frames.  Rules:
+    #  - If BOTH sides are uplink ports, a switch is relaying the frames → skip.
+    #  - CDP on an uplink port sees everything on the switch → skip.
+    #  - LLDP or CDP on a dedicated LAN port (lan2, lan3, etc.) = direct connection → keep.
+    UPLINK_PORTS = {"wan", "eth0", "eth1", "br0"}
+    reliable = []
+    for link in detected:
+        from_is_uplink = link["from_port"] in UPLINK_PORTS
+        to_is_uplink = link["to_port"] in UPLINK_PORTS
+        if from_is_uplink and to_is_uplink:
+            # Both sides are uplinks — switch is forwarding frames between them
+            continue
+        if link["protocol"] != "LLDP" and from_is_uplink:
+            # CDP on an uplink = visible through switch, not direct
+            continue
+        reliable.append(link)
+    detected = reliable
+
+    if not detected:
+        return []
+
+    # Update topology: remove old auto-detected trunk connections, add new ones
+    existing_conns = topo.get("connections", [])
+    # Keep all non-LLDP connections
+    kept = [c for c in existing_conns if not c.get("_lldp")]
+    # Add detected links
+    for link in detected:
+        label = f"{link['from_port']}↔{link['to_port']}" if link["from_port"] and link["to_port"] else ""
+        kept.append({
+            "from": link["from_node"],
+            "to": link["to_node"],
+            "type": ETHERNET_CONN_TYPE,
+            "label": label,
+            "_lldp": True,
+        })
+
+    realm_db.set_connections(kept)
+    realm_db.save_topology_json(TOPOLOGY_FILE)
+    print(f"[AP Scanner] LLDP: detected {len(detected)} ethernet links")
+    for link in detected:
+        print(f"  {link['from_node']}:{link['from_port']} ↔ {link['to_node']}:{link['to_port']} ({link['protocol']})")
+
+    return detected
+
+
 def _scanner_loop():
     """Background loop — runs scan_and_update every SCAN_INTERVAL seconds."""
+    global _ethernet_tick
     while True:
         try:
             result = scan_and_update()
@@ -511,9 +751,102 @@ def _scanner_loop():
             unk = result.get("unknown", [])
             if unk:
                 print(f"[AP Scanner] {len(unk)} unknown clients, {result.get('wifi_clients', 0)} with signal data")
+
+            # Ethernet topology via LLDP — less frequent
+            _ethernet_tick += 1
+            if _ethernet_tick % ETHERNET_DETECT_INTERVAL == 1:  # first scan + every ~10min
+                try:
+                    detect_ethernet_topology()
+                except Exception as e:
+                    print(f"[AP Scanner] LLDP error: {e}")
+
         except Exception as e:
             print(f"[AP Scanner] Error: {e}")
         time.sleep(SCAN_INTERVAL)
+
+
+# ── WiFi AP Info (SSIDs + VLANs) ──
+_ap_info_cache = {"ts": 0, "aps": {}}
+AP_INFO_TTL = 120  # seconds
+
+def _get_ap_ssids(ap_ip):
+    """Get SSIDs and their network/VLAN from an AP via iwinfo + uci."""
+    # iwinfo gives us: interface → ESSID, channel, mode
+    raw = _ssh(ap_ip, "iwinfo 2>/dev/null | grep -E 'ESSID|Channel|Mode'")
+    # uci gives us: interface → network zone (maps to VLAN)
+    uci_raw = _ssh(ap_ip, "for i in $(uci show wireless 2>/dev/null | grep '.device=' | sed 's/.*\\[//;s/\\].*//' | sort -u); do "
+                          "ssid=$(uci -q get wireless.@wifi-iface[$i].ssid); "
+                          "net=$(uci -q get wireless.@wifi-iface[$i].network); "
+                          "disabled=$(uci -q get wireless.@wifi-iface[$i].disabled); "
+                          "echo \"idx=$i ssid=$ssid network=$net disabled=$disabled\"; "
+                          "done")
+    ssids = []
+    # Parse uci output (more reliable for SSID→network mapping)
+    for line in uci_raw.strip().splitlines():
+        parts = dict(p.split("=", 1) for p in line.split() if "=" in p)
+        if parts.get("disabled") == "1":
+            continue
+        ssid = parts.get("ssid", "")
+        network = parts.get("network", "")
+        if ssid:
+            ssids.append({"ssid": ssid, "network": network})
+    # Fallback: parse iwinfo if uci gave nothing
+    if not ssids and raw:
+        for line in raw.strip().splitlines():
+            m = re.search(r'ESSID:\s+"(.+?)"', line)
+            if m:
+                ssids.append({"ssid": m.group(1), "network": ""})
+    return ssids
+
+
+# VLAN zone→number mapping (matches firewall_parser)
+_ZONE_VLAN = {"admin": 6, "lan": 10, "iot": 8, "family": 11, "guest": 11, "wan": 0}
+
+def get_ap_info():
+    """Return AP info with SSIDs and VLANs. Cached for AP_INFO_TTL seconds."""
+    now = time.time()
+    if now - _ap_info_cache["ts"] < AP_INFO_TTL and _ap_info_cache["aps"]:
+        return _ap_info_cache["aps"]
+
+    topo = _load_topo()
+    ap_nodes = {}
+    for n in topo["nodes"]:
+        if n.get("type") == "tower" and n.get("ip"):
+            ap_nodes[n["id"]] = {"ip": n["ip"], "label": n.get("label", n["id"])}
+
+    if not ap_nodes:
+        return {}
+
+    # Parallel SSH to all APs for SSID info
+    results = {}
+    with ThreadPoolExecutor(max_workers=len(ap_nodes)) as pool:
+        futures = {}
+        for node_id, info in ap_nodes.items():
+            futures[pool.submit(_get_ap_ssids, info["ip"])] = node_id
+        for future in as_completed(futures):
+            node_id = futures[future]
+            try:
+                ssid_list = future.result()
+            except Exception:
+                ssid_list = []
+            # Resolve network names to VLAN numbers
+            for s in ssid_list:
+                net = s.get("network", "").lower()
+                s["vlan"] = _ZONE_VLAN.get(net, None)
+            info = ap_nodes[node_id]
+            # Get client count from last scan
+            cc = _last_scan.get("ap_clients", {}).get(node_id, 0)
+            client_count = cc if isinstance(cc, int) else len(cc)
+            results[node_id] = {
+                "label": info["label"],
+                "ip": info["ip"],
+                "ssids": ssid_list,
+                "clients": client_count,
+            }
+
+    _ap_info_cache["ts"] = now
+    _ap_info_cache["aps"] = results
+    return results
 
 
 def start_background_scanner():

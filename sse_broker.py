@@ -34,8 +34,23 @@ class SSEBroker:
         self._running = False
 
     def add_client(self):
-        """Register a new SSE client. Returns a Queue that receives (event_type, data_json) tuples."""
-        q = queue.Queue(maxsize=200)
+        """Register a new SSE client. Returns a Queue that receives (event_type, data_json) tuples.
+        Replays all persistent events (quests, alerts, oracle) and recent speech."""
+        q = queue.Queue(maxsize=1000)
+        try:
+            # Always replay ALL quests, alerts, oracle, system events
+            all_events = realm_db.get_events_since(0)
+            cutoff = time.time() - 3600  # speech: last hour only
+            for evt in all_events:
+                etype = evt.get("type", "")
+                if etype in ("quest", "alert", "oracle_query", "oracle_response", "system"):
+                    payload = json.dumps(evt, separators=(',', ':'))
+                    q.put_nowait(("realm-event", payload))
+                elif evt.get("ts", 0) > cutoff:
+                    payload = json.dumps(evt, separators=(',', ':'))
+                    q.put_nowait(("realm-event", payload))
+        except Exception:
+            pass
         with self._lock:
             self._clients.append(q)
         return q
@@ -135,7 +150,7 @@ class SSEBroker:
         if self._running:
             return
         self._running = True
-        self._last_event_ts = time.time() - 600  # Catch up last 10 min of events on start
+        self._last_event_ts = 0  # Send ALL stored events on start (quests, speech, alerts)
         t = threading.Thread(target=self._collect_loop, daemon=True, name="sse-broker")
         t.start()
 

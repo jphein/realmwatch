@@ -2070,16 +2070,38 @@ function _renderQuestCards(quests) {
     const doneCount = children.filter(c => c.status === 'completed').length;
     const total = children.length;
     const allDone = total > 0 && doneCount === total;
+    const isComplete = quest.status === 'completed' || allDone;
     const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
-    card.className = 'quest-card' + (allDone ? ' quest-card--done' : '');
+    card.className = 'quest-card' + (isComplete ? ' quest-card--done' : '');
 
     // Header (click to expand)
     const header = document.createElement('div');
     header.className = 'quest-card-header';
     header.innerHTML = `<span class="quest-card-icon">\u25B6</span>` +
       `<span class="quest-card-title">${quest.title}</span>` +
-      (total > 0 ? `<span class="quest-card-progress">${doneCount}/${total}</span>` : '');
-    header.addEventListener('click', () => card.classList.toggle('quest-card--open'));
+      (isComplete ? '<span class="quest-card-badge">\u2714 Complete</span>' : '') +
+      (total > 0 && !isComplete ? `<span class="quest-card-progress">${doneCount}/${total}</span>` : '');
+    // Delete button
+    const delBtn = document.createElement('button');
+    delBtn.className = 'quest-card-delete';
+    delBtn.innerHTML = '\u2716';
+    delBtn.title = 'Dismiss quest';
+    delBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      card.classList.add('quest-card--dismissing');
+      setTimeout(() => {
+        fetch('/quest-delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: quest.id }),
+        }).then(() => _refreshQuestCards()).catch(() => {});
+      }, 400);
+    });
+    header.appendChild(delBtn);
+    header.addEventListener('click', (e) => {
+      if (e.target.closest('.quest-card-delete')) return;
+      card.classList.toggle('quest-card--open');
+    });
     card.appendChild(header);
 
     // Progress bar
@@ -2111,6 +2133,32 @@ function _renderQuestCards(quests) {
         actionsRow.appendChild(btn);
       });
       card.appendChild(actionsRow);
+    }
+
+    // Complete button for quests with no sub-quests
+    if (total === 0 && quest.status !== 'completed') {
+      const completeRow = document.createElement('div');
+      completeRow.className = 'quest-complete-row';
+      const completeBtn = document.createElement('button');
+      completeBtn.className = 'quest-complete-btn';
+      completeBtn.innerHTML = '<span class="qcb-rune">&#x16C7;</span> Claim Reward <span class="qcb-rune">&#x16C8;</span>';
+      completeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (completeBtn.disabled) return;
+        completeBtn.disabled = true;
+        // Trigger reward burst
+        _spawnQuestReward(card, completeBtn);
+        // Mark completed after animation peaks
+        setTimeout(() => {
+          fetch('/quest-update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: quest.id, status: 'completed' }),
+          }).then(() => _refreshQuestCards()).catch(() => {});
+        }, 1800);
+      });
+      completeRow.appendChild(completeBtn);
+      card.appendChild(completeRow);
     }
 
     // Collapsible body with sub-quests
@@ -2163,6 +2211,62 @@ function _renderQuestCards(quests) {
     card.appendChild(body);
     _questCards.appendChild(card);
   });
+}
+
+// ── Quest Reward Burst ──
+const _REWARD_RUNES = ['\u16A0','\u16A2','\u16A6','\u16B1','\u16B7','\u16C1','\u16C7','\u16C8','\u16CF','\u16D6'];
+const _REWARD_GEMS = ['💎','✦','⬥','◆','🔮','⚜','✧','★'];
+function _spawnQuestReward(card, btn) {
+  const rect = btn.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  // Add glow class to card
+  card.classList.add('quest-card--rewarding');
+  btn.classList.add('qcb--activated');
+  // Spawn particles
+  const container = document.createElement('div');
+  container.className = 'quest-reward-burst';
+  container.style.cssText = `position:fixed;left:${cx}px;top:${cy}px;z-index:99999;pointer-events:none`;
+  document.body.appendChild(container);
+  // Ring of rune particles
+  for (let i = 0; i < 16; i++) {
+    const p = document.createElement('span');
+    p.className = 'qr-particle qr-rune';
+    p.textContent = _REWARD_RUNES[i % _REWARD_RUNES.length];
+    const angle = (i / 16) * Math.PI * 2;
+    const dist = 60 + Math.random() * 50;
+    p.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
+    p.style.setProperty('--dy', `${Math.sin(angle) * dist}px`);
+    p.style.animationDelay = `${i * 40}ms`;
+    container.appendChild(p);
+  }
+  // Gem shower
+  for (let i = 0; i < 10; i++) {
+    const g = document.createElement('span');
+    g.className = 'qr-particle qr-gem';
+    g.textContent = _REWARD_GEMS[i % _REWARD_GEMS.length];
+    g.style.setProperty('--dx', `${(Math.random() - 0.5) * 140}px`);
+    g.style.setProperty('--dy', `${-40 - Math.random() * 80}px`);
+    g.style.animationDelay = `${200 + i * 60}ms`;
+    container.appendChild(g);
+  }
+  // XP banner
+  const xp = document.createElement('div');
+  xp.className = 'qr-xp';
+  const xpVal = (Math.floor(Math.random() * 5) + 1) * 50;
+  xp.textContent = `+${xpVal} XP`;
+  container.appendChild(xp);
+  // Golden flash on the card
+  const flash = document.createElement('div');
+  flash.className = 'qr-flash';
+  card.style.position = 'relative';
+  card.appendChild(flash);
+  // Cleanup
+  setTimeout(() => {
+    container.remove();
+    flash.remove();
+    card.classList.remove('quest-card--rewarding');
+  }, 2400);
 }
 
 function _refreshQuestCards() {
@@ -2361,6 +2465,26 @@ const _GHOST_VLAN_COLORS = {
 let _ghostCanvas = null;
 let _ghostDirty = true;
 
+// Connection class → ghost rendering style
+const _GHOST_CONN_STYLE = {
+  'conn-wan':     { sw: 3.5, alpha: 0.5,  glow: true, dash: null },
+  'conn-bridge':  { sw: 3,   alpha: 0.45, glow: true, dash: [12, 4, 2, 4] },
+  'conn-portal':  { sw: 2.5, alpha: 0.4,  glow: true, dash: [3, 6, 1, 6] },
+  'conn-infra':   { sw: 2.5, alpha: 0.4,  glow: false, dash: null },
+  'conn-active':  { sw: 2,   alpha: 0.35, glow: false, dash: [8, 4] },
+  'conn-vlan':    { sw: 1.8, alpha: 0.28, glow: false, dash: [6, 3] },
+  'conn-ap':      { sw: 1.5, alpha: 0.2,  glow: false, dash: [4, 6] },
+  'conn-mesh':    { sw: 1.5, alpha: 0.2,  glow: false, dash: [4, 6] },
+  'conn-offline': { sw: 1,   alpha: 0.1,  glow: false, dash: [2, 8] },
+};
+
+function _getConnStyle(path) {
+  for (const cls of Object.keys(_GHOST_CONN_STYLE)) {
+    if (path.classList.contains(cls)) return _GHOST_CONN_STYLE[cls];
+  }
+  return { sw: 1.5, alpha: 0.25, glow: false, dash: [8, 4] };
+}
+
 function _renderGhostLines() {
   if (!_topology || !_connPaths.length) return;
   if (!_ghostCanvas) {
@@ -2373,26 +2497,65 @@ function _renderGhostLines() {
   }
   const ctx = _ghostCanvas.getContext('2d');
   ctx.clearRect(0, 0, _ghostCanvas.width, _ghostCanvas.height);
+  ctx.save();
+  ctx.scale(0.5, 0.5);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
 
-  // Group paths by VLAN color to minimize strokeStyle changes
-  const groups = {};
+  // First pass: glow layer (wider, soft, low opacity)
   for (const path of _connPaths) {
     if (!path) continue;
     const d = path.getAttribute('d');
     if (!d) continue;
+    const style = _getConnStyle(path);
+    if (!style.glow) continue;
     const v = path.dataset.vlan || '6';
-    (groups[v] || (groups[v] = [])).push(d);
+    const [r, g, b] = _GHOST_VLAN_COLORS[+v] || [140, 180, 255];
+    ctx.strokeStyle = `rgba(${r},${g},${b},${style.alpha * 0.3})`;
+    ctx.lineWidth = style.sw + 6;
+    ctx.setLineDash([]);
+    ctx.stroke(new Path2D(d));
   }
 
-  ctx.save();
-  ctx.scale(0.5, 0.5);
-  ctx.lineWidth = 1.5;
-  ctx.lineCap = 'round';
-  for (const [vlan, paths] of Object.entries(groups)) {
-    const [r, g, b] = _GHOST_VLAN_COLORS[+vlan] || [140,180,255];
-    ctx.strokeStyle = `rgba(${r},${g},${b},0.25)`;
-    for (const d of paths) ctx.stroke(new Path2D(d));
+  // Second pass: main lines with proper dash patterns
+  for (const path of _connPaths) {
+    if (!path) continue;
+    const d = path.getAttribute('d');
+    if (!d) continue;
+    // Skip hidden connections
+    if (path.style.display === 'none' || path.getAttribute('opacity') === '0') continue;
+    const style = _getConnStyle(path);
+    const v = path.dataset.vlan || '6';
+    const [r, g, b] = _GHOST_VLAN_COLORS[+v] || [140, 180, 255];
+
+    // WAN lines use gold instead of VLAN color
+    const isWan = path.classList.contains('conn-wan');
+    const cr = isWan ? 255 : r;
+    const cg = isWan ? 180 : g;
+    const cb = isWan ? 50 : b;
+
+    ctx.strokeStyle = `rgba(${cr},${cg},${cb},${style.alpha})`;
+    ctx.lineWidth = style.sw;
+    ctx.setLineDash(style.dash || []);
+    ctx.stroke(new Path2D(d));
   }
+
+  // Third pass: bright core on bridges and portals
+  for (const path of _connPaths) {
+    if (!path) continue;
+    const d = path.getAttribute('d');
+    if (!d) continue;
+    const isBridge = path.classList.contains('conn-bridge');
+    const isPortal = path.classList.contains('conn-portal');
+    if (!isBridge && !isPortal) continue;
+    const v = path.dataset.vlan || '6';
+    const [r, g, b] = _GHOST_VLAN_COLORS[+v] || [140, 180, 255];
+    ctx.strokeStyle = `rgba(${r},${g},${b},0.5)`;
+    ctx.lineWidth = 1;
+    ctx.setLineDash(isBridge ? [2, 6] : [1, 4]);
+    ctx.stroke(new Path2D(d));
+  }
+
   ctx.restore();
   _ghostDirty = false;
 }
@@ -2427,6 +2590,209 @@ function _exitZoomMode() {
   world.classList.remove('zooming');
   _updateSparkleRect();
 }
+
+// ═══════════════════════════════════════════════════════════
+// ENCHANTED VINES — procedural fantasy botanical overlay
+// ═══════════════════════════════════════════════════════════
+(function _generateVines() {
+  const svg = document.getElementById('enchanted-vines');
+  if (!svg) return;
+
+  const W = 4800, H = 3300;
+  const ns = 'http://www.w3.org/2000/svg';
+
+  // Seeded random for reproducibility
+  let _seed = 42;
+  function rand() { _seed = (_seed * 16807 + 0) % 2147483647; return (_seed - 1) / 2147483646; }
+  function randRange(a, b) { return a + rand() * (b - a); }
+
+  // Color palettes — muted greens/golds/teals
+  const vineColors = [
+    'rgba(60,100,50,0.4)', 'rgba(40,80,45,0.35)', 'rgba(50,90,40,0.3)',
+    'rgba(70,110,55,0.25)', 'rgba(45,85,50,0.35)',
+  ];
+  const leafColors = [
+    'rgba(70,120,55,0.45)', 'rgba(50,100,45,0.4)', 'rgba(80,130,60,0.35)',
+    'rgba(60,110,50,0.5)', 'rgba(90,140,70,0.3)',
+  ];
+  const bloomColors = [
+    'rgba(200,160,80,0.4)', 'rgba(180,140,100,0.35)', 'rgba(160,120,180,0.3)',
+    'rgba(140,180,200,0.25)', 'rgba(220,180,100,0.35)',
+  ];
+  const glowColors = [
+    'rgba(140,200,120,0.15)', 'rgba(100,180,140,0.12)', 'rgba(180,200,100,0.1)',
+  ];
+
+  // Add SVG defs for glow filter
+  const defs = document.createElementNS(ns, 'defs');
+  defs.innerHTML = `
+    <filter id="vine-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="vine-soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2"/>
+    </filter>`;
+  svg.appendChild(defs);
+
+  // Generate a single vine tendril as a cubic bezier chain
+  function generateTendril(startX, startY, angle, length, depth) {
+    const points = [{ x: startX, y: startY }];
+    let x = startX, y = startY, a = angle;
+    const segments = Math.floor(length / 40) + 2;
+
+    for (let i = 0; i < segments; i++) {
+      const segLen = randRange(30, 60) * (1 - depth * 0.15);
+      a += randRange(-0.4, 0.4);
+      x += Math.cos(a) * segLen;
+      y += Math.sin(a) * segLen;
+      points.push({ x, y });
+    }
+
+    // Build smooth curve through points
+    let d = `M${points[0].x.toFixed(1)},${points[0].y.toFixed(1)}`;
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[Math.max(0, i - 1)];
+      const p1 = points[i];
+      const p2 = points[i + 1];
+      const p3 = points[Math.min(points.length - 1, i + 2)];
+      const cp1x = p1.x + (p2.x - p0.x) / 5;
+      const cp1y = p1.y + (p2.y - p0.y) / 5;
+      const cp2x = p2.x - (p3.x - p1.x) / 5;
+      const cp2y = p2.y - (p3.y - p1.y) / 5;
+      d += ` C${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
+    }
+
+    return { d, points, angle: a };
+  }
+
+  // Place a leaf shape at a point
+  function createLeaf(x, y, angle, size) {
+    const la = angle + randRange(-0.5, 0.5);
+    const lx = Math.cos(la), ly = Math.sin(la);
+    const px = -ly, py = lx; // perpendicular
+    const s = size * randRange(0.6, 1.2);
+    const tipX = x + lx * s * 2, tipY = y + ly * s * 2;
+    const w = s * 0.5;
+    return `M${x.toFixed(1)},${y.toFixed(1)} C${(x + lx * s * 0.5 + px * w).toFixed(1)},${(y + ly * s * 0.5 + py * w).toFixed(1)} ${(tipX - lx * s * 0.3 + px * w * 0.3).toFixed(1)},${(tipY - ly * s * 0.3 + py * w * 0.3).toFixed(1)} ${tipX.toFixed(1)},${tipY.toFixed(1)} C${(tipX - lx * s * 0.3 - px * w * 0.3).toFixed(1)},${(tipY - ly * s * 0.3 - py * w * 0.3).toFixed(1)} ${(x + lx * s * 0.5 - px * w).toFixed(1)},${(y + ly * s * 0.5 - py * w).toFixed(1)} ${x.toFixed(1)},${y.toFixed(1)}`;
+  }
+
+  // Build full vine system from an origin
+  function buildVineCluster(ox, oy, mainAngle, mainLen) {
+    const g = document.createElementNS(ns, 'g');
+    const animDelay = randRange(0, 5);
+
+    // Main tendril
+    const main = generateTendril(ox, oy, mainAngle, mainLen, 0);
+    const mainPath = document.createElementNS(ns, 'path');
+    mainPath.setAttribute('d', main.d);
+    mainPath.setAttribute('class', 'vine-tendril');
+    mainPath.setAttribute('stroke', vineColors[Math.floor(rand() * vineColors.length)]);
+    mainPath.setAttribute('stroke-width', randRange(1.5, 3).toFixed(1));
+    g.appendChild(mainPath);
+
+    // Side branches
+    for (let i = 2; i < main.points.length - 1; i++) {
+      if (rand() > 0.5) continue;
+      const p = main.points[i];
+      const branchAngle = main.angle + (rand() > 0.5 ? 1 : -1) * randRange(0.5, 1.2);
+      const branch = generateTendril(p.x, p.y, branchAngle, mainLen * randRange(0.2, 0.45), 1);
+      const bp = document.createElementNS(ns, 'path');
+      bp.setAttribute('d', branch.d);
+      bp.setAttribute('class', 'vine-tendril');
+      bp.setAttribute('stroke', vineColors[Math.floor(rand() * vineColors.length)]);
+      bp.setAttribute('stroke-width', randRange(0.8, 1.5).toFixed(1));
+      g.appendChild(bp);
+
+      // Leaves on branches
+      for (const lp of branch.points) {
+        if (rand() > 0.35) continue;
+        const leaf = document.createElementNS(ns, 'path');
+        leaf.setAttribute('d', createLeaf(lp.x, lp.y, branchAngle, randRange(6, 14)));
+        leaf.setAttribute('class', 'vine-leaf');
+        leaf.setAttribute('fill', leafColors[Math.floor(rand() * leafColors.length)]);
+        g.appendChild(leaf);
+      }
+
+      // Occasional bloom on branch tip
+      if (rand() > 0.6) {
+        const tip = branch.points[branch.points.length - 1];
+        const bloom = document.createElementNS(ns, 'circle');
+        bloom.setAttribute('cx', tip.x.toFixed(1));
+        bloom.setAttribute('cy', tip.y.toFixed(1));
+        bloom.setAttribute('r', randRange(3, 7).toFixed(1));
+        bloom.setAttribute('class', 'vine-bloom');
+        bloom.setAttribute('fill', bloomColors[Math.floor(rand() * bloomColors.length)]);
+        bloom.setAttribute('filter', 'url(#vine-glow)');
+        g.appendChild(bloom);
+      }
+    }
+
+    // Leaves on main tendril
+    for (let i = 1; i < main.points.length; i++) {
+      if (rand() > 0.4) continue;
+      const p = main.points[i];
+      const segAngle = i > 0 ? Math.atan2(p.y - main.points[i - 1].y, p.x - main.points[i - 1].x) : mainAngle;
+      const side = rand() > 0.5 ? 1 : -1;
+      const leaf = document.createElementNS(ns, 'path');
+      leaf.setAttribute('d', createLeaf(p.x, p.y, segAngle + side * randRange(0.6, 1.2), randRange(8, 18)));
+      leaf.setAttribute('class', 'vine-leaf');
+      leaf.setAttribute('fill', leafColors[Math.floor(rand() * leafColors.length)]);
+      g.appendChild(leaf);
+    }
+
+    // Glow motes scattered along vine
+    for (let i = 0; i < 3; i++) {
+      const p = main.points[Math.floor(rand() * main.points.length)];
+      const mote = document.createElementNS(ns, 'circle');
+      mote.setAttribute('cx', (p.x + randRange(-15, 15)).toFixed(1));
+      mote.setAttribute('cy', (p.y + randRange(-15, 15)).toFixed(1));
+      mote.setAttribute('r', randRange(4, 10).toFixed(1));
+      mote.setAttribute('fill', glowColors[Math.floor(rand() * glowColors.length)]);
+      mote.setAttribute('filter', 'url(#vine-soft)');
+      g.appendChild(mote);
+    }
+
+    g.style.animation = `vine-sway ${randRange(6, 12).toFixed(1)}s ease-in-out ${animDelay.toFixed(1)}s infinite`;
+    return g;
+  }
+
+  // Spawn vine clusters around edges and scattered across the map
+  // Edge vines — grow inward from borders, extended well past edges to avoid visible boundary
+  const edgeSpawns = [
+    // Top edge
+    ...Array.from({length: 10}, () => ({ x: randRange(-200, W + 200), y: randRange(-120, 60), a: randRange(1.2, 1.9) })),
+    // Bottom edge
+    ...Array.from({length: 10}, () => ({ x: randRange(-200, W + 200), y: randRange(H - 60, H + 120), a: randRange(-1.9, -1.2) })),
+    // Left edge
+    ...Array.from({length: 8}, () => ({ x: randRange(-120, 60), y: randRange(-100, H + 100), a: randRange(-0.4, 0.4) })),
+    // Right edge
+    ...Array.from({length: 8}, () => ({ x: randRange(W - 60, W + 120), y: randRange(-100, H + 100), a: randRange(2.7, 3.5) })),
+  ];
+
+  for (const s of edgeSpawns) {
+    svg.appendChild(buildVineCluster(s.x, s.y, s.a, randRange(200, 500)));
+  }
+
+  // Interior vines — shorter, more decorative
+  for (let i = 0; i < 20; i++) {
+    const x = randRange(200, W - 200);
+    const y = randRange(200, H - 200);
+    const a = randRange(0, Math.PI * 2);
+    svg.appendChild(buildVineCluster(x, y, a, randRange(80, 250)));
+  }
+
+  // Corner flourishes — dense clusters in corners, extended outward
+  const corners = [
+    { x: -30, y: -30, a: 0.8 }, { x: W + 30, y: -30, a: 2.3 },
+    { x: -30, y: H + 30, a: -0.8 }, { x: W + 30, y: H + 30, a: -2.3 },
+  ];
+  for (const c of corners) {
+    for (let i = 0; i < 5; i++) {
+      svg.appendChild(buildVineCluster(c.x + randRange(-60, 60), c.y + randRange(-60, 60), c.a + randRange(-0.6, 0.6), randRange(300, 600)));
+    }
+  }
+})();
 
 // rAF-batched transform: multiple wheel/touch events per frame collapse into one DOM write
 let _transformRafId = 0;
@@ -4861,6 +5227,7 @@ document.getElementById('layout-reset-btn')?.addEventListener('click', resetToOr
   // [checkboxId, singleSelector, multiSelector]
   const toggles = [
     // Map layers
+    ['vis-parchment',    '#map-parchment'],
     ['vis-terrain',      '#terrain-dynamic'],
     ['vis-terrain-orig', '#terrain-original'],
     ['vis-topo',         '#topo-svg'],
@@ -4886,6 +5253,8 @@ document.getElementById('layout-reset-btn')?.addEventListener('click', resetToOr
     ['vis-latency',      '#latency-panel'],
     ['vis-firewall',     '#firewall-panel'],
     ['vis-wifi',         '#wifi-panel'],
+    // Decorations
+    ['vis-map-vines',    '#enchanted-vines'],
   ];
   for (const [id, sel, multiSel] of toggles) {
     const cb = document.getElementById(id);
@@ -4918,6 +5287,8 @@ document.getElementById('layout-reset-btn')?.addEventListener('click', resetToOr
       }
       saveSettings();
       if (!_restoring) saveFormation();  // sync panel-manager so hidden panels stay hidden on reload
+      // Mark ghost canvas dirty so zoom bitmap refreshes
+      _ghostDirty = true;
     });
   }
 
@@ -4926,8 +5297,102 @@ document.getElementById('layout-reset-btn')?.addEventListener('click', resetToOr
     btn.addEventListener('click', () => setPanelMode(btn.dataset.mode));
   });
 
+  // Sealed dock controls
+  const dockOpSlider = document.getElementById('dock-opacity-slider');
+  const dockOpVal = document.getElementById('dock-opacity-val');
+  const dockScSlider = document.getElementById('dock-scale-slider');
+  const dockScVal = document.getElementById('dock-scale-val');
+  const dockBgSlider = document.getElementById('dock-bg-slider');
+  const dockBgVal = document.getElementById('dock-bg-val');
+
+  if (dockOpSlider) {
+    dockOpSlider.addEventListener('input', () => {
+      const v = parseFloat(dockOpSlider.value);
+      if (dockOpVal) dockOpVal.textContent = v.toFixed(2);
+      const dock = document.getElementById('sealed-dock');
+      if (dock) dock.style.opacity = v;
+      saveSettings();
+    });
+  }
+  if (dockScSlider) {
+    dockScSlider.addEventListener('input', () => {
+      const v = parseFloat(dockScSlider.value);
+      if (dockScVal) dockScVal.textContent = v.toFixed(2);
+      document.querySelectorAll('.sealed-rune').forEach(r => {
+        r.style.transform = `scale(${v})`;
+      });
+      // Store for newly created runes
+      window._dockRuneScale = v;
+      saveSettings();
+    });
+  }
+  if (dockBgSlider) {
+    dockBgSlider.addEventListener('input', () => {
+      const v = parseFloat(dockBgSlider.value);
+      if (dockBgVal) dockBgVal.textContent = v.toFixed(2);
+      const dock = document.getElementById('sealed-dock');
+      if (dock) {
+        // Adjust just the background opacity via a CSS custom property
+        dock.style.setProperty('--dock-bg-opacity', v);
+      }
+      saveSettings();
+    });
+  }
+
+  // Loading screen vines toggle
+  const loadVinesCb = document.getElementById('vis-loading-vines');
+  if (loadVinesCb) {
+    loadVinesCb.addEventListener('change', () => {
+      document.querySelectorAll('.rl-vines').forEach(el => {
+        el.style.display = loadVinesCb.checked ? '' : 'none';
+      });
+      saveSettings();
+    });
+  }
+
+  // Replay loading screen button
+  const replayBtn = document.getElementById('replay-loading-btn');
+  if (replayBtn) {
+    replayBtn.addEventListener('click', () => {
+      const loadEl = document.getElementById('realm-loading');
+      if (!loadEl) return;
+      // Reset to stage 0
+      loadEl.dataset.stage = '0';
+      const arc = loadEl.querySelector('.rl-progress-arc');
+      if (arc) arc.style.strokeDashoffset = '1099.56';
+      loadEl.querySelectorAll('.rl-stage-mark').forEach(m => m.classList.remove('lit'));
+      loadEl.querySelector('.rl-sparks').innerHTML = '';
+      const stageText = loadEl.querySelector('.rl-stage-text');
+      if (stageText) stageText.textContent = 'Igniting the arcane sigil';
+      loadEl.classList.remove('dismissed');
+      // Re-trigger vine trace animations by cloning paths
+      loadEl.querySelectorAll('.rl-vines path[stroke]').forEach(p => {
+        const clone = p.cloneNode(true);
+        p.parentNode.replaceChild(clone, p);
+      });
+      loadEl.querySelectorAll('.rl-vines path[fill]:not([stroke])').forEach(p => {
+        const clone = p.cloneNode(true);
+        p.parentNode.replaceChild(clone, p);
+      });
+      loadEl.querySelectorAll('.rl-vines circle').forEach(c => {
+        const clone = c.cloneNode(true);
+        c.parentNode.replaceChild(clone, c);
+      });
+      // Replay stages with timing
+      const adv = window._advanceLoadStage;
+      if (adv) {
+        setTimeout(() => adv(1), 600);
+        setTimeout(() => adv(2), 1800);
+        setTimeout(() => adv(3), 3000);
+        setTimeout(() => adv(4), 4200);
+      }
+      setTimeout(() => loadEl.classList.add('dismissed'), 5500);
+    });
+  }
+
   // Layer opacity sliders: [sliderId, target selector or multi-selector, isMulti]
   const opacityLayers = [
+    ['layer-parchment-slider',    '#map-parchment',    false],
     ['layer-terrain-orig-slider', '#terrain-original', false],
     ['layer-terrain-slider',      '#terrain-dynamic',  false],
     ['layer-topo-slider',         '#topo-svg',         false],
@@ -5270,11 +5735,11 @@ let _wifiMap = null;
     if (!liveOk) {
       liveOk = true;
       console.log('Realm Map: SSE live data connected');
-      // Dismiss the arcane loading screen
+      // Stage 4: connected — hold for a beat, then dismiss
+      if (window._advanceLoadStage) window._advanceLoadStage(4);
       const loadEl = document.getElementById('realm-loading');
-      if (loadEl) {
-        loadEl.classList.add('dismissed');
-        setTimeout(() => loadEl.remove(), 1000);
+      if (loadEl && !loadEl.classList.contains('dismissed')) {
+        setTimeout(() => loadEl.classList.add('dismissed'), 1200);
       }
     }
   });
@@ -5556,14 +6021,16 @@ const _PERSIST_SLIDERS = [
   'panel-codex', 'panel-spellbook', 'panel-questlog', 'panel-cartographer', 'panel-energy', 'panel-nodelist', 'panel-mirror', 'panel-latency', 'panel-firewall', 'panel-wifi',
   'layer-compass', 'layer-sparkles', 'layer-vignette',
   'compass-scale', 'sparkle-density', 'ambient-glow', 'vignette',
+  'dock-opacity', 'dock-scale', 'dock-bg', 'layer-parchment',
 ];
 const _PERSIST_CHECKBOXES = [
   'topo-toggle-cb', 'grid-toggle-cb', 'grid-pulse-cb',
-  'vis-terrain', 'vis-terrain-orig', 'vis-topo', 'vis-grid', 'vis-connections', 'vis-nodes', 'vis-labels',
+  'vis-parchment', 'vis-terrain', 'vis-terrain-orig', 'vis-topo', 'vis-grid', 'vis-connections', 'vis-nodes', 'vis-labels',
   'vis-sublabels', 'vis-regions', 'vis-vlanlabels', 'vis-bubbles',
   'vis-compass', 'vis-sparkles', 'vis-vignette',
   'vis-titlebar', 'vis-search', 'vis-statuspanel', 'vis-legend', 'vis-spellbook',
   'vis-codex', 'vis-questlog', 'vis-cartographer', 'vis-energy', 'vis-nodelist', 'vis-debug', 'vis-latency', 'vis-firewall', 'vis-wifi',
+  'vis-map-vines', 'vis-loading-vines',
 ];
 
 // Debounce server saves (avoid hammering on every slider move)
@@ -6606,16 +7073,15 @@ setInterval(() => {
 }, 30000);
 
 // ═══════════════════════════════════════════════════════════
-// ARCANE CONSOLE — API explorer, MCP tools, scripts, terminal
+// ARCANE GRIMOIRE — spell catalogue of endpoints, tools, scripts
 // ═══════════════════════════════════════════════════════════
 
-const _acPanel = document.getElementById('arcane-console');
-if (_acPanel) {
-  registerPanel(_acPanel);
-  makeDraggable(_acPanel, '.panel-header', [100,220,180]);
-  makeResizable(_acPanel, [100,220,180]);
+const _agPanel = document.getElementById('arcane-grimoire');
+if (_agPanel) {
+  registerPanel(_agPanel);
+  makeDraggable(_agPanel, '.panel-header', [240,200,100]);
+  makeResizable(_agPanel, [240,200,100]);
 
-  // ── API endpoint registry ──
   const _acEndpoints = [
     { method:'GET', path:'/status', desc:'Full realm status', params:[] },
     { method:'GET', path:'/topology', desc:'Nodes, connections, regions', params:[] },
@@ -6645,7 +7111,6 @@ if (_acPanel) {
     { method:'DELETE', path:'/settings', desc:'Clear UI settings', params:[] },
   ];
 
-  // ── MCP tool registry ──
   const _acMcpTools = [
     { name:'get_system_status', desc:'Raw sensor JSON', params:[], group:'Observation' },
     { name:'get_energy_status', desc:'HA energy data', params:[], group:'Observation' },
@@ -6668,60 +7133,6 @@ if (_acPanel) {
     { name:'manage_herald', desc:'Herald daemon', params:[{name:'action',type:'select',options:['status','start','stop','once']}], group:'Services' },
   ];
 
-  // ── Render API endpoints ──
-  function _acRenderEndpoints() {
-    const container = document.getElementById('ac-api');
-    let html = '';
-    for (const ep of _acEndpoints) {
-      const mcls = 'ac-method ac-method-' + ep.method.toLowerCase();
-      html += `<div class="ac-item" data-ac-type="api" data-ac-path="${ep.path}" data-ac-method="${ep.method}">`;
-      html += `<div class="ac-item-header"><span class="${mcls}">${ep.method}</span><span class="ac-path">${ep.path}</span><span class="ac-desc">${ep.desc}</span></div>`;
-      html += `<div class="ac-form">${_acBuildForm(ep.params)}<button class="ac-invoke-btn">Invoke</button><div class="ac-response" style="display:none"></div></div>`;
-      html += `</div>`;
-    }
-    container.innerHTML = html;
-    document.getElementById('ac-api-count').textContent = _acEndpoints.length;
-  }
-
-  // ── Render MCP tools ──
-  function _acRenderMcp() {
-    const container = document.getElementById('ac-mcp');
-    let html = '';
-    let lastGroup = '';
-    for (const tool of _acMcpTools) {
-      if (tool.group !== lastGroup) {
-        html += `<div class="codex-tool-group">${tool.group}</div>`;
-        lastGroup = tool.group;
-      }
-      html += `<div class="ac-item" data-ac-type="mcp" data-ac-tool="${tool.name}">`;
-      html += `<div class="ac-item-header"><span class="ac-method ac-method-mcp">MCP</span><span class="ac-path">${tool.name}</span><span class="ac-desc">${tool.desc}</span></div>`;
-      html += `<div class="ac-form">${_acBuildForm(tool.params)}<button class="ac-invoke-btn">Cast</button><div class="ac-response" style="display:none"></div></div>`;
-      html += `</div>`;
-    }
-    container.innerHTML = html;
-    document.getElementById('ac-mcp-count').textContent = _acMcpTools.length + ' tools';
-  }
-
-  // ── Render scripts ──
-  async function _acRenderScripts() {
-    const container = document.getElementById('ac-scripts');
-    try {
-      const r = await fetch('/scripts');
-      const data = await r.json();
-      let html = '';
-      for (const s of data.scripts) {
-        html += `<div class="ac-script">`;
-        html += `<span class="ac-script-name">${s.name}</span>`;
-        html += `<span class="ac-script-desc">${s.description}</span>`;
-        html += `<button class="ac-script-run" data-script="${s.path}">Run</button>`;
-        html += `</div>`;
-      }
-      container.innerHTML = html || '<div style="color:#605040;font-size:9px;padding:4px">No scripts found</div>';
-      document.getElementById('ac-script-count').textContent = data.scripts.length;
-    } catch { container.innerHTML = '<div style="color:#805050;font-size:9px;padding:4px">Failed to load scripts</div>'; }
-  }
-
-  // ── Build form fields from param definitions ──
   function _acBuildForm(params) {
     if (!params || !params.length) return '';
     let html = '';
@@ -6739,7 +7150,6 @@ if (_acPanel) {
     return html;
   }
 
-  // ── Collect form values ──
   function _acCollectParams(formEl) {
     const params = {};
     formEl.querySelectorAll('[data-param]').forEach(el => {
@@ -6750,90 +7160,94 @@ if (_acPanel) {
     return params;
   }
 
-  // ── Invoke API endpoint ──
-  async function _acInvokeApi(item) {
-    const method = item.dataset.acMethod;
-    const path = item.dataset.acPath;
-    const form = item.querySelector('.ac-form');
-    const params = _acCollectParams(form);
-    const respEl = form.querySelector('.ac-response');
-    const btn = form.querySelector('.ac-invoke-btn');
+  // Render API endpoints
+  const apiContainer = document.getElementById('ac-api');
+  let apiHtml = '';
+  for (const ep of _acEndpoints) {
+    const mcls = 'ac-method ac-method-' + ep.method.toLowerCase();
+    apiHtml += `<div class="ac-item" data-ac-type="api" data-ac-path="${ep.path}" data-ac-method="${ep.method}">`;
+    apiHtml += `<div class="ac-item-header"><span class="${mcls}">${ep.method}</span><span class="ac-path">${ep.path}</span><span class="ac-desc">${ep.desc}</span></div>`;
+    apiHtml += `<div class="ac-form">${_acBuildForm(ep.params)}<button class="ac-invoke-btn">Invoke</button><div class="ac-response" style="display:none"></div></div>`;
+    apiHtml += `</div>`;
+  }
+  apiContainer.innerHTML = apiHtml;
+  document.getElementById('ac-api-count').textContent = _acEndpoints.length;
 
-    btn.classList.add('ac-running');
-    btn.textContent = 'Casting...';
-    respEl.style.display = 'block';
-    respEl.className = 'ac-response';
-    respEl.textContent = 'Invoking...';
+  // Render MCP tools
+  const mcpContainer = document.getElementById('ac-mcp');
+  let mcpHtml = '', lastGroup = '';
+  for (const tool of _acMcpTools) {
+    if (tool.group !== lastGroup) {
+      mcpHtml += `<div class="codex-tool-group">${tool.group}</div>`;
+      lastGroup = tool.group;
+    }
+    mcpHtml += `<div class="ac-item" data-ac-type="mcp" data-ac-tool="${tool.name}">`;
+    mcpHtml += `<div class="ac-item-header"><span class="ac-method ac-method-mcp">MCP</span><span class="ac-path">${tool.name}</span><span class="ac-desc">${tool.desc}</span></div>`;
+    mcpHtml += `<div class="ac-form">${_acBuildForm(tool.params)}<button class="ac-invoke-btn">Cast</button><div class="ac-response" style="display:none"></div></div>`;
+    mcpHtml += `</div>`;
+  }
+  mcpContainer.innerHTML = mcpHtml;
+  document.getElementById('ac-mcp-count').textContent = _acMcpTools.length + ' spells';
 
+  // Render scripts
+  (async () => {
+    const container = document.getElementById('ac-scripts');
     try {
-      let url = path;
-      let opts = {};
+      const r = await fetch('/scripts');
+      const data = await r.json();
+      let html = '';
+      for (const s of data.scripts) {
+        html += `<div class="ac-script"><span class="ac-script-name">${s.name}</span><span class="ac-script-desc">${s.description}</span><button class="ac-script-run" data-script="${s.path}">Forge</button></div>`;
+      }
+      container.innerHTML = html || '<div style="color:#605040;font-size:9px;padding:8px;font-style:italic">The forge is cold...</div>';
+      document.getElementById('ac-script-count').textContent = data.scripts.length;
+    } catch { container.innerHTML = '<div style="color:#805050;font-size:9px;padding:8px;font-style:italic">Failed to consult the forge</div>'; }
+  })();
+
+  // Invoke helpers
+  async function _acInvokeApi(item) {
+    const method = item.dataset.acMethod, path = item.dataset.acPath;
+    const form = item.querySelector('.ac-form'), params = _acCollectParams(form);
+    const respEl = form.querySelector('.ac-response'), btn = form.querySelector('.ac-invoke-btn');
+    btn.classList.add('ac-running'); btn.textContent = 'Casting...';
+    respEl.style.display = 'block'; respEl.className = 'ac-response'; respEl.textContent = 'Channeling...';
+    try {
+      let url = path, opts = {};
       if (method === 'GET' || method === 'SSE') {
         const qs = Object.entries(params).map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join('&');
         if (qs) url += '?' + qs;
       } else if (method === 'POST') {
         opts = { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(params) };
-      } else if (method === 'DELETE') {
-        opts = { method: 'DELETE' };
-      }
+      } else if (method === 'DELETE') { opts = { method: 'DELETE' }; }
       const r = await fetch(url, opts);
       const text = await r.text();
-      try {
-        respEl.textContent = JSON.stringify(JSON.parse(text), null, 2);
-      } catch { respEl.textContent = text; }
+      try { respEl.textContent = JSON.stringify(JSON.parse(text), null, 2); } catch { respEl.textContent = text; }
       if (!r.ok) respEl.classList.add('ac-error');
-    } catch (e) {
-      respEl.textContent = 'Error: ' + e.message;
-      respEl.classList.add('ac-error');
-    }
-    btn.classList.remove('ac-running');
-    btn.textContent = 'Invoke';
+    } catch (e) { respEl.textContent = 'Error: ' + e.message; respEl.classList.add('ac-error'); }
+    btn.classList.remove('ac-running'); btn.textContent = 'Invoke';
   }
 
-  // ── Invoke MCP tool (via map_event POST or direct tool call) ──
   async function _acInvokeMcp(item) {
     const toolName = item.dataset.acTool;
-    const form = item.querySelector('.ac-form');
-    const params = _acCollectParams(form);
-    const respEl = form.querySelector('.ac-response');
-    const btn = form.querySelector('.ac-invoke-btn');
-
-    btn.classList.add('ac-running');
-    btn.textContent = 'Casting...';
-    respEl.style.display = 'block';
-    respEl.className = 'ac-response';
-    respEl.textContent = 'Invoking...';
-
+    const form = item.querySelector('.ac-form'), params = _acCollectParams(form);
+    const respEl = form.querySelector('.ac-response'), btn = form.querySelector('.ac-invoke-btn');
+    btn.classList.add('ac-running'); btn.textContent = 'Casting...';
+    respEl.style.display = 'block'; respEl.className = 'ac-response'; respEl.textContent = 'Weaving incantation...';
     try {
-      // MCP tools are invoked via the map_server proxy
-      const r = await fetch('/mcp/invoke', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ tool: toolName, arguments: params })
-      });
+      const r = await fetch('/mcp/invoke', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ tool: toolName, arguments: params }) });
       const text = await r.text();
-      try {
-        respEl.textContent = JSON.stringify(JSON.parse(text), null, 2);
-      } catch { respEl.textContent = text; }
+      try { respEl.textContent = JSON.stringify(JSON.parse(text), null, 2); } catch { respEl.textContent = text; }
       if (!r.ok) respEl.classList.add('ac-error');
-    } catch (e) {
-      respEl.textContent = 'Error: ' + e.message;
-      respEl.classList.add('ac-error');
-    }
-    btn.classList.remove('ac-running');
-    btn.textContent = 'Cast';
+    } catch (e) { respEl.textContent = 'Error: ' + e.message; respEl.classList.add('ac-error'); }
+    btn.classList.remove('ac-running'); btn.textContent = 'Cast';
   }
 
-  // ── Click handlers (event delegation) ──
-  _acPanel.addEventListener('click', e => {
-    // Toggle expand/collapse on item header
+  // Event delegation for grimoire
+  _agPanel.addEventListener('click', e => {
+    const toggle = e.target.closest('.ag-section-toggle');
+    if (toggle) { toggle.classList.toggle('open'); return; }
     const itemHeader = e.target.closest('.ac-item-header');
-    if (itemHeader) {
-      const item = itemHeader.closest('.ac-item');
-      item.classList.toggle('ac-open');
-      return;
-    }
-    // Invoke button
+    if (itemHeader) { itemHeader.closest('.ac-item').classList.toggle('ac-open'); return; }
     const invokeBtn = e.target.closest('.ac-invoke-btn');
     if (invokeBtn && !invokeBtn.classList.contains('ac-running')) {
       const item = invokeBtn.closest('.ac-item');
@@ -6841,86 +7255,80 @@ if (_acPanel) {
       else if (item.dataset.acType === 'mcp') _acInvokeMcp(item);
       return;
     }
-    // Script run button
     const scriptBtn = e.target.closest('.ac-script-run');
     if (scriptBtn) {
-      const script = scriptBtn.dataset.script;
-      scriptBtn.textContent = 'Running...';
+      scriptBtn.textContent = 'Forging...';
       scriptBtn.style.pointerEvents = 'none';
-      _acTerminalExec('bash ' + script).then(() => {
-        scriptBtn.textContent = 'Run';
+      _stExec('bash ' + scriptBtn.dataset.script).then(() => {
+        scriptBtn.textContent = 'Forge';
         scriptBtn.style.pointerEvents = '';
       });
-      return;
-    }
-    // Section toggles
-    const toggle = e.target.closest('.ac-toggle');
-    if (toggle) {
-      const target = document.getElementById(toggle.dataset.target);
-      if (target) { toggle.classList.toggle('open'); target.classList.toggle('open'); }
     }
   });
+}
 
-  // ── Terminal ──
-  const _acTermOutput = document.getElementById('ac-terminal-output');
-  const _acTermInput = document.getElementById('ac-terminal-input');
-  const _acCmdHistory = [];
-  let _acHistIdx = -1;
+// ═══════════════════════════════════════════════════════════
+// SCRYING TERMINAL — crystal command interface
+// ═══════════════════════════════════════════════════════════
 
-  function _acTermAppend(text, cls) {
-    const line = document.createElement('div');
-    if (cls) line.className = cls;
-    line.textContent = text;
-    _acTermOutput.appendChild(line);
-    _acTermOutput.scrollTop = _acTermOutput.scrollHeight;
+const _stPanel = document.getElementById('scrying-terminal');
+if (_stPanel) {
+  registerPanel(_stPanel);
+  makeDraggable(_stPanel, '.panel-header', [140,180,255]);
+  makeResizable(_stPanel, [140,180,255]);
+
+  const _stOutput = document.getElementById('st-output');
+  const _stInput = document.getElementById('st-input');
+  const _stCastBtn = document.getElementById('st-cast');
+  const _stHistory = [];
+  let _stHistIdx = -1;
+
+  function _stAppend(text, cls) {
+    const el = document.createElement('div');
+    if (cls) el.className = cls;
+    el.textContent = text;
+    _stOutput.appendChild(el);
+    _stOutput.scrollTop = _stOutput.scrollHeight;
   }
 
-  async function _acTerminalExec(cmd) {
-    _acTermAppend('❯ ' + cmd, 'ac-cmd-line');
+  async function _stExec(cmd) {
+    _stAppend(cmd, 'st-cmd');
+    _stCastBtn.classList.add('casting');
     try {
-      const r = await fetch('/exec', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ command: cmd })
-      });
+      const r = await fetch('/exec', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ command: cmd }) });
       const data = await r.json();
-      if (data.output) _acTermAppend(data.output);
-      if (data.error) _acTermAppend(data.error, 'ac-cmd-error');
-      if (data.exit_code !== 0 && !data.error) _acTermAppend(`Exit code: ${data.exit_code}`, 'ac-cmd-error');
+      if (data.output) _stAppend(data.output, 'st-result');
+      if (data.error) _stAppend(data.error, 'st-error');
+      if (data.exit_code !== 0 && !data.error) _stAppend(`The spell faltered (exit ${data.exit_code})`, 'st-error');
     } catch (e) {
-      _acTermAppend('Error: ' + e.message, 'ac-cmd-error');
+      _stAppend('The crystal dims: ' + e.message, 'st-error');
     }
+    _stCastBtn.classList.remove('casting');
   }
 
-  _acTermInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && _acTermInput.value.trim()) {
-      const cmd = _acTermInput.value.trim();
-      _acCmdHistory.unshift(cmd);
-      _acHistIdx = -1;
-      _acTermInput.value = '';
-      _acTerminalExec(cmd);
-    } else if (e.key === 'ArrowUp') {
+  function _stSubmit() {
+    const cmd = _stInput.value.trim();
+    if (!cmd) return;
+    _stHistory.unshift(cmd);
+    _stHistIdx = -1;
+    _stInput.value = '';
+    _stExec(cmd);
+  }
+
+  _stInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { _stSubmit(); }
+    else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      if (_acHistIdx < _acCmdHistory.length - 1) {
-        _acHistIdx++;
-        _acTermInput.value = _acCmdHistory[_acHistIdx];
-      }
+      if (_stHistIdx < _stHistory.length - 1) { _stHistIdx++; _stInput.value = _stHistory[_stHistIdx]; }
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
-      if (_acHistIdx > 0) {
-        _acHistIdx--;
-        _acTermInput.value = _acCmdHistory[_acHistIdx];
-      } else {
-        _acHistIdx = -1;
-        _acTermInput.value = '';
-      }
+      if (_stHistIdx > 0) { _stHistIdx--; _stInput.value = _stHistory[_stHistIdx]; }
+      else { _stHistIdx = -1; _stInput.value = ''; }
     }
   });
 
-  // ── Initialize ──
-  _acRenderEndpoints();
-  _acRenderMcp();
-  _acRenderScripts();
-  _acTermAppend('Arcane Console ready. Type commands below.', 'ac-cmd-line');
+  _stCastBtn.addEventListener('click', _stSubmit);
+
+  _stAppend('The crystal awakens. Speak thy commands...', 'st-system');
 }
 

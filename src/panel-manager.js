@@ -12,6 +12,44 @@ const ANCHORS = [
   { id: 'w',  x: 0, y: 0.5, label: 'West Anchor' },
 ];
 
+// SVG sigil icons — small hand-crafted rune marks for each panel
+// Colored sigil helper — uses explicit stroke/fill colors per panel
+const _SIGIL = (d, vb = '0 0 24 24') =>
+  `<svg viewBox="${vb}" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+
+const SIGILS = {
+  // Realm Vitals — beating heart with pulse line (crimson/rose)
+  'realm-panel': _SIGIL('<path d="M12 21C12 21 4 15 4 9.5a4.5 4.5 0 018-2.9 4.5 4.5 0 018 2.9C20 15 12 21 12 21z" stroke="#e06060" fill="rgba(220,80,80,0.15)"/><path d="M4 12h3l2-3 2 6 2-4 2 2h5" stroke="#ff8888" stroke-width="1.2"/>'),
+  // Legend — compass rose (warm gold)
+  'legend': _SIGIL('<circle cx="12" cy="12" r="9" stroke="#c8a84c"/><path d="M12 3v3m0 12v3M3 12h3m12 0h3" stroke="#c8a84c"/><path d="M12 7l2 5-2 1-2-1z" fill="#dcc060" stroke="none"/><path d="M12 17l-2-5 2-1 2 1z" fill="#a08030" stroke="none"/>'),
+  // Spellbook — open tome with sparkle (arcane violet)
+  'spellbook': _SIGIL('<path d="M4 19V5a2 2 0 012-2h12a2 2 0 012 2v14" stroke="#b088d0"/><path d="M4 19a2 2 0 012-2h12a2 2 0 012 2" stroke="#b088d0"/><path d="M12 3v14" stroke="#9070b0" opacity="0.6"/><path d="M15 8l1-2 1 2-2 1z" fill="#d0a0ff" stroke="none"/>'),
+  // Codex — scroll with seal (warm parchment/amber)
+  'realm-codex': _SIGIL('<path d="M8 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2h-2" stroke="#c8a060"/><path d="M8 3a2 2 0 012-2h4a2 2 0 012 2" stroke="#c8a060"/><circle cx="12" cy="13" r="3" stroke="#ddb870" fill="rgba(200,160,80,0.12)"/><path d="M12 10v-2m0 8v2" stroke="#ddb870"/>'),
+  // Quest Log — scroll with quill (emerald green)
+  'quest-log': _SIGIL('<path d="M18 3a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2" stroke="#70b870"/><path d="M8 9h8M8 13h5" stroke="#88d088"/><path d="M16 2l3 3-8 8-3 1 1-3z" stroke="#60c060" fill="rgba(80,180,80,0.1)"/>'),
+  // Cartographer — drafting compass (sky blue)
+  'cartographer': _SIGIL('<circle cx="12" cy="6" r="2" stroke="#70a8d8" fill="rgba(100,160,220,0.15)"/><path d="M12 8l-5 13M12 8l5 13" stroke="#70a8d8"/><path d="M8.5 16h7" stroke="#88c0e8"/>'),
+  // Energy — arcane crystal (electric cyan/teal)
+  'energy-panel': _SIGIL('<path d="M12 2l6 7-6 13-6-13z" stroke="#50c8c8" fill="rgba(60,200,200,0.12)"/><path d="M6 9h12" stroke="#60d8d8"/><path d="M9 9l3 13 3-13" stroke="#40b0b0" opacity="0.4"/>'),
+  // Census — people/nodes roster (warm tan)
+  'node-list': _SIGIL('<circle cx="9" cy="7" r="3" stroke="#c8a870"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2" stroke="#c8a870"/><circle cx="18" cy="9" r="2" stroke="#ddb870"/><path d="M18 14a3 3 0 013 3v1" stroke="#ddb870"/>'),
+  // Arcane Mirror — eye of seeing (mystic purple)
+  'debug-panel': _SIGIL('<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" stroke="#a070c0"/><circle cx="12" cy="12" r="3" stroke="#c090e0" fill="rgba(180,120,220,0.1)"/><circle cx="12" cy="12" r="1" fill="#d0a0ff" stroke="none"/>'),
+  // Arcane Pulse — ripple rings (electric blue)
+  'latency-panel': _SIGIL('<circle cx="12" cy="12" r="2" fill="#60a0ff" stroke="none"/><circle cx="12" cy="12" r="5" stroke="#6090e0"/><circle cx="12" cy="12" r="8" stroke="#6090e0" opacity="0.5"/><circle cx="12" cy="12" r="11" stroke="#6090e0" opacity="0.25"/>'),
+  // Realm Wards — shield with rune (fire orange/red)
+  'firewall-panel': _SIGIL('<path d="M12 2l8 4v5c0 5.5-3.8 10.2-8 12-4.2-1.8-8-6.5-8-12V6z" stroke="#d88040" fill="rgba(220,120,50,0.1)"/><path d="M12 8v4m0 2v1" stroke="#ff9050" stroke-width="2"/>'),
+  // Aether Towers — tower with signal (electric indigo)
+  'wifi-panel': _SIGIL('<path d="M10 21h4V10h-4z" stroke="#7080d0"/><path d="M6 21h2V14H6z" stroke="#7080d0"/><path d="M16 21h2V14h-2z" stroke="#7080d0"/><path d="M12 7a5 5 0 00-5 5" fill="none" stroke="#90a0ff"/><path d="M12 4a8 8 0 00-8 8" fill="none" stroke="#90a0ff" opacity="0.5"/><circle cx="12" cy="7" r="1.5" fill="#a0b0ff" stroke="none"/>'),
+  // Oracle Commune — speech crystal (ethereal mint)
+  'node-chat-dialog': _SIGIL('<path d="M21 12a9 9 0 01-9 9l-4-2H5a2 2 0 01-2-2v-3a9 9 0 0118-2z" stroke="#60c0a0" fill="rgba(80,200,160,0.08)"/><path d="M9 12h.01M12 12h.01M15 12h.01" stroke="#80e0c0" stroke-width="2.5"/>'),
+  // Grimoire — tome with arcane star (deep gold/amber)
+  'arcane-grimoire': _SIGIL('<path d="M4 19V5a2 2 0 012-2h12a2 2 0 012 2v14" stroke="#b89040"/><path d="M4 19a2 2 0 012-2h12a2 2 0 012 2" stroke="#b89040"/><path d="M12 7l1.5 3 3 .5-2.2 2 .7 3L12 14.5 8.8 16l.7-3.5-2-1.5 3-.5z" fill="#e0b848" stroke="none"/>'),
+  // Scrying Terminal — crystal ball with inner light (frost blue)
+  'scrying-terminal': _SIGIL('<circle cx="12" cy="11" r="7" stroke="#70b0d8" fill="rgba(100,170,220,0.08)"/><path d="M9 20h6" stroke="#88c0e0"/><path d="M10 18h4" stroke="#88c0e0"/><path d="M10 9a3 3 0 013-3" stroke="#a0d0f0" opacity="0.5"/><circle cx="12" cy="11" r="2" fill="#90c8f0" stroke="none" opacity="0.5"/>'),
+};
+
 // Panel definitions with default anchors and priority
 const PANELS = {
   'realm-panel':    { name: 'Realm Vitals', anchor: 'ne', priority: 1, icon: '\u2694' },
@@ -27,7 +65,8 @@ const PANELS = {
   'firewall-panel': { name: 'Realm Wards', anchor: 'w', priority: 12, icon: '\uD83D\uDEE1' },
   'wifi-panel':     { name: 'Aether Towers', anchor: 'w', priority: 13, icon: '\uD83D\uDCE1' },
   'node-chat-dialog': { name: 'Oracle Commune', anchor: 'se', priority: 14, icon: '\uD83D\uDCAC' },
-  'arcane-console':   { name: 'Arcane Console', anchor: 'nw', priority: 15, icon: '\u2328' },
+  'arcane-grimoire':  { name: 'Grimoire', anchor: 'nw', priority: 15, icon: '\uD83D\uDCD6' },
+  'scrying-terminal': { name: 'Scrying Terminal', anchor: 'sw', priority: 16, icon: '\uD83D\uDD2E' },
 };
 
 // Arcane Formations (presets)
@@ -99,6 +138,62 @@ function _createSealedDock() {
   _sealedDock.id = 'sealed-dock';
   _sealedDock.className = 'sealed-dock';
 
+  // Scattered treasure layer (gems, coins, arcane items)
+  const treasures = document.createElement('div');
+  treasures.className = 'dock-treasures';
+  treasures.innerHTML = `<svg viewBox="0 0 800 80" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- Gold coins -->
+    <ellipse cx="45" cy="58" rx="7" ry="5" fill="rgba(200,170,60,0.25)" stroke="rgba(220,190,80,0.3)" stroke-width="0.5"/>
+    <ellipse cx="48" cy="56" rx="7" ry="5" fill="rgba(180,150,50,0.2)" stroke="rgba(200,170,60,0.25)" stroke-width="0.5"/>
+    <ellipse cx="140" cy="62" rx="6" ry="4.5" fill="rgba(200,170,60,0.22)" stroke="rgba(220,190,80,0.28)" stroke-width="0.5"/>
+    <ellipse cx="340" cy="60" rx="7" ry="5" fill="rgba(190,160,55,0.2)" stroke="rgba(210,180,70,0.26)" stroke-width="0.5"/>
+    <ellipse cx="343" cy="58" rx="6.5" ry="4.5" fill="rgba(210,180,70,0.18)" stroke="rgba(220,190,80,0.24)" stroke-width="0.5"/>
+    <ellipse cx="520" cy="63" rx="6" ry="4.5" fill="rgba(195,165,58,0.2)" stroke="rgba(215,185,75,0.25)" stroke-width="0.5"/>
+    <ellipse cx="680" cy="59" rx="7" ry="5" fill="rgba(200,170,60,0.22)" stroke="rgba(220,190,80,0.28)" stroke-width="0.5"/>
+    <ellipse cx="683" cy="57" rx="6.5" ry="4.5" fill="rgba(185,155,52,0.18)" stroke="rgba(205,175,68,0.24)" stroke-width="0.5"/>
+    <ellipse cx="760" cy="61" rx="6" ry="4.5" fill="rgba(200,170,60,0.2)" stroke="rgba(220,190,80,0.26)" stroke-width="0.5"/>
+    <!-- Gems — ruby -->
+    <path d="M95 52l4-6 4 6-4 4z" fill="rgba(200,50,60,0.35)" stroke="rgba(255,80,90,0.3)" stroke-width="0.5"/>
+    <path d="M95 52l4 4 4-4" fill="rgba(240,70,80,0.15)" stroke="none"/>
+    <!-- Gems — emerald -->
+    <path d="M250 55l3-5h5l3 5-3 5h-5z" fill="rgba(40,180,80,0.3)" stroke="rgba(60,220,100,0.25)" stroke-width="0.5"/>
+    <path d="M253 50h5l3 5" fill="rgba(80,220,120,0.12)" stroke="none"/>
+    <!-- Gems — sapphire -->
+    <path d="M440 53l5-4 5 4-5 6z" fill="rgba(50,80,200,0.35)" stroke="rgba(80,120,255,0.3)" stroke-width="0.5"/>
+    <path d="M440 53l5 6 5-6" fill="rgba(80,120,255,0.15)" stroke="none"/>
+    <!-- Gems — amethyst -->
+    <path d="M600 54l3-5 4 1 2 5-3 4h-4z" fill="rgba(140,60,200,0.3)" stroke="rgba(180,100,255,0.25)" stroke-width="0.5"/>
+    <path d="M603 49l4 1 2 5" fill="rgba(180,100,255,0.12)" stroke="none"/>
+    <!-- Small arcane crystal shards -->
+    <path d="M190 60l2-8 1.5 0 1 8z" fill="rgba(100,200,220,0.25)" stroke="rgba(140,230,250,0.2)" stroke-width="0.4"/>
+    <path d="M193 60l-1-8 1.5 0" fill="rgba(160,240,255,0.1)" stroke="none"/>
+    <path d="M470 58l1.5-7 1.5 0 0.8 7z" fill="rgba(100,200,220,0.2)" stroke="rgba(140,230,250,0.18)" stroke-width="0.4"/>
+    <!-- Tiny scattered trinkets — rings, keys -->
+    <circle cx="310" cy="64" r="3.5" fill="none" stroke="rgba(200,170,70,0.25)" stroke-width="1"/>
+    <circle cx="310" cy="64" r="1.5" fill="rgba(180,50,50,0.25)"/>
+    <path d="M560 62h6v2h-1v2h-1v-2h-1v2h-1v-2h-1v-2z" fill="rgba(200,170,70,0.2)" stroke="rgba(220,190,80,0.15)" stroke-width="0.3"/>
+    <path d="M560 63a3 3 0 110-1" fill="none" stroke="rgba(200,170,70,0.2)" stroke-width="0.8"/>
+    <!-- Tiny scroll -->
+    <rect x="720" y="58" width="12" height="6" rx="3" fill="rgba(180,160,120,0.2)" stroke="rgba(200,180,140,0.2)" stroke-width="0.4"/>
+    <line x1="723" y1="60" x2="729" y2="60" stroke="rgba(120,100,60,0.15)" stroke-width="0.3"/>
+    <line x1="723" y1="62" x2="728" y2="62" stroke="rgba(120,100,60,0.12)" stroke-width="0.3"/>
+    <!-- Sparkle points on gems -->
+    <circle cx="97" cy="50" r="1" fill="rgba(255,200,200,0.5)" class="gem-sparkle"/>
+    <circle cx="256" cy="53" r="1" fill="rgba(200,255,200,0.5)" class="gem-sparkle"/>
+    <circle cx="443" cy="51" r="1" fill="rgba(200,200,255,0.5)" class="gem-sparkle"/>
+    <circle cx="605" cy="52" r="1" fill="rgba(230,200,255,0.5)" class="gem-sparkle"/>
+    <circle cx="191" cy="54" r="0.8" fill="rgba(200,240,255,0.4)" class="gem-sparkle"/>
+  </svg>`;
+  _sealedDock.appendChild(treasures);
+
+  // Ornamental corner flourishes
+  const ornL = document.createElement('div');
+  ornL.className = 'dock-ornament dock-orn-l';
+  _sealedDock.appendChild(ornL);
+  const ornR = document.createElement('div');
+  ornR.className = 'dock-ornament dock-orn-r';
+  _sealedDock.appendChild(ornR);
+
   // Swipe handle / grip bar
   const handle = document.createElement('div');
   handle.className = 'dock-handle';
@@ -111,6 +206,11 @@ function _createSealedDock() {
   const tray = document.createElement('div');
   tray.className = 'dock-tray';
   _sealedDock.appendChild(tray);
+
+  // Arcane energy line between runes (decorative)
+  const leyline = document.createElement('div');
+  leyline.className = 'dock-leyline';
+  _sealedDock.appendChild(leyline);
 
   document.body.appendChild(_sealedDock);
   _attachDockDragHandlers(tray);
@@ -140,20 +240,23 @@ function _attachDrawerGesture(dock, handle) {
     if (isExpanded()) collapse(); else expand();
   });
 
-  // Swipe gesture on entire dock — skip rune touches (handled by drag)
+  // Swipe gesture on entire dock — including rune touches.
+  // Vertical swipes expand/collapse; horizontal ones are handled by dock drag.
   dock.addEventListener('touchstart', e => {
-    if (e.target.closest('.sealed-rune')) return;
     const t = e.touches[0];
-    _touch = { startY: t.clientY, expanded: isExpanded() };
+    _touch = { startY: t.clientY, startX: t.clientX, expanded: isExpanded(), consumed: false };
   }, { passive: true });
 
   dock.addEventListener('touchmove', e => {
-    if (!_touch || _dockDrag) return;
-    const dy = _touch.startY - e.touches[0].clientY; // positive = swipe up
-    if (Math.abs(dy) > 20) {
+    if (!_touch || _touch.consumed || _dockDrag) return;
+    const t = e.touches[0];
+    const dy = _touch.startY - t.clientY; // positive = swipe up
+    const dx = Math.abs(t.clientX - _touch.startX);
+    // Only act on predominantly vertical swipes
+    if (Math.abs(dy) > 20 && Math.abs(dy) > dx) {
       if (dy > 0 && !_touch.expanded) expand();
       else if (dy < 0 && _touch.expanded) collapse();
-      _touch = null; // consumed
+      _touch.consumed = true; // consumed
     }
   }, { passive: true });
 
@@ -184,7 +287,10 @@ function _attachDockDragHandlers(tray) {
     if (_pending && !_dockDrag && e.pointerId === _pending.pointerId) {
       const dx = Math.abs(e.clientX - _pending.startX);
       const dy = Math.abs(e.clientY - _pending.startY);
-      if (dx < 10 && dy < 10) return; // not past threshold yet
+      if (dx < 12 && dy < 12) return; // not past threshold yet
+      // Only commit to drag if movement is predominantly horizontal.
+      // Vertical swipes are drawer expand/collapse — cancel and let that handle it.
+      if (dy > dx) { _pending = null; return; }
       // Commit to drag — now capture and create visuals
       const p = _pending;
       _pending = null;
@@ -343,16 +449,18 @@ function _attachDragHandlers() {
     const header = panel.querySelector('.panel-header');
     if (!header || !PANELS[panel.id]) return;
 
-    // Add seal button to header
-    const sealBtn = document.createElement('button');
-    sealBtn.className = 'panel-seal-btn';
-    sealBtn.innerHTML = '◈';
-    sealBtn.title = 'Seal panel to dock';
-    sealBtn.addEventListener('click', e => {
-      e.stopPropagation();
-      _toggleMinimize(panel);
-    });
-    header.appendChild(sealBtn);
+    // Add seal button to header (skip if already added by registerPanel)
+    if (!header.querySelector('.panel-seal-btn')) {
+      const sealBtn = document.createElement('button');
+      sealBtn.className = 'panel-seal-btn';
+      sealBtn.innerHTML = '◈';
+      sealBtn.title = 'Seal panel to dock';
+      sealBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        _toggleMinimize(panel);
+      });
+      header.appendChild(sealBtn);
+    }
 
     header.style.cursor = 'grab';
     header.addEventListener('mousedown', e => _startDrag(e, panel));
@@ -546,23 +654,70 @@ function _sealPanel(panel) {
   }
 }
 
+// Elder Futhark rune sets — each rune gets a unique inscription
+const _RUNE_INSCRIPTIONS = [
+  'ᚠ ᚢ ᚦ ᚨ ᚱ ᚲ ᚷ ᚹ ᚺ ᚾ ᛁ ᛃ ᛈ ᛊ ᛏ ᛒ ᛗ ᛚ ᛞ ᛟ',
+  'ᛟ ᛞ ᛚ ᛗ ᛒ ᛏ ᛊ ᛈ ᛃ ᛁ ᚾ ᚺ ᚹ ᚷ ᚲ ᚱ ᚨ ᚦ ᚢ ᚠ',
+  'ᚦ ᛗ ᚱ ᛊ ᚹ ᛞ ᚠ ᛃ ᚲ ᛟ ᚢ ᛈ ᚷ ᛒ ᚨ ᛏ ᚺ ᛁ ᚾ ᛚ',
+  'ᛊ ᚠ ᛞ ᚲ ᛗ ᚦ ᛃ ᚱ ᛟ ᚹ ᛈ ᚢ ᛒ ᚷ ᛁ ᚨ ᛚ ᚺ ᛏ ᚾ',
+];
+let _runeIdx = 0;
+
+function _createRuneRing(panelId) {
+  const ring = document.createElement('div');
+  ring.className = 'rune-ring';
+  const text = _RUNE_INSCRIPTIONS[_runeIdx++ % _RUNE_INSCRIPTIONS.length];
+  const uid = 'rr-' + panelId;
+  ring.innerHTML = `<svg viewBox="0 0 76 76"><defs><path id="${uid}" d="M38,6 a32,32 0 1,1 0,64 a32,32 0 1,1 0,-64"/></defs><text font-size="5.5" font-family="serif"><textPath href="#${uid}">${text}</textPath></text></svg>`;
+  return ring;
+}
+
+const _RUNE_COLORS = {
+  'realm-panel':      '220,80,80',    // crimson
+  'legend':           '200,168,76',   // gold
+  'spellbook':        '176,136,208',  // violet
+  'realm-codex':      '200,160,96',   // amber
+  'quest-log':        '96,192,96',    // emerald
+  'cartographer':     '100,160,220',  // sky blue
+  'energy-panel':     '60,200,200',   // cyan
+  'node-list':        '200,168,112',  // tan
+  'debug-panel':      '160,112,192',  // purple
+  'latency-panel':    '96,144,224',   // electric blue
+  'firewall-panel':   '216,128,64',   // fire orange
+  'wifi-panel':       '112,128,208',  // indigo
+  'node-chat-dialog': '96,192,160',   // mint
+  'arcane-grimoire':  '184,144,64',   // deep gold
+  'scrying-terminal': '112,176,216',  // frost blue
+};
+
 function _createRune(panelId, def) {
   const rune = document.createElement('div');
   rune.className = 'sealed-rune';
   rune.dataset.panelId = panelId;
   rune.title = def.name;
+  if (_RUNE_COLORS[panelId]) rune.style.setProperty('--rune-color', _RUNE_COLORS[panelId]);
 
   const icon = document.createElement('span');
   icon.className = 'rune-icon';
-  icon.textContent = def.icon;
+  if (SIGILS[panelId]) {
+    icon.innerHTML = SIGILS[panelId];
+  } else {
+    icon.textContent = def.icon;
+  }
 
   const glow = document.createElement('span');
   glow.className = 'rune-glow';
+
+  const ring = _createRuneRing(panelId);
+  const embers = document.createElement('div');
+  embers.className = 'rune-embers';
 
   const label = document.createElement('span');
   label.className = 'rune-label';
   label.textContent = def.name;
 
+  rune.appendChild(ring);
+  rune.appendChild(embers);
   rune.appendChild(icon);
   rune.appendChild(glow);
   rune.appendChild(label);
@@ -1243,6 +1398,13 @@ export function applyFormation(formationId) {
       visible = saved.visible;
       anchors = saved.anchors;
       minimized = saved.minimized || [];
+      // Add any new panels not in saved state (default to sealed in dock)
+      for (const id of Object.keys(PANELS)) {
+        if (!visible.includes(id) && !minimized.includes(id)) {
+          visible.push(id);
+          minimized.push(id);
+        }
+      }
     } else {
       visible = Object.keys(PANELS);
       anchors = null;
@@ -1306,18 +1468,29 @@ function _restoreSealedToDoc(panel, anchorId) {
   rune.className = 'sealed-rune';
   rune.dataset.panelId = panel.id;
   rune.title = def.name;
+  if (_RUNE_COLORS[panel.id]) rune.style.setProperty('--rune-color', _RUNE_COLORS[panel.id]);
 
   const icon = document.createElement('span');
   icon.className = 'rune-icon';
-  icon.textContent = def.icon;
+  if (SIGILS[panel.id]) {
+    icon.innerHTML = SIGILS[panel.id];
+  } else {
+    icon.textContent = def.icon;
+  }
 
   const glow = document.createElement('span');
   glow.className = 'rune-glow';
+
+  const ring = _createRuneRing(panel.id);
+  const embers = document.createElement('div');
+  embers.className = 'rune-embers';
 
   const label = document.createElement('span');
   label.className = 'rune-label';
   label.textContent = def.name;
 
+  rune.appendChild(ring);
+  rune.appendChild(embers);
   rune.appendChild(icon);
   rune.appendChild(glow);
   rune.appendChild(label);
@@ -1577,16 +1750,18 @@ export function registerPanel(panel) {
   const header = panel.querySelector('.panel-header');
   if (!header) return;
 
-  // Add seal button
-  const sealBtn = document.createElement('button');
-  sealBtn.className = 'panel-seal-btn';
-  sealBtn.innerHTML = '◈';
-  sealBtn.title = 'Seal panel to dock';
-  sealBtn.addEventListener('click', e => {
-    e.stopPropagation();
-    _toggleMinimize(panel);
-  });
-  header.appendChild(sealBtn);
+  // Add seal button (skip if already added by _attachDragHandlers)
+  if (!header.querySelector('.panel-seal-btn')) {
+    const sealBtn = document.createElement('button');
+    sealBtn.className = 'panel-seal-btn';
+    sealBtn.innerHTML = '◈';
+    sealBtn.title = 'Seal panel to dock';
+    sealBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      _toggleMinimize(panel);
+    });
+    header.appendChild(sealBtn);
+  }
 
   header.style.cursor = 'grab';
   header.addEventListener('mousedown', e => _startDrag(e, panel));

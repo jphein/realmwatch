@@ -934,6 +934,17 @@ async def handle_call_tool(
         if not node_id:
             return [types.TextContent(type="text", text="Error: 'id' is required.")]
         existing = realm_db.get_node(node_id) or {"id": node_id}
+        # Auto-detect AP nodes: default to tower type + castle icon
+        _AP_PATTERNS = ("onhub", "eap", "mr8300", "wrt1900", "ea635", "wndr4300", "ws-ap")
+        _AP_SUBLABEL_HINTS = ("ap", "access point", "openwrt")
+        is_new = "type" not in existing
+        nid_lower = node_id.lower()
+        sublabel_lower = (args.get("sublabel") or existing.get("sublabel") or "").lower()
+        if is_new and "type" not in args:
+            if (any(nid_lower.startswith(p) or p in nid_lower for p in _AP_PATTERNS) or
+                    any(h in sublabel_lower for h in _AP_SUBLABEL_HINTS)):
+                existing.setdefault("type", "tower")
+                existing.setdefault("icon", "&#127984;")
         for field in ("type", "x", "y", "icon", "label", "sublabel", "ip", "pulse",
                        "iconStyle", "labelStyle", "scaleBar", "badge", "tip", "collectd", "online",
                        "tsHost", "tailscale", "ssh", "mac"):
