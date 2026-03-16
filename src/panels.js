@@ -1,7 +1,8 @@
 'use strict';
 import { _topology } from './topology.js';
 import { scaleColor, scaleLabel, fmtBytes, fmtRate } from './utils.js';
-import { panToNode, showHighlight, findStatusKey } from './app.js';
+import { panToNode, showHighlight } from './app.js';
+import { findStatusKey } from './node-status.js';
 
 // ── Panel state (owned here, setters for SSE handlers in app.js) ──
 let _latencyMap = null;
