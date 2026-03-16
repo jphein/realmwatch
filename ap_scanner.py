@@ -223,6 +223,17 @@ def _save_topo(topo):
     realm_db.save_topology_json(TOPOLOGY_FILE)
 
 
+def _update_tip_ip(node, new_ip):
+    """Keep tip stats IP in sync with node IP."""
+    tip = node.get("tip")
+    if not tip or not isinstance(tip.get("stats"), list):
+        return
+    for s in tip["stats"]:
+        if isinstance(s, list) and len(s) >= 2 and s[0] == "IP":
+            s[1] = new_ip
+            return
+
+
 def scan_and_update():
     """Scan all APs, detect roaming, update topology connections. Returns change summary."""
     topo = _load_topo()
@@ -326,6 +337,7 @@ def scan_and_update():
                 if node.get("ip") and node["ip"] != ip:
                     old_ip = node["ip"]
                     node["ip"] = ip
+                    _update_tip_ip(node, ip)
                     if old_ip in node.get("sublabel", ""):
                         node["sublabel"] = node["sublabel"].replace(old_ip, ip)
                     ip_updates.append({"node": node_id, "old_ip": old_ip, "new_ip": ip})
@@ -358,6 +370,7 @@ def scan_and_update():
         current_ip = node.get("ip", "")
         if current_ip and current_ip != lease_ip:
             node["ip"] = lease_ip
+            _update_tip_ip(node, lease_ip)
             # Update sublabel if it contains the old IP
             if current_ip in node.get("sublabel", ""):
                 node["sublabel"] = node["sublabel"].replace(current_ip, lease_ip)

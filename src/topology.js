@@ -292,8 +292,11 @@ export function renderTopology(topo) {
     }
     world.appendChild(div);
 
-    if (n.tip) tips[n.id] = { title: n.tip.title, stats: [...(n.tip.stats || [])] };
-    else {
+    if (n.tip) {
+      const stats = [...(n.tip.stats || [])];
+      if (n.ip) { const ii = stats.findIndex(s => s[0] === 'IP'); if (ii >= 0) stats[ii] = ['IP', n.ip]; }
+      tips[n.id] = { title: n.tip.title, stats };
+    } else {
       const auto = [];
       if (n._hostname) auto.push(['Hostname', n._hostname]);
       if (n.type) auto.push(['Type', n.type]);
@@ -485,8 +488,11 @@ function _renderNode(n) {
   world.appendChild(div);
 
   // Register in caches
-  if (n.tip) tips[n.id] = { title: n.tip.title, stats: [...(n.tip.stats || [])] };
-  else {
+  if (n.tip) {
+    const stats = [...(n.tip.stats || [])];
+    if (n.ip) { const ii = stats.findIndex(s => s[0] === 'IP'); if (ii >= 0) stats[ii] = ['IP', n.ip]; }
+    tips[n.id] = { title: n.tip.title, stats };
+  } else {
     const auto = []; if (n.type) auto.push(['Type', n.type]); if (n.ip) auto.push(['IP', n.ip]);
     tips[n.id] = { title: n.label || n.id, stats: auto };
   }

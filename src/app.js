@@ -743,6 +743,13 @@ function _rebuildTipStats(tipKey) {
     if (cd) {
       const extra = buildCollectdExtra(cd);
       const base = tips[tipKey].stats.filter(s => ["Model", "IP", "OS", "Role", "Service", "Hostname"].includes(s[0]));
+      // Use live node IP from topology (tip stats can have stale IPs from enrichment)
+      const liveNode = _topology?.nodes.find(n => n.id === tipKey);
+      if (liveNode?.ip) {
+        const ipIdx = base.findIndex(s => s[0] === 'IP');
+        if (ipIdx >= 0) base[ipIdx] = ['IP', liveNode.ip];
+        else base.push(['IP', liveNode.ip]);
+      }
       tips[tipKey].stats = [...base, ...extra, ['Status', online ? 'Online' : 'Offline']];
     }
   }
