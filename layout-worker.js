@@ -1105,6 +1105,27 @@ self.onmessage = function(e) {
   // ── SHARED: Overlap-removal force simulation ──
   // ══════════════════════════════════════════════
 
+  // ── Fallback: place any nodes not yet positioned ──
+  // Disconnected nodes (not reachable by BFS from heartIdx) are skipped by
+  // most layout modes. Give them valid positions before the force sim reads
+  // pos[i].x — undefined would corrupt all velocities via NaN propagation.
+  {
+    const unpos = [];
+    for (let i = 0; i < N; i++) if (!pos[i]) unpos.push(i);
+    if (unpos.length > 0) {
+      const cols = Math.max(1, Math.ceil(Math.sqrt(unpos.length)));
+      const cellW = edgeLen * 0.65, cellH = edgeLen * 0.55;
+      unpos.forEach((idx, j) => {
+        const col = j % cols, row = Math.floor(j / cols);
+        // Place in a grid just below the main layout, centered on X
+        pos[idx] = {
+          x: CX + (col - cols / 2) * cellW,
+          y: H * 0.82 + row * cellH,
+        };
+      });
+    }
+  }
+
   // Latency Forge runs its own extended force sim — skip the shared one
   const skipSharedSim = (mode === 'latency-forge' || mode === 'stress-atlas');
 

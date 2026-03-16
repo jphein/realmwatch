@@ -3069,6 +3069,28 @@ export function centerMap() {
   applyTransform();
 }
 
+// Fit viewport to the bounding box of current node positions (used after auto-arrange)
+function _fitToNodes() {
+  if (!_topology || !_topology.nodes.length) { centerMap(); return; }
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  _topology.nodes.forEach(n => {
+    if (n.x < minX) minX = n.x;
+    if (n.x > maxX) maxX = n.x;
+    if (n.y < minY) minY = n.y;
+    if (n.y > maxY) maxY = n.y;
+  });
+  const PAD = 160;
+  const nodeW = (maxX - minX) + PAD * 2;
+  const nodeH = (maxY - minY) + PAD * 2;
+  const cw = canvas.clientWidth, ch = canvas.clientHeight;
+  scale = Math.min(cw / nodeW, ch / nodeH);
+  scale = Math.max(0.08, Math.min(2.5, scale));
+  panX = cw / 2 - ((minX + maxX) / 2) * scale;
+  panY = ch / 2 - ((minY + maxY) / 2) * scale;
+  _applyTransformNow(); // bypass rAF guard — guaranteed apply after arrangement
+  saveSettings();
+}
+
 export function panToNode(x, y) {
   const cw = canvas.clientWidth, ch = canvas.clientHeight;
   scale = 1.2;
@@ -5280,9 +5302,36 @@ export function autoArrangeLayout(mode) {
   // Terminate previous worker if any
   if (_layoutWorker) { _layoutWorker.terminate(); _layoutWorker = null; }
 
-  // Prepare lightweight data for the worker (no DOM refs)
+  // Rebuild fresh index maps from current topology on every run — topology
+  // may have grown (new auto-nodes, wired unknowns) since module load.
+  const _freshIdxMap = {};
+  _topology.nodes.forEach((n, i) => { _freshIdxMap[n.id] = i; });
+
   const nodeData = _topology.nodes.map(n => ({ id: n.id, type: n.type }));
-  const connData = _connIdx.map(c => [c[0], c[1]]); // just indices
+  const connData = [];
+  _topology.connections.forEach(c => {
+    const a = _freshIdxMap[c.from], b = _freshIdxMap[c.to];
+    if (a !== undefined && b !== undefined) connData.push([a, b]);
+  });
+
+  // Rebuild fresh VLAN assignments
+  const _freshVlanCounts = {};
+  _topology.connections.forEach(c => {
+    if (!c.vlan) return;
+    [c.from, c.to].forEach(id => {
+      if (!_freshVlanCounts[id]) _freshVlanCounts[id] = {};
+      _freshVlanCounts[id][c.vlan] = (_freshVlanCounts[id][c.vlan] || 0) + 1;
+    });
+  });
+  const freshNodeVlans = _topology.nodes.map(n => {
+    const vc = _freshVlanCounts[n.id];
+    if (vc) {
+      let best = 6, max = 0;
+      for (const [v, c] of Object.entries(vc)) { if (c > max) { max = c; best = +v; } }
+      return best;
+    }
+    return (n.tailscale || n.type === 'tailscale') ? 0 : 6;
+  });
 
   _layoutWorker = new Worker('layout-worker.js?v=2');
   _layoutWorker.onmessage = function(e) {
@@ -5301,6 +5350,7 @@ export function autoArrangeLayout(mode) {
         _layoutRunning = false;
         generateTerrain();
         updateRegionLabels();
+        _fitToNodes();
         if (activeBtn) activeBtn.classList.remove('running');
         if (castBtn) { castBtn.classList.remove('running'); castBtn.textContent = '\u2728 Cast Arrangement'; }
       });
@@ -5323,7 +5373,7 @@ export function autoArrangeLayout(mode) {
     worldW: WORLD_W,
     worldH: WORLD_H,
     mode: _layoutMode,
-    nodeVlans: _nodeVlans,
+    nodeVlans: freshNodeVlans,
     latencyMap: _latencyFlat || _latencyMap,
     wifiMap: _wifiMap,
   });
@@ -5349,18 +5399,22 @@ function _animateToPositions(targetPos, duration, onDone) {
   const nodes = _topology.nodes;
   const startPos = nodes.map(n => ({ x: n.x, y: n.y }));
   const startTime = performance.now();
+  // Build fresh element cache — topology may have new nodes since module load
+  const elCache = {};
+  nodes.forEach(n => { elCache[n.id] = document.querySelector(`[data-tip="${n.id}"]`); });
 
   function step(now) {
     const t = Math.min(1, (now - startTime) / duration);
     // Smooth ease-out cubic
     const e = 1 - (1 - t) * (1 - t) * (1 - t);
 
-    for (let i = 0; i < nodes.length; i++) {
+    const len = Math.min(nodes.length, targetPos.length);
+    for (let i = 0; i < len; i++) {
       const nx = startPos[i].x + (targetPos[i].x - startPos[i].x) * e;
       const ny = startPos[i].y + (targetPos[i].y - startPos[i].y) * e;
       nodes[i].x = nx;
       nodes[i].y = ny;
-      const el = _nodeElCache[nodes[i].id];
+      const el = elCache[nodes[i].id];
       if (el) { el.style.left = nx + 'px'; el.style.top = ny + 'px'; }
     }
     updateLinePositions();
@@ -5545,6 +5599,17 @@ document.getElementById('layout-reset-btn')?.addEventListener('click', resetToOr
         // Adjust just the background opacity via a CSS custom property
         dock.style.setProperty('--dock-bg-opacity', v);
       }
+      saveSettings();
+    });
+  }
+
+  const dockHueSlider = document.getElementById('dock-hue-slider');
+  const dockHueVal = document.getElementById('dock-hue-val');
+  if (dockHueSlider) {
+    dockHueSlider.addEventListener('input', () => {
+      const v = parseInt(dockHueSlider.value);
+      if (dockHueVal) dockHueVal.textContent = v + '°';
+      document.documentElement.style.setProperty('--dock-hue', v + 'deg');
       saveSettings();
     });
   }
@@ -6420,7 +6485,7 @@ const _PERSIST_SLIDERS = [
   'panel-codex', 'panel-spellbook', 'panel-questlog', 'panel-cartographer', 'panel-energy', 'panel-nodelist', 'panel-mirror', 'panel-latency', 'panel-firewall', 'panel-wifi', 'panel-scanner',
   'layer-compass', 'layer-sparkles', 'layer-vignette',
   'compass-scale', 'sparkle-density', 'ambient-glow', 'vignette',
-  'dock-opacity', 'dock-scale', 'dock-bg', 'layer-parchment',
+  'dock-opacity', 'dock-scale', 'dock-bg', 'dock-hue', 'layer-parchment',
 ];
 const _PERSIST_CHECKBOXES = [
   'topo-toggle-cb', 'grid-toggle-cb', 'grid-pulse-cb',
