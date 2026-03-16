@@ -22,3 +22,6 @@ monitor_3min.log
 
 # Large files
 access-to-power.pdf
+
+# Git worktrees
+.worktrees/
