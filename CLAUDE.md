@@ -52,6 +52,25 @@ python3 oracle_daemon.py --no-voice  # AI oracle daemon
 | src/utils.js | Helpers | Format bytes, rates, percentages |
 | scripts/ | Setup + ops scripts | Bedrock/Vertex/provider switcher, AP audit/migrate/VLAN/firewall, realm-health |
 
+## Navigation
+
+| Task | File |
+|------|------|
+| Speech bubbles / quest events | src/quest-log.js |
+| Tooltip content or node sublabels | src/node-status.js |
+| Pan/zoom, touch, node drag | src/map-view.js |
+| Traffic animation / connection SVG | src/traffic.js |
+| Latency / firewall / WiFi / census panels | src/panels.js |
+| Persona editor (properties/stats tabs) | src/persona-editor.js |
+| Node control/group/shell/chat | src/node-controls.js |
+| Spellbook controls / realm search | src/spellbook.js |
+| Panel layout / settings / drag | src/layout.js |
+| Biome terrain / heightmap | src/terrain.js |
+| Motes / sparkles / FPS loop | src/effects.js |
+| Debug panel / herald / arcane config | src/debug.js |
+| Survey Glass scan runner panel | src/scan.js (existing) |
+| SSE connection / event dispatch | src/app.js (residual) |
+
 ## Frontend Panels
 firewall, quest-log, codex, node-info, energy, latency, traffic, chat
 Seal modes: dock (bottom tray), anchored (draggable runes), conjured (orbit constellation), hidden
