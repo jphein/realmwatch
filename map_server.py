@@ -254,7 +254,9 @@ def _compute_sublabels(status, topo_nodes):
         # WiFi signal
         wifi_info = wifi.get(nid)
         if wifi_info and wifi_info.get("signal") is not None:
-            sublabels[nid] = f'{wifi_info["signal"]} dBm \u2022 {wifi_info.get("ap", "")}'
+            ssid = wifi_info.get("ssid", "")
+            ap = wifi_info.get("ap", "")
+            sublabels[nid] = f'{wifi_info["signal"]} dBm \u2022 {ssid}' if ssid else f'{wifi_info["signal"]} dBm \u2022 {ap}'
             continue
 
         if not ip:

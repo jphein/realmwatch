@@ -4311,8 +4311,22 @@ _shellInput.addEventListener('keydown', e => {
   }
 });
 
+// Click an AP (tower) node to open its web UI in a new tab (delayed to avoid firing on double-click)
+let _apClickTimer = 0;
+document.getElementById('map-world').addEventListener('click', e => {
+  const node = e.target.closest('.realm-node');
+  if (!node) return;
+  const key = node.dataset.tip;
+  if (!key || !_topology) return;
+  const topoNode = _topology.nodes.find(n => n.id === key);
+  if (!topoNode || topoNode.type !== 'tower' || !topoNode.ip) return;
+  clearTimeout(_apClickTimer);
+  _apClickTimer = setTimeout(() => window.open(`http://${key}`, '_blank'), 250);
+});
+
 // Double-click a node to open persona editor (delegated — survives topology refresh)
 document.getElementById('map-world').addEventListener('dblclick', e => {
+  clearTimeout(_apClickTimer);
   const node = e.target.closest('.realm-node');
   if (!node) return;
   e.stopPropagation();
@@ -5161,7 +5175,7 @@ function updateCensusSubLabels(d) {
       const wledInfo = d.wled?.[id];
       if (wledInfo?.online) { subEl.textContent = wledInfo.on ? `On \u2022 ${wledInfo.effect || 'Solid'}` : 'Off'; continue; }
       const wifi = d.wifi?.[id];
-      if (wifi?.signal != null) { subEl.textContent = `${wifi.signal} dBm \u2022 ${wifi.ap || ''}`; }
+      if (wifi?.signal != null) { subEl.textContent = `${wifi.signal} dBm \u2022 ${wifi.ssid || wifi.ap || ''}`; }
     }
   }
 }

@@ -157,37 +157,44 @@ def _get_static_dhcp_leases():
 
 def _get_ap_clients_with_signal(ap_ip):
     """Get wireless clients with signal data from an AP.
-    Returns: {mac: {signal, noise, snr, tx_rate, rx_rate, tx_pkts, rx_pkts}}
+    Returns: {mac: {signal, noise, snr, tx_rate, rx_rate, tx_pkts, rx_pkts, ssid}}
     """
-    raw = _ssh(ap_ip, "for i in $(iwinfo 2>/dev/null | grep ESSID | cut -d' ' -f1); do iwinfo $i assoclist 2>/dev/null; done")
+    # Print SSID marker before each interface's assoclist so we can tag clients
+    raw = _ssh(ap_ip,
+        "for i in $(iwinfo 2>/dev/null | grep ESSID | cut -d' ' -f1); do "
+        'ssid=$(iwinfo $i info 2>/dev/null | grep ESSID | sed \'s/.*ESSID: "//;s/".*//\');'
+        " echo \"__IFACE__ $i $ssid\";"
+        " iwinfo $i assoclist 2>/dev/null; done")
     clients = {}
-    # Split into per-client blocks (each starts with a MAC line)
-    blocks = re.split(r'(?=^[0-9A-Fa-f]{2}:)', raw, flags=re.MULTILINE)
-    for block in blocks:
-        if not block.strip():
+    current_ssid = ""
+    last_mac = None
+    # Split into lines, track current SSID from __IFACE__ markers
+    for line in raw.splitlines():
+        if line.startswith("__IFACE__"):
+            parts = line.split(None, 2)
+            current_ssid = parts[2] if len(parts) > 2 else ""
+            last_mac = None
             continue
-        mac_m = _MAC_RE.search(block)
-        if not mac_m:
-            # Try simpler MAC extraction for partial matches
-            simple = re.match(r'^([0-9A-Fa-f:]{17})', block)
-            if simple:
-                clients[simple.group(1).lower()] = {}
-            continue
-        mac = mac_m.group(1).lower()
-        info = {
-            "signal": int(mac_m.group(2)),
-            "noise": int(mac_m.group(3)),
-            "snr": int(mac_m.group(4)),
-        }
-        rx_m = _RX_RE.search(block)
-        if rx_m:
-            info["rx_rate"] = float(rx_m.group(1))
-            info["rx_pkts"] = int(rx_m.group(2))
-        tx_m = _TX_RE.search(block)
-        if tx_m:
-            info["tx_rate"] = float(tx_m.group(1))
-            info["tx_pkts"] = int(tx_m.group(2))
-        clients[mac] = info
+        mac_m = _MAC_RE.search(line)
+        if mac_m:
+            mac = mac_m.group(1).lower()
+            clients[mac] = {
+                "signal": int(mac_m.group(2)),
+                "noise": int(mac_m.group(3)),
+                "snr": int(mac_m.group(4)),
+                "ssid": current_ssid,
+            }
+            last_mac = mac
+        elif last_mac and last_mac in clients:
+            # Parse RX/TX from continuation lines
+            rx_m = _RX_RE.search(line)
+            if rx_m:
+                clients[last_mac]["rx_rate"] = float(rx_m.group(1))
+                clients[last_mac]["rx_pkts"] = int(rx_m.group(2))
+            tx_m = _TX_RE.search(line)
+            if tx_m:
+                clients[last_mac]["tx_rate"] = float(tx_m.group(1))
+                clients[last_mac]["tx_pkts"] = int(tx_m.group(2))
     return clients
 
 
