@@ -27,5 +27,7 @@ model-cache/
 monitor_3min.py
 test_mcp.py
 
-# Large files
+# Large files — skip unless targeted
 access-to-power.pdf
+# Large style file — use Grep + Edit for targeted CSS changes
+realm-map.css
