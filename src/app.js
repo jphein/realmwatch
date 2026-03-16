@@ -5,7 +5,7 @@ import { scaleLabel, scaleColor, fmtBytes, fmtRate, scalePct } from './utils.js'
 import { tips, _topology, infraNodes, isTS, CONN_TYPE_TO_CLASS, _tsHostMap, _vlanLabels, _connPaths, _nodeDOM, getNodeDOM, getNodeCenter, updateLinePositions, _getNodePos, _computePathD, refreshTopology, setTopologyRefreshHook, isClusterExpandable, toggleClusterExpand } from './topology.js';
 import { saveFormation, unsealPanel, registerPanel } from './panel-manager.js';
 import { initScanner } from './scan.js';
-import { generateTerrain, updateRegionLabels, renderTopoLayer, setLastTopoCollectd, invalidateTopoNodeMap, forceTopoRender, getTopoNodeMap, resetTopoHash, initTopoControls, initBiomeSliders } from './terrain.js';
+import { generateTerrain, updateRegionLabels, renderTopoLayer, setLastTopoCollectd, invalidateTopoNodeMap, forceTopoRender, getTopoNodeMap, initTopoControls, initBiomeSliders } from './terrain.js';
 
 // ── Cached DOM references (queried once, reused every poll cycle) ──
 const DOM = {

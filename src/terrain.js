@@ -1,6 +1,6 @@
 'use strict';
-import { WORLD_W, WORLD_H, WORLD_SCALE, _isMobile, _perfTier, _PERF, _mapTilt } from './config.js';
-import { _topology, getNodeCenter, _getNodePos } from './topology.js';
+import { WORLD_W, WORLD_H, _perfTier, _mapTilt } from './config.js';
+import { _topology } from './topology.js';
 
 // ── Dynamic Biome Terrain (generated from topology VLANs/zones) ──
 let _biomeLandScale = 1.0, _biomeGlow = 1.0, _biomeRoads = 0.5, _biomePeaks = 0.5, _biomeGrid = 0.03;
