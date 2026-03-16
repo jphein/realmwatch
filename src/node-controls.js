@@ -4,7 +4,7 @@ import { getLastStatus } from './node-status.js';
 import { getCurrentEditNode, openPersonaEditor } from './persona-editor.js';
 import { panToNode } from './map-view.js';
 import { registerPanel } from './panel-manager.js';
-import { makeDraggable, makeResizable } from './app.js';
+import { makeDraggable, makeResizable } from './layout.js';
 
 // ── Control Tab ──
 export function renderControlPane(nodeKey) {
