@@ -160,8 +160,8 @@ export function updateFirewallPanel(d) {
 
   for (const c of _fwVlanCache) {
     const data = ifaces[c.iface];
-    c.rx.textContent = data ? fmtRate(data.rx_bps) : '--';
-    c.tx.textContent = data ? fmtRate(data.tx_bps) : '--';
+    if (c.rx) c.rx.textContent = data ? fmtRate(data.rx_bps) : '--';
+    if (c.tx) c.tx.textContent = data ? fmtRate(data.tx_bps) : '--';
   }
 }
 
@@ -268,7 +268,7 @@ export function handleFirewallData(d) { if (!d.error) { _fwData = d; _renderFire
 const _VLAN_NAMES = { 6: 'Admin', 8: 'Family', 10: 'IoT', 11: 'Guest' };
 const _VLAN_COLORS = { 6: '#f0d890', 8: '#c0a060', 10: '#60c060', 11: '#64a0dc' };
 
-function _fetchWifiAPs() {
+export function fetchWifiAPs() {
   const panel = document.getElementById('wifi-panel');
   if (!panel || panel.style.display === 'none') return;
   fetch('/wifi/aps').then(r => r.json()).then(data => {

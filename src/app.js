@@ -6,7 +6,7 @@ import { renderTopoLayer, setLastTopoCollectd, initTopoControls } from './terrai
 import { updateConnectionTraffic, updateConnectionTrafficSSE, trafficToCollectd, setTrafficScale } from './traffic.js';
 import { setLatencyMap, setLatencyFlat, setWifiMap,
          updateEnergyPanel, updateLatencyPanel, handleFirewallData, renderWifiPanel,
-         rebuildCensusIfNeeded } from './panels.js';
+         rebuildCensusIfNeeded, fetchWifiAPs } from './panels.js';
 import { updateUI, getLastStatus, setPostUpdateHook } from './node-status.js';
 import { renderEvent, updateBubblePositions, firePulse, showOffline,
          setOpenNodeChat } from './quest-log.js';
@@ -165,9 +165,13 @@ export const getSseConnected = () => _sseConnected;
   });
 
   sse.addEventListener('wifi', e => {
+    _attuneStream('wifi');
     const data = JSON.parse(e.data);
     if (data && Object.keys(data).length) renderWifiPanel(data);
   });
+
+  // Bootstrap wifi panel immediately (SSE wifi event only fires every 120s)
+  fetchWifiAPs();
 
   sse.addEventListener('open', () => {
     if (!_sseConnected) {
