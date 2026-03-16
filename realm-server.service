@@ -1,0 +1,16 @@
+[Unit]
+Description=Realm Map Server
+After=network.target collectd.service
+
+[Service]
+Type=simple
+User=jp
+WorkingDirectory=/home/jp/Projects/lit-rpg-fantasy-voice
+ExecStart=/home/jp/Projects/lit-rpg-fantasy-voice/realm-server run
+ExecStop=/bin/kill -TERM $MAINPID
+Restart=on-failure
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

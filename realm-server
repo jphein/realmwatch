@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+# realm-server — start/stop/restart the Realm Map server
+# Usage: realm-server {start|stop|restart|status}
+# Also usable as a systemd ExecStart (with 'run' mode).
+
+set -euo pipefail
+
+PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+VENV="$PROJECT_DIR/venv/bin/python3"
+SERVER="$PROJECT_DIR/map_server.py"
+PIDFILE="$PROJECT_DIR/.map_server.pid"
+LOGFILE="/tmp/map_server.log"
+
+_pid() {
+    if [[ -f "$PIDFILE" ]]; then
+        local pid
+        pid=$(<"$PIDFILE")
+        if kill -0 "$pid" 2>/dev/null; then
+            echo "$pid"
+            return 0
+        fi
+        rm -f "$PIDFILE"
+    fi
+    # Fallback: find by process name
+    pgrep -f "python3.*map_server.py" 2>/dev/null | head -1 || true
+}
+
+cmd_start() {
+    local pid
+    pid=$(_pid)
+    if [[ -n "$pid" ]]; then
+        echo "realm-server already running (PID $pid)"
+        return 0
+    fi
+    echo "Starting realm-server..."
+    cd "$PROJECT_DIR"
+    "$VENV" -u "$SERVER" >> "$LOGFILE" 2>&1 &
+    local new_pid=$!
+    echo "$new_pid" > "$PIDFILE"
+    sleep 2
+    if kill -0 "$new_pid" 2>/dev/null; then
+        echo "realm-server started (PID $new_pid)"
+    else
+        echo "realm-server failed to start — check $LOGFILE"
+        rm -f "$PIDFILE"
+        return 1
+    fi
+}
+
+cmd_stop() {
+    local pid
+    pid=$(_pid)
+    if [[ -z "$pid" ]]; then
+        echo "realm-server not running"
+        rm -f "$PIDFILE"
+        return 0
+    fi
+    echo "Stopping realm-server (PID $pid)..."
+    kill "$pid" 2>/dev/null || true
+    # Wait up to 5s for graceful shutdown
+    for i in {1..10}; do
+        if ! kill -0 "$pid" 2>/dev/null; then
+            echo "realm-server stopped"
+            rm -f "$PIDFILE"
+            return 0
+        fi
+        sleep 0.5
+    done
+    # Force kill
+    echo "Force-killing realm-server..."
+    kill -9 "$pid" 2>/dev/null || true
+    rm -f "$PIDFILE"
+    echo "realm-server killed"
+}
+
+cmd_restart() {
+    cmd_stop
+    sleep 1
+    cmd_start
+}
+
+cmd_status() {
+    local pid
+    pid=$(_pid)
+    if [[ -n "$pid" ]]; then
+        echo "realm-server running (PID $pid)"
+        # Show uptime
+        local etime
+        etime=$(ps -o etime= -p "$pid" 2>/dev/null | tr -d ' ')
+        [[ -n "$etime" ]] && echo "  uptime: $etime"
+        # Check port
+        if curl -s --max-time 2 http://localhost:8777/status > /dev/null 2>&1; then
+            echo "  port 8777: responding"
+        else
+            echo "  port 8777: not responding"
+        fi
+    else
+        echo "realm-server not running"
+        return 1
+    fi
+}
+
+# 'run' mode: foreground (for systemd)
+cmd_run() {
+    cd "$PROJECT_DIR"
+    exec "$VENV" -u "$SERVER"
+}
+
+cmd_log() {
+    tail -f "$LOGFILE"
+}
+
+case "${1:-}" in
+    start)   cmd_start ;;
+    stop)    cmd_stop ;;
+    restart) cmd_restart ;;
+    status)  cmd_status ;;
+    run)     cmd_run ;;
+    log)     cmd_log ;;
+    *)
+        echo "Usage: realm-server {start|stop|restart|status|run|log}"
+        echo "  start   — start in background"
+        echo "  stop    — stop gracefully (SIGTERM, then SIGKILL)"
+        echo "  restart — stop + start"
+        echo "  status  — show PID, uptime, port health"
+        echo "  run     — foreground (for systemd ExecStart)"
+        echo "  log     — tail the server log"
+        exit 1
+        ;;
+esac
