@@ -10,6 +10,7 @@ model-cache/
 realm-map.monolith.js
 
 # Runtime data
+.map_server.pid
 realm.db
 realm.db-shm
 realm.db-wal
