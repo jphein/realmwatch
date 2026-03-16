@@ -1,7 +1,7 @@
 'use strict';
 import { _mapTilt } from './config.js';
 import { _topology, getNodeDOM } from './topology.js';
-import { panToNode } from './app.js';
+import { panToNode } from './map-view.js';
 import { unsealPanel } from './panel-manager.js';
 
 // Late-bound callback for openNodeChat (set by app.js to avoid circular dep)

@@ -4,7 +4,7 @@ import { _topology } from './topology.js';
 import { getTopoNodeMap } from './terrain.js';
 import { getLatencyFlat } from './panels.js';
 import { applyPerfClasses, syncQualityUI, getAutoDetectEnabled } from './spellbook.js';
-import { scale, isZoomActive } from './app.js';
+import { scale, isZoomActive } from './map-view.js';
 
 // ── Magic Motes Trail (for draggable elements) ──
 const moteCanvas = document.createElement('canvas');

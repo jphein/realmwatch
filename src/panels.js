@@ -1,7 +1,7 @@
 'use strict';
 import { _topology } from './topology.js';
 import { scaleColor, scaleLabel, fmtBytes, fmtRate } from './utils.js';
-import { panToNode } from './app.js';
+import { panToNode } from './map-view.js';
 import { showHighlight } from './quest-log.js';
 import { findStatusKey } from './node-status.js';
 
