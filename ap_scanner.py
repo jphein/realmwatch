@@ -94,6 +94,10 @@ _topo_callback = None   # set by map_server to push topology via SSE
 _node_online_state = {}  # node_id → {"online": bool, "last_seen": ts, "ap": ap_id}
 OFFLINE_THRESHOLD = 300  # 5 minutes without seeing = offline
 
+# Roam debounce: suppress repeat speech events for the same device/AP pair
+_last_roam = {}  # node_id → {"from_ap": str, "to_ap": str, "ts": float}
+ROAM_DEBOUNCE = 300  # 5 minutes — silence re-announcements for flip-flopping devices
+
 # LLDP neighbor cache for enrichment lookups
 _lldp_cache = {"by_mac": {}, "by_ip": {}, "by_name": {}}
 
@@ -245,11 +249,17 @@ def scan_and_update():
             node_id = ap_futures[future]
             ap_clients[node_id] = future.result()
 
-    # Build MAC→AP map
+    # Build MAC→AP map — when a device is visible to multiple APs,
+    # prefer the one with the strongest signal (avoids non-deterministic
+    # flip-flopping from ThreadPool completion order).
     mac_to_ap = {}
+    _mac_best_signal = {}
     for ap_id, clients in ap_clients.items():
-        for mac in clients:
-            mac_to_ap[mac] = ap_id
+        for mac, info in clients.items():
+            sig = info.get("signal", -100) if isinstance(info, dict) else -100
+            if mac not in mac_to_ap or sig > _mac_best_signal.get(mac, -100):
+                mac_to_ap[mac] = ap_id
+                _mac_best_signal[mac] = sig
 
     # --- Node identity resolution ---
     # Priority 1: MAC field in topology (stable, survives IP changes)
@@ -382,7 +392,7 @@ def scan_and_update():
                     conn["from"] = ap_id
                 changes.append({"node": node_id, "from_ap": old_ap, "to_ap": ap_id})
 
-                # Fire speech event on the device that roamed
+                # Fire speech event on the device that roamed (debounced)
                 node_label = node_by_id.get(node_id, {}).get("label", node_id)
                 ap_label = node_by_id.get(ap_id, {}).get("label", ap_id)
                 old_ap_label = node_by_id.get(old_ap, {}).get("label", old_ap)
@@ -391,12 +401,22 @@ def scan_and_update():
                 sig_info = ap_clients.get(ap_id, {}).get(mac, {})
                 signal = sig_info.get("signal")
                 signal_str = f" (signal: {signal} dBm)" if signal else ""
-                _fire_event(
-                    "speech", node_id,
-                    f"Roamed from {old_ap_label} to {ap_label}.{signal_str}",
-                    color="#a0d0ff",
-                    from_ap=old_ap, to_ap=ap_id, signal=signal
+                # Suppress repeat events for flip-flopping devices (same AP pair in either direction)
+                now = time.time()
+                last = _last_roam.get(node_id, {})
+                last_pair = frozenset((last.get("from_ap"), last.get("to_ap")))
+                is_bounce = (
+                    last_pair == frozenset((old_ap, ap_id))
+                    and now - last.get("ts", 0) < ROAM_DEBOUNCE
                 )
+                _last_roam[node_id] = {"from_ap": old_ap, "to_ap": ap_id, "ts": now}
+                if not is_bounce:
+                    _fire_event(
+                        "speech", node_id,
+                        f"Roamed from {old_ap_label} to {ap_label}.{signal_str}",
+                        color="#a0d0ff",
+                        from_ap=old_ap, to_ap=ap_id, signal=signal
+                    )
 
     # --- Track unknown MACs (on WiFi but not in topology) ---
     unknown = []
