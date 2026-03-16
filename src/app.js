@@ -1,37 +1,30 @@
-// ── Main application module (terrain, UI, events, navigation, panels, effects, persistence) ──
-// Imports from extracted modules
+// ── App coordinator — SSE dispatch, module wiring, visual-layer controls ──
 import { SSE_URL } from './config.js';
-import { _topology, refreshTopology, setTopologyRefreshHook } from './topology.js';
-import { saveFormation, registerPanel } from './panel-manager.js';
+import { refreshTopology, setTopologyRefreshHook } from './topology.js';
+import { saveFormation } from './panel-manager.js';
 import { initScanner } from './scan.js';
 import { renderTopoLayer, setLastTopoCollectd, initTopoControls } from './terrain.js';
-import { getNodeTraffic, updateConnectionTraffic, updateConnectionTrafficSSE, trafficToCollectd, setTrafficScale } from './traffic.js';
-import { DOM, setLatencyMap, setLatencyFlat, setWifiMap,
-         updateEnergyPanel, updateLatencyPanel, updateFirewallPanel, handleFirewallData, renderWifiPanel,
-         updateCensusSubLabels, updateNodeListStatus, rebuildCensusIfNeeded } from './panels.js';
-import { updateUI, updateCoreSublabels, updateHASublabels, updateTooltips, updateInfraNodes,
-         applyMasterScale, getLastStatus, findStatusKey, setPostUpdateHook,
-         getSliderRefs, setMasterScale, getMasterScale } from './node-status.js';
+import { updateConnectionTraffic, updateConnectionTrafficSSE, trafficToCollectd, setTrafficScale } from './traffic.js';
+import { setLatencyMap, setLatencyFlat, setWifiMap,
+         updateEnergyPanel, updateLatencyPanel, handleFirewallData, renderWifiPanel,
+         rebuildCensusIfNeeded } from './panels.js';
+import { updateUI, getLastStatus, setPostUpdateHook } from './node-status.js';
 import { getFpsEl } from './effects.js';
 import { renderEvent, updateBubblePositions, firePulse, showOffline,
-         setOpenNodeChat, getLastEventTs } from './quest-log.js';
+         setOpenNodeChat } from './quest-log.js';
 import { isZoomActive,
          setDeferredStatus, setDeferredTraffic, setDeferredEnergy, setDeferredLatency,
          setGhostDirty, applyTopoZ, setOpenPersonaEditor } from './map-view.js';
 import { openPersonaEditor, setTabRenderers } from './persona-editor.js';
 import { renderControlPane, renderGroupPane, renderShellPane, renderConnectionsPane, focusShellInput, openNodeChat } from './node-controls.js';
 import { initSpellbook, invalidateSearchIndex } from './spellbook.js';
-import { saveSettings, scheduleSave, setPanelMode,
-         makeDraggable, makeResizable, isRestoring } from './layout.js';
+import { saveSettings, scheduleSave, setPanelMode, isRestoring } from './layout.js';
 import { scheduleDebugRefresh } from './debug.js';
 
-// (updateUI, sublabels, tooltips, scale sliders moved to node-status.js)
-let lastStatus = null;  // Local mirror — kept in sync via post-update hook
 let liveOk = false;
 
 // Register post-update hook for firePulse + debug refresh + periodic log
-setPostUpdateHook((d) => {
-  lastStatus = d;
+setPostUpdateHook(() => {
   firePulse();
   scheduleDebugRefresh();
 });
@@ -55,12 +48,10 @@ trafficSlider.addEventListener('input', () => {
   scheduleSave();
 });
 
-// (Node, text, bubble, update-speed sliders moved to node-status.js)
 initTopoControls({ saveSettings, scheduleSave, applyTopoZ });
 
 // ── Arcane Grid Controls ──
 const _gridSvg = document.getElementById('arcane-grid');
-const _gridContent = document.getElementById('arcane-grid-content');
 let _gridEnabled = false;
 let _gridOpacity = 0.4;
 let _gridScale = 1.0;
@@ -332,10 +323,7 @@ setTopologyRefreshHook(() => {
   setGhostDirty();
 });
 
-// (Pan & zoom, ghost ley-lines, zoom mode, vines, touch, draggable nodes moved to map-view.js)
-// (Persona editor, tabs, node properties, stats pane moved to persona-editor.js)
-
-// Wire up tab renderers for persona-editor.js (imported from node-controls.js)
+// Wire up tab renderers for persona-editor.js
 setTabRenderers({
   renderControlPane,
   renderGroupPane,
@@ -343,12 +331,6 @@ setTabRenderers({
   renderConnectionsPane,
   focusShellInput,
 });
-
-// (Control tab, group tab, connections pane, shell pane, node click/dblclick moved to node-controls.js)
-
-// (Spellbook page navigation, presets, section resets, effects controls, realm search moved to spellbook.js)
-
-// (Auto-Arrange Layout, cartographer sliders, biome sliders moved to layout.js)
 
 // ── Visibility Toggles ──
 (function wireVisibilityToggles() {
@@ -421,7 +403,7 @@ setTabRenderers({
     });
   }
 
-  // Wire up panel mode buttons (logic at module scope below)
+  // Wire up panel mode buttons
   document.querySelectorAll('.panel-mode-btn').forEach(btn => {
     btn.addEventListener('click', () => setPanelMode(btn.dataset.mode));
   });
@@ -610,7 +592,7 @@ setTabRenderers({
   }
 })();
 
-// ── SSE Connection (replaces poll + pollEvents + refreshTopology + fetchEnergy) ──
+// ── SSE Connection ──
 let _sseTrafficMap = null;
 let _sseConnected = false;
 export const getSseConnected = () => _sseConnected;
@@ -732,11 +714,5 @@ export const getSseConnected = () => _sseConnected;
   });
 })();
 
-// (Panel Layout Modes, settings persistence, draggable/resizable panels, layout restore moved to layout.js)
-
 initScanner();
-
-// (Node Chat Dialog moved to node-controls.js)
-
-// (Arcane Config, Herald, Debug Panel, Grimoire, Scrying Terminal moved to debug.js)
 
