@@ -1,6 +1,9 @@
 // ── Arcane Panel Manager — Magical Layout System ──
 // Manages panel positions with ley anchors, formations, and conjuration modes.
 
+import { _PERF } from './config.js';
+import { spawnWispTrail, spawnUnsealBurst } from './effects.js';
+
 const ANCHORS = [
   { id: 'nw', x: 0, y: 0, label: 'Northwest Anchor' },
   { id: 'n',  x: 0.5, y: 0, label: 'North Anchor' },
@@ -946,21 +949,28 @@ function _makeRuneDraggable(rune) {
 }
 
 function _sealWandering(panel, rune, rect) {
-  // Position rune where panel was, then let it wander
+  // Position rune where panel was, then let it wander as a will-o-wisp
   rune.classList.add('wandering-rune');
   rune.style.position = 'fixed';
-  rune.style.left = (rect.left + rect.width / 2 - 25) + 'px';
-  rune.style.top = (rect.top + rect.height / 2 - 25) + 'px';
+  const startX = rect.left + rect.width / 2 - 16;
+  const startY = rect.top + rect.height / 2 - 16;
+  rune.style.left = startX + 'px';
+  rune.style.top = startY + 'px';
   document.body.appendChild(rune);
 
-  // Add to wandering list with velocity
-  _wanderingRunes.push({
+  // Initialize wisp physics with Brownian motion + attractor drift
+  const wr = {
     el: rune,
-    x: rect.left + rect.width / 2 - 25,
-    y: rect.top + rect.height / 2 - 25,
-    vx: (Math.random() - 0.5) * 2,
-    vy: (Math.random() - 0.5) * 2,
-  });
+    x: startX,
+    y: startY,
+    vx: 0,
+    vy: 0,
+    ax: 100 + Math.random() * (window.innerWidth - 200),
+    ay: 100 + Math.random() * (window.innerHeight - 200),
+    nextAttractor: Date.now() + 5000 + Math.random() * 5000,
+    frameCount: 0,
+  };
+  _wanderingRunes.push(wr);
 
   // Start wandering animation if not already running
   if (_wanderingRunes.length === 1) {
@@ -1005,22 +1015,43 @@ function _createConjuredContainer() {
   const conjured = document.createElement('div');
   conjured.id = 'conjured-runes';
   conjured.className = 'conjured-runes';
-  // Central sigil
+  // Central sigil — summoning circle with dual rings + ley lines + pulsing star
   const sigil = document.createElement('div');
   sigil.className = 'conjure-sigil';
-  sigil.innerHTML = `<svg viewBox="0 0 120 120" width="120" height="120">
-    <circle cx="60" cy="60" r="55" fill="none" stroke="rgba(160,120,220,0.15)" stroke-width="1"/>
-    <circle cx="60" cy="60" r="40" fill="none" stroke="rgba(160,120,220,0.1)" stroke-width="0.5" stroke-dasharray="4 4"/>
-    <circle cx="60" cy="60" r="25" fill="none" stroke="rgba(160,120,220,0.08)" stroke-width="0.5"/>
-    <polygon points="60,10 107,82 13,82" fill="none" stroke="rgba(180,140,255,0.12)" stroke-width="0.5"/>
-    <polygon points="60,110 13,38 107,38" fill="none" stroke="rgba(180,140,255,0.12)" stroke-width="0.5"/>
-    <circle cx="60" cy="60" r="4" fill="rgba(200,170,255,0.3)"/>
+  // Build ley lines at 60deg intervals (gold-to-transparent)
+  let leyLines = '';
+  for (let i = 0; i < 6; i++) {
+    const angle = i * 60;
+    leyLines += `<line x1="80" y1="80" x2="${80 + Math.cos(angle * Math.PI / 180) * 70}" y2="${80 + Math.sin(angle * Math.PI / 180) * 70}" stroke="url(#leyGrad)" stroke-width="0.5" opacity="0.4"/>`;
+  }
+  sigil.innerHTML = `<svg viewBox="0 0 160 160" width="160" height="160">
+    <defs>
+      <linearGradient id="leyGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#c8aa5a" stop-opacity="0.3"/>
+        <stop offset="100%" stop-color="#c8aa5a" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <circle cx="80" cy="80" r="70" fill="none" stroke="#c8aa5a" stroke-width="1" opacity="0.3" style="animation: ringRotate 20s linear infinite; transform-origin: 80px 80px;"/>
+    <circle cx="80" cy="80" r="50" fill="none" stroke="#b888e0" stroke-width="1" opacity="0.25" style="animation: ringRotate 15s linear infinite reverse; transform-origin: 80px 80px;"/>
+    <circle cx="80" cy="80" r="35" fill="none" stroke="rgba(160,120,220,0.1)" stroke-width="0.5" stroke-dasharray="4 4"/>
+    ${leyLines}
+    <polygon points="80,15 127,87 33,87" fill="none" stroke="rgba(180,140,255,0.12)" stroke-width="0.5"/>
+    <polygon points="80,145 33,73 127,73" fill="none" stroke="rgba(180,140,255,0.12)" stroke-width="0.5"/>
+    <circle cx="80" cy="80" r="5" fill="rgba(200,170,255,0.4)">
+      <animate attributeName="r" values="4;6;4" dur="3s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.3;0.6;0.3" dur="3s" repeatCount="indefinite"/>
+    </circle>
   </svg>`;
   conjured.appendChild(sigil);
   // Orbit ring (visual only)
   const ring = document.createElement('div');
   ring.className = 'conjure-orbit-ring';
   conjured.appendChild(ring);
+
+  // Entry animation
+  conjured.classList.add('panel-unsealing');
+  setTimeout(() => conjured.classList.remove('panel-unsealing'), 600);
+
   document.body.appendChild(conjured);
   return conjured;
 }
@@ -1041,36 +1072,48 @@ function _finalizeSeal(panel) {
 function _animateWandering() {
   if (_wanderingRunes.length === 0) return;
 
-  const padding = 60;
-  const maxX = window.innerWidth - padding;
-  const maxY = window.innerHeight - padding;
+  const now = Date.now();
 
   for (const wr of _wanderingRunes) {
-    // Update position
+    // Pick new attractor every 5-10s
+    if (now > wr.nextAttractor) {
+      wr.ax = 100 + Math.random() * (window.innerWidth - 200);
+      wr.ay = 100 + Math.random() * (window.innerHeight - 200);
+      wr.nextAttractor = now + 5000 + Math.random() * 5000;
+    }
+    // Accelerate toward attractor
+    wr.vx += (wr.ax - wr.x) * 0.0002;
+    wr.vy += (wr.ay - wr.y) * 0.0002;
+    // Damping
+    wr.vx *= 0.98;
+    wr.vy *= 0.98;
+    // Clamp speed
+    const speed = Math.sqrt(wr.vx * wr.vx + wr.vy * wr.vy);
+    if (speed > 0.8) {
+      wr.vx = (wr.vx / speed) * 0.8;
+      wr.vy = (wr.vy / speed) * 0.8;
+    }
+    // Soft edge avoidance
+    if (wr.x < 80) wr.vx += 0.05;
+    if (wr.x > window.innerWidth - 80) wr.vx -= 0.05;
+    if (wr.y < 80) wr.vy += 0.05;
+    if (wr.y > window.innerHeight - 180) wr.vy -= 0.05;
+    // Apply
     wr.x += wr.vx;
     wr.y += wr.vy;
-
-    // Bounce off edges
-    if (wr.x < padding || wr.x > maxX) {
-      wr.vx *= -1;
-      wr.x = Math.max(padding, Math.min(maxX, wr.x));
-    }
-    if (wr.y < padding || wr.y > maxY) {
-      wr.vy *= -1;
-      wr.y = Math.max(padding, Math.min(maxY, wr.y));
-    }
-
-    // Apply slight random drift
-    wr.vx += (Math.random() - 0.5) * 0.1;
-    wr.vy += (Math.random() - 0.5) * 0.1;
-
-    // Clamp velocity
-    const maxV = 1.5;
-    wr.vx = Math.max(-maxV, Math.min(maxV, wr.vx));
-    wr.vy = Math.max(-maxV, Math.min(maxV, wr.vy));
-
     wr.el.style.left = wr.x + 'px';
     wr.el.style.top = wr.y + 'px';
+
+    // Wisp trail — spawn every 3rd frame per wisp
+    wr.frameCount = (wr.frameCount || 0) + 1;
+    if (wr.frameCount % 3 === 0) {
+      const panelId = wr.el.dataset.panelId;
+      const colorStr = _RUNE_COLORS[panelId];
+      if (colorStr) {
+        const parts = colorStr.split(',');
+        spawnWispTrail(wr.x + 16, wr.y + 16, +parts[0], +parts[1], +parts[2]);
+      }
+    }
   }
 
   requestAnimationFrame(_animateWandering);
@@ -1090,12 +1133,12 @@ function _arrangeConjuredRunes() {
   const centerY = isMobile ? window.innerHeight / 2 : window.innerHeight - 140;
   const radius = Math.max(55, 35 + count * 12);
 
-  // Position sigil and orbit ring at center
+  // Position sigil (160px) and orbit ring at center
   const sigil = conjured.querySelector('.conjure-sigil');
   const ring = conjured.querySelector('.conjure-orbit-ring');
   if (sigil) {
-    sigil.style.left = (centerX - 60) + 'px';
-    sigil.style.top = (centerY - 60) + 'px';
+    sigil.style.left = (centerX - 80) + 'px';
+    sigil.style.top = (centerY - 80) + 'px';
   }
   if (ring) {
     ring.style.left = (centerX - radius - 8) + 'px';
@@ -1111,10 +1154,10 @@ function _arrangeConjuredRunes() {
     rune.dataset.orbitCx = centerX;
     rune.dataset.orbitCy = centerY;
     rune.dataset.orbitR = radius;
-    // Initial position
+    // Initial position (offset by half of 48px rune size)
     const angle = (i / count) * Math.PI * 2 - Math.PI / 2;
-    const x = centerX + Math.cos(angle) * radius - 25;
-    const y = centerY + Math.sin(angle) * radius - 25;
+    const x = centerX + Math.cos(angle) * radius - 24;
+    const y = centerY + Math.sin(angle) * radius - 24;
     rune.style.transition = 'all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)';
     rune.style.left = x + 'px';
     rune.style.top = y + 'px';
@@ -1143,8 +1186,8 @@ function _startConjureOrbit() {
       const baseAngle = (i / n) * Math.PI * 2 - Math.PI / 2;
       const angle = baseAngle + _conjureAngle;
       const wobble = Math.sin(_conjureAngle * 3 + i * 1.7) * 4;
-      const x = cx + Math.cos(angle) * (r + wobble) - 25;
-      const y = cy + Math.sin(angle) * (r + wobble) - 25;
+      const x = cx + Math.cos(angle) * (r + wobble) - 24;
+      const y = cy + Math.sin(angle) * (r + wobble) - 24;
       rune.style.transition = 'none';
       rune.style.left = x + 'px';
       rune.style.top = y + 'px';
@@ -1211,8 +1254,12 @@ function _migrateSealedRunes(newMode) {
         el: rune,
         x: rect.left,
         y: rect.top,
-        vx: (Math.random() - 0.5) * 2,
-        vy: (Math.random() - 0.5) * 2,
+        vx: 0,
+        vy: 0,
+        ax: 100 + Math.random() * (window.innerWidth - 200),
+        ay: 100 + Math.random() * (window.innerHeight - 200),
+        nextAttractor: Date.now() + 5000 + Math.random() * 5000,
+        frameCount: 0,
       });
       _sealedDock.classList.remove('has-runes');
       _sealedDock.style.bottom = '-80px'; // Hide dock
@@ -1253,6 +1300,16 @@ function _unsealPanel(panel) {
   if (!rune) rune = document.querySelector(`.sealed-rune[data-panel-id="${panel.id}"]`);
 
   if (rune) {
+    // Spawn unseal particle burst from rune center
+    const runeRect = rune.getBoundingClientRect();
+    const burstX = runeRect.left + runeRect.width / 2;
+    const burstY = runeRect.top + runeRect.height / 2;
+    const colorStr = _RUNE_COLORS[panel.id];
+    if (colorStr) {
+      const cp = colorStr.split(',');
+      spawnUnsealBurst(burstX, burstY, +cp[0], +cp[1], +cp[2]);
+    }
+
     // Remove from wandering list if present
     _wanderingRunes = _wanderingRunes.filter(wr => wr.el !== rune);
 

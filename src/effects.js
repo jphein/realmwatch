@@ -421,6 +421,46 @@ function animateMotes() {
 }
 _ensureMoteLoop();
 
+// ── Will-o-Wisp Trail ──
+export function spawnWispTrail(x, y, r, g, b) {
+  if (_PERF.wispTrail === false) return;
+  if (motes.length >= _PERF.moteCap) return;
+  motes.push({
+    x, y,
+    vx: 0, vy: 0,
+    life: 1.0,
+    decay: 1.0 / 30,  // ~0.5s at 60fps (30 frames)
+    size: 2 + Math.random(),
+    color: [r, g, b],
+    wobble: Math.random() * Math.PI * 2,
+    wobbleSpeed: 0,
+  });
+  _ensureMoteLoop();
+}
+
+// ── Unseal Particle Burst ──
+export function spawnUnsealBurst(x, y, r, g, b) {
+  if (!_PERF.transitionParticles) return;
+  const count = 15 + Math.floor(Math.random() * 6); // 15-20
+  for (let i = 0; i < count; i++) {
+    if (motes.length >= _PERF.moteCap) break;
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 2 + Math.random() * 2; // 2-4 px/frame
+    motes.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 1.0,
+      decay: 1.0 / 36,  // ~0.6s at 60fps (36 frames)
+      size: 2 + Math.random(),
+      color: [r, g, b],
+      wobble: Math.random() * Math.PI * 2,
+      wobbleSpeed: 0.05 + Math.random() * 0.1,
+    });
+  }
+  _ensureMoteLoop();
+}
+
 // ── Public API ──
 export function clearMoteCanvas() { moteCtx.clearRect(0, 0, moteCanvas.width, moteCanvas.height); }
 export function updateSparkleRect() { _updateSparkleRect(); }

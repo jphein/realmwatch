@@ -7073,8 +7073,28 @@
   }
 
   .wandering-rune {
+    width: 32px !important;
+    height: 32px !important;
     transition: none !important;
     animation: none;
+    box-shadow:
+      0 0 20px var(--accent-glow),
+      0 0 40px var(--accent-glow);
+  }
+  .wandering-rune .rune-icon { font-size: 14px; }
+  .wandering-rune .rune-icon-img { opacity: 0.6; filter: saturate(0.5) brightness(0.7); }
+  .wandering-rune .rune-carved-ring { display: none; }
+  .wandering-rune .rune-glint-flash { display: none; }
+  .wandering-rune .rune-outer-aura {
+    inset: -8px;
+    border: none;
+    background: radial-gradient(circle, var(--accent-glow), transparent 70%);
+    opacity: 0.4;
+    animation: wispGlow 3s ease-in-out infinite;
+  }
+  @keyframes wispGlow {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.2); }
   }
 
   .rune-dragging {
@@ -7104,6 +7124,8 @@
   .conjured-runes .sealed-rune {
     position: fixed;
     pointer-events: auto;
+    width: 48px;
+    height: 48px;
     animation: conjured-glow 3s ease-in-out infinite;
   }
 
@@ -7127,8 +7149,8 @@
 
   .conjure-sigil {
     position: fixed;
-    width: 120px;
-    height: 120px;
+    width: 160px;
+    height: 160px;
     pointer-events: none;
     animation: sigil-rotate 60s linear infinite;
     opacity: 0.8;
@@ -7145,16 +7167,16 @@
   }
 
   .conjure-orbit-ring {
-    position: fixed;
+    position: absolute;
     border-radius: 50%;
-    border: 1px solid rgba(140, 100, 220, 0.08);
+    border: 1px solid rgba(200,170,90,0.08);
     pointer-events: none;
     animation: orbit-ring-pulse 6s ease-in-out infinite;
   }
 
   @keyframes orbit-ring-pulse {
-    0%, 100% { border-color: rgba(140, 100, 220, 0.06); box-shadow: none; }
-    50% { border-color: rgba(160, 120, 240, 0.12); box-shadow: 0 0 30px rgba(140, 100, 220, 0.05); }
+    0%, 100% { border-color: rgba(200,170,90,0.06); }
+    50% { border-color: rgba(200,170,90,0.15); }
   }
 
 
