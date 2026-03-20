@@ -2192,6 +2192,7 @@
     box-shadow: 0 0 8px rgba(192,128,255,0.2), inset 0 0 4px rgba(192,128,255,0.05);
   }
   .cfg-input { width: 70px; flex: 0 0 70px; text-align: right; }
+  .cfg-val { color: rgba(220,200,160,0.85); font-size: 12px; font-family: monospace; margin-left: auto; }
 
   #search-icon {
     position: absolute;

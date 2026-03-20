@@ -39,7 +39,8 @@ import latency_prober
 import firewall_parser
 
 engine = RealmEngine()
-PORT = 8777
+PORT = int(os.environ.get("REALM_PORT", 80))
+_server_start_time = time.time()
 MAP_DIR = os.path.dirname(os.path.abspath(__file__))
 PERSONAS_FILE = os.path.join(MAP_DIR, "personas.json")
 TOPOLOGY_FILE = os.path.join(MAP_DIR, "topology.json")
@@ -561,6 +562,17 @@ class RealmHandler(SimpleHTTPRequestHandler):
             except Exception as e:
                 self._json_response({"ok": False, "ip": ip, "error": str(e)})
 
+        elif self.path == "/server-info":
+            import platform
+            self._json_response({
+                "port": PORT,
+                "domain": os.environ.get("REALM_DOMAIN", ""),
+                "hostname": platform.node(),
+                "python": platform.python_version(),
+                "pid": os.getpid(),
+                "uptime": int(time.time() - _server_start_time),
+            })
+
         elif self.path == "/config":
             self._json_response({
                 "chat": realm_db.get_settings("chat"),
@@ -814,10 +826,10 @@ window.location.href = '/';
             self.end_headers()
             self.wfile.write(html.encode())
 
-        elif self.path == "/" or self.path == "" or self.path.startswith("/?"):
-            self.path = "/realm-map.html"
-            self._serve_static_gzip()
         else:
+            # Static files — serve splash.html as index
+            if self.path == '/' or self.path == '/index.html':
+                self.path = '/splash.html'
             self._serve_static_gzip()
 
     _GZIP_TYPES = {'.js', '.css', '.html', '.json', '.svg', '.map'}

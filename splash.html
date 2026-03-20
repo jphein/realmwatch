@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Realm.Watch — Vigilate Regna</title>
+  <meta name="theme-color" content="#140c23">
+  <meta property="og:title" content="Realm.Watch — Vigilate Regna">
+  <meta property="og:description" content="A fantasy-themed network monitoring realm">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%23140c23' stroke='%23f0d890' stroke-width='1.5'/><circle cx='16' cy='16' r='3' fill='%23f0d890'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=MedievalSharp&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: #030208;
+    }
+
+    /* ===== Backdrop ===== */
+    .backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background:
+        radial-gradient(ellipse at 50% 40%,
+          rgba(20,12,35,0.88) 0%,
+          rgba(8,5,18,0.94) 50%,
+          rgba(3,2,8,0.97) 100%
+        );
+    }
+
+    /* ===== Grain Overlay ===== */
+    .grain {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 1;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='6'%3E%3Ccircle cx='1' cy='1' r='0.5' fill='rgba(180,160,120,0.025)'/%3E%3Ccircle cx='4' cy='3' r='0.4' fill='rgba(140,120,80,0.02)'/%3E%3Ccircle cx='2' cy='5' r='0.3' fill='rgba(160,140,100,0.015)'/%3E%3C/svg%3E");
+      background-repeat: repeat;
+    }
+
+    /* ===== Aurora Nebula Layer ===== */
+    .aurora {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .aurora-band {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.35;
+    }
+
+    .aurora-band--1 {
+      width: 60vw;
+      height: 30vh;
+      top: 10%;
+      left: 20%;
+      background: linear-gradient(135deg,
+        rgba(100,60,180,0.4) 0%,
+        rgba(60,80,200,0.3) 50%,
+        rgba(100,60,180,0.2) 100%
+      );
+      animation: auroraDrift 20s ease-in-out infinite;
+    }
+
+    .aurora-band--2 {
+      width: 50vw;
+      height: 25vh;
+      top: 55%;
+      left: 30%;
+      background: linear-gradient(225deg,
+        rgba(200,180,80,0.35) 0%,
+        rgba(240,216,144,0.2) 40%,
+        rgba(180,100,60,0.25) 100%
+      );
+      animation: auroraDrift 25s ease-in-out infinite reverse;
+    }
+
+    .aurora-band--3 {
+      width: 45vw;
+      height: 22vh;
+      top: 30%;
+      left: 10%;
+      background: linear-gradient(180deg,
+        rgba(60,160,120,0.3) 0%,
+        rgba(80,140,180,0.25) 50%,
+        rgba(120,200,160,0.15) 100%
+      );
+      animation: auroraDrift 22s ease-in-out infinite;
+      animation-delay: -8s;
+    }
+
+    /* ===== Center Composition ===== */
+    .center {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding-bottom: 160px;
+      pointer-events: none;
+    }
+
+    /* ===== Sigil ===== */
+    .sigil-container {
+      position: relative;
+      width: 160px;
+      height: 160px;
+      margin-bottom: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .sigil {
+      width: 160px;
+      height: 160px;
+      display: block;
+      animation: sigilPulse 4s ease-in-out infinite;
+    }
+
+    /* ===== Rune Ring ===== */
+    .rune-ring {
+      position: absolute;
+      inset: -40px;
+      animation: runeOrbit 60s linear infinite;
+    }
+
+    .rune {
+      position: absolute;
+      font-size: 16px;
+      color: rgba(240,216,144,0.2);
+      font-family: serif;
+      text-shadow: 0 0 6px rgba(240,216,144,0.1);
+      /* Each rune positioned via inline style */
+    }
+
+    .rune:nth-child(1) { top: 0%; left: 50%; transform: translate(-50%, -50%); }
+    .rune:nth-child(2) { top: 14.6%; left: 85.4%; transform: translate(-50%, -50%); }
+    .rune:nth-child(3) { top: 50%; left: 100%; transform: translate(-50%, -50%); }
+    .rune:nth-child(4) { top: 85.4%; left: 85.4%; transform: translate(-50%, -50%); }
+    .rune:nth-child(5) { top: 100%; left: 50%; transform: translate(-50%, -50%); }
+    .rune:nth-child(6) { top: 85.4%; left: 14.6%; transform: translate(-50%, -50%); }
+    .rune:nth-child(7) { top: 50%; left: 0%; transform: translate(-50%, -50%); }
+    .rune:nth-child(8) { top: 14.6%; left: 14.6%; transform: translate(-50%, -50%); }
+
+    /* ===== Title ===== */
+    .title {
+      font-family: 'Cinzel', serif;
+      font-size: 36px;
+      font-weight: 600;
+      letter-spacing: 0.3em;
+      color: #f0d890;
+      text-align: center;
+      text-shadow:
+        0 0 20px rgba(240,216,144,0.3),
+        0 0 40px rgba(240,216,144,0.15),
+        0 0 80px rgba(240,216,144,0.08);
+      animation: textReveal 2s ease-out forwards;
+      opacity: 0;
+      margin-bottom: 12px;
+    }
+
+    /* ===== Subtitle ===== */
+    .subtitle {
+      font-family: 'MedievalSharp', cursive;
+      font-style: italic;
+      font-size: 14px;
+      color: #706040;
+      text-align: center;
+      letter-spacing: 0.15em;
+      animation: textReveal 2s ease-out 0.4s forwards;
+      opacity: 0;
+      margin-bottom: 48px;
+    }
+
+    /* ===== CTA Button ===== */
+    .cta {
+      pointer-events: auto;
+      display: inline-block;
+      font-family: 'Cinzel', serif;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.2em;
+      color: rgba(240,216,144,0.7);
+      text-decoration: none;
+      padding: 12px 36px;
+      border: 1px solid rgba(240,216,144,0.3);
+      background: transparent;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.5s ease;
+      animation: ctaFadeIn 2s ease-out 1s forwards;
+      opacity: 0;
+    }
+
+    .cta::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border: 1px solid rgba(240,216,144,0);
+      transition: all 0.5s ease;
+    }
+
+    .cta:hover {
+      color: #f0d890;
+      border-color: rgba(240,216,144,0.6);
+      text-shadow:
+        0 0 12px rgba(240,216,144,0.4),
+        0 0 24px rgba(240,216,144,0.2);
+      box-shadow:
+        0 0 20px rgba(240,216,144,0.1),
+        0 0 40px rgba(240,216,144,0.05),
+        inset 0 0 20px rgba(240,216,144,0.03);
+    }
+
+    .cta:hover::before {
+      inset: -4px;
+      border-color: rgba(240,216,144,0.1);
+    }
+
+    .cta:active {
+      color: #f0d890;
+      border-color: rgba(240,216,144,0.8);
+      box-shadow:
+        0 0 30px rgba(240,216,144,0.2),
+        inset 0 0 30px rgba(240,216,144,0.05);
+    }
+
+    /* ===== Version ===== */
+    .version {
+      font-family: 'MedievalSharp', cursive;
+      font-size: 11px;
+      color: rgba(240,216,144,0.15);
+      letter-spacing: 0.1em;
+      margin-top: 32px;
+      animation: ctaFadeIn 2s ease-out 1.5s forwards;
+      opacity: 0;
+    }
+
+    /* ===== Corner Vines ===== */
+    .vine {
+      position: fixed;
+      width: 200px;
+      height: 200px;
+      z-index: 5;
+      pointer-events: none;
+      opacity: 0.85;
+    }
+
+    .vine svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .vine--tl {
+      top: 0;
+      left: 0;
+      animation: vineSway 8s ease-in-out infinite;
+      transform-origin: top left;
+    }
+
+    .vine--tr {
+      top: 0;
+      right: 0;
+      transform: scaleX(-1);
+      animation: vineSway 8s ease-in-out infinite;
+      animation-delay: -2s;
+      transform-origin: top right;
+    }
+
+    .vine--bl {
+      bottom: 0;
+      left: 0;
+      transform: scaleY(-1);
+      animation: vineSway 8s ease-in-out infinite;
+      animation-delay: -4s;
+      transform-origin: bottom left;
+    }
+
+    .vine--br {
+      bottom: 0;
+      right: 0;
+      transform: scale(-1, -1);
+      animation: vineSway 8s ease-in-out infinite;
+      animation-delay: -6s;
+      transform-origin: bottom right;
+    }
+
+    .vine-path--main {
+      stroke-dasharray: 300;
+      stroke-dashoffset: 300;
+      animation: vineGrow 3s ease-out 0.5s forwards;
+    }
+
+    .vine-path--secondary {
+      stroke-dasharray: 250;
+      stroke-dashoffset: 250;
+      animation: vineGrow 3s ease-out 0.8s forwards;
+    }
+
+    .vine-path--tertiary {
+      stroke-dasharray: 200;
+      stroke-dashoffset: 200;
+      animation: vineGrow 3s ease-out 1.1s forwards;
+    }
+
+    .vine-leaf {
+      opacity: 0;
+      animation: textReveal 1s ease-out 2s forwards;
+    }
+
+    .vine-berry {
+      opacity: 0;
+      animation: textReveal 1s ease-out 2.3s forwards;
+    }
+
+    /* ===== Floating Motes ===== */
+    .mote {
+      position: fixed;
+      display: block;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: rgba(240,216,144,0.3);
+      box-shadow: 0 0 6px rgba(240,216,144,0.15);
+      z-index: 4;
+      pointer-events: none;
+      animation: moteFloat var(--mote-duration, 8s) ease-in-out infinite;
+      animation-delay: var(--mote-delay, 0s);
+      opacity: 0;
+    }
+
+    .mote--green {
+      background: rgba(120,200,160,0.25);
+      box-shadow: 0 0 6px rgba(120,200,160,0.12);
+    }
+
+    .mote--purple {
+      background: rgba(180,140,255,0.25);
+      box-shadow: 0 0 6px rgba(180,140,255,0.12);
+    }
+
+    .mote--amber {
+      background: rgba(200,180,80,0.3);
+      box-shadow: 0 0 6px rgba(200,180,80,0.15);
+    }
+
+    /* ===== Keyframes ===== */
+    @keyframes auroraDrift {
+      0%, 100% {
+        transform: translateX(0) translateY(0);
+      }
+      25% {
+        transform: translateX(5vw) translateY(-2vh);
+      }
+      50% {
+        transform: translateX(-3vw) translateY(3vh);
+      }
+      75% {
+        transform: translateX(-6vw) translateY(-1vh);
+      }
+    }
+
+    @keyframes sigilPulse {
+      0%, 100% {
+        opacity: 0.85;
+        filter: drop-shadow(0 0 8px rgba(240,216,144,0.1));
+      }
+      50% {
+        opacity: 1;
+        filter: drop-shadow(0 0 20px rgba(240,216,144,0.2));
+      }
+    }
+
+    @keyframes runeOrbit {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes moteFloat {
+      0% {
+        transform: translateY(0) translateX(0);
+        opacity: 0;
+      }
+      15% {
+        opacity: var(--mote-opacity, 0.4);
+      }
+      50% {
+        transform: translateY(var(--mote-drift-y, -30px)) translateX(var(--mote-drift-x, 10px));
+        opacity: var(--mote-opacity, 0.4);
+      }
+      85% {
+        opacity: var(--mote-opacity, 0.4);
+      }
+      100% {
+        transform: translateY(0) translateX(0);
+        opacity: 0;
+      }
+    }
+
+    @keyframes textReveal {
+      0% {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes ctaFadeIn {
+      0% {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes vineGrow {
+      0% {
+        stroke-dashoffset: 300;
+      }
+      100% {
+        stroke-dashoffset: 0;
+      }
+    }
+
+    @keyframes vineSway {
+      0%, 100% {
+        transform: rotate(0deg);
+      }
+      50% {
+        transform: rotate(0.5deg);
+      }
+    }
+
+    /* Vine sway must respect existing transforms for mirrored corners */
+    .vine--tr {
+      animation-name: vineSwayTR;
+    }
+    @keyframes vineSwayTR {
+      0%, 100% { transform: scaleX(-1) rotate(0deg); }
+      50% { transform: scaleX(-1) rotate(0.5deg); }
+    }
+
+    .vine--bl {
+      animation-name: vineSwayBL;
+    }
+    @keyframes vineSwayBL {
+      0%, 100% { transform: scaleY(-1) rotate(0deg); }
+      50% { transform: scaleY(-1) rotate(-0.5deg); }
+    }
+
+    .vine--br {
+      animation-name: vineSwayBR;
+    }
+    @keyframes vineSwayBR {
+      0%, 100% { transform: scale(-1, -1) rotate(0deg); }
+      50% { transform: scale(-1, -1) rotate(-0.5deg); }
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 600px) {
+      .sigil-container {
+        width: 110px;
+        height: 110px;
+        margin-bottom: 24px;
+      }
+
+      .sigil {
+        width: 110px;
+        height: 110px;
+      }
+
+      .rune-ring {
+        inset: -28px;
+      }
+
+      .rune {
+        font-size: 13px;
+      }
+
+      .title {
+        font-size: 22px;
+        letter-spacing: 0.2em;
+      }
+
+      .subtitle {
+        font-size: 12px;
+        margin-bottom: 36px;
+      }
+
+      .cta {
+        font-size: 11px;
+        padding: 10px 28px;
+      }
+
+      .vine {
+        width: 120px;
+        height: 120px;
+      }
+
+      .aurora-band {
+        filter: blur(60px);
+        opacity: 0.25;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Backdrop -->
+  <div class="backdrop"></div>
+
+  <!-- Grain Texture -->
+  <div class="grain"></div>
+
+  <!-- Aurora Nebula -->
+  <div class="aurora">
+    <div class="aurora-band aurora-band--1"></div>
+    <div class="aurora-band aurora-band--2"></div>
+    <div class="aurora-band aurora-band--3"></div>
+  </div>
+
+  <!-- Corner Vines -->
+  <div class="vine vine--tl">
+    <svg viewBox="0 0 300 300" preserveAspectRatio="xMinYMin meet">
+      <path class="vine-path--main" d="M0,120 C30,110 60,80 80,50 C95,28 120,15 160,10" stroke="rgba(60,100,50,0.35)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path class="vine-path--secondary" d="M0,180 C40,170 70,140 90,100 C105,70 130,50 170,35" stroke="rgba(50,90,45,0.3)" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path class="vine-path--tertiary" d="M50,0 C48,30 40,55 30,80 C22,100 25,120 35,140" stroke="rgba(60,100,50,0.3)" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+      <path class="vine-leaf" d="M80,50 Q95,45 105,52 Q95,58 82,53" fill="rgba(70,120,55,0.4)"/>
+      <path class="vine-leaf" d="M130,20 Q142,12 150,22 Q140,28 128,23" fill="rgba(60,110,50,0.45)"/>
+      <path class="vine-leaf" d="M90,100 Q105,92 112,102 Q102,110 88,103" fill="rgba(80,130,60,0.35)"/>
+      <circle class="vine-berry" cx="160" cy="10" r="4" fill="rgba(200,160,80,0.3)"/>
+      <circle class="vine-berry" cx="170" cy="35" r="3" fill="rgba(140,200,120,0.25)"/>
+    </svg>
+  </div>
+
+  <div class="vine vine--tr">
+    <svg viewBox="0 0 300 300" preserveAspectRatio="xMinYMin meet">
+      <path class="vine-path--main" d="M0,120 C30,110 60,80 80,50 C95,28 120,15 160,10" stroke="rgba(60,100,50,0.35)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path class="vine-path--secondary" d="M0,180 C40,170 70,140 90,100 C105,70 130,50 170,35" stroke="rgba(50,90,45,0.3)" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path class="vine-path--tertiary" d="M50,0 C48,30 40,55 30,80 C22,100 25,120 35,140" stroke="rgba(60,100,50,0.3)" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+      <path class="vine-leaf" d="M80,50 Q95,45 105,52 Q95,58 82,53" fill="rgba(70,120,55,0.4)"/>
+      <path class="vine-leaf" d="M130,20 Q142,12 150,22 Q140,28 128,23" fill="rgba(60,110,50,0.45)"/>
+      <path class="vine-leaf" d="M90,100 Q105,92 112,102 Q102,110 88,103" fill="rgba(80,130,60,0.35)"/>
+      <circle class="vine-berry" cx="160" cy="10" r="4" fill="rgba(200,160,80,0.3)"/>
+      <circle class="vine-berry" cx="170" cy="35" r="3" fill="rgba(140,200,120,0.25)"/>
+    </svg>
+  </div>
+
+  <div class="vine vine--bl">
+    <svg viewBox="0 0 300 300" preserveAspectRatio="xMinYMin meet">
+      <path class="vine-path--main" d="M0,120 C30,110 60,80 80,50 C95,28 120,15 160,10" stroke="rgba(60,100,50,0.35)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path class="vine-path--secondary" d="M0,180 C40,170 70,140 90,100 C105,70 130,50 170,35" stroke="rgba(50,90,45,0.3)" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path class="vine-path--tertiary" d="M50,0 C48,30 40,55 30,80 C22,100 25,120 35,140" stroke="rgba(60,100,50,0.3)" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+      <path class="vine-leaf" d="M80,50 Q95,45 105,52 Q95,58 82,53" fill="rgba(70,120,55,0.4)"/>
+      <path class="vine-leaf" d="M130,20 Q142,12 150,22 Q140,28 128,23" fill="rgba(60,110,50,0.45)"/>
+      <path class="vine-leaf" d="M90,100 Q105,92 112,102 Q102,110 88,103" fill="rgba(80,130,60,0.35)"/>
+      <circle class="vine-berry" cx="160" cy="10" r="4" fill="rgba(200,160,80,0.3)"/>
+      <circle class="vine-berry" cx="170" cy="35" r="3" fill="rgba(140,200,120,0.25)"/>
+    </svg>
+  </div>
+
+  <div class="vine vine--br">
+    <svg viewBox="0 0 300 300" preserveAspectRatio="xMinYMin meet">
+      <path class="vine-path--main" d="M0,120 C30,110 60,80 80,50 C95,28 120,15 160,10" stroke="rgba(60,100,50,0.35)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path class="vine-path--secondary" d="M0,180 C40,170 70,140 90,100 C105,70 130,50 170,35" stroke="rgba(50,90,45,0.3)" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path class="vine-path--tertiary" d="M50,0 C48,30 40,55 30,80 C22,100 25,120 35,140" stroke="rgba(60,100,50,0.3)" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+      <path class="vine-leaf" d="M80,50 Q95,45 105,52 Q95,58 82,53" fill="rgba(70,120,55,0.4)"/>
+      <path class="vine-leaf" d="M130,20 Q142,12 150,22 Q140,28 128,23" fill="rgba(60,110,50,0.45)"/>
+      <path class="vine-leaf" d="M90,100 Q105,92 112,102 Q102,110 88,103" fill="rgba(80,130,60,0.35)"/>
+      <circle class="vine-berry" cx="160" cy="10" r="4" fill="rgba(200,160,80,0.3)"/>
+      <circle class="vine-berry" cx="170" cy="35" r="3" fill="rgba(140,200,120,0.25)"/>
+    </svg>
+  </div>
+
+  <!-- Floating Motes -->
+  <i class="mote" style="left:8%;top:15%;--mote-duration:7s;--mote-delay:0s;--mote-drift-y:-25px;--mote-drift-x:8px;--mote-opacity:0.35;width:2px;height:2px;"></i>
+  <i class="mote mote--purple" style="left:92%;top:22%;--mote-duration:9s;--mote-delay:1.2s;--mote-drift-y:-35px;--mote-drift-x:-12px;--mote-opacity:0.3;width:3px;height:3px;"></i>
+  <i class="mote mote--green" style="left:15%;top:70%;--mote-duration:8s;--mote-delay:0.5s;--mote-drift-y:-20px;--mote-drift-x:15px;--mote-opacity:0.35;width:2.5px;height:2.5px;"></i>
+  <i class="mote" style="left:78%;top:80%;--mote-duration:10s;--mote-delay:2s;--mote-drift-y:-40px;--mote-drift-x:-8px;--mote-opacity:0.3;width:2px;height:2px;"></i>
+  <i class="mote mote--amber" style="left:45%;top:12%;--mote-duration:7.5s;--mote-delay:3s;--mote-drift-y:-30px;--mote-drift-x:5px;--mote-opacity:0.4;width:3px;height:3px;"></i>
+  <i class="mote mote--purple" style="left:25%;top:40%;--mote-duration:11s;--mote-delay:0.8s;--mote-drift-y:-28px;--mote-drift-x:18px;--mote-opacity:0.25;width:2px;height:2px;"></i>
+  <i class="mote" style="left:65%;top:55%;--mote-duration:8.5s;--mote-delay:4s;--mote-drift-y:-22px;--mote-drift-x:-14px;--mote-opacity:0.35;width:2.5px;height:2.5px;"></i>
+  <i class="mote mote--green" style="left:88%;top:60%;--mote-duration:9.5s;--mote-delay:1.5s;--mote-drift-y:-32px;--mote-drift-x:-6px;--mote-opacity:0.3;width:3px;height:3px;"></i>
+  <i class="mote mote--amber" style="left:35%;top:88%;--mote-duration:7s;--mote-delay:2.5s;--mote-drift-y:-26px;--mote-drift-x:10px;--mote-opacity:0.35;width:2px;height:2px;"></i>
+  <i class="mote" style="left:55%;top:25%;--mote-duration:10.5s;--mote-delay:0.3s;--mote-drift-y:-38px;--mote-drift-x:7px;--mote-opacity:0.3;width:2px;height:2px;"></i>
+  <i class="mote mote--purple" style="left:5%;top:50%;--mote-duration:8s;--mote-delay:3.5s;--mote-drift-y:-18px;--mote-drift-x:20px;--mote-opacity:0.25;width:2.5px;height:2.5px;"></i>
+  <i class="mote mote--green" style="left:72%;top:10%;--mote-duration:9s;--mote-delay:1s;--mote-drift-y:-34px;--mote-drift-x:-10px;--mote-opacity:0.3;width:2px;height:2px;"></i>
+  <i class="mote" style="left:40%;top:65%;--mote-duration:7.5s;--mote-delay:4.5s;--mote-drift-y:-20px;--mote-drift-x:12px;--mote-opacity:0.4;width:3px;height:3px;"></i>
+  <i class="mote mote--amber" style="left:18%;top:30%;--mote-duration:11s;--mote-delay:2.2s;--mote-drift-y:-28px;--mote-drift-x:-5px;--mote-opacity:0.3;width:2px;height:2px;"></i>
+  <i class="mote" style="left:82%;top:45%;--mote-duration:8.5s;--mote-delay:0.7s;--mote-drift-y:-24px;--mote-drift-x:-16px;--mote-opacity:0.35;width:2.5px;height:2.5px;"></i>
+  <i class="mote mote--green" style="left:50%;top:90%;--mote-duration:9.5s;--mote-delay:3.8s;--mote-drift-y:-36px;--mote-drift-x:3px;--mote-opacity:0.25;width:2px;height:2px;"></i>
+  <i class="mote mote--purple" style="left:60%;top:75%;--mote-duration:7s;--mote-delay:1.8s;--mote-drift-y:-22px;--mote-drift-x:-9px;--mote-opacity:0.3;width:3px;height:3px;"></i>
+  <i class="mote mote--amber" style="left:30%;top:5%;--mote-duration:10s;--mote-delay:5s;--mote-drift-y:-30px;--mote-drift-x:14px;--mote-opacity:0.35;width:2px;height:2px;"></i>
+
+  <!-- Center Content -->
+  <div class="center">
+
+    <!-- Sigil + Rune Ring -->
+    <div class="sigil-container">
+      <div class="rune-ring">
+        <span class="rune">&#5765;</span>
+        <span class="rune">&#5768;</span>
+        <span class="rune">&#5792;</span>
+        <span class="rune">&#5794;</span>
+        <span class="rune">&#5800;</span>
+        <span class="rune">&#5765;</span>
+        <span class="rune">&#5809;</span>
+        <span class="rune">&#5815;</span>
+      </div>
+      <svg class="sigil" viewBox="0 0 120 120" width="160" height="160">
+        <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(240,216,144,0.15)" stroke-width="1"/>
+        <circle cx="60" cy="60" r="38" fill="none" stroke="rgba(240,216,144,0.1)" stroke-width="0.5" stroke-dasharray="4 8"/>
+        <path d="M60 15 L72 42 L102 42 L78 60 L87 90 L60 72 L33 90 L42 60 L18 42 L48 42Z" fill="none" stroke="rgba(240,216,144,0.25)" stroke-width="0.8" stroke-linejoin="round"/>
+        <circle cx="60" cy="60" r="8" fill="rgba(240,216,144,0.08)" stroke="rgba(240,216,144,0.3)" stroke-width="0.5"/>
+        <circle cx="60" cy="60" r="2.5" fill="rgba(240,216,144,0.5)"/>
+      </svg>
+    </div>
+
+    <!-- Title -->
+    <h1 class="title">REALM.WATCH</h1>
+
+    <!-- Subtitle -->
+    <p class="subtitle">Vigilate Regna, Custodite Nexus</p>
+
+    <!-- CTA -->
+    <a href="/realm-map.html" class="cta">Enter the Realm</a>
+
+    <!-- Version -->
+    <div class="version" id="splash-version">__SPLASH_VERSION__</div>
+
+  </div>
+
+  <!-- Particle field for dynamic particles -->
+  <div class="particle-field" style="position:fixed;inset:0;z-index:6;pointer-events:none;overflow:hidden;"></div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ── Typing Reveal for Subtitle ──
+  const subtitle = document.querySelector('.subtitle');
+  if (subtitle) {
+    const fullText = subtitle.textContent;
+    subtitle.textContent = '';
+    subtitle.style.opacity = '1';
+    subtitle.style.animation = 'none';
+    const cursor = document.createElement('span');
+    cursor.textContent = '|';
+    cursor.style.cssText = 'animation:blink 1s step-end infinite;color:#706040;';
+    const style = document.createElement('style');
+    style.textContent = '@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}';
+    document.head.appendChild(style);
+
+    let i = 0;
+    setTimeout(() => {
+      subtitle.appendChild(cursor);
+      const typeInterval = setInterval(() => {
+        if (i < fullText.length) {
+          subtitle.insertBefore(document.createTextNode(fullText[i]), cursor);
+          i++;
+        } else {
+          clearInterval(typeInterval);
+          setTimeout(() => cursor.remove(), 3000);
+        }
+      }, 80);
+    }, 2000);
+  }
+
+  // ── Parallax Aurora on Mouse Move ──
+  const bands = document.querySelectorAll('.aurora-band');
+  const factors = [0.015, -0.01, 0.012];
+  let mx = 0, my = 0, ax = 0, ay = 0;
+
+  document.addEventListener('mousemove', (e) => {
+    mx = (e.clientX / window.innerWidth - 0.5) * 2;
+    my = (e.clientY / window.innerHeight - 0.5) * 2;
+  });
+
+  function parallaxLoop() {
+    ax += (mx - ax) * 0.03;
+    ay += (my - ay) * 0.03;
+    bands.forEach((b, i) => {
+      const f = factors[i] || 0.01;
+      b.style.marginLeft = (ax * f * 100) + 'px';
+      b.style.marginTop = (ay * f * 80) + 'px';
+    });
+    requestAnimationFrame(parallaxLoop);
+  }
+  parallaxLoop();
+
+  // ── Rune Flare Pulse ──
+  const runes = document.querySelectorAll('.rune');
+  function flareRune() {
+    const r = runes[Math.floor(Math.random() * runes.length)];
+    r.style.transition = 'all 0.6s ease';
+    r.style.color = 'rgba(240,216,144,0.7)';
+    r.style.textShadow = '0 0 12px rgba(240,216,144,0.5), 0 0 24px rgba(180,140,255,0.3)';
+    r.style.transform += ' scale(1.4)';
+    setTimeout(() => {
+      r.style.color = 'rgba(240,216,144,0.2)';
+      r.style.textShadow = '0 0 6px rgba(240,216,144,0.1)';
+      r.style.transform = r.style.transform.replace(' scale(1.4)', '');
+    }, 1200);
+  }
+  setInterval(flareRune, 6000);
+  setTimeout(flareRune, 3000);
+
+  // ── Dynamic Particle System ──
+  const field = document.querySelector('.particle-field');
+  const colors = [
+    'rgba(240,216,144,0.4)', 'rgba(240,216,144,0.3)',
+    'rgba(180,140,255,0.3)', 'rgba(120,200,160,0.3)',
+    'rgba(200,180,80,0.35)'
+  ];
+  let particleCount = 0;
+  const MAX_PARTICLES = 40;
+
+  function spawnParticle(x, y, burst) {
+    if (particleCount >= MAX_PARTICLES) return;
+    const p = document.createElement('div');
+    const size = burst ? (2 + Math.random() * 2) : (1.5 + Math.random() * 2.5);
+    const dur = burst ? (1 + Math.random() * 1.5) : (6 + Math.random() * 10);
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const dx = burst ? (Math.random() - 0.5) * 120 : (Math.random() - 0.5) * 40;
+    const dy = burst ? (Math.random() - 0.5) * 120 : -(20 + Math.random() * 60);
+
+    p.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:${size}px;height:${size}px;
+      border-radius:50%;background:${color};box-shadow:0 0 ${size*2}px ${color};
+      transition:all ${dur}s ease-out;opacity:0;pointer-events:none;`;
+
+    field.appendChild(p);
+    particleCount++;
+
+    requestAnimationFrame(() => {
+      p.style.opacity = burst ? '0.8' : '0.5';
+      p.style.transform = `translate(${dx}px, ${dy}px)`;
+      setTimeout(() => {
+        p.style.opacity = '0';
+        setTimeout(() => { p.remove(); particleCount--; }, 1000);
+      }, (dur - 1) * 1000);
+    });
+  }
+
+  // Ambient particles
+  function ambientSpawn() {
+    const x = Math.random() * window.innerWidth;
+    const y = Math.random() * window.innerHeight;
+    spawnParticle(x, y, false);
+  }
+  setInterval(ambientSpawn, 800);
+
+  // ── Sigil Hover + Click Burst ──
+  const sigil = document.querySelector('.sigil-container');
+  if (sigil) {
+    sigil.style.pointerEvents = 'auto';
+    sigil.style.cursor = 'pointer';
+
+    sigil.addEventListener('mouseenter', () => {
+      const svg = sigil.querySelector('.sigil');
+      if (svg) svg.style.filter = 'drop-shadow(0 0 30px rgba(240,216,144,0.35)) drop-shadow(0 0 60px rgba(180,140,255,0.15))';
+    });
+    sigil.addEventListener('mouseleave', () => {
+      const svg = sigil.querySelector('.sigil');
+      if (svg) svg.style.filter = '';
+    });
+
+    sigil.addEventListener('click', (e) => {
+      const rect = sigil.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      for (let i = 0; i < 14; i++) {
+        setTimeout(() => spawnParticle(cx, cy, true), i * 30);
+      }
+    });
+  }
+
+  // ── CTA Hover Particles + Click Transition ──
+  const cta = document.querySelector('.cta');
+  if (cta) {
+    cta.addEventListener('mouseenter', () => {
+      const rect = cta.getBoundingClientRect();
+      for (let i = 0; i < 5; i++) {
+        const x = rect.left + Math.random() * rect.width;
+        const y = rect.top + Math.random() * rect.height;
+        spawnParticle(x, y, true);
+      }
+    });
+
+    cta.addEventListener('click', (e) => {
+      e.preventDefault();
+      const href = cta.getAttribute('href');
+      document.body.style.transition = 'transform 0.8s ease-in, opacity 0.8s ease-in';
+      document.body.style.transform = 'scale(1.05)';
+      document.body.style.opacity = '0';
+
+      const rect = sigil.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      for (let i = 0; i < 20; i++) {
+        setTimeout(() => spawnParticle(cx, cy, true), i * 25);
+      }
+
+      setTimeout(() => { window.location.href = href; }, 850);
+    });
+  }
+
+})();
+</script>
+
+</body>
+</html>

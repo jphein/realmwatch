@@ -1,5 +1,6 @@
 import * as esbuild from 'esbuild';
 import { execFileSync } from 'child_process';
+import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 
 const watch = process.argv.includes('--watch');
 
@@ -60,6 +61,13 @@ if (watch) {
 } else {
   const result = await esbuild.build(config);
   console.log(`Built realm-map.js — ${versionName}`);
+  // Inject version into splash page and copy to deploy dir
+  try {
+    const splash = readFileSync('splash.html', 'utf8');
+    mkdirSync('dist', { recursive: true });
+    writeFileSync('dist/index.html', splash.replace('__SPLASH_VERSION__', versionName));
+    console.log(`Built dist/index.html — splash page`);
+  } catch (e) { console.warn('Splash build skipped:', e.message); }
   if (result.metafile) {
     const analysis = await esbuild.analyzeMetafile(result.metafile);
     console.log(analysis);

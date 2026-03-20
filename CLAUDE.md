@@ -42,6 +42,7 @@ python3 oracle_daemon.py --no-voice  # AI oracle daemon
 | chat_bridge.py | Chat bridge | Azure chat session management |
 | traffic_precompute.py | Traffic calc | Precomputes traffic stats from collectd |
 | system_persona.txt | Persona prompt | The System persona text (Access to Power) |
+| splash.html | Splash page | realm.watch landing page, links to realm-map.html |
 | realm-map.html | Frontend HTML | Spellbook, codex, quest log, panels |
 | realm-map.css | Frontend styles | ~4300 lines |
 | src/main.js | Entry point | Import order: topology then app |
@@ -80,6 +81,7 @@ Panel manager settings: auto-snap, show-anchors (toggles in Spellbook Enchant ta
 ```
 Browser (realm-map.html)
   → HTTP → map_server.py :8777
+    GET  / (splash.html) /realm-map.html (main app)
     GET  /status /topology /config /settings /energy /personas /debug
     GET  /latency /firewall /scan /scan/status /scan/wifi /chat/sessions
     GET  /collectd /observation /herald
@@ -100,6 +102,12 @@ Config:  ~/.config/azure-chat-assistant/config.json
          ~/.config/speech-to-cli/config.json
          personas.json (oracle model, voice, prompts)
 ```
+
+## Domain
+- **realm.watch** — primary domain, Cloudflare Registrar + DNS
+- Zone ID: b38f6724fe14bd6d3c7ee325d567a704
+- API token in `.env` as `CF_API_TOKEN` / `CF_ACCOUNT_ID`
+- Manage DNS: `curl -H "Authorization: Bearer $CF_API_TOKEN" https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records`
 
 ## Network
 - Gatekeeper (OpenWrt): fw4 zones → VLANs: admin→6, iot→8, lan→10, family→11

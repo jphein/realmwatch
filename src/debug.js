@@ -86,6 +86,24 @@ const _cfgSaveBtn = document.getElementById('cfg-save-btn');
 if (_cfgSaveBtn) _cfgSaveBtn.addEventListener('click', _saveArcaneConfig);
 loadArcaneConfig();
 
+// ── Server Info ──
+async function loadServerInfo() {
+  try {
+    const r = await fetch('/server-info');
+    if (!r.ok) return;
+    const info = await r.json();
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    set('srv-port', info.port);
+    set('srv-domain', info.domain || '(none)');
+    set('srv-hostname', info.hostname);
+    set('srv-pid', info.pid);
+    const h = Math.floor(info.uptime / 3600), m = Math.floor((info.uptime % 3600) / 60);
+    set('srv-uptime', h > 0 ? `${h}h ${m}m` : `${m}m`);
+  } catch (e) { /* server-info may not be available */ }
+}
+loadServerInfo();
+setInterval(loadServerInfo, 60000);
+
 // ── Herald Controls ──
 const _heraldStatus = document.getElementById('herald-status');
 function _heraldAction(action) {
