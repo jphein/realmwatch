@@ -28,4 +28,10 @@ export const _PERF = {
   get svgFilters()    { return !_isMobile || _perfTier === 'high'; },
   get vineAnims()     { return !_isMobile || _perfTier === 'high'; },
   get runeBreath()    { return _perfTier !== 'low'; },
+  get sealGlint()     { return _perfTier !== 'low'; },
+  get sealRingRotate(){ return _perfTier !== 'low'; },
+  get wispTrail()     { return _perfTier === 'low' ? false : _perfTier === 'medium' ? 'css' : 'canvas'; },
+  get conjureParticles()    { return _perfTier === 'high'; },
+  get transitionParticles() { return _perfTier === 'high'; },
+  get dockLeyline()   { return _perfTier === 'low' ? 'static' : 'animated'; },
 };

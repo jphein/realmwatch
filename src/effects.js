@@ -6,6 +6,15 @@ import { getLatencyFlat } from './panels.js';
 import { applyPerfClasses, syncQualityUI, getAutoDetectEnabled } from './spellbook.js';
 import { scale, isZoomActive } from './map-view.js';
 
+// ── Cached perf tier from localStorage ──
+const _cachedTier = localStorage.getItem('realm-perf-tier');
+if (_cachedTier && ['low', 'medium', 'high'].includes(_cachedTier)) {
+  setPerfTier(_cachedTier);
+}
+// Apply body class for current tier
+document.body.classList.remove('perf-low', 'perf-medium', 'perf-high');
+document.body.classList.add('perf-' + _perfTier);
+
 // ── Magic Motes Trail (for draggable elements) ──
 const moteCanvas = document.createElement('canvas');
 moteCanvas.id = 'mote-canvas';
@@ -104,14 +113,17 @@ function _fpsUpdate() {
     /* eslint-enable */
 
     // Auto-detect weak hardware: 3 consecutive seconds below 25fps → downgrade to 'low'
-    if (getAutoDetectEnabled() && _perfTier !== 'low' && _autoDetectSamples < 10) {
+    if (getAutoDetectEnabled() && _perfTier !== 'low' && _autoDetectSamples < 5) {
       _autoDetectSamples++;
-      if (_autoDetectSamples > 2) {  // skip first 2s (SSE init, layout settle)
+      if (_autoDetectSamples > 1) {  // skip first 1s (SSE init, layout settle)
         if (fps < 25) _autoDetectLow++;
         else _autoDetectLow = 0;  // must be consecutive
         if (_autoDetectLow >= 3) {
           console.log('[perf] Auto-downgrade to low tier (avg idle fps < 25)');
           setPerfTier('low');
+          document.body.classList.remove('perf-low', 'perf-medium', 'perf-high');
+          document.body.classList.add('perf-' + _perfTier);
+          localStorage.setItem('realm-perf-tier', _perfTier);
           applyPerfClasses();
           syncQualityUI();
         }
@@ -293,7 +305,7 @@ let _fpsLoopRunning = false;
 function _fpsLoopNeeded() {
   if (_fpsEl.style.display !== 'none') return true;
   // Keep running during auto-detect startup window
-  if (getAutoDetectEnabled() && _autoDetectSamples < 10) return true;
+  if (getAutoDetectEnabled() && _autoDetectSamples < 5) return true;
   return false;
 }
 function _fpsLoop() {
