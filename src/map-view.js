@@ -1184,6 +1184,20 @@ let _gridHue = 0;
     });
   }
 
+  const sigilOpSlider = document.getElementById('sigil-opacity-slider');
+  const sigilOpVal = document.getElementById('sigil-opacity-val');
+  if (sigilOpSlider) {
+    sigilOpSlider.addEventListener('input', () => {
+      const v = parseFloat(sigilOpSlider.value);
+      if (sigilOpVal) sigilOpVal.textContent = v.toFixed(2);
+      document.querySelectorAll('.sealed-rune').forEach(r => {
+        r.style.opacity = v;
+      });
+      window._sigilOpacity = v;
+      saveSettings();
+    });
+  }
+
   const dockHueSlider = document.getElementById('dock-hue-slider');
   const dockHueVal = document.getElementById('dock-hue-val');
   if (dockHueSlider) {

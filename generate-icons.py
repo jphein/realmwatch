@@ -40,6 +40,7 @@ PANELS = {
     "node-chat-dialog": "a mint-colored crystal ball resting on an ornate speaking pedestal",
     "arcane-grimoire":  "an ancient leather-bound book with a golden star bookmark and glowing pages",
     "scrying-terminal": "a frost crystal lens mounted in a brass monocle frame with etched runes",
+    "scanner-panel":    "a golden magnifying glass with an emerald lens revealing hidden runes and glowing script",
 }
 
 SEED = 42

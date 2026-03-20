@@ -771,6 +771,7 @@ const _RUNE_ACCENTS = {
   'node-chat-dialog':{ accent: '#70c8a8', glow: 'rgba(80,200,160,0.25)' },
   'arcane-grimoire': { accent: '#d8b060', glow: 'rgba(210,170,80,0.25)' },
   'scrying-terminal':{ accent: '#80b8d8', glow: 'rgba(100,170,210,0.25)' },
+  'scanner-panel':   { accent: '#dcc060', glow: 'rgba(220,190,80,0.25)' },
 };
 
 function _createRune(panelId, def) {

@@ -487,7 +487,7 @@ const _PERSIST_SLIDERS = [
   'panel-codex', 'panel-spellbook', 'panel-questlog', 'panel-cartographer', 'panel-energy', 'panel-nodelist', 'panel-mirror', 'panel-latency', 'panel-firewall', 'panel-wifi', 'panel-scanner',
   'layer-compass', 'layer-sparkles', 'layer-vignette',
   'compass-scale', 'sparkle-density', 'ambient-glow', 'vignette',
-  'dock-opacity', 'dock-scale', 'dock-bg', 'dock-hue', 'layer-parchment',
+  'dock-opacity', 'dock-scale', 'dock-bg', 'dock-hue', 'sigil-opacity', 'layer-parchment',
 ];
 const _PERSIST_CHECKBOXES = [
   'topo-toggle-cb', 'grid-toggle-cb', 'grid-pulse-cb',
