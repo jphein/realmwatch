@@ -2171,7 +2171,7 @@
   #realm-search #search-input {
     width: 100%;
     padding: 8px 32px 8px 34px;
-    background: rgba(10,10,25,0.85);
+    background: rgba(10,10,25,0.95);
     border: 1px solid rgba(160,140,100,0.25);
     border-radius: 20px;
     color: #f0d890;
