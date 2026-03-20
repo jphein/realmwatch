@@ -183,7 +183,7 @@ export function setSparkleGlowSize(v) { _sparkleGlowSize = v; }
 
 // Cached map-world rect for sparkle spawners (updated once per spawn cycle)
 let _sparkleRect = null;
-const _sparkleColors = [[240,216,144],[180,200,255],[160,255,180],[200,160,255],[255,200,120]];
+const _sparkleColors = [[240,208,128],[128,232,160],[208,160,255],[255,144,144],[144,200,255]];
 
 function _spawnAmbientSparkles() {
   if (_sparkleAmbient <= 0 || motes.length >= _PERF.moteCap) return;
@@ -222,14 +222,14 @@ function _spawnNodeSparkles() {
       vx: (Math.random() - 0.5) * 0.4, vy: -0.3 - Math.random() * 0.6,
       life: 1.0, decay: 0.008 + Math.random() * 0.012,
       size: isCore ? 2 + Math.random() * 2 : 1 + Math.random() * 1.5,
-      color: isCore ? [255,220,100] : n.type === 'tower' ? [120,200,255] : [160,255,140],
+      color: isCore ? [240,208,128] : n.type === 'tower' ? [144,200,255] : [128,232,160],
       wobble: Math.random() * Math.PI * 2, wobbleSpeed: 0.04 + Math.random() * 0.08,
       twinkle: true,
     });
   }
 }
 
-const _leyColors = { wan: [100,180,255], bridge: [180,120,255], _default: [140,220,180] };
+const _leyColors = { wan: [240,208,128], bridge: [208,160,255], _default: [128,232,160] };
 function _spawnLeyLineSparkles() {
   if (_sparkleLeyLines <= 0 || !_topology || !_topology.connections || motes.length >= _PERF.moteCap) return;
   const rate = _sparkleLeyLines * 0.015 / _PERF.sparkleDiv;

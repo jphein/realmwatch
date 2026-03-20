@@ -7,14 +7,14 @@ export function setTrafficScale(v) { trafficScale = v; }
 // ── Connection traffic animation ──
 // Color bases for each connection type (r,g,b)
 const connColors = {
-  'conn-active': [100,180,255], 'conn-ap': [100,180,255], 'conn-wan': [255,180,50],
-  'conn-infra': [96,160,192], 'conn-bridge': [160,100,220], 'conn-vlan': [255,160,60],
-  'conn-mesh': [120,220,120],
+  'conn-active': [144,200,255], 'conn-ap': [144,200,255], 'conn-wan': [240,208,128],
+  'conn-infra': [128,232,160], 'conn-bridge': [208,160,255], 'conn-vlan': [240,208,128],
+  'conn-mesh': [128,232,160],
 };
-// VLAN-specific base colors (match CSS [data-vlan] custom properties)
+// VLAN-specific base colors (treasure hoard palette)
 const vlanColors = {
-  '6': [140,180,255], '8': [255,200,100], '10': [100,220,160],
-  '11': [200,140,255], '0': [100,220,220],
+  '6': [240,208,128], '8': [255,144,144], '10': [128,232,160],
+  '11': [208,160,255], '0': [144,200,255],
 };
 
 export function getNodeTraffic(collectd, nodeKey) {
@@ -122,7 +122,7 @@ export function updateConnectionTraffic(collectd) {
     // Stroke color
     if (cache.connType) {
       const vlan = line.dataset.vlan;
-      const [r,g,b] = (vlan && vlanColors[vlan]) || connColors[cache.connType] || [100,180,255];
+      const [r,g,b] = (vlan && vlanColors[vlan]) || connColors[cache.connType] || [144,200,255];
       const alpha = +(0.15 + intensity * 0.5).toFixed(2);
       const bright = 1 + intensity * 0.3;
       const stroke = `rgba(${Math.min(255,r*bright)|0},${Math.min(255,g*bright)|0},${Math.min(255,b*bright)|0},${alpha})`;
@@ -219,7 +219,7 @@ export function updateConnectionTrafficSSE(trafficMap) {
 
     if (cache.connType) {
       const vlan = line.dataset.vlan;
-      const [r,g,b] = (vlan && vlanColors[vlan]) || connColors[cache.connType] || [100,180,255];
+      const [r,g,b] = (vlan && vlanColors[vlan]) || connColors[cache.connType] || [144,200,255];
       const alpha = +(0.15 + intensity * 0.5).toFixed(2);
       const bright = 1 + intensity * 0.3;
       const stroke = `rgba(${Math.min(255,r*bright)|0},${Math.min(255,g*bright)|0},${Math.min(255,b*bright)|0},${alpha})`;
