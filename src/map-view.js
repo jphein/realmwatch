@@ -1195,14 +1195,18 @@ let _gridHue = 0;
     });
   }
 
-  const emojiCb = document.getElementById('dock-emoji-icons');
-  if (emojiCb) {
-    emojiCb.checked = localStorage.getItem('realm-emoji-icons') === 'true';
-    emojiCb.addEventListener('change', () => {
-      window.setEmojiIcons?.(emojiCb.checked);
+  // Icon mode buttons (sigil / emoji / nova)
+  const iconModeBtns = document.querySelectorAll('.icon-mode-btn');
+  const savedIconMode = localStorage.getItem('realm-icon-mode') || 'nova';
+  iconModeBtns.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.iconMode === savedIconMode);
+    btn.addEventListener('click', () => {
+      iconModeBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      window.setIconMode?.(btn.dataset.iconMode);
       saveSettings();
     });
-  }
+  });
 
   const runeLabelCb = document.getElementById('dock-rune-labels');
   if (runeLabelCb) {

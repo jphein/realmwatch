@@ -279,9 +279,13 @@
         <label>Rune Hue <span class="tc-val" id="dock-hue-val">0°</span></label>
         <input type="range" class="traffic-slider dock-hue-slider" id="dock-hue-slider" min="0" max="360" step="1" value="0">
       </div>
-      <div class="layer-row" style="margin-top:6px">
-        <label class="topo-switch"><input type="checkbox" id="dock-emoji-icons"><span class="topo-switch-track"></span></label>
-        <span class="layer-name">Emoji Icons</span>
+      <div class="icon-mode-row" style="margin-top:6px">
+        <span class="layer-name" style="display:block;margin-bottom:4px;font-size:10px;color:#908060">Rune Icons</span>
+        <div class="icon-mode-buttons">
+          <button class="icon-mode-btn" data-icon-mode="sigil" title="Hand-crafted SVG sigils">&#10053; Sigils</button>
+          <button class="icon-mode-btn" data-icon-mode="emoji" title="Unicode emoji icons">&#128142; Emoji</button>
+          <button class="icon-mode-btn active" data-icon-mode="nova" title="Arcane relic images">&#10022; Arcane Relics</button>
+        </div>
       </div>
       <div class="layer-row">
         <label class="topo-switch"><input type="checkbox" id="dock-rune-labels"><span class="topo-switch-track"></span></label>

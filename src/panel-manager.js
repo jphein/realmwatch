@@ -12,8 +12,8 @@ const ANCHORS = [
   { id: 'w',  x: 0, y: 0.5, label: 'West Anchor' },
 ];
 
-// Emoji icon mode — when true, dock uses emoji icons instead of SVG sigils
-let _useEmojiIcons = localStorage.getItem('realm-emoji-icons') === 'true';
+// Icon mode: 'sigil' (SVG), 'emoji' (unicode), 'nova' (PNG images)
+let _iconMode = localStorage.getItem('realm-icon-mode') || 'nova';
 
 // SVG sigil icons — small hand-crafted rune marks for each panel
 // Colored sigil helper — uses explicit stroke/fill colors per panel
@@ -2019,19 +2019,36 @@ export function registerPanel(panel) {
 // ── Emoji / Sigil icon switching ──
 
 function _setRuneIcon(iconEl, panelId, def) {
-  if (_useEmojiIcons || !SIGILS[panelId]) {
-    iconEl.innerHTML = '';
+  if (_iconMode === 'nova') {
+    iconEl.textContent = '';
+    iconEl.classList.remove('rune-icon--emoji');
+    const existingImg = iconEl.querySelector('.rune-icon-img');
+    if (existingImg) existingImg.remove();
+    const img = document.createElement('img');
+    img.src = '/assets/icons/style-b/' + panelId + '.png';
+    img.alt = def.name || panelId;
+    img.className = 'rune-icon-img';
+    img.draggable = false;
+    iconEl.appendChild(img);
+    return;
+  }
+  const leftoverImg = iconEl.querySelector('.rune-icon-img');
+  if (leftoverImg) leftoverImg.remove();
+  if (_iconMode === 'emoji' || !SIGILS[panelId]) {
     iconEl.textContent = def.icon;
     iconEl.classList.add('rune-icon--emoji');
   } else {
-    iconEl.innerHTML = SIGILS[panelId];
+    const tpl = document.createElement('template');
+    tpl.innerHTML = SIGILS[panelId];
+    iconEl.textContent = '';
+    iconEl.appendChild(tpl.content);
     iconEl.classList.remove('rune-icon--emoji');
   }
 }
 
-function setEmojiIcons(enabled) {
-  _useEmojiIcons = enabled;
-  localStorage.setItem('realm-emoji-icons', enabled ? 'true' : 'false');
+function setIconMode(mode) {
+  _iconMode = mode;
+  localStorage.setItem('realm-icon-mode', mode);
   // Refresh all existing runes
   document.querySelectorAll('.sealed-rune').forEach(rune => {
     const pid = rune.dataset.panelId;
@@ -2042,7 +2059,7 @@ function setEmojiIcons(enabled) {
   });
 }
 
-window.setEmojiIcons = setEmojiIcons;
+window.setIconMode = setIconMode;
 
 // ── HUD Settings Engine ──
 
@@ -2161,4 +2178,4 @@ function updateDockHUD(stats, animate) {
 window.updateDockHUD = updateDockHUD;
 
 // ── Exports ──
-export { FORMATIONS, PANELS, ANCHORS, _saveFormation as saveFormation, _unsealPanel as unsealPanel };
+export { FORMATIONS, PANELS, ANCHORS, _saveFormation as saveFormation, _unsealPanel as unsealPanel, setIconMode };

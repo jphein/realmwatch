@@ -497,7 +497,7 @@ const _PERSIST_CHECKBOXES = [
   'vis-titlebar', 'vis-search', 'vis-statuspanel', 'vis-legend', 'vis-spellbook',
   'vis-codex', 'vis-questlog', 'vis-cartographer', 'vis-energy', 'vis-nodelist', 'vis-debug', 'vis-latency', 'vis-firewall', 'vis-wifi', 'vis-scanner',
   'vis-map-vines', 'vis-loading-vines',
-  'dock-emoji-icons', 'dock-rune-labels',
+  'dock-rune-labels',
   'vis-fps-counter',
   'perf-auto-detect', 'perf-gpu-zoom',
   'bubble-fixed-size',
@@ -521,6 +521,7 @@ export function saveSettings() {
     peTab: activePeTab?.dataset.peTab || 'stats',
     mirrorTab: getActiveTab(),
     panelMode: _panelMode,
+    iconMode: localStorage.getItem('realm-icon-mode') || 'nova',
   };
   _PERSIST_SLIDERS.forEach(id => {
     const sl = document.getElementById(id + '-slider');
@@ -592,6 +593,13 @@ function _applySettings(s) {
   // Restore panel layout mode
   if (s.panelMode && _MODE_DESCS[s.panelMode]) {
     setPanelMode(s.panelMode);
+  }
+  // Restore icon mode
+  if (s.iconMode) {
+    window.setIconMode?.(s.iconMode);
+    document.querySelectorAll('.icon-mode-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.iconMode === s.iconMode);
+    });
   }
   // Seal state is managed by panel-manager.js via realm-panel-formation
   _restoring = false;
