@@ -1,5 +1,49 @@
   @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Cinzel+Decorative:wght@700&family=MedievalSharp&display=swap');
 
+  :root {
+    /* ── Treasure Hoard Gems ── */
+    --gem-gold: #f0d080;
+    --gem-gold-deep: #6b4c1a;
+    --gem-emerald: #80e8a0;
+    --gem-emerald-deep: #1a4a2d;
+    --gem-amethyst: #d0a0ff;
+    --gem-amethyst-deep: #3a1a5e;
+    --gem-ruby: #ff9090;
+    --gem-ruby-deep: #5a1a1a;
+    --gem-sapphire: #90c8ff;
+    --gem-sapphire-deep: #1a3a5e;
+    --gem-teal: #70e8d8;
+    --gem-teal-deep: #104840;
+    --gem-amber: #f0c060;
+    --gem-amber-deep: #5a3a10;
+    --gem-mint: #80f0c8;
+    --gem-mint-deep: #184838;
+    --gem-indigo: #a0a8ff;
+    --gem-indigo-deep: #1a1a5e;
+    --gem-frost: #b0e0ff;
+    --gem-frost-deep: #1a3850;
+
+    /* ── Surfaces ── */
+    --void: #0a0510;
+    --forest-depth: #060410;
+    --leather: rgba(95,68,35,0.95);
+    --arcane: rgba(85,55,70,0.95);
+    --gold-rim: rgba(200,170,90,1);
+    --gold-rim-dim: rgba(200,170,90,0.12);
+    --gold-rim-bright: rgba(200,170,90,0.45);
+
+    /* ── Typography ── */
+    --font-heading: 'Cinzel', serif;
+    --font-body: 'Inter', -apple-system, sans-serif;
+    --text-gold: #d4a574;
+    --text-leather: #b8a898;
+    --text-dim: rgba(200,180,150,0.5);
+
+    /* ── Grimoire Surface (SVG grain + leather-purple radial) ── */
+    --grimoire-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Ccircle cx='1' cy='1' r='0.6' fill='rgba(180,160,120,0.03)'/%3E%3Ccircle cx='5' cy='3' r='0.4' fill='rgba(140,120,80,0.025)'/%3E%3Ccircle cx='3' cy='6' r='0.5' fill='rgba(100,70,140,0.02)'/%3E%3C/svg%3E");
+    --grimoire-radial: radial-gradient(ellipse at 30% 25%, rgba(85,55,70,0.95), rgba(60,38,55,0.97) 30%, rgba(42,25,42,0.98) 60%, rgba(28,16,30,0.99));
+  }
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   /* ═══════════════════════════════════════════════════════════
