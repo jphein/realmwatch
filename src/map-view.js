@@ -1145,6 +1145,10 @@ let _gridHue = 0;
     btn.addEventListener('click', () => setPanelMode(btn.dataset.mode));
   });
 
+  // Clear legacy inline opacity from old settings (was set by old dock-opacity slider)
+  const dockEl = document.getElementById('sealed-dock');
+  if (dockEl) dockEl.style.removeProperty('opacity');
+
   const dockOpSlider = document.getElementById('dock-opacity-slider');
   const dockOpVal = document.getElementById('dock-opacity-val');
   const dockScSlider = document.getElementById('dock-scale-slider');
@@ -1158,6 +1162,8 @@ let _gridHue = 0;
       if (dockOpVal) dockOpVal.textContent = v.toFixed(2);
       const dock = document.getElementById('sealed-dock');
       if (dock) {
+        // Clear legacy inline opacity from old settings
+        dock.style.removeProperty('opacity');
         const bg = dock.querySelector('.dock-bg-layer');
         if (bg) bg.style.opacity = v;
         dock.style.setProperty('--dock-shadow-opacity', v);

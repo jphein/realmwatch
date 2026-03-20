@@ -49,7 +49,6 @@
   /* ── Grimoire Surface Treatment ── */
   .grimoire-surface,
   .panel,
-  .sealed-dock,
   #spellbook,
   .quest-log-body,
   .codex-body {
@@ -6755,7 +6754,7 @@
   .rune-label {
     --rc: var(--rune-color, 220,190,100);
     position: absolute;
-    bottom: -16px;
+    top: -16px;
     left: 50%;
     transform: translateX(-50%);
     white-space: nowrap;
