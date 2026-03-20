@@ -1158,7 +1158,8 @@ let _gridHue = 0;
       if (dockOpVal) dockOpVal.textContent = v.toFixed(2);
       const dock = document.getElementById('sealed-dock');
       if (dock) {
-        dock.style.setProperty('--dock-bg-opacity', v);
+        const bg = dock.querySelector('.dock-bg-layer');
+        if (bg) bg.style.opacity = v;
         dock.style.setProperty('--dock-shadow-opacity', v);
       }
       saveSettings();
@@ -1168,10 +1169,7 @@ let _gridHue = 0;
     dockScSlider.addEventListener('input', () => {
       const v = parseFloat(dockScSlider.value);
       if (dockScVal) dockScVal.textContent = v.toFixed(2);
-      document.querySelectorAll('.sealed-rune').forEach(r => {
-        r.style.transform = `scale(${v})`;
-      });
-      window._dockRuneScale = v;
+      document.documentElement.style.setProperty('--rune-scale', v);
       saveSettings();
     });
   }

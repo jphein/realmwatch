@@ -162,6 +162,11 @@ function _createSealedDock() {
   _sealedDock.id = 'sealed-dock';
   _sealedDock.className = 'sealed-dock';
 
+  // Background layer — separate div so dock opacity slider fades it without affecting sigils
+  const bgLayer = document.createElement('div');
+  bgLayer.className = 'dock-bg-layer';
+  _sealedDock.appendChild(bgLayer);
+
   // Ornamental corner flourishes
   const ornL = document.createElement('div');
   ornL.className = 'dock-ornament dock-orn-l';
