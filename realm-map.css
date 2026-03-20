@@ -6438,43 +6438,31 @@
   }
 
   .sealed-rune {
+    --accent: #d4a574;
+    --accent-glow: rgba(212,165,80,0.3);
     box-sizing: border-box;
-    width: 56px;
-    height: 56px;
+    width: 52px;
+    height: 52px;
     display: flex;
     align-items: center;
     justify-content: center;
     touch-action: none;
-    /* Ancient enchanted wax-seal artifact */
-    background:
-      /* Fine grain texture */
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='6'%3E%3Ccircle cx='1' cy='1' r='0.5' fill='rgba(180,160,120,0.025)'/%3E%3Ccircle cx='4' cy='3' r='0.4' fill='rgba(140,120,80,0.02)'/%3E%3Ccircle cx='2' cy='5' r='0.3' fill='rgba(160,140,100,0.015)'/%3E%3C/svg%3E"),
-      /* Deep embossed seal gradient */
-      radial-gradient(ellipse at 30% 25%,
-        rgba(115, 80, 40, 0.95) 0%,
-        rgba(85, 58, 30, 0.97) 30%,
-        rgba(60, 40, 22, 0.98) 60%,
-        rgba(40, 28, 16, 0.99) 100%);
-    border: 2px solid rgba(180, 150, 80, 0.3);
     border-radius: 50%;
-    cursor: pointer;
     position: relative;
-    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+    cursor: pointer;
+    background:
+      var(--grimoire-grain),
+      var(--grimoire-radial);
+    border: 2px solid rgba(160,120,80,0.28);
+    box-shadow:
+      0 3px 12px rgba(15,8,20,0.7),
+      0 0 20px rgba(80,40,60,0.1),
+      inset 0 2px 1px rgba(200,170,110,0.1),
+      inset 0 -3px 2px rgba(8,4,12,0.5);
+    animation: rune-float 3s ease-in-out infinite;
+    transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1),
                 border-color 0.4s ease,
                 box-shadow 0.4s ease;
-    animation: rune-float 3s ease-in-out infinite, rune-breathe 5s ease-in-out infinite;
-    box-shadow:
-      /* Deep carved shadow */
-      0 3px 12px rgba(25, 16, 6, 0.65),
-      0 0 24px rgba(100, 70, 30, 0.12),
-      /* Emboss rim highlight */
-      inset 0 2px 1px rgba(220, 190, 110, 0.15),
-      /* Deep bottom carve */
-      inset 0 -3px 2px rgba(15, 10, 4, 0.7),
-      /* Inner ambient warmth */
-      inset 0 0 16px rgba(120, 85, 40, 0.12),
-      /* Faint outer arcane ring */
-      0 0 0 1px rgba(180, 150, 80, 0.08);
   }
 
   /* Inner carved sigil ring — rotating arcane inscription */
@@ -6627,17 +6615,14 @@
   .sealed-rune:nth-child(4n) .rune-embers::before { animation-direction: reverse; }
 
   .sealed-rune:hover {
-    transform: scale(1.18) translateY(-6px);
-    border-color: rgba(240, 216, 144, 0.5);
+    transform: translateY(-3px) scale(1.08);
+    border-color: rgba(200,170,90,0.45);
     box-shadow:
-      /* Awakened arcane glow */
-      0 0 24px rgba(220, 185, 90, 0.45),
-      0 0 48px rgba(180, 150, 70, 0.15),
-      0 0 80px rgba(140, 110, 50, 0.08),
-      0 8px 20px rgba(25, 16, 6, 0.5),
-      /* Inner awakening light */
-      inset 0 2px 1px rgba(240, 216, 144, 0.2),
-      inset 0 0 20px rgba(200, 170, 90, 0.15);
+      0 4px 16px rgba(15,8,20,0.8),
+      0 0 28px var(--accent-glow),
+      inset 0 2px 1px rgba(220,190,120,0.15),
+      inset 0 -3px 2px rgba(8,4,12,0.5),
+      inset 0 0 24px var(--accent-glow);
   }
   .sealed-rune:hover::before {
     border-color: rgba(240, 216, 144, 0.25);
@@ -6850,6 +6835,87 @@
     75%  { opacity: 0.7; }
     100% { transform: rotate(540deg) translateX(28px) rotate(-540deg); opacity: 0.4; }
   }
+
+  /* ── Weathered leather rune layers ── */
+  .rune-inner-glow {
+    position: absolute;
+    inset: 6px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--accent-glow), transparent 70%);
+    opacity: 0.15;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+  }
+  .sealed-rune:hover .rune-inner-glow { opacity: 0.5; }
+
+  .rune-carved-ring {
+    position: absolute;
+    inset: 3px;
+    border-radius: 50%;
+    border: 1px solid rgba(200,170,90,0.12);
+    pointer-events: none;
+    animation: ringRotate 22s linear infinite;
+    background: conic-gradient(
+      from 0deg,
+      transparent 0deg, rgba(200,170,90,0.1) 4deg, transparent 8deg,
+      transparent 60deg, rgba(200,170,90,0.1) 64deg, transparent 68deg,
+      transparent 120deg, rgba(200,170,90,0.1) 124deg, transparent 128deg,
+      transparent 180deg, rgba(200,170,90,0.1) 184deg, transparent 188deg,
+      transparent 240deg, rgba(200,170,90,0.1) 244deg, transparent 248deg,
+      transparent 300deg, rgba(200,170,90,0.1) 304deg, transparent 308deg,
+      transparent 360deg
+    );
+  }
+
+  .rune-glint-flash {
+    position: absolute;
+    top: 10px;
+    left: 14px;
+    width: 6px;
+    height: 6px;
+    background: radial-gradient(circle, rgba(255,240,180,0.9), transparent 60%);
+    border-radius: 50%;
+    opacity: 0;
+    pointer-events: none;
+    animation: glintFlash 6s ease-in-out infinite;
+    z-index: 5;
+  }
+
+  .rune-outer-aura {
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 1px solid rgba(160,120,80,0.06);
+    pointer-events: none;
+    animation: auraPulse 5s ease-in-out infinite;
+  }
+  .sealed-rune:hover .rune-outer-aura {
+    border-color: var(--accent-glow);
+    box-shadow: 0 0 14px var(--accent-glow);
+  }
+
+  @keyframes ringRotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes glintFlash {
+    0%, 70%, 100% { opacity: 0; transform: scale(0.5); }
+    75% { opacity: 1; transform: scale(1.6); }
+    80% { opacity: 0.4; transform: scale(1); }
+    85% { opacity: 0.8; transform: scale(1.4); }
+    90% { opacity: 0; transform: scale(0.8); }
+  }
+  @keyframes auraPulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.7; } }
+
+  /* Glint stagger per rune position */
+  .sealed-rune:nth-child(2) .rune-glint-flash { animation-delay: -1s; }
+  .sealed-rune:nth-child(3) .rune-glint-flash { animation-delay: -2s; }
+  .sealed-rune:nth-child(4) .rune-glint-flash { animation-delay: -3s; }
+  .sealed-rune:nth-child(5) .rune-glint-flash { animation-delay: -4s; }
+  .sealed-rune:nth-child(6) .rune-glint-flash { animation-delay: -0.5s; }
+  .sealed-rune:nth-child(7) .rune-glint-flash { animation-delay: -2.5s; }
+  .sealed-rune:nth-child(8) .rune-glint-flash { animation-delay: -4.5s; }
+  .sealed-rune:nth-child(2) .rune-carved-ring { animation-direction: reverse; animation-duration: 28s; }
+  .sealed-rune:nth-child(3) .rune-carved-ring { animation-duration: 18s; }
+  .sealed-rune:nth-child(4) .rune-carved-ring { animation-direction: reverse; animation-duration: 25s; }
+  .sealed-rune:nth-child(5) .rune-carved-ring { animation-duration: 20s; }
 
   .sealed-rune.entering {
     animation: rune-enter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;

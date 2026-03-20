@@ -752,12 +752,36 @@ const _RUNE_COLORS = {
   'scrying-terminal': '112,176,216',  // frost blue
 };
 
+const _RUNE_ACCENTS = {
+  'realm-panel':    { accent: '#e07070', glow: 'rgba(220,80,80,0.25)' },
+  'legend':         { accent: '#dcc060', glow: 'rgba(220,190,80,0.25)' },
+  'spellbook':      { accent: '#b888e0', glow: 'rgba(160,100,220,0.25)' },
+  'realm-codex':    { accent: '#d8b060', glow: 'rgba(210,170,80,0.25)' },
+  'quest-log':      { accent: '#70c080', glow: 'rgba(80,200,120,0.2)' },
+  'cartographer':   { accent: '#80b0e8', glow: 'rgba(100,160,230,0.25)' },
+  'energy-panel':   { accent: '#60c8b8', glow: 'rgba(60,200,180,0.25)' },
+  'node-list':      { accent: '#dcc060', glow: 'rgba(220,190,80,0.25)' },
+  'debug-panel':    { accent: '#b888e0', glow: 'rgba(160,100,220,0.25)' },
+  'latency-panel':  { accent: '#80b0e8', glow: 'rgba(100,160,230,0.25)' },
+  'firewall-panel': { accent: '#e07070', glow: 'rgba(220,80,80,0.25)' },
+  'wifi-panel':     { accent: '#8890d0', glow: 'rgba(100,100,200,0.25)' },
+  'node-chat-dialog':{ accent: '#70c8a8', glow: 'rgba(80,200,160,0.25)' },
+  'arcane-grimoire': { accent: '#d8b060', glow: 'rgba(210,170,80,0.25)' },
+  'scrying-terminal':{ accent: '#80b8d8', glow: 'rgba(100,170,210,0.25)' },
+};
+
 function _createRune(panelId, def) {
   const rune = document.createElement('div');
   rune.className = 'sealed-rune';
   rune.dataset.panelId = panelId;
   rune.title = def.name;
   if (_RUNE_COLORS[panelId]) rune.style.setProperty('--rune-color', _RUNE_COLORS[panelId]);
+
+  const accents = _RUNE_ACCENTS[panelId] || _RUNE_ACCENTS[panelId.replace(/-panel$/, '')];
+  if (accents) {
+    rune.style.setProperty('--accent', accents.accent);
+    rune.style.setProperty('--accent-glow', accents.glow);
+  }
 
   const icon = document.createElement('span');
   icon.className = 'rune-icon';
@@ -779,6 +803,22 @@ function _createRune(panelId, def) {
   rune.appendChild(icon);
   rune.appendChild(glow);
   rune.appendChild(label);
+
+  const innerGlow = document.createElement('div');
+  innerGlow.className = 'rune-inner-glow';
+  rune.appendChild(innerGlow);
+
+  const carvedRing = document.createElement('div');
+  carvedRing.className = 'rune-carved-ring';
+  rune.appendChild(carvedRing);
+
+  const glint = document.createElement('div');
+  glint.className = 'rune-glint-flash';
+  rune.appendChild(glint);
+
+  const aura = document.createElement('div');
+  aura.className = 'rune-outer-aura';
+  rune.appendChild(aura);
 
   // Click to unseal (dock mode uses this; anchored/conjured use drag handler)
   const panel = document.getElementById(panelId);
