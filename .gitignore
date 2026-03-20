@@ -25,3 +25,11 @@ access-to-power.pdf
 
 # Git worktrees
 .worktrees/
+
+# Brainstorm sessions
+.superpowers/
+
+# Claude Code session data (keep skills)
+.claude/*
+!.claude/skills/
+!.claude/skills/**
