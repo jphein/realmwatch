@@ -46,6 +46,23 @@
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
+  /* ── Grimoire Surface Treatment ── */
+  .grimoire-surface,
+  .panel,
+  .sealed-dock,
+  #spellbook,
+  .quest-log-body,
+  .codex-body {
+    background:
+      var(--grimoire-grain),
+      var(--grimoire-radial) !important;
+    border: 1px solid var(--gold-rim-dim);
+    box-shadow:
+      0 3px 12px rgba(15,8,20,0.7),
+      inset 0 2px 1px rgba(200,170,110,0.1),
+      inset 0 -3px 2px rgba(8,4,12,0.5);
+  }
+
   /* ═══════════════════════════════════════════════════════════
      ARCANE LOADING SCREEN — staged boot, compositor-only animations
      ═══════════════════════════════════════════════════════════ */
@@ -2335,6 +2352,9 @@
     cursor: pointer;
     user-select: none;
     position: relative;
+    font-family: var(--font-heading);
+    color: var(--text-gold);
+    border-bottom: 1px solid var(--gold-rim-dim);
   }
   .panel-header::after {
     content: '';
@@ -2446,12 +2466,18 @@
     .panel-resize-grip { width: 28px; height: 28px; font-size: 16px; }
   }
 
+  /* ── Panel Body / Content Areas ── */
+  .panel-body {
+    background: rgba(15,10,25,0.85);
+    border: 1px solid rgba(200,170,90,0.08);
+  }
+
   /* ── Panel Seal Button ── */
   .panel-seal-btn {
     width: 24px; height: 24px;
-    border: 1px solid rgba(140,100,200,0.3);
+    border: 1px solid rgba(200,170,90,0.3);
     background: radial-gradient(circle at center, rgba(80,60,120,0.4), rgba(40,30,60,0.6));
-    color: #a090c0;
+    color: var(--text-gold);
     font-size: 14px;
     line-height: 22px;
     text-align: center;
@@ -2466,7 +2492,7 @@
     color: #d0b0ff;
     background: radial-gradient(circle at center, rgba(140,100,200,0.3), rgba(80,60,120,0.2));
     border-color: rgba(180,140,255,0.5);
-    box-shadow: 0 0 12px rgba(140,100,200,0.3);
+    box-shadow: 0 0 12px rgba(200,170,90,0.3);
   }
   @media (pointer: coarse) {
     .panel-seal-btn { width: 36px; height: 36px; font-size: 18px; line-height: 34px; }
@@ -2571,10 +2597,11 @@
     transition: all 0.3s ease;
   }
   .spell-tab-label {
-    font-family: 'Cinzel', serif;
+    font-family: var(--font-heading);
     font-size: 8px;
     letter-spacing: 1px;
     text-transform: uppercase;
+    color: var(--text-gold);
     opacity: 0.6;
     transition: opacity 0.3s ease;
   }
@@ -2587,8 +2614,8 @@
   }
   .spell-tab:hover .spell-tab-label { opacity: 0.8; }
   .spell-tab.active {
-    color: #f0d890;
-    border-bottom-color: rgba(240,216,144,0.6);
+    color: var(--gem-gold);
+    border-bottom-color: var(--gold-rim-bright);
   }
   .spell-tab.active .spell-tab-icon {
     filter: none;
@@ -5968,23 +5995,20 @@
     max-width: 95vw;
     overflow: visible;
   }
-  /* Arcane rim — curved golden thread at top edge */
+  /* Ley line — golden thread at top edge with glow animation */
   .sealed-dock::before {
     content: '';
     position: absolute;
-    top: 0; left: 16px; right: 16px;
+    top: 0; left: 0; right: 0;
     height: 1px;
     background: linear-gradient(90deg,
       transparent,
-      rgba(220, 185, 100, 0.08) 10%,
-      rgba(240, 210, 120, 0.25) 30%,
-      rgba(255, 230, 150, 0.35) 50%,
-      rgba(240, 210, 120, 0.25) 70%,
-      rgba(220, 185, 100, 0.08) 90%,
+      rgba(200,170,90,0.2) 20%,
+      rgba(230,200,110,0.35) 50%,
+      rgba(200,170,90,0.2) 80%,
       transparent);
-    border-radius: 50%;
     pointer-events: none;
-    box-shadow: 0 0 12px rgba(220, 185, 100, 0.15);
+    animation: leyGlow 4s ease-in-out infinite;
   }
   /* Arcane sigil centerpiece at dock crown */
   .sealed-dock::after {
@@ -6007,6 +6031,10 @@
   }
   @keyframes dock-shimmer {
     0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+  @keyframes leyGlow {
+    0%, 100% { opacity: 0.6; }
     50% { opacity: 1; }
   }
 
@@ -6118,14 +6146,15 @@
     z-index: 9991;
     padding: 4px 14px;
     box-sizing: border-box;
-    background: radial-gradient(ellipse 140% 100% at 50% 100%,
-      rgba(30, 22, 14, 0.92) 0%,
-      rgba(20, 14, 8, 0.88) 100%);
+    background:
+      var(--grimoire-grain),
+      var(--grimoire-radial) !important;
     border-radius: 16px;
-    border: 1px solid rgba(220, 185, 100, 0.12);
+    border: 1px solid var(--gold-rim-dim);
     box-shadow:
-      0 2px 12px rgba(0, 0, 0, 0.4),
-      inset 0 1px 0 rgba(220, 185, 100, 0.08);
+      0 3px 12px rgba(15,8,20,0.7),
+      inset 0 2px 1px rgba(200,170,110,0.1),
+      inset 0 -3px 2px rgba(8,4,12,0.5);
     backdrop-filter: blur(8px);
     transition: opacity 0.3s, transform 0.15s ease-out;
     pointer-events: auto;
@@ -6152,7 +6181,7 @@
     height: 26px;
     border-radius: 50%;
     background: radial-gradient(circle at 40% 35%, #c9a84c, #8a6d2b);
-    border: 1.5px solid rgba(220, 190, 80, 0.6);
+    border: 1.5px solid var(--gold-rim);
     box-shadow: 0 0 6px rgba(200, 170, 60, 0.4), inset 0 1px 2px rgba(255, 240, 180, 0.3);
     display: flex;
     align-items: center;
@@ -6160,7 +6189,7 @@
     flex-shrink: 0;
   }
   .hud-level-num {
-    font-family: 'Cinzel', serif;
+    font-family: var(--font-heading);
     font-size: 12px;
     font-weight: 700;
     color: #f5e6b8;
@@ -6178,19 +6207,19 @@
     background: rgba(20, 12, 35, 0.8);
     border-radius: 3px;
     overflow: hidden;
-    border: 0.5px solid rgba(138, 92, 245, 0.3);
+    border: 0.5px solid rgba(200, 170, 90, 0.3);
     box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.5),
-                0 0 4px rgba(138, 92, 245, 0.15);
+                0 0 4px rgba(200, 170, 90, 0.15);
   }
   .hud-xp-fill {
     height: 100%;
-    background: linear-gradient(90deg, #7b3ff2, #5ee8b5, #7b3ff2);
+    background: linear-gradient(90deg, var(--gem-emerald-deep), var(--gem-emerald), var(--gem-emerald-deep));
     background-size: 200% 100%;
     animation: xp-shimmer 3s ease-in-out infinite;
     border-radius: 3px;
     transition: width 0.6s ease-out;
-    box-shadow: 0 0 6px rgba(94, 232, 181, 0.5),
-                0 0 2px rgba(138, 92, 245, 0.6);
+    box-shadow: 0 0 6px rgba(128, 232, 160, 0.5),
+                0 0 2px rgba(128, 232, 160, 0.6);
   }
   @keyframes xp-shimmer {
     0%, 100% { background-position: 0% 50%; }
@@ -6226,13 +6255,13 @@
     filter: drop-shadow(0 0 2px rgba(96, 216, 216, 0.5));
   }
   .hud-gold-num {
-    font-family: 'MedievalSharp', cursive;
+    font-family: var(--font-heading);
     font-size: 11px;
-    color: #ddb870;
+    color: var(--text-gold);
     text-shadow: 0 0 4px rgba(200, 170, 60, 0.3);
   }
   .hud-gems-num {
-    font-family: 'MedievalSharp', cursive;
+    font-family: var(--font-heading);
     font-size: 11px;
     color: #60d8d8;
     text-shadow: 0 0 4px rgba(96, 216, 216, 0.3);
@@ -6284,7 +6313,7 @@
 
   .dock-tray {
     display: flex;
-    gap: 16px;
+    gap: 10px;
     align-items: flex-start;
     justify-content: center;
     min-height: 48px;
