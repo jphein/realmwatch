@@ -77,15 +77,15 @@ export function generateTerrain() {
     const { theme, cx, cy, rx, ry } = b;
     const [gr, gg, gb] = theme.glow;
     // Outer haze
-    s += `<ellipse cx="${cx}" cy="${cy}" rx="${rx * 1.4}" ry="${ry * 1.4}" fill="${theme.land}" filter="url(#terrain-blur-lg)" opacity="0.4"/>`;
+    // Soft haze — use oversized ellipse at low opacity instead of SVG blur filter
+    s += `<ellipse cx="${cx}" cy="${cy}" rx="${rx * 1.8}" ry="${ry * 1.8}" fill="${theme.land}" opacity="0.18"/>`;
+    s += `<ellipse cx="${cx}" cy="${cy}" rx="${rx * 1.4}" ry="${ry * 1.4}" fill="${theme.land}" opacity="0.25"/>`;
     // Inner landmass
     s += `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${theme.accent}" opacity="0.6"/>`;
-    // Radial glow
+    // Radial glow — layered circles instead of blur filter
     if (g > 0) {
-      s += `<circle cx="${cx}" cy="${cy}" r="${rx * 0.9}" fill="none" opacity="1">`;
-      // Use inline radialGradient via style
-      s += `</circle>`;
-      s += `<circle cx="${cx}" cy="${cy}" r="${rx * 0.9}" fill="rgba(${gr},${gg},${gb},${0.12 * g})" filter="url(#terrain-blur-lg)"/>`;
+      s += `<circle cx="${cx}" cy="${cy}" r="${rx * 1.2}" fill="rgba(${gr},${gg},${gb},${0.04 * g})"/>`;
+      s += `<circle cx="${cx}" cy="${cy}" r="${rx * 0.9}" fill="rgba(${gr},${gg},${gb},${0.08 * g})"/>`;
     }
   }
 
@@ -98,7 +98,9 @@ export function generateTerrain() {
       const [gr, gg, gb] = theme.glow;
       const r = n.type === 'core' ? 120 : n.type === 'tower' ? 70 : n.type === 'infra' ? 55 : n.type === 'bridge' ? 60 : 40;
       const op = n.type === 'core' ? 0.15 * g : 0.08 * g;
-      s += `<circle cx="${c.x}" cy="${c.y}" r="${r}" fill="rgba(${gr},${gg},${gb},${op})" filter="url(#terrain-blur)"/>`;
+      // Layered circles instead of SVG blur filter for node glow
+      s += `<circle cx="${c.x}" cy="${c.y}" r="${r * 1.6}" fill="rgba(${gr},${gg},${gb},${op * 0.3})"/>`;
+      s += `<circle cx="${c.x}" cy="${c.y}" r="${r}" fill="rgba(${gr},${gg},${gb},${op})"/>`;
     }
   }
 

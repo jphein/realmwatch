@@ -11,6 +11,7 @@ import json
 import os
 import sqlite3
 import time
+from openai import AsyncAzureOpenAI
 import realm_db
 
 # Config
@@ -224,61 +225,48 @@ async def chat(message, node_id=None, session_name=None, extra_context=None):
             "cached": True
         }
 
-    # Call Azure AI
-    url = f"{endpoint}/openai/deployments/{DEFAULT_MODEL}/chat/completions?api-version=2024-12-01-preview"
-    headers = {
-        "Content-Type": "application/json",
-        "api-key": api_key,
-    }
-    payload = {
-        "messages": messages,
-        "max_completion_tokens": 500,
-    }
+    # Call Azure AI via OpenAI SDK
+    client = AsyncAzureOpenAI(
+        azure_endpoint=endpoint,
+        api_key=api_key,
+        api_version="2024-12-01-preview",
+    )
 
     start = time.time()
     try:
-        async with httpx.AsyncClient(timeout=TIMEOUT) as client:
-            resp = await client.post(url, headers=headers, json=payload)
-            latency = int((time.time() - start) * 1000)
+        response = await client.chat.completions.create(
+            model=DEFAULT_MODEL,
+            messages=messages,
+            max_completion_tokens=500,
+        )
+        latency = int((time.time() - start) * 1000)
+        content = response.choices[0].message.content or ""
 
-            if resp.status_code != 200:
-                error_text = resp.text[:200]
-                return {"error": f"API error {resp.status_code}: {error_text}", "response": None}
+        if not content:
+            return {"error": "Empty response from model", "response": None}
 
-            data = resp.json()
-            content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        # Cache and save to history
+        _cache[cache_key] = {"response": content, "ts": time.time()}
+        if len(_cache) > CACHE_MAX:
+            # Remove oldest entries
+            sorted_keys = sorted(_cache.keys(), key=lambda k: _cache[k].get("ts", 0))
+            for k in sorted_keys[:20]:
+                del _cache[k]
 
-            if not content:
-                return {"error": "Empty response from model", "response": None}
+        add_to_history(session, "user", message)
+        add_to_history(session, "assistant", content)
 
-            # Cache and save to history
-            _cache[cache_key] = {"response": content, "ts": time.time()}
-            if len(_cache) > CACHE_MAX:
-                # Remove oldest entries
-                sorted_keys = sorted(_cache.keys(), key=lambda k: _cache[k].get("ts", 0))
-                for k in sorted_keys[:20]:
-                    del _cache[k]
-
-            add_to_history(session, "user", message)
-            add_to_history(session, "assistant", content)
-
-            return {
-                "response": content,
-                "model": DEFAULT_MODEL,
-                "latency_ms": latency,
-                "cached": False
-            }
+        return {
+            "response": content,
+            "model": DEFAULT_MODEL,
+            "latency_ms": latency,
+            "cached": False
+        }
 
     except httpx.TimeoutException:
         return {"error": f"Request timed out after {TIMEOUT}s", "response": None}
     except Exception as e:
         return {"error": str(e), "response": None}
-
-
-def chat_sync(message, node_id=None, session_name=None, extra_context=None):
-    """Synchronous wrapper for chat()."""
-    import asyncio
-    return asyncio.run(chat(message, node_id, session_name, extra_context))
 
 
 # For testing

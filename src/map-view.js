@@ -1,6 +1,6 @@
 'use strict';
 import { WORLD_W, WORLD_H, _perfTier, _PERF, _mapTilt } from './config.js';
-import { _topology, _connPaths, updateLinePositions, isClusterExpandable, toggleClusterExpand } from './topology.js';
+import { _topology, _nodeMap, _connPaths, updateLinePositions, isClusterExpandable, toggleClusterExpand, getNodeDOM } from './topology.js';
 import { renderTopoLayer, setLastTopoCollectd, invalidateTopoNodeMap, forceTopoRender,
          updateRegionLabels, generateTerrain } from './terrain.js';
 import { spawnMote, clearMoteCanvas, updateSparkleRect, ensureMoteLoop } from './effects.js';
@@ -11,7 +11,7 @@ import { updateConnectionTrafficSSE, trafficToCollectd } from './traffic.js';
 import { updateBubblePositions } from './quest-log.js';
 import { saveSettings, scheduleSave, setPanelMode, isRestoring } from './layout.js';
 import { saveFormation } from './panel-manager.js';
-import { getFpsEl } from './effects.js';
+import { getFpsEl, startFpsLoop } from './effects.js';
 
 // ── Pan & zoom ──
 const canvas = document.getElementById('map-canvas');
@@ -22,6 +22,33 @@ export let scale = 1, panX = 0, panY = 0;
 let dragging = false, lastX, lastY;
 
 let _lastGlobeTilt = 0;
+
+// ── Cached NodeLists for globe-Z transforms (avoids querySelectorAll per call) ──
+let _cachedTopoBands = null;   // NodeList of .topo-band elements
+let _cachedBubbles = null;     // NodeList of .speech-bubble elements
+let _topoBandParent = null;    // topo-svg element when bands were cached
+
+/** Invalidate globe-Z caches (call after topology refresh or terrain re-render). */
+export function invalidateGlobeZCache() {
+  _cachedTopoBands = null;
+  _cachedBubbles = null;
+  _topoBandParent = null;
+}
+
+function _getTopoBands() {
+  const topoEl = document.getElementById('topo-svg');
+  if (!topoEl) return [];
+  if (_cachedTopoBands && _topoBandParent === topoEl) return _cachedTopoBands;
+  _topoBandParent = topoEl;
+  _cachedTopoBands = topoEl.querySelectorAll('.topo-band');
+  return _cachedTopoBands;
+}
+
+function _getBubbles() {
+  if (_cachedBubbles) return _cachedBubbles;
+  _cachedBubbles = document.querySelectorAll('.speech-bubble');
+  return _cachedBubbles;
+}
 
 // GPU zoom boost — toggled from spellbook perf controls
 let _gpuZoomEnabled = true;
@@ -339,7 +366,6 @@ function _flushDeferredUpdates() {
         bloom.setAttribute('r', randRange(3, 7).toFixed(1));
         bloom.setAttribute('class', 'vine-bloom');
         bloom.setAttribute('fill', bloomColors[Math.floor(rand() * bloomColors.length)]);
-        bloom.setAttribute('filter', 'url(#vine-glow)');
         g.appendChild(bloom);
       }
     }
@@ -365,7 +391,6 @@ function _flushDeferredUpdates() {
       mote.setAttribute('cy', (p.y + randRange(-15, 15)).toFixed(1));
       mote.setAttribute('r', randRange(4, 10).toFixed(1));
       mote.setAttribute('fill', glowColors[Math.floor(rand() * glowColors.length)]);
-      mote.setAttribute('filter', 'url(#vine-soft)');
       g.appendChild(mote);
     }
 
@@ -459,7 +484,7 @@ function _applyGlobeZ() {
   const topoEl = document.getElementById('topo-svg');
   if (topoEl) {
     topoEl.style.transformStyle = 'preserve-3d';
-    topoEl.querySelectorAll('.topo-band').forEach(band => {
+    _getTopoBands().forEach(band => {
       const elev = parseFloat(band.dataset.elev) || 0;
       band.style.translate = `0px 0px ${elev * peakH}px`;
     });
@@ -478,19 +503,19 @@ function _applyGlobeZ() {
 
   // Per-node dome Z + float; counter-rotate to face camera (billboard)
   for (const n of _topology.nodes) {
-    const el = document.querySelector(`[data-tip="${n.id}"]`);
-    if (!el) continue;
+    const cached = getNodeDOM(n.id);
+    if (!cached.el) continue;
     const dx = n.x - cx, dy = n.y - cy;
     const d2 = (dx * dx + dy * dy) / maxD2;
     const dome = R * Math.max(0, 1 - d2);
     const z = peakH + nodeFloat + dome;
-    el.style.translate = `0px 0px ${z}px`;
-    el.style.rotate = counterRot;
+    cached.el.style.translate = `0px 0px ${z}px`;
+    cached.el.style.rotate = counterRot;
   }
 
   // Speech bubbles float high, face camera
   const bubbleZ = peakH + nodeFloat + R + _mapTilt * 3;
-  document.querySelectorAll('.speech-bubble').forEach(b => {
+  _getBubbles().forEach(b => {
     b.style.translate = `0px 0px ${bubbleZ}px`;
     b.style.rotate = counterRot;
   });
@@ -510,19 +535,19 @@ export function applyTopoZ() {
 function _clearGlobeZ() {
   if (!_topology) return;
   for (const n of _topology.nodes) {
-    const el = document.querySelector(`[data-tip="${n.id}"]`);
-    if (el) { el.style.translate = ''; el.style.rotate = ''; }
+    const cached = getNodeDOM(n.id);
+    if (cached.el) { cached.el.style.translate = ''; cached.el.style.rotate = ''; }
   }
   const topoEl = document.getElementById('topo-svg');
   const connSvg = document.getElementById('connections');
   const regionEl = document.getElementById('region-labels');
   if (topoEl) {
     topoEl.style.transformStyle = '';
-    topoEl.querySelectorAll('.topo-band').forEach(b => { b.style.translate = ''; });
+    _getTopoBands().forEach(b => { b.style.translate = ''; });
   }
   if (connSvg) connSvg.style.translate = '';
   if (regionEl) { regionEl.style.translate = ''; regionEl.style.rotate = ''; }
-  document.querySelectorAll('.speech-bubble').forEach(b => { b.style.translate = ''; b.style.rotate = ''; });
+  _getBubbles().forEach(b => { b.style.translate = ''; b.style.rotate = ''; });
 }
 
 export function centerMap() {
@@ -701,8 +726,8 @@ export function setOpenPersonaEditor(fn) { _openPersonaEditor = fn; }
     dragNode.style.top = ny + 'px';
     // Sync topology data so topo overlay tracks dragged position
     const tipId = dragNode.dataset.tip;
-    if (tipId && _topology && _topology.nodes) {
-      const tn = _topology.nodes.find(n => n.id === tipId);
+    if (tipId) {
+      const tn = _nodeMap.get(tipId);
       if (tn) { tn.x = nx; tn.y = ny; }
     }
     // Throttle expensive line recomputation (rAF + perf tier skip)
@@ -1191,6 +1216,7 @@ let _gridHue = 0;
   if (fpsCb) {
     fpsCb.addEventListener('change', () => {
       getFpsEl().style.display = fpsCb.checked ? '' : 'none';
+      if (fpsCb.checked) startFpsLoop();
       saveSettings();
     });
   }

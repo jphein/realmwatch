@@ -46,18 +46,32 @@ export function getNodeTraffic(collectd, nodeKey) {
   return bestTotal > 0 ? { rx: bestRx, tx: bestTx, total: bestTotal } : null;
 }
 
-// Snapshot connection paths for traffic updates (uses _connPaths from renderTopology)
-const _connLinesWithData = _connPaths.filter(p => p && p.dataset.to);
-const _connBaseWidths = new Map();
+// Base stroke widths by connection class (matches CSS --sw custom properties)
+const _connBaseWidthsByClass = {
+  'conn-active': 2, 'conn-ap': 1.5, 'conn-wan': 3, 'conn-mesh': 1.5,
+  'conn-offline': 1, 'conn-portal': 2, 'conn-vlan': 1.5, 'conn-bridge': 2.5,
+  'conn-infra': 2,
+};
+const _defaultBaseWidth = 1.5;  // CSS fallback: var(--sw, 1.5)
+
 const _connCache = new WeakMap();  // Cache per-line: {connType, sw, speed, dir, tier, stroke, animated}
-_connPaths.forEach(path => {
-  if (!path) return;
-  const cs = getComputedStyle(path);
-  _connBaseWidths.set(path, parseFloat(cs.getPropertyValue('--sw')) || 1.5);
-  // Pre-cache connType (doesn't change)
-  const connType = Array.from(path.classList).find(c => connColors[c]);
-  _connCache.set(path, { connType, sw: 0, speed: 0, dir: '', tier: '', stroke: '', animated: false });
-});
+
+function _getBaseWidth(path) {
+  for (const cls of path.classList) {
+    if (cls in _connBaseWidthsByClass) return _connBaseWidthsByClass[cls];
+  }
+  return _defaultBaseWidth;
+}
+
+function _ensureCache(path) {
+  let cache = _connCache.get(path);
+  if (!cache) {
+    const connType = Array.from(path.classList).find(c => connColors[c]) || null;
+    cache = { connType, sw: 0, speed: 0, dir: '', tier: '', stroke: '', animated: false, glow: false };
+    _connCache.set(path, cache);
+  }
+  return cache;
+}
 
 const TOP_GLOW_COUNT = 5;  // Only apply expensive SVG glow to top N traffic lines
 const MAX_ANIMATED_CONNS = 15;  // Limit dash animations — each is a 60fps SVG repaint
@@ -66,8 +80,9 @@ export function updateConnectionTraffic(collectd) {
   if (!collectd) return;
   const trafficData = [];  // Collect {line, intensity} for top-N glow selection
 
-  _connLinesWithData.forEach(line => {
-    const cache = _connCache.get(line) || { connType: null, sw: 0, speed: 0, dir: '', tier: '', stroke: '', animated: false, glow: false };
+  for (const line of _connPaths) {
+    if (!line || !line.dataset.to) continue;
+    const cache = _ensureCache(line);
     const toNode = line.dataset.to;
     const fromNode = line.dataset.from;
     const toTraffic = getNodeTraffic(collectd, toNode);
@@ -75,7 +90,7 @@ export function updateConnectionTraffic(collectd) {
     const traffic = (toTraffic && fromTraffic)
       ? (toTraffic.total > fromTraffic.total ? toTraffic : fromTraffic)
       : (toTraffic || fromTraffic);
-    const baseW = _connBaseWidths.get(line) || 1.5;
+    const baseW = _getBaseWidth(line);
     if (!traffic || traffic.total === 0) {
       // Only update if was previously active
       if (cache.tier || cache.sw !== baseW || cache.animated || cache.glow) {
@@ -88,7 +103,7 @@ export function updateConnectionTraffic(collectd) {
         if (cache.glow) { line.classList.remove('conn-glow'); cache.glow = false; }
         cache.sw = baseW; cache.speed = 0; cache.dir = ''; cache.tier = ''; cache.stroke = '';
       }
-      return;
+      continue;
     }
     // Enable animation only when there's traffic
     if (!cache.animated) { line.classList.add('conn-animated'); cache.animated = true; }
@@ -121,7 +136,7 @@ export function updateConnectionTraffic(collectd) {
     }
     // Track for top-N glow selection
     if (intensity > 0.3) trafficData.push({ line, cache, intensity });
-  });
+  }
 
   // Apply expensive SVG glow filter only to top N traffic lines
   trafficData.sort((a, b) => b.intensity - a.intensity);
@@ -166,8 +181,9 @@ export function updateConnectionTrafficSSE(trafficMap) {
   if (!trafficMap) return;
   const trafficData = [];
 
-  _connLinesWithData.forEach(line => {
-    const cache = _connCache.get(line) || { connType: null, sw: 0, speed: 0, dir: '', tier: '', stroke: '', animated: false, glow: false };
+  for (const line of _connPaths) {
+    if (!line || !line.dataset.to) continue;
+    const cache = _ensureCache(line);
     const toNode = line.dataset.to;
     const fromNode = line.dataset.from;
     const toT = trafficMap[toNode];
@@ -175,7 +191,7 @@ export function updateConnectionTrafficSSE(trafficMap) {
     const traffic = (toT && fromT)
       ? (toT.total > fromT.total ? toT : fromT)
       : (toT || fromT);
-    const baseW = _connBaseWidths.get(line) || 1.5;
+    const baseW = _getBaseWidth(line);
 
     if (!traffic || traffic.total === 0) {
       if (cache.tier || cache.sw !== baseW || cache.animated || cache.glow) {
@@ -188,7 +204,7 @@ export function updateConnectionTrafficSSE(trafficMap) {
         if (cache.glow) { line.classList.remove('conn-glow'); cache.glow = false; }
         cache.sw = baseW; cache.speed = 0; cache.dir = ''; cache.tier = ''; cache.stroke = '';
       }
-      return;
+      continue;
     }
 
     const intensity = Math.min(1, traffic.intensity * trafficScale);
@@ -218,7 +234,7 @@ export function updateConnectionTrafficSSE(trafficMap) {
 
     // Collect for animation budget (only top N get dash animation)
     trafficData.push({ line, cache, intensity, traffic });
-  });
+  }
 
   // Use server-provided animate/glow flags if available; fall back to client-side sort
   const hasServerFlags = trafficData.length > 0 && trafficData[0].traffic?.animate !== undefined;

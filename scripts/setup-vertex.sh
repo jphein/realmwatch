@@ -82,7 +82,7 @@ SHELL_RC="$HOME/.bashrc"
 [[ "${SHELL:-}" == *zsh ]] && SHELL_RC="$HOME/.zshrc"
 
 # Update the provider switcher script with the project ID
-SWITCHER="$HOME/Projects/lit-rpg-fantasy-voice/scripts/claude-provider.sh"
+SWITCHER="$HOME/Projects/realmwatch/scripts/claude-provider.sh"
 if [ -f "$SWITCHER" ]; then
   echo "  Updated provider switcher with project ID."
 fi

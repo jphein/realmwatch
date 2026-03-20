@@ -1,5 +1,4 @@
 import psutil
-import math
 import subprocess
 import json
 import os
@@ -10,6 +9,10 @@ from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Prime psutil's CPU percent counter so that subsequent interval=0 calls
+# return a meaningful delta instead of 0.0 on the first invocation.
+psutil.cpu_percent(interval=None)
 
 # Sensor cache to avoid repeated expensive calls within a short window
 _cache = {}
@@ -26,7 +29,7 @@ def _cached(key, fn):
     return val
 
 
-class LitRPGEngine:
+class RealmEngine:
     # Known hosts in the realm and their roles
     KNOWN_HOSTS = {
         "katana":    {"role": "citadel",  "desc": "The Citadel — primary server"},
@@ -254,7 +257,7 @@ class LitRPGEngine:
     # --- Status assembly ---
 
     def get_status(self):
-        cpu_usage = psutil.cpu_percent(interval=0.3)
+        cpu_usage = psutil.cpu_percent(interval=0)
         memory = psutil.virtual_memory()
         battery = psutil.sensors_battery()
 
@@ -449,29 +452,3 @@ class LitRPGEngine:
         except Exception:
             pass
 
-    def get_observation(self, silent=False):
-        stats = self.get_status()
-        self.log_to_notion(stats)
-
-        if silent:
-            if stats["forge"]["usage"] > 80 or stats["mana"]["usage"] > 85:
-                report = self._build_report(stats)
-                return f"UNBALANCED STATE DETECTED!\n{report}"
-            return None
-
-        return self._build_report(stats)
-
-    def _build_report(self, stats):
-        lines = [
-            f"[{self.persona} Observation]",
-            stats["forge"]["msg"],
-            stats["mana"]["msg"],
-            stats["essence"]["msg"],
-            stats["astral"]["msg"],
-        ]
-        adult = self.adult_observation(stats)
-        lines.append("")
-        lines.append(adult)
-        lines.append("")
-        lines.append("The Census is inscribed. Proceed.")
-        return "\n".join(lines)

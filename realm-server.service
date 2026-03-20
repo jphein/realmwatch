@@ -1,16 +1,29 @@
 [Unit]
 Description=Realm Map Server
-After=network.target collectd.service
+After=network-online.target collectd.service
+Wants=network-online.target
 
 [Service]
 Type=simple
 User=jp
-WorkingDirectory=/home/jp/Projects/lit-rpg-fantasy-voice
-ExecStart=/home/jp/Projects/lit-rpg-fantasy-voice/realm-server run
-ExecStop=/bin/kill -TERM $MAINPID
+WorkingDirectory=/home/jp/Projects/realmwatch
+ExecStart=/home/jp/Projects/realmwatch/realm-server run
 Restart=on-failure
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1
+
+# Resource limits
+MemoryHigh=1G
+MemoryMax=2G
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+PrivateTmp=yes
+
+# Logging
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target

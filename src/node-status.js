@@ -1,6 +1,6 @@
 'use strict';
 import { scaleLabel, fmtBytes, fmtRate, scalePct } from './utils.js';
-import { tips, _topology, infraNodes, _tsHostMap, getNodeDOM, updateLinePositions } from './topology.js';
+import { tips, _topology, _nodeMap, infraNodes, _tsHostMap, getNodeDOM, updateLinePositions } from './topology.js';
 import { renderTopoLayer, setLastTopoCollectd } from './terrain.js';
 import { DOM, updateGauges, updateFirewallPanel, updateCensusSubLabels, updateLatencyPanel, updateNodeListStatus } from './panels.js';
 import { updateConnectionTraffic } from './traffic.js';
@@ -164,7 +164,7 @@ function _rebuildTipStats(tipKey) {
       const extra = buildCollectdExtra(cd);
       const base = tips[tipKey].stats.filter(s => ["Model", "IP", "OS", "Role", "Service", "Hostname"].includes(s[0]));
       // Use live node IP from topology (tip stats can have stale IPs from enrichment)
-      const liveNode = _topology?.nodes.find(n => n.id === tipKey);
+      const liveNode = _nodeMap.get(tipKey);
       if (liveNode?.ip) {
         const ipIdx = base.findIndex(s => s[0] === 'IP');
         if (ipIdx >= 0) base[ipIdx] = ['IP', liveNode.ip];

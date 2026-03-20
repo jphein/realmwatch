@@ -1,4 +1,4 @@
-# LitRPG Fantasy Voice — The Realm Map
+# Realmwatch
 
 A live, interactive fantasy-themed network monitor for a homelab infrastructure.
 Hardware sensors, network nodes, and system metrics are mapped to high-fantasy
@@ -20,7 +20,7 @@ Browser (realm-map.html)
   ├── POST /connections /topology /ssh /wol /notion-complete /reset
   └── SSE  /events  (collectd rates, latency, map events — live push)
        |
-       +── engine.py           LitRPGEngine — single source of truth for all logic
+       +── engine.py           RealmEngine — single source of truth for all logic
        +── realm_db.py         SQLite (realm.db) — nodes, events, settings, personas
        +── sse_broker.py       SSE event stream — collectd + latency + events
        |
@@ -45,7 +45,7 @@ Independent daemons (separate processes):
 
 | File | Role |
 |------|------|
-| `engine.py` | LitRPGEngine core — single source of truth for all logic |
+| `engine.py` | RealmEngine core — single source of truth for all logic |
 | `map_server.py` | HTTP :8777 — all endpoints, scanner lifecycle, herald management |
 | `sse_broker.py` | SSE event stream — pushes collectd rates, latency, map events |
 | `realm_db.py` | SQLite (realm.db) — settings, events, personas, topology, notion |

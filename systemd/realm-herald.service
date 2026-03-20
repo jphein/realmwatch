@@ -1,0 +1,34 @@
+# Realm Herald — TTS voice announcements for the fantasy homelab monitor
+# Install: cp realm-herald.service ~/.config/systemd/user/
+#          systemctl --user enable realm-herald
+#          systemctl --user start realm-herald
+#   Logs:  journalctl --user -u realm-herald -f
+
+[Unit]
+Description=Realm Herald — Voice announcements for realmwatch
+After=network-online.target realm-map-server.service
+Wants=network-online.target
+Requires=realm-map-server.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Projects/realmwatch
+EnvironmentFile=%h/Projects/realmwatch/.env
+ExecStart=%h/Projects/realmwatch/venv/bin/python3 realm_herald.py
+Restart=on-failure
+RestartSec=5
+
+# Resource limits
+MemoryHigh=512M
+MemoryMax=768M
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

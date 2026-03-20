@@ -45,7 +45,7 @@ function _doPing() {
   }).catch(() => { _pingRtt = null; });
 }
 _doPing();
-setInterval(_doPing, 5000);
+let _pingInterval = setInterval(_doPing, 5000);
 
 function _fpsUpdate() {
   const now = performance.now();
@@ -73,9 +73,10 @@ function _fpsUpdate() {
     const p1 = intervals.length > 0 ? intervals[Math.floor(intervals.length * 0.01)] : 0;
     const fps1Low = p1 > 0 ? Math.round(1000 / p1) : fps;
 
-    const anims = document.getAnimations().length;
+    const fpsVisible = _fpsEl.style.display !== 'none';
+    const anims = fpsVisible ? document.getAnimations().length : 0;
     const mem = performance.memory ? `${(performance.memory.usedJSHeapSize / 1048576).toFixed(0)}MB` : '--';
-    const domNodes = document.querySelectorAll('*').length;
+    const domNodes = fpsVisible ? document.querySelectorAll('*').length : 0;
 
     // Color code FPS
     const color = fps >= 55 ? '#0f0' : fps >= 30 ? '#ff0' : '#f44';
@@ -135,6 +136,7 @@ _fpsEl.title = 'Click to reset min FPS';
 window.addEventListener('keydown', e => {
   if (e.ctrlKey && e.shiftKey && e.key === 'F') {
     _fpsEl.style.display = _fpsEl.style.display === 'none' ? '' : 'none';
+    if (_fpsEl.style.display !== 'none') _startFpsLoop();
     const cb = document.getElementById('vis-fps-counter');
     if (cb) cb.checked = _fpsEl.style.display !== 'none';
   }
@@ -265,7 +267,16 @@ document.addEventListener('visibilitychange', () => {
   _motePaused = document.hidden;
   // Disable connection animations when tab hidden (79 SVG repaints per frame)
   document.body.classList.toggle('reduce-motion', document.hidden);
-  if (!document.hidden) _ensureMoteLoop();
+  if (!document.hidden) {
+    _ensureMoteLoop();
+    // Resume ping interval when tab becomes visible
+    if (!_pingInterval) { _doPing(); _pingInterval = setInterval(_doPing, 5000); }
+    // Restart FPS loop if overlay is visible
+    if (_fpsEl.style.display !== 'none') _startFpsLoop();
+  } else {
+    // Pause ping interval when tab is hidden
+    clearInterval(_pingInterval); _pingInterval = null;
+  }
 });
 
 // Cache sparkle rect on resize instead of in animation loop
@@ -276,12 +287,25 @@ function _updateSparkleRect() {
 window.addEventListener('resize', _updateSparkleRect);
 _updateSparkleRect();
 
-// Separate FPS tracking loop — runs always (even during zoom/hidden) so diagnostics don't stop
+// Separate FPS tracking loop — only runs while the FPS overlay is visible
+// (also runs during the auto-detect startup window)
+let _fpsLoopRunning = false;
+function _fpsLoopNeeded() {
+  if (_fpsEl.style.display !== 'none') return true;
+  // Keep running during auto-detect startup window
+  if (getAutoDetectEnabled() && _autoDetectSamples < 10) return true;
+  return false;
+}
 function _fpsLoop() {
+  if (!_fpsLoopNeeded()) { _fpsLoopRunning = false; return; }
   _fpsUpdate();
   requestAnimationFrame(_fpsLoop);
 }
-requestAnimationFrame(_fpsLoop);
+function _startFpsLoop() {
+  if (!_fpsLoopRunning) { _fpsLoopRunning = true; requestAnimationFrame(_fpsLoop); }
+}
+// Start the loop initially for auto-detect
+_startFpsLoop();
 
 let _moteLoopRunning = false;
 function _ensureMoteLoop() {
@@ -390,3 +414,4 @@ export function clearMoteCanvas() { moteCtx.clearRect(0, 0, moteCanvas.width, mo
 export function updateSparkleRect() { _updateSparkleRect(); }
 export function ensureMoteLoop() { _ensureMoteLoop(); }
 export function getFpsEl() { return _fpsEl; }
+export function startFpsLoop() { _startFpsLoop(); }

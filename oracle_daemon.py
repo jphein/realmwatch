@@ -16,12 +16,17 @@ import json
 import os
 import time
 import urllib.request
+from openai import AzureOpenAI
 import realm_db
 
 MAP_URL = "http://localhost:8777"
 CHAT_CONFIG_PATH = os.path.expanduser("~/.config/azure-chat-assistant/config.json")
 SPEECH_CONFIG_PATH = os.path.expanduser("~/.config/speech-to-cli/config.json")
 PERSONAS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "personas.json")
+
+# Module-level Azure client (created once, reused across queries)
+_azure_client = None
+_azure_client_key = None  # (endpoint, api_key) tuple to detect config changes
 
 
 def _load_persona():
@@ -82,8 +87,24 @@ def _load_realm_context():
         return f"(realm status unavailable: {e})"
 
 
+def _get_azure_client(config):
+    """Return a reusable AzureOpenAI client, recreating only if config changes."""
+    global _azure_client, _azure_client_key
+    endpoint = config.get("endpoint", "")
+    api_key = config.get("api_key", "")
+    key = (endpoint, api_key)
+    if _azure_client is None or _azure_client_key != key:
+        _azure_client = AzureOpenAI(
+            azure_endpoint=endpoint,
+            api_key=api_key,
+            api_version="2024-12-01-preview",
+        )
+        _azure_client_key = key
+    return _azure_client
+
+
 def _call_azure(config, system_prompt, user_message):
-    """Call Azure AI chat completion (non-streaming, synchronous)."""
+    """Call Azure AI chat completion via OpenAI SDK (non-streaming, synchronous)."""
     endpoint = config.get("endpoint", "")
     api_key = config.get("api_key", "")
     persona = _load_persona()
@@ -95,8 +116,10 @@ def _call_azure(config, system_prompt, user_message):
     is_reasoning = any(deployment.startswith(p) for p in ("o1", "o3", "o4"))
     sys_role = "developer" if is_reasoning else "system"
 
-    url = f"{endpoint}/openai/deployments/{deployment}/chat/completions?api-version=2024-12-01-preview"
-    payload = {
+    client = _get_azure_client(config)
+
+    kwargs = {
+        "model": deployment,
         "messages": [
             {"role": sys_role, "content": system_prompt},
             {"role": "user", "content": user_message},
@@ -104,18 +127,11 @@ def _call_azure(config, system_prompt, user_message):
         "max_completion_tokens": 4096 if is_reasoning else 2048,
     }
     if is_reasoning:
-        payload["reasoning_effort"] = persona.get("reasoning_effort", "high")
-    body = json.dumps(payload).encode()
-
-    req = urllib.request.Request(url, data=body, headers={
-        "api-key": api_key,
-        "Content-Type": "application/json",
-    })
+        kwargs["extra_body"] = {"reasoning_effort": persona.get("reasoning_effort", "high")}
 
     try:
-        with urllib.request.urlopen(req, timeout=60) as r:
-            data = json.loads(r.read())
-            return data["choices"][0]["message"]["content"].strip()
+        response = client.chat.completions.create(**kwargs)
+        return response.choices[0].message.content.strip()
     except Exception as e:
         return f"(The waters grow cloudy... {e})"
 
@@ -183,6 +199,9 @@ def oracle_loop(poll_interval=10, use_voice=True, once=False):
         print("Warning: No Azure AI API key found in chat assistant config")
 
     last_ts = time.time()  # Only process queries from after daemon starts
+    backoff = 0  # Exponential backoff on poll errors (0 = no backoff)
+    BACKOFF_BASE = 5
+    BACKOFF_MAX = 60
     print(f"Oracle Daemon: polling every {poll_interval}s")
     print(f"  Map server: {MAP_URL}")
     persona = _load_persona()
@@ -227,12 +246,19 @@ def oracle_loop(poll_interval=10, use_voice=True, once=False):
                     voice = _load_persona().get("voice", "en-US-BrianNeural")
                     _speak(response, voice=voice)
 
+            backoff = 0  # Reset on successful poll
+
         except Exception as e:
             print(f"  Poll error: {e}")
+            if backoff == 0:
+                backoff = BACKOFF_BASE
+            else:
+                backoff = min(backoff * 2, BACKOFF_MAX)
+            print(f"  Retrying in {backoff}s")
 
         if once:
             break
-        time.sleep(poll_interval)
+        time.sleep(backoff if backoff else poll_interval)
 
 
 if __name__ == "__main__":

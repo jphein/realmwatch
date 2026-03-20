@@ -218,7 +218,9 @@ The magical towers that broadcast connectivity. All on VLAN 6 (Admin).
 | VLAN | Subnet | Ward | Fantasy Name |
 |------|--------|------|-------------|
 | 6 | 10.0.6.0/24 | Admin | The Citadel |
+| 7 | 10.0.7.0/24 | Test Lab *(liminal — no fw4 zone)* | The Crucible |
 | 8 | 10.0.8.0/24 | Family (VMs) | The Family Scroll |
 | 10 | 10.0.10.0/24 | IoT | The Enchanted Grove |
 | 11 | 10.0.11.0/24 | Guest/Family | The Hearthlands |
 | 0 | 100.x.x.x | Tailscale | The Astral Plane |
+| 38 | WAN | Treelink WAN (fw4: wan) | The Great Bridge |

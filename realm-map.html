@@ -56,6 +56,8 @@
   </div>
   <div class="rl-text">The Realm Awakens</div>
   <div class="rl-sub"><span class="rl-stage-text">Igniting the arcane sigil</span><span class="rl-dots"><span>.</span><span>.</span><span>.</span></span></div>
+  <div class="rl-motto"><em>Vigilate Regna, Custodite Nexus</em></div>
+  <div class="rl-version" id="realm-version"></div>
   <!-- Data stream attunement indicators — light up as SSE feeds arrive -->
   <div class="rl-streams">
     <span class="rl-stream" data-stream="topology" title="Topology">&#9670;</span>
@@ -136,6 +138,7 @@
 <div id="title-bar">
   <h1>The Realm</h1>
   <div class="subtitle">A Geographic Survey of the Digital Dominion</div>
+  <a href="/codex/" class="title-bar-nav" id="codex-nav-link" title="The Codex — Knowledge Archives">&#128220; The Codex</a>
   <div id="realm-search">
     <div id="search-icon">&#128270;</div>
     <input type="text" id="search-input" placeholder="Search the Realm..." autocomplete="off" spellcheck="false">
@@ -1020,6 +1023,7 @@
         <div class="pe-field"><label>X</label><input type="number" id="pe-node-x" step="1"></div>
         <div class="pe-field"><label>Y</label><input type="number" id="pe-node-y" step="1"></div>
       </div>
+      <div class="pe-field"><label>URL</label><input type="url" id="pe-node-url" placeholder="https://..."></div>
       <div class="pe-field"><label>SSH Host</label><input type="text" id="pe-node-ssh" placeholder="root@10.0.x.x"></div>
       <div class="pe-field"><label>Tailscale Host</label><input type="text" id="pe-node-tshost" placeholder="hostname"></div>
     </div>
@@ -1655,16 +1659,12 @@
     <!-- Compass Rose — positioned in lower-right like classic fantasy maps -->
     <svg id="compass-rose" viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <filter id="rose-glow" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="2" result="blur"/>
-          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
         <radialGradient id="rose-ambient">
           <stop offset="0%" stop-color="rgba(240,216,144,0.15)"/>
           <stop offset="100%" stop-color="rgba(240,216,144,0)"/>
         </radialGradient>
       </defs>
-      <g transform="translate(120,120)" filter="url(#rose-glow)">
+      <g transform="translate(120,120)">
         <circle r="110" fill="url(#rose-ambient)"/>
         <!-- Outer decorative rings -->
         <circle r="96" fill="none" stroke="rgba(192,160,96,0.35)" stroke-width="1.5"/>

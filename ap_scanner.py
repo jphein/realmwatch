@@ -98,6 +98,27 @@ OFFLINE_THRESHOLD = 300  # 5 minutes without seeing = offline
 _last_roam = {}  # node_id → {"from_ap": str, "to_ap": str, "ts": float}
 ROAM_DEBOUNCE = 300  # 5 minutes — silence re-announcements for flip-flopping devices
 
+# Evict stale entries from _last_roam and _node_online_state after this long
+_DICT_EVICTION_AGE = 86400  # 24 hours
+_last_eviction_ts = 0.0
+
+def _evict_stale_dicts():
+    """Remove entries older than 24 hours from _last_roam and _node_online_state.
+    Called at most once per hour to avoid overhead on every scan cycle."""
+    global _last_eviction_ts
+    now = time.time()
+    if now - _last_eviction_ts < 3600:  # run at most once per hour
+        return
+    _last_eviction_ts = now
+    cutoff = now - _DICT_EVICTION_AGE
+    for node_id in list(_last_roam):
+        if _last_roam[node_id].get("ts", 0) < cutoff:
+            del _last_roam[node_id]
+    for node_id in list(_node_online_state):
+        if _node_online_state[node_id].get("last_seen", 0) < cutoff:
+            del _node_online_state[node_id]
+
+
 # LLDP neighbor cache for enrichment lookups
 _lldp_cache = {"by_mac": {}, "by_ip": {}, "by_name": {}}
 
@@ -214,11 +235,10 @@ def _load_topo():
 
 
 def _save_topo(topo):
-    # Write individual nodes/connections to DB + write-through to JSON
-    for node in topo.get("nodes", []):
-        nid = node.get("id", "")
-        if nid:
-            realm_db.set_node(nid, node)
+    # Write all nodes in a single transaction, then connections + JSON write-through
+    batch = [(node["id"], node) for node in topo.get("nodes", []) if node.get("id")]
+    if batch:
+        realm_db.set_nodes_batch(batch)
     realm_db.set_connections(topo.get("connections", []))
     realm_db.save_topology_json(TOPOLOGY_FILE)
 
@@ -236,6 +256,7 @@ def _update_tip_ip(node, new_ip):
 
 def scan_and_update():
     """Scan all APs, detect roaming, update topology connections. Returns change summary."""
+    _evict_stale_dicts()
     topo = _load_topo()
 
     # Build AP list from topology (tower nodes with IPs that are APs)

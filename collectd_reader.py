@@ -27,10 +27,10 @@ Public API (imported by map_server, sse_broker, traffic_precompute):
   get_all_summaries()        -> {hostname: dict}
 """
 
+import concurrent.futures
 import os
 import subprocess
 import time
-import threading
 
 RRD_BASE = "/var/lib/collectd/rrd"
 _cache = {}
@@ -296,14 +296,22 @@ def get_host_summary(hostname):
 
 
 def get_all_summaries():
-    """Return summaries for all collectd hosts."""
+    """Return summaries for all collectd hosts (parallel)."""
     if not os.path.isdir(RRD_BASE):
         return {}
+    hosts = [
+        h for h in os.listdir(RRD_BASE)
+        if os.path.isdir(os.path.join(RRD_BASE, h))
+    ]
     result = {}
-    for host in os.listdir(RRD_BASE):
-        host_path = os.path.join(RRD_BASE, host)
-        if os.path.isdir(host_path):
-            s = get_host_summary(host)
-            if s:
-                result[host] = s
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+        future_to_host = {pool.submit(get_host_summary, h): h for h in hosts}
+        for future in concurrent.futures.as_completed(future_to_host):
+            host = future_to_host[future]
+            try:
+                s = future.result()
+                if s:
+                    result[host] = s
+            except Exception:
+                pass  # skip hosts that error out
     return result

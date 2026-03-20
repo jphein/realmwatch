@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "litrpg": {
-      "command": "/home/jp/Projects/lit-rpg-fantasy-voice/venv/bin/python3"
+      "command": "/home/jp/Projects/realmwatch/venv/bin/python3"
     }
   },
   "imports": []

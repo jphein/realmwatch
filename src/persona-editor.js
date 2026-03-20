@@ -1,6 +1,6 @@
 'use strict';
 import { WORLD_SCALE } from './config.js';
-import { _topology, infraNodes } from './topology.js';
+import { _topology, _nodeMap, infraNodes } from './topology.js';
 import { getLastStatus, findCollectd } from './node-status.js';
 import { addLogEntry } from './quest-log.js';
 import { fmtBytes, fmtRate } from './utils.js';
@@ -164,7 +164,9 @@ function _switchToTab(name) {
 function startStatsRefresh() {
   stopStatsRefresh();
   renderStatsPane(currentEditNode);
-  _statsInterval = setInterval(() => renderStatsPane(currentEditNode), 5000);
+  _statsInterval = setInterval(() => {
+    if (!document.hidden) renderStatsPane(currentEditNode);
+  }, 5000);
 }
 function stopStatsRefresh() {
   if (_statsInterval) { clearInterval(_statsInterval); _statsInterval = null; }
@@ -174,7 +176,7 @@ function stopStatsRefresh() {
 const _nodeFields = ['label','sublabel','icon','type','ip','mac','collectd','x','y','ssh','tshost'];
 function renderNodePane(nodeKey) {
   if (!nodeKey || !_topology) return;
-  const node = _topology.nodes.find(n => n.id === nodeKey);
+  const node = _nodeMap.get(nodeKey);
   if (!node) return;
   const el = id => document.getElementById('pe-node-' + id);
   el('label').value = node.label || '';
@@ -186,13 +188,14 @@ function renderNodePane(nodeKey) {
   el('collectd').value = node.collectd || '';
   el('x').value = Math.round((node.x || 0) / (WORLD_SCALE || 1));
   el('y').value = Math.round((node.y || 0) / (WORLD_SCALE || 1));
+  el('url').value = node.url || '';
   el('ssh').value = node.ssh || '';
   el('tshost').value = node.tsHost || '';
 }
 
 document.getElementById('pe-node-save')?.addEventListener('click', () => {
   if (!currentEditNode || !_topology) return;
-  const node = _topology.nodes.find(n => n.id === currentEditNode);
+  const node = _nodeMap.get(currentEditNode);
   if (!node) return;
   const el = id => document.getElementById('pe-node-' + id);
   node.label = el('label').value;
@@ -202,6 +205,7 @@ document.getElementById('pe-node-save')?.addEventListener('click', () => {
   node.ip = el('ip').value;
   node.mac = el('mac').value || undefined;
   node.collectd = el('collectd').value || undefined;
+  node.url = el('url').value || undefined;
   node.ssh = el('ssh').value || undefined;
   node.tsHost = el('tshost').value || undefined;
   // Position (stored in unscaled coords on server)
@@ -277,7 +281,7 @@ function renderStatsPane(nodeKey) {
   const haInfo = lastStatus.ha ? lastStatus.ha[nodeKey] : null;
   const wledInfo = lastStatus.wled ? lastStatus.wled[nodeKey] : null;
   const nodeRole = lastStatus.roles ? lastStatus.roles[nodeKey] : null;
-  const topoNode = _topology ? _topology.nodes.find(n => n.id === nodeKey) : null;
+  const topoNode = _nodeMap.get(nodeKey) || null;
   if (!cd && !tsPeer && !wifiInfo && !haInfo && !wledInfo && !topoNode) {
     body.textContent = 'No sigils bound to this node.';
     return;
@@ -444,7 +448,7 @@ function renderStatsPane(nodeKey) {
   // WiFi signal section (from ap_scanner)
   if (wifiInfo) {
     html += '<div class="pe-stats-section"><div class="pe-stats-section-title">WiFi</div>';
-    const apLabel = _topology?.nodes.find(n => n.id === wifiInfo.ap)?.label || wifiInfo.ap;
+    const apLabel = _nodeMap.get(wifiInfo.ap)?.label || wifiInfo.ap;
     html += `<div class="pe-stat-row"><span class="pe-stat-label">Access Point</span><span class="pe-stat-val">${apLabel}</span></div>`;
     if (wifiInfo.signal != null) {
       const sigColor = wifiInfo.signal > -50 ? '#60a040' : wifiInfo.signal > -70 ? '#c0a030' : '#c04040';

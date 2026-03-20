@@ -23,7 +23,7 @@ import time
 import queue
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from socketserver import ThreadingMixIn
-from engine import LitRPGEngine
+from engine import RealmEngine
 from collectd_reader import get_all_summaries, get_host_summary
 import notion_sync
 import ap_scanner
@@ -38,7 +38,7 @@ import asyncio
 import latency_prober
 import firewall_parser
 
-engine = LitRPGEngine()
+engine = RealmEngine()
 PORT = 8777
 MAP_DIR = os.path.dirname(os.path.abspath(__file__))
 PERSONAS_FILE = os.path.join(MAP_DIR, "personas.json")
@@ -46,6 +46,42 @@ TOPOLOGY_FILE = os.path.join(MAP_DIR, "topology.json")
 VENV_PYTHON = os.path.join(MAP_DIR, "venv", "bin", "python3")
 _CHAT_CONFIG = os.path.expanduser("~/.config/azure-chat-assistant/config.json")
 _SPEECH_CONFIG = os.path.expanduser("~/.config/speech-to-cli/config.json")
+
+# ── Persistent asyncio event loop (avoids creating/destroying per request) ──
+_async_loop = asyncio.new_event_loop()
+
+def _start_async_loop():
+    asyncio.set_event_loop(_async_loop)
+    _async_loop.run_forever()
+
+_async_thread = threading.Thread(target=_start_async_loop, daemon=True)
+_async_thread.start()
+
+# ── Shared thread pool for /resolve-url (avoids creating executor per request) ──
+from concurrent.futures import ThreadPoolExecutor
+_resolve_pool = ThreadPoolExecutor(max_workers=12)
+
+# ── Gzip cache: (path, mtime) -> compressed bytes ──
+_gzip_cache = {}
+_gzip_cache_lock = threading.Lock()
+
+# ── Build status TTL cache ──
+_status_cache = {"data": None, "ts": 0}
+_status_cache_lock = threading.Lock()
+_STATUS_TTL = 5  # seconds
+
+# ── Topology mtime cache ──
+_topo_cache = {"data": None, "mtime": 0}
+_topo_cache_lock = threading.Lock()
+
+# ── Energy data TTL cache ──
+_energy_cache = {"data": None, "ts": 0}
+_energy_cache_lock = threading.Lock()
+_ENERGY_TTL = 30  # seconds
+
+# ── Sublabel host lookup cache ──
+_sublabel_host_map = {"map": {}, "topo_mtime": 0, "collectd_keys": frozenset()}
+_sublabel_host_lock = threading.Lock()
 
 
 # ── Herald process management ──
@@ -149,12 +185,28 @@ def _write_config_file(path, updates, safe_keys):
 
 
 def _load_topology():
-    """Load topology from DB."""
-    return realm_db.get_topology()
+    """Load topology from DB, with mtime-based caching on the JSON file."""
+    try:
+        mtime = os.path.getmtime(TOPOLOGY_FILE)
+    except OSError:
+        mtime = 0
+    with _topo_cache_lock:
+        if _topo_cache["data"] is not None and _topo_cache["mtime"] == mtime:
+            return _topo_cache["data"]
+    data = realm_db.get_topology()
+    with _topo_cache_lock:
+        _topo_cache["data"] = data
+        _topo_cache["mtime"] = mtime
+    return data
 
 
 def _get_energy_data():
-    """Fetch energy-related data from HA via ha_bridge."""
+    """Fetch energy-related data from HA via ha_bridge (30s TTL cache)."""
+    now = time.time()
+    with _energy_cache_lock:
+        if _energy_cache["data"] is not None and (now - _energy_cache["ts"]) < _ENERGY_TTL:
+            return _energy_cache["data"]
+
     import ssl
     import urllib.request
 
@@ -186,7 +238,7 @@ def _get_energy_data():
         except (ValueError, TypeError):
             return None
 
-    return {
+    result = {
         "solar_kw": num("sensor.pv_power"),  # W
         "solar_today_kwh": num("sensor.today_s_pv_generation"),
         "solar_total_kwh": num("sensor.total_pv_generation"),
@@ -203,6 +255,10 @@ def _get_energy_data():
         "inverter_temp_f": num("sensor.inverter_temperature_module"),
         "ts": time.time(),
     }
+    with _energy_cache_lock:
+        _energy_cache["data"] = result
+        _energy_cache["ts"] = now
+    return result
 
 
 def _save_personas(data):
@@ -221,10 +277,44 @@ def get_events_since(since_ts):
     return realm_db.get_events_since(since_ts)
 
 
+def _build_host_lookup(topo_nodes, collectd_keys):
+    """Build node_id -> collectd_key map for O(1) lookups (cached when topology/collectd keys change)."""
+    from traffic_precompute import _match_host
+    lookup = {}
+    # Build a minimal collectd dict with just the keys for matching
+    dummy_collectd = {k: {"hostname": k} for k in collectd_keys}
+    for n in topo_nodes:
+        nid = n["id"]
+        if n.get("collectd") and n["collectd"] in collectd_keys:
+            lookup[nid] = n["collectd"]
+        else:
+            matched = _match_host(dummy_collectd, nid)
+            if matched:
+                lookup[nid] = matched.get("hostname")
+    return lookup
+
+
+def _get_host_lookup(topo_nodes, collectd):
+    """Return cached node_id -> collectd_key map, rebuilding if topology or collectd keys changed."""
+    try:
+        topo_mtime = os.path.getmtime(TOPOLOGY_FILE)
+    except OSError:
+        topo_mtime = 0
+    cd_keys = frozenset(collectd.keys())
+    with _sublabel_host_lock:
+        if (_sublabel_host_map["topo_mtime"] == topo_mtime
+                and _sublabel_host_map["collectd_keys"] == cd_keys):
+            return _sublabel_host_map["map"]
+    new_map = _build_host_lookup(topo_nodes, cd_keys)
+    with _sublabel_host_lock:
+        _sublabel_host_map["map"] = new_map
+        _sublabel_host_map["topo_mtime"] = topo_mtime
+        _sublabel_host_map["collectd_keys"] = cd_keys
+    return new_map
+
+
 def _compute_sublabels(status, topo_nodes):
     """Pre-compute sublabel text for all nodes — eliminates client-side hostname matching."""
-    from traffic_precompute import _match_host
-
     sublabels = {}
     node_status = status.get("astral", {}).get("nodes", {})
     collectd = status.get("collectd", {})
@@ -234,6 +324,9 @@ def _compute_sublabels(status, topo_nodes):
 
     # Build case-insensitive status lookup (mirrors client findStatusKey)
     status_lower = {k.lower().replace("-", ""): v for k, v in node_status.items()}
+
+    # O(1) host lookup (cached, rebuilt when topology or collectd keys change)
+    host_lookup = _get_host_lookup(topo_nodes, collectd)
 
     for n in topo_nodes:
         nid = n["id"]
@@ -266,12 +359,9 @@ def _compute_sublabels(status, topo_nodes):
         nid_norm = nid.lower().replace("-", "")
         online = status_lower.get(nid_norm, False)
 
-        # Collectd match: use explicit collectd host first, then traffic_precompute matcher
-        cd = None
-        if n.get("collectd") and n["collectd"] in collectd:
-            cd = collectd[n["collectd"]]
-        else:
-            cd = _match_host(collectd, nid)
+        # Collectd match: O(1) lookup via cached map
+        cd_key = host_lookup.get(nid)
+        cd = collectd.get(cd_key) if cd_key else None
 
         if cd and cd.get("load_1") is not None:
             mem_str = f' \u2022 {cd["mem_pct"]}%' if cd.get("mem_pct") is not None else ""
@@ -282,8 +372,8 @@ def _compute_sublabels(status, topo_nodes):
     return sublabels
 
 
-def build_status():
-    """Build the full status blob (shared by /status endpoint and SSE broker)."""
+def _build_status_fresh():
+    """Build the full status blob (internal, always fresh)."""
     status = engine.get_status()
     status["tailscale"] = engine.get_tailscale_status()
     status["adult"] = engine.adult_observation(status)
@@ -300,6 +390,19 @@ def build_status():
     # Pre-compute sublabels (saves client hostname matching + string formatting)
     status["sublabels"] = _compute_sublabels(status, topo_nodes)
     return status
+
+
+def build_status():
+    """Build the full status blob with 5-second TTL cache."""
+    now = time.time()
+    with _status_cache_lock:
+        if _status_cache["data"] is not None and (now - _status_cache["ts"]) < _STATUS_TTL:
+            return _status_cache["data"]
+    data = _build_status_fresh()
+    with _status_cache_lock:
+        _status_cache["data"] = data
+        _status_cache["ts"] = time.time()
+    return data
 
 
 def _get_firewall_data():
@@ -480,6 +583,19 @@ class RealmHandler(SimpleHTTPRequestHandler):
             except Exception as e:
                 self._json_response({"error": str(e)}, 500)
 
+        elif self.path == "/codex":
+            self.send_response(301)
+            self.send_header("Location", "/codex/")
+            self.end_headers()
+
+        elif self.path == "/codex/" or self.path.startswith("/codex/?"):
+            codex_path = os.path.join(MAP_DIR, "docs", "codex", "index.html")
+            if os.path.isfile(codex_path):
+                self.path = "/docs/codex/index.html"
+                self._serve_static_gzip()
+            else:
+                self.send_error(404, "Codex not found")
+
         elif self.path == "/energy":
             # Fetch energy data from HA
             energy = _get_energy_data()
@@ -553,12 +669,83 @@ class RealmHandler(SimpleHTTPRequestHandler):
         elif self.path == "/ping":
             self._json_response({"t": time.time()})
 
+        elif self.path.startswith("/resolve-url"):
+            # Probe a hostname to find the best reachable URL
+            # Chain: hostname.jphe.in → ip:443 → ip:80 → ip:known-ports
+            # Uses fast TCP connect probes — no slow HTTP/DNS timeouts
+            import socket, urllib.request, urllib.error, ssl
+            params = dict(p.split("=", 1) for p in self.path.split("?", 1)[-1].split("&") if "=" in p)
+            hostname = params.get("hostname", "").strip()
+            ip = params.get("ip", "").strip()
+            if not hostname and not ip:
+                self._json_response({"error": "need hostname or ip"}, 400)
+                return
+            def _tcp_open(host, port, timeout=0.3):
+                try:
+                    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    s.settimeout(timeout)
+                    r = s.connect_ex((host, port))
+                    s.close()
+                    return r == 0
+                except Exception:
+                    return False
+            def _dns_resolve(name):
+                try:
+                    return socket.gethostbyname(name)
+                except socket.gaierror:
+                    return None
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            def _http_ok(url):
+                try:
+                    req = urllib.request.Request(url, method="HEAD")
+                    urllib.request.urlopen(req, timeout=1.5, context=ctx)
+                    return True
+                except urllib.error.HTTPError:
+                    return True  # server responded (401/403/etc)
+                except Exception:
+                    return False
+            resolved = None
+            jphe = f"{hostname}.jphe.in" if hostname else None
+            jphe_ip = _dns_resolve(jphe) if jphe else None
+            # 1. Try hostname.jphe.in on standard ports (reverse proxy)
+            if jphe_ip:
+                if _tcp_open(jphe_ip, 443):
+                    resolved = f"https://{jphe}"
+                elif _tcp_open(jphe_ip, 80):
+                    resolved = f"http://{jphe}"
+            # 2. Try direct IP standard ports
+            if not resolved and ip:
+                if _tcp_open(ip, 443):
+                    resolved = f"https://{ip}"
+                elif _tcp_open(ip, 80):
+                    resolved = f"http://{ip}"
+            # 3. Try known web service ports (parallel scan on IP)
+            if not resolved and ip:
+                from concurrent.futures import as_completed
+                WEB_PORTS = [(8123, "https"), (1880, "http"), (8096, "http"), (4533, "http"),
+                             (2283, "http"), (8384, "https"), (8080, "http"), (8443, "https"),
+                             (9090, "http"), (3000, "http"), (5000, "http"), (8888, "http")]
+                futures = {_resolve_pool.submit(_tcp_open, ip, port): (port, scheme)
+                           for port, scheme in WEB_PORTS}
+                for fut in as_completed(futures):
+                    port, scheme = futures[fut]
+                    if fut.result():
+                        # Prefer .jphe.in domain if DNS resolves to this IP
+                        host = jphe if jphe_ip == ip else ip
+                        resolved = f"{scheme}://{host}:{port}"
+                        break
+            self._json_response({"url": resolved})
+
         elif self.path == "/debug":
             c = realm_db._conn()
+            _DEBUG_TABLES = frozenset(("settings", "events", "personas", "nodes",
+                                       "connections", "regions", "notion_synced", "wifi_scans"))
             counts = {}
-            for table in ("settings", "events", "personas", "nodes", "connections",
-                          "regions", "notion_synced", "wifi_scans"):
+            for table in _DEBUG_TABLES:
                 try:
+                    # table names are from the frozen whitelist above — never from user input
                     counts[table] = c.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
                 except Exception:
                     counts[table] = -1
@@ -636,21 +823,50 @@ window.location.href = '/';
     _GZIP_TYPES = {'.js', '.css', '.html', '.json', '.svg', '.map'}
 
     def _serve_static_gzip(self):
-        """Serve static files with gzip if client accepts it."""
+        """Serve static files with gzip if client accepts it (mtime-based cache)."""
         path = self.translate_path(self.path)
         ext = os.path.splitext(path)[1].lower()
         accept_gz = 'gzip' in self.headers.get('Accept-Encoding', '')
         if accept_gz and ext in self._GZIP_TYPES and os.path.isfile(path):
             try:
-                with open(path, 'rb') as f:
-                    raw = f.read()
-                compressed = gzip.compress(raw, compresslevel=6)
+                mtime = os.path.getmtime(path)
+                size = os.path.getsize(path)
+                cache_key = path
+                etag = f'"{int(mtime)}-{size}"'
+
+                # Handle If-None-Match for 304 (static assets only)
+                if ext in ('.js', '.css', '.svg'):
+                    inm = self.headers.get('If-None-Match', '')
+                    if inm == etag:
+                        self.send_response(304)
+                        self.send_header("ETag", etag)
+                        self.send_header("Cache-Control", "no-cache")
+                        self.end_headers()
+                        return
+
+                # Check gzip cache
+                with _gzip_cache_lock:
+                    cached = _gzip_cache.get(cache_key)
+                    if cached and cached[0] == mtime:
+                        compressed = cached[1]
+                    else:
+                        compressed = None
+
+                if compressed is None:
+                    with open(path, 'rb') as f:
+                        raw = f.read()
+                    compressed = gzip.compress(raw, compresslevel=6)
+                    with _gzip_cache_lock:
+                        _gzip_cache[cache_key] = (mtime, compressed)
+
                 self.send_response(200)
                 ctype = self.guess_type(path)
                 self.send_header("Content-Type", ctype)
                 self.send_header("Content-Encoding", "gzip")
                 self.send_header("Content-Length", len(compressed))
                 self.send_header("Access-Control-Allow-Origin", "*")
+                if ext in ('.js', '.css', '.svg'):
+                    self.send_header("ETag", etag)
                 self.end_headers()
                 self.wfile.write(compressed)
             except Exception:
@@ -659,8 +875,12 @@ window.location.href = '/';
             super().do_GET()
 
     def end_headers(self):
-        # Prevent caching of all static files (homelab, no CDN needed)
-        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+        # Default to no-cache (allows ETag/304 revalidation) unless already set
+        # Check if Cache-Control was already explicitly sent in this response
+        buf = getattr(self, '_headers_buffer', [])
+        has_cc = any(b'Cache-Control' in line for line in buf if isinstance(line, bytes))
+        if not has_cc:
+            self.send_header("Cache-Control", "no-cache")
         super().end_headers()
 
     def do_POST(self):
@@ -677,8 +897,12 @@ window.location.href = '/';
                 node_id = req.get("node")
                 session = req.get("session")
                 extra_context = req.get("context")
-                # Run async chat in event loop
-                result = asyncio.run(chat_bridge.chat(message, node_id, session, extra_context))
+                # Run async chat in persistent event loop (avoids loop creation per request)
+                future = asyncio.run_coroutine_threadsafe(
+                    chat_bridge.chat(message, node_id, session, extra_context),
+                    _async_loop,
+                )
+                result = future.result(timeout=120)
                 if result.get("error"):
                     self._json_response(result, 500)
                 else:
@@ -968,28 +1192,6 @@ window.location.href = '/';
                 self._json_response({
                     "output": result.stdout[-50000:] if result.stdout else "",
                     "error": result.stderr[-5000:] if result.returncode != 0 else None,
-                    "exit_code": result.returncode,
-                })
-            except subprocess.TimeoutExpired:
-                self._json_response({"error": "Command timed out (30s)"}, 504)
-            except (json.JSONDecodeError, KeyError) as e:
-                self._json_response({"error": str(e)}, 400)
-
-        elif self.path == "/exec":
-            try:
-                req = json.loads(body)
-                command = req.get("command", "").strip()
-                if not command:
-                    self._json_response({"error": "Empty command"}, 400)
-                    return
-                result = subprocess.run(
-                    ["bash", "-c", command],
-                    capture_output=True, text=True, timeout=30,
-                    cwd=os.path.dirname(os.path.abspath(__file__))
-                )
-                self._json_response({
-                    "output": result.stdout[-50000:] if result.stdout else "",
-                    "error": result.stderr[-5000:] if result.stderr else "",
                     "exit_code": result.returncode,
                 })
             except subprocess.TimeoutExpired:

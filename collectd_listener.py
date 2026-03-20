@@ -53,6 +53,9 @@ DS_DERIVE   = 2
 DS_ABSOLUTE = 3
 
 PORT = 25826
+STALE_THRESHOLD = 300   # seconds (5 minutes)
+EVICT_INTERVAL  = 60    # seconds between sweeps
+
 _lock = threading.Lock()
 _metrics = {}  # {hostname: {plugin/type: {values, ts}}}
 
@@ -201,6 +204,27 @@ def _parse_packet(data):
         offset += part_len
 
 
+def _evict_stale_metrics():
+    """Remove metric entries older than STALE_THRESHOLD seconds."""
+    now = time.time()
+    with _lock:
+        for host in list(_metrics):
+            entries = _metrics[host]
+            stale_keys = [k for k, v in entries.items()
+                          if now - v.get("ts", 0) > STALE_THRESHOLD]
+            for k in stale_keys:
+                del entries[k]
+            if not entries:
+                del _metrics[host]
+
+
+def _eviction_loop():
+    """Periodically sweep stale metrics."""
+    while True:
+        time.sleep(EVICT_INTERVAL)
+        _evict_stale_metrics()
+
+
 def _listener_loop():
     """Main UDP listener loop."""
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -220,6 +244,7 @@ def start_listener():
     """Start the collectd listener in a background thread."""
     t = threading.Thread(target=_listener_loop, daemon=True)
     t.start()
+    threading.Thread(target=_eviction_loop, daemon=True).start()
     return t
 
 

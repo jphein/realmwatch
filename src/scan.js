@@ -390,6 +390,7 @@ export function initScanner() {
 
   // 30s tick to keep "last run" timestamps fresh
   setInterval(() => {
+    if (document.hidden) return;  // skip DOM updates when tab is hidden
     SCANS.forEach(scan => { if (_state[scan.id].status !== 'running') _updateCard(scan); });
   }, 30000);
 }

@@ -1,6 +1,6 @@
 'use strict';
 import { WORLD_W, WORLD_H, setMapTilt } from './config.js';
-import { _topology, updateLinePositions } from './topology.js';
+import { _topology, _nodeMap, updateLinePositions } from './topology.js';
 import { generateTerrain, updateRegionLabels, invalidateTopoNodeMap, forceTopoRender, initBiomeSliders } from './terrain.js';
 import { getLatencyFlat, getWifiMap } from './panels.js';
 import { scale, panX, panY, applyTransform, setViewport, fitToNodes } from './map-view.js';
@@ -680,8 +680,8 @@ function _applyLayout(layout) {
         el.style.top = pos.top;
       }
       // Sync topology data with restored positions
-      if (_topology && _topology.nodes && pos.left) {
-        const tn = _topology.nodes.find(n => n.id === tip);
+      if (pos.left) {
+        const tn = _nodeMap.get(tip);
         if (tn) { tn.x = parseInt(pos.left); tn.y = parseInt(pos.top); }
       }
     });
@@ -692,7 +692,7 @@ function _applyLayout(layout) {
   return applied;
 }
 
-export function restoreLayout() {
+export async function restoreLayout() {
   try {
     const raw = localStorage.getItem(LAYOUT_KEY);
     if (raw) {
@@ -702,11 +702,9 @@ export function restoreLayout() {
   } catch (e) { /* ignore corrupt layout */ }
   // Fallback: try server DB (layout is stored under _layout key in ui settings)
   try {
-    const xhr = new XMLHttpRequest();
-    xhr.open('GET', '/settings', false);
-    xhr.send();
-    if (xhr.status === 200) {
-      const s = JSON.parse(xhr.responseText);
+    const resp = await fetch('/settings');
+    if (resp.ok) {
+      const s = await resp.json();
       if (s._layout) {
         localStorage.setItem(LAYOUT_KEY, JSON.stringify(s._layout));
         if (_applyLayout(s._layout)) return true;

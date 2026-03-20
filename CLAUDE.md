@@ -1,6 +1,6 @@
-# LitRPG Network — Claude Code Brief
+# Realmwatch — Claude Code Brief
 
-Personal homelab project. Fantasy-themed network monitor + AI voice assistant.
+Personal homelab project. Realmwatch: fantasy-themed network monitor + AI voice assistant.
 Single machine, local dev. Most of this is already built and working.
 
 ## Rules
@@ -22,7 +22,7 @@ python3 oracle_daemon.py --no-voice  # AI oracle daemon
 ## Files
 | File | Role | Notes |
 |------|------|-------|
-| engine.py | LitRPGEngine core | Single source of truth |
+| engine.py | RealmEngine core | Single source of truth |
 | map_server.py | HTTP :8777 | All endpoints, herald management |
 | sse_broker.py | SSE event stream | Pushes collectd + latency + events to browser |
 | realm_db.py | SQLite (realm.db) | Settings, events, personas, topology, notion |

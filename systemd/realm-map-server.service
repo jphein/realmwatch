@@ -1,0 +1,34 @@
+# Realm Map Server — HTTP :8777 frontend + all background scanners
+# Install: cp systemd/*.service ~/.config/systemd/user/
+#          systemctl --user daemon-reload
+#          systemctl --user enable realm-map-server
+#          systemctl --user start realm-map-server
+#   Logs:  journalctl --user -u realm-map-server -f
+
+[Unit]
+Description=Realm Map Server — HTTP :8777 for realmwatch
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Projects/realmwatch
+EnvironmentFile=%h/Projects/realmwatch/.env
+ExecStart=%h/Projects/realmwatch/venv/bin/python3 map_server.py
+Restart=on-failure
+RestartSec=5
+
+# Resource limits (main server with background scanners)
+MemoryHigh=1G
+MemoryMax=1536M
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

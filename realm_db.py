@@ -1,5 +1,6 @@
 """Unified SQLite storage for the Realm — settings, events, personas, topology."""
 
+import atexit
 import json
 import os
 import sqlite3
@@ -8,6 +9,8 @@ import time
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "realm.db")
 _local = threading.local()
+_all_connections = []
+_all_connections_lock = threading.Lock()
 
 
 def _conn():
@@ -16,8 +19,29 @@ def _conn():
         _local.conn = sqlite3.connect(DB_PATH, timeout=5)
         _local.conn.execute("PRAGMA journal_mode=WAL")
         _local.conn.execute("PRAGMA foreign_keys=ON")
+        _local.conn.execute("PRAGMA busy_timeout=10000")
         _local.conn.row_factory = sqlite3.Row
+        with _all_connections_lock:
+            _all_connections.append(_local.conn)
     return _local.conn
+
+
+def _cleanup_connections():
+    """Close all tracked connections and checkpoint WAL on shutdown."""
+    with _all_connections_lock:
+        for conn in _all_connections:
+            try:
+                conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            except Exception:
+                pass
+            try:
+                conn.close()
+            except Exception:
+                pass
+        _all_connections.clear()
+
+
+atexit.register(_cleanup_connections)
 
 
 def init():
@@ -80,6 +104,8 @@ def init():
             completed_at REAL
         );
         CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts);
+        CREATE INDEX IF NOT EXISTS idx_events_type ON events(type);
+        CREATE INDEX IF NOT EXISTS idx_events_type_ts ON events(type, ts);
         CREATE INDEX IF NOT EXISTS idx_conn_from ON connections(from_node);
         CREATE INDEX IF NOT EXISTS idx_conn_to ON connections(to_node);
         CREATE INDEX IF NOT EXISTS idx_quests_parent ON quests(parent_id);
@@ -91,6 +117,38 @@ def init():
         c.commit()
     except Exception:
         pass  # Column already exists
+
+    # Prune old events and stale reward dedup entries on startup
+    prune_events()
+
+
+def prune_events(max_age_days=30, max_rows=10000):
+    """Delete old events and stale reward dedup entries."""
+    c = _conn()
+    cutoff = time.time() - (max_age_days * 86400)
+
+    # Delete events older than max_age_days
+    c.execute("DELETE FROM events WHERE ts < ?", (cutoff,))
+
+    # If still over max_rows, delete oldest until at max_rows
+    count = c.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+    if count > max_rows:
+        c.execute("""DELETE FROM events WHERE id IN (
+            SELECT id FROM events ORDER BY ts ASC LIMIT ?
+        )""", (count - max_rows,))
+
+    # Clean up reward dedup entries older than 90 days.
+    # Values are stored as JSON-encoded grant timestamps (floats).
+    # Legacy entries stored as JSON "true" are treated as expired.
+    reward_cutoff = time.time() - (90 * 86400)
+    c.execute("""DELETE FROM settings
+        WHERE namespace = 'player_rewards'
+        AND (
+            (TYPEOF(CAST(value AS REAL)) = 'real' AND CAST(value AS REAL) > 0 AND CAST(value AS REAL) < ?)
+            OR value = 'true'
+        )""", (reward_cutoff,))
+
+    c.commit()
 
 
 # ── Settings ──
@@ -306,16 +364,19 @@ def update_quest_status(quest_id, status):
 
 
 def delete_quest(quest_id):
-    """Delete a quest and its children. Returns count deleted."""
+    """Delete a quest and all its descendants in one statement."""
     c = _conn()
-    # Delete children first
-    children = c.execute("SELECT id FROM quests WHERE parent_id = ?", (quest_id,)).fetchall()
-    count = 0
-    for child in children:
-        count += delete_quest(child["id"])
-    c.execute("DELETE FROM quests WHERE id = ?", (quest_id,))
+    cur = c.execute("""
+        DELETE FROM quests WHERE id IN (
+            WITH RECURSIVE tree(id) AS (
+                SELECT id FROM quests WHERE id = ?
+                UNION ALL
+                SELECT q.id FROM quests q JOIN tree t ON q.parent_id = t.id
+            )
+            SELECT id FROM tree
+        )""", (quest_id,))
     c.commit()
-    return count + 1
+    return cur.rowcount
 
 
 def delete_quest_by_text(quest_text):
@@ -400,29 +461,56 @@ def _get_reward_for(source, source_id):
 
 
 def grant_reward(source, source_id):
-    """Grant a reward. Deduplicates by source:source_id in player_rewards namespace."""
+    """Grant a reward. Deduplicates by source:source_id in player_rewards namespace.
+    Uses INSERT OR IGNORE + rowcount to avoid TOCTOU race on the dedup key."""
     dedup_key = f"{source}:{source_id}"
-    existing = get_setting("player_rewards", dedup_key)
-    if existing:
-        stats = get_player_stats()
-        return {"granted": False, **stats}
-
     reward = _get_reward_for(source, source_id)
     xp = max(0, reward.get("xp", 0))
     gold = max(0, reward.get("gold", 0))
     gems = max(0, reward.get("gems", 0))
 
-    data = get_settings("player")
-    old_xp = data.get("xp", 0)
-    new_xp = old_xp + xp
-    new_gold = data.get("gold", 0) + gold
-    new_gems = data.get("gems", 0) + gems
+    c = _conn()
+    c.execute("BEGIN IMMEDIATE")
+    try:
+        # Atomic dedup: INSERT OR IGNORE returns rowcount=0 if key already existed
+        ts_val = json.dumps(time.time())
+        cur = c.execute(
+            "INSERT OR IGNORE INTO settings (namespace, key, value) VALUES (?, ?, ?)",
+            ("player_rewards", dedup_key, ts_val))
+
+        if cur.rowcount == 0:
+            # Duplicate — key already existed
+            c.execute("COMMIT")
+            stats = get_player_stats()
+            return {"granted": False, **stats}
+
+        # Read current stats and apply reward within the same transaction
+        row = c.execute(
+            "SELECT key, value FROM settings WHERE namespace = 'player'").fetchall()
+        data = {}
+        for r in row:
+            try:
+                data[r["key"]] = json.loads(r["value"])
+            except (json.JSONDecodeError, TypeError):
+                data[r["key"]] = r["value"]
+
+        old_xp = data.get("xp", 0)
+        new_xp = old_xp + xp
+        new_gold = data.get("gold", 0) + gold
+        new_gems = data.get("gems", 0) + gems
+
+        for k, v in {"xp": new_xp, "gold": new_gold, "gems": new_gems}.items():
+            c.execute(
+                "INSERT OR REPLACE INTO settings (namespace, key, value) VALUES (?, ?, ?)",
+                ("player", k, json.dumps(v)))
+
+        c.execute("COMMIT")
+    except Exception:
+        c.execute("ROLLBACK")
+        raise
 
     old_level = calc_level(old_xp)["level"]
     new_lvl = calc_level(new_xp)
-
-    set_settings("player", {"xp": new_xp, "gold": new_gold, "gems": new_gems})
-    set_settings("player_rewards", {dedup_key: True})
 
     return {
         "granted": True,
@@ -546,6 +634,22 @@ def set_node(node_id, data):
     c.execute("INSERT OR REPLACE INTO nodes (node_id, x, y, data) VALUES (?, ?, ?, ?)",
               (node_id, data.get("x", 0), data.get("y", 0), json.dumps(data)))
     c.commit()
+
+
+def set_nodes_batch(nodes):
+    """Upsert multiple nodes in a single transaction.
+    nodes: list of (node_id, data_dict) tuples.
+    """
+    c = _conn()
+    c.execute("BEGIN")
+    try:
+        for node_id, data in nodes:
+            c.execute("INSERT OR REPLACE INTO nodes (node_id, x, y, data) VALUES (?, ?, ?, ?)",
+                      (node_id, data.get("x", 0), data.get("y", 0), json.dumps(data)))
+        c.execute("COMMIT")
+    except Exception:
+        c.execute("ROLLBACK")
+        raise
 
 
 def update_node_position(node_id, x, y):
@@ -725,12 +829,18 @@ def clear_notion_synced():
 # ── WiFi scan data ──
 
 def save_wifi_scan(data):
-    """Persist latest WiFi scan results."""
+    """Persist latest WiFi scan results.
+    Uses BEGIN IMMEDIATE so readers see old or new data, never empty."""
     c = _conn()
-    c.execute("DELETE FROM wifi_scans")
-    c.execute("INSERT INTO wifi_scans (ts, data) VALUES (?, ?)",
-              (time.time(), json.dumps(data)))
-    c.commit()
+    c.execute("BEGIN IMMEDIATE")
+    try:
+        c.execute("DELETE FROM wifi_scans")
+        c.execute("INSERT INTO wifi_scans (ts, data) VALUES (?, ?)",
+                  (time.time(), json.dumps(data)))
+        c.execute("COMMIT")
+    except Exception:
+        c.execute("ROLLBACK")
+        raise
 
 
 def get_wifi_scan():

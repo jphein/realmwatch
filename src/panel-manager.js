@@ -114,8 +114,8 @@ const SEAL_MODES = {
 };
 let _mode = 'auto'; // 'auto' or 'manual'
 let _sealMode = 'dock'; // 'dock', 'anchored', 'wander', 'conjure'
-let _autoSnap = true;    // Snap panels to anchor points after drag
-let _showAnchors = true; // Show anchor overlay during drag
+let _autoSnap = false;   // Snap panels to anchor points after drag
+let _showAnchors = false; // Show anchor overlay during drag
 let _currentFormation = null;
 let _dragging = null;
 let _dragOffset = { x: 0, y: 0 };
@@ -126,6 +126,8 @@ let _wanderingRunes = []; // For wander mode animation
 let _conjureAngle = 0;   // Conjure orbit animation
 let _conjureRaf = 0;     // rAF handle for conjure orbit
 let _anchoredDrag = null; // For dragging anchored/conjured runes
+let _anchorElements = [];     // Cached ley-anchor DOM elements (populated in _createAnchorOverlay)
+let _prevHighlightedAnchorId = null; // Track previously highlighted anchor to avoid redundant classList toggles
 
 // ── HUD Settings ──
 const HUD_POSITIONS = {
@@ -414,33 +416,40 @@ function _attachDockDragHandlers(tray) {
 }
 
 function _spawnDockParticle(x, y) {
-  const p = document.createElement('div');
-  p.className = 'dock-particle';
-  p.style.left = x + 'px';
-  p.style.top = y + 'px';
-  document.body.appendChild(p);
-  setTimeout(() => p.remove(), 600);
+  // Canvas-based particle — reuses the existing _particleCanvas + _animateParticles loop
+  _particles.push({
+    x, y,
+    vx: (Math.random() - 0.5) * 1.5,
+    vy: -Math.random() * 2 - 0.5,
+    life: 1,
+    size: 3,
+    hue: 270 + Math.random() * 30, // purple to match .dock-particle CSS
+  });
+  if (!_particleLoopRunning) _animateParticles();
 }
 
 function _spawnDockBurst(cx, cy) {
+  // Canvas-based burst — pushes 8 directional particles into the shared pool
   for (let i = 0; i < 8; i++) {
     const angle = (i / 8) * Math.PI * 2;
-    const p = document.createElement('div');
-    p.className = 'dock-particle burst';
-    p.style.left = cx + 'px';
-    p.style.top = cy + 'px';
-    p.style.setProperty('--dx', Math.cos(angle) * 30 + 'px');
-    p.style.setProperty('--dy', Math.sin(angle) * 30 + 'px');
-    document.body.appendChild(p);
-    setTimeout(() => p.remove(), 500);
+    _particles.push({
+      x: cx, y: cy,
+      vx: Math.cos(angle) * 3,
+      vy: Math.sin(angle) * 3,
+      life: 1,
+      size: 3,
+      hue: 270 + Math.random() * 30,
+    });
   }
+  if (!_particleLoopRunning) _animateParticles();
 }
 
 function _createAnchorOverlay() {
   _anchorOverlay = document.createElement('div');
   _anchorOverlay.id = 'ley-anchor-overlay';
 
-  // Build anchors with safe DOM methods
+  // Build anchors with safe DOM methods — cache elements to avoid querySelectorAll in drag loop
+  _anchorElements = [];
   ANCHORS.forEach(a => {
     const anchor = document.createElement('div');
     anchor.className = 'ley-anchor';
@@ -458,6 +467,7 @@ function _createAnchorOverlay() {
     anchor.appendChild(rune);
     anchor.appendChild(glow);
     _anchorOverlay.appendChild(anchor);
+    _anchorElements.push(anchor);
   });
 
   document.body.appendChild(_anchorOverlay);
@@ -559,11 +569,16 @@ function _onDrag(e) {
   _dragging.style.right = 'auto';
   _dragging.style.bottom = 'auto';
 
-  // Highlight nearest anchor
+  // Highlight nearest anchor — use cached elements, only toggle when anchor changes
   const nearest = _findNearestAnchor(clientX, clientY);
-  document.querySelectorAll('.ley-anchor').forEach(el => {
-    el.classList.toggle('active', el.dataset.anchor === nearest.id);
-  });
+  if (nearest.id !== _prevHighlightedAnchorId) {
+    for (let i = 0; i < _anchorElements.length; i++) {
+      const el = _anchorElements[i];
+      if (el.dataset.anchor === _prevHighlightedAnchorId) el.classList.remove('active');
+      if (el.dataset.anchor === nearest.id) el.classList.add('active');
+    }
+    _prevHighlightedAnchorId = nearest.id;
+  }
 
   // Update particle trail
   _updateParticleTrail(clientX, clientY);
@@ -592,6 +607,16 @@ function _endDrag() {
   panel.style.transition = '';
   panel.style.zIndex = '';
   _anchorOverlay.classList.remove('visible');
+  // Clear anchor highlight tracking
+  if (_prevHighlightedAnchorId) {
+    for (let i = 0; i < _anchorElements.length; i++) {
+      if (_anchorElements[i].dataset.anchor === _prevHighlightedAnchorId) {
+        _anchorElements[i].classList.remove('active');
+        break;
+      }
+    }
+    _prevHighlightedAnchorId = null;
+  }
   _stopParticleTrail();
 
   _dragging = null;
@@ -675,6 +700,9 @@ function _sealPanel(panel) {
 
   // Spawn particles from original position
   _spawnSealParticles(panel);
+
+  // Skip child rendering during shrink animation (content-visibility: hidden via CSS)
+  panel.classList.add('panel-sealing');
 
   // Handle based on seal mode
   if (_sealMode === 'dock') {
@@ -958,6 +986,7 @@ function _createConjuredContainer() {
 }
 
 function _finalizeSeal(panel) {
+  panel.classList.remove('panel-sealing');
   panel.classList.add('panel-sealed');
   panel.style.display = 'none';
   panel.style.transition = '';
@@ -1363,7 +1392,7 @@ function _animateParticles() {
 }
 
 function _flashAnchorRune(anchor) {
-  const el = document.querySelector(`.ley-anchor[data-anchor="${anchor.id}"]`);
+  const el = _anchorElements.find(e => e.dataset.anchor === anchor.id);
   if (!el) return;
   el.classList.add('flash');
   setTimeout(() => el.classList.remove('flash'), 500);

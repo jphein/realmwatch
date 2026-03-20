@@ -301,7 +301,12 @@ def main():
 
     while True:
         print(f"\n[Herald Round — {time.strftime('%H:%M:%S')}]")
-        herald_round()
+        try:
+            herald_round()
+        except KeyboardInterrupt:
+            raise
+        except Exception as e:
+            print(f"  Herald round failed: {e}")
         time.sleep(args.interval)
 
 

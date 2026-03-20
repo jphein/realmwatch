@@ -1,7 +1,7 @@
 'use strict';
 import { _mapTilt } from './config.js';
-import { _topology, getNodeDOM } from './topology.js';
-import { panToNode } from './map-view.js';
+import { _topology, _nodeMap, getNodeDOM } from './topology.js';
+import { panToNode, invalidateGlobeZCache } from './map-view.js';
 import { unsealPanel } from './panel-manager.js';
 
 // Late-bound callback for openNodeChat (set by app.js to avoid circular dep)
@@ -248,7 +248,7 @@ export function addLogEntry(evt, nodeEl) {
     if (e.target.closest('.panel-close') || e.target.closest('.quest-check')) return;
     const nodeId = entry._nodeId;
     if (!nodeId) return;
-    const tn = _topology?.nodes.find(nd => nd.id === nodeId);
+    const tn = _nodeMap.get(nodeId);
     if (tn) panToNode(tn.x, tn.y);
     _openNodeChat(nodeId, evt.text, false);
   });
@@ -435,18 +435,18 @@ const _ACTION_ICONS = {
 
 function _executeQuestAction(action) {
   if (action.type === 'pan' && action.node) {
-    const tn = _topology?.nodes.find(n => n.id === action.node);
+    const tn = _nodeMap.get(action.node);
     if (tn) { panToNode(tn.x, tn.y); showHighlight(getNodeDOM(tn.id), { color: 'rgba(192,144,255,0.6)' }); }
   } else if (action.type === 'panel' && action.panel) {
     const panelEl = document.getElementById(action.panel);
     if (panelEl) { unsealPanel(panelEl); panelEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
   } else if (action.type === 'highlight' && action.nodes) {
     action.nodes.forEach(nid => {
-      const tn = _topology?.nodes.find(n => n.id === nid);
+      const tn = _nodeMap.get(nid);
       if (tn) showHighlight(getNodeDOM(nid), { color: action.color || 'rgba(192,144,255,0.5)' });
     });
   } else if (action.type === 'chat' && action.node) {
-    const tn = _topology?.nodes.find(n => n.id === action.node);
+    const tn = _nodeMap.get(action.node);
     if (tn) panToNode(tn.x, tn.y);
     _openNodeChat(action.node, action.prompt || '', false);
   } else if (action.type === 'scan') {
@@ -750,7 +750,7 @@ export function updateBubblePositions() {
 
 function _dismissBubble(bubble) {
   bubble.style.animation = 'bubbleOut 0.3s ease-in forwards';
-  setTimeout(() => { bubble.remove(); _activeBubbles.delete(bubble); }, 300);
+  setTimeout(() => { bubble.remove(); _activeBubbles.delete(bubble); invalidateGlobeZCache(); }, 300);
 }
 
 export function showSpeechBubble(nodeEl, evt, isAlert) {
@@ -798,6 +798,7 @@ export function showSpeechBubble(nodeEl, evt, isAlert) {
   world.appendChild(bubble);
   _positionBubble(bubble);
   _activeBubbles.add(bubble);
+  invalidateGlobeZCache();
   // Respect visibility toggle
   if (window._visState && window._visState['.speech-bubble'] === false) bubble.style.visibility = 'hidden';
   // Float above globe surface when tilted

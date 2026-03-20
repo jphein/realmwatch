@@ -1,7 +1,7 @@
 {
-  "name": "lit-rpg-fantasy-voice",
+  "name": "realmwatch",
   "version": "1.0.0",
-  "description": "A live interactive fantasy-themed map of an entire digital network infrastructure. Hardware sensors, network nodes, and system metrics are mapped to high-fantasy archetypes with voices powered by Azure TTS and GPT personas.",
+  "description": "Realmwatch — a live interactive fantasy-themed map of network infrastructure. Hardware sensors, network nodes, and system metrics are mapped to high-fantasy archetypes with voices powered by Azure TTS and GPT personas.",
   "main": "realm-map.js",
   "scripts": {
     "build": "node esbuild.config.mjs",

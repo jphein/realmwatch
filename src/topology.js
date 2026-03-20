@@ -15,6 +15,9 @@ export const _tsHostMap = {};
 export const _vlanLabels = [];
 export const _connPaths = [];
 
+// ── Module-level node lookup map (rebuilt on each renderTopology call) ──
+export let _nodeMap = new Map();  // id → node object
+
 // Hook for app.js to register bubble position updater (avoids circular import)
 export let _onTopologyRefresh = null;
 export function setTopologyRefreshHook(fn) { _onTopologyRefresh = fn; }
@@ -39,7 +42,7 @@ export function getNodeDOM(tipKey) {
 export function _getNodePos(nodeId) {
   const n = getNodeDOM(nodeId);
   if (n.el) return getNodeCenter(n.el);
-  const tn = _topology?.nodes.find(nd => nd.id === nodeId);
+  const tn = _nodeMap.get(nodeId);
   if (tn) {
     const is = tn.iconStyle || {};
     return { x: tn.x + (parseInt(is.width) || 64) / 2, y: tn.y + (parseInt(is.height) || 64) / 2 };
@@ -175,17 +178,44 @@ export function _computePathD(fp, tp, fromAngle, toAngle, fromId, toId) {
 }
 
 // ── Node center + line position update ──
+// Cache icon reference + computed offsets per node element.
+// Position cache is keyed on style.left + style.top and invalidated on change.
 export function getNodeCenter(nodeEl) {
   const left = parseInt(nodeEl.style.left) || 0;
   const top = parseInt(nodeEl.style.top) || 0;
-  const icon = nodeEl.querySelector('.node-icon');
-  if (icon) {
-    return {
-      x: left + icon.offsetLeft + icon.offsetWidth / 2,
-      y: top + icon.offsetTop + icon.offsetHeight / 2
-    };
+
+  // Fast path: return cached center if position hasn't changed
+  if (nodeEl._centerCache && nodeEl._centerCache.left === left && nodeEl._centerCache.top === top) {
+    return nodeEl._centerCache.pos;
   }
-  return { x: left + 32, y: top + 32 };
+
+  // Cache the icon element reference (survives for element lifetime)
+  const icon = nodeEl._iconRef || (nodeEl._iconRef = nodeEl.querySelector('.node-icon'));
+  let pos;
+  if (icon) {
+    // Cache icon offsets — they don't change unless the node is resized
+    if (nodeEl._iconOffsets === undefined) {
+      nodeEl._iconOffsets = {
+        left: icon.offsetLeft, halfW: icon.offsetWidth / 2,
+        top: icon.offsetTop, halfH: icon.offsetHeight / 2,
+      };
+    }
+    const io = nodeEl._iconOffsets;
+    pos = { x: left + io.left + io.halfW, y: top + io.top + io.halfH };
+  } else {
+    pos = { x: left + 32, y: top + 32 };
+  }
+
+  nodeEl._centerCache = { left, top, pos };
+  return pos;
+}
+
+// Invalidate cached icon offsets (call on resize / style change)
+export function invalidateNodeCenter(nodeEl) {
+  if (nodeEl) {
+    nodeEl._iconOffsets = undefined;
+    nodeEl._centerCache = undefined;
+  }
 }
 
 export function updateLinePositions() {
@@ -221,8 +251,9 @@ export function renderTopology(topo) {
   (topo.regions || []).forEach(r => { r.x = Math.round(r.x * WORLD_SCALE); r.y = Math.round(r.y * WORLD_SCALE); });
   const world = document.getElementById('map-world');
   const connSvg = document.querySelector('#connections');
-  const nodeMap = {};
-  topo.nodes.forEach(n => { nodeMap[n.id] = n; });
+  _nodeMap = new Map();
+  topo.nodes.forEach(n => { _nodeMap.set(n.id, n); });
+  const nodeMap = _nodeMap;
 
   topo.nodes.forEach(n => {
     const div = document.createElement('div');
@@ -332,7 +363,7 @@ export function renderTopology(topo) {
   _buildObstacles();
   const fanAngles = _computeFanAngles();
   topo.connections.forEach((c, i) => {
-    const fn = nodeMap[c.from], tn = nodeMap[c.to];
+    const fn = nodeMap.get(c.from), tn = nodeMap.get(c.to);
     if (!fn || !tn) return;
     const fp = _getNodePos(c.from), tp = _getNodePos(c.to);
     if (!fp || !tp) { _connPaths.push(null); return; }
@@ -524,7 +555,7 @@ const _expandedClusters = new Set();
 const _clusterChildIds = {};   // clusterId → [nodeId, ...]
 
 export function isClusterExpandable(nodeId) {
-  const n = _topology?.nodes.find(nd => nd.id === nodeId);
+  const n = _nodeMap.get(nodeId);
   return n?.type === 'cluster' && n.members?.length > 0;
 }
 
@@ -536,7 +567,7 @@ export function toggleClusterExpand(clusterId) {
 }
 
 function expandCluster(clusterId) {
-  const cluster = _topology?.nodes.find(n => n.id === clusterId);
+  const cluster = _nodeMap.get(clusterId);
   if (!cluster?.members?.length) return;
   const center = _getNodePos(clusterId);
   if (!center) return;
@@ -548,7 +579,7 @@ function expandCluster(clusterId) {
   const apGroups = {};  // ap_id → [member, ...]
   const noAp = [];
   members.forEach(m => {
-    if (m.ap && _topology.nodes.find(n => n.id === m.ap)) {
+    if (m.ap && _nodeMap.has(m.ap)) {
       (apGroups[m.ap] ||= []).push(m);
     } else {
       noAp.push(m);
@@ -619,6 +650,7 @@ function expandCluster(clusterId) {
     };
 
     _topology.nodes.push(nodeData);
+    _nodeMap.set(nodeData.id, nodeData);
     _renderNode(nodeData);
 
     // Connect to actual AP if known, otherwise to parent cluster
@@ -640,7 +672,7 @@ function expandCluster(clusterId) {
   // Animate children outward from cluster center
   requestAnimationFrame(() => {
     childIds.forEach(nid => {
-      const nd = _topology.nodes.find(n => n.id === nid);
+      const nd = _nodeMap.get(nid);
       if (!nd) return;
       const el = document.querySelector(`[data-tip="${nid}"]`);
       if (!el) return;
@@ -675,6 +707,7 @@ function collapseCluster(clusterId) {
     _topology.connections = _topology.connections.filter(c => !removeSet.has(c.from) && !removeSet.has(c.to));
 
     childIds.forEach(nid => {
+      _nodeMap.delete(nid);
       const el = document.querySelector(`[data-tip="${nid}"]`);
       if (el) el.remove();
       delete tips[nid];

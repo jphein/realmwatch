@@ -341,6 +341,7 @@ function _dbgRefresh() {
 
 // Fetch DB stats periodically when visible
 function _dbgFetchDb() {
+  if (document.hidden) return;  // skip fetch when tab is hidden
   if (!_dbgPanel || _dbgPanel.style.display === 'none') return;
   fetch('/debug').then(r => r.json()).then(d => { _dbgDbInfo = d; }).catch(() => {});
 }

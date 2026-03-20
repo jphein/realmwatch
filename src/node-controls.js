@@ -1,5 +1,5 @@
 'use strict';
-import { _topology, infraNodes, CONN_TYPE_TO_CLASS, _connPaths, _getNodePos, _computePathD } from './topology.js';
+import { _topology, _nodeMap, infraNodes, CONN_TYPE_TO_CLASS, _connPaths, _getNodePos, _computePathD } from './topology.js';
 import { getLastStatus } from './node-status.js';
 import { getCurrentEditNode, openPersonaEditor } from './persona-editor.js';
 import { panToNode } from './map-view.js';
@@ -27,7 +27,7 @@ export function renderControlPane(nodeKey) {
   const nodeRole = lastStatus.roles ? lastStatus.roles[nodeKey] : null;
   const wledInfo = lastStatus.wled ? lastStatus.wled[nodeKey] : null;
   const haInfo = lastStatus.ha ? lastStatus.ha[nodeKey] : null;
-  const topoNode = _topology ? _topology.nodes.find(n => n.id === nodeKey) : null;
+  const topoNode = _nodeMap.get(nodeKey) || null;
 
   let html = '';
   let hasControls = false;
@@ -266,7 +266,7 @@ export function renderGroupPane(nodeKey) {
   if (also.length) {
     html += '<div class="pe-stats-section"><div class="pe-stats-section-title">Linked Nodes</div>';
     also.forEach(nid => {
-      const alsoNode = _topology?.nodes.find(n => n.id === nid);
+      const alsoNode = _nodeMap.get(nid);
       const label = alsoNode?.label || nid;
       html += `<div class="pe-group-member">`;
       html += `<div class="pe-group-member-icon">${alsoNode?.icon || '\u2753'}</div>`;
@@ -412,7 +412,7 @@ function _getNodeConns(nodeId) {
 }
 
 function _nodeLabel(id) {
-  const n = _topology?.nodes.find(nd => nd.id === id);
+  const n = _nodeMap.get(id);
   return n ? n.label : id;
 }
 
@@ -443,7 +443,7 @@ export function renderConnectionsPane(nodeKey) {
   _linksBody.querySelectorAll('.pe-link-node').forEach(el => {
     el.addEventListener('click', () => {
       const target = el.dataset.nav;
-      const tn = _topology?.nodes.find(nd => nd.id === target);
+      const tn = _nodeMap.get(target);
       if (tn) { panToNode(tn.x, tn.y); openPersonaEditor(target); }
     });
   });
@@ -606,17 +606,49 @@ _shellInput.addEventListener('keydown', e => {
   }
 });
 
-// Click an AP (tower) node to open its web UI in a new tab (delayed to avoid firing on double-click)
+// Click a node to open its URL in a new tab (delayed to avoid firing on double-click)
+// Resolution chain: explicit url > cached resolve > server probe (hostname.jphe.in → hostname → hostname.local → ip → port scan)
 let _apClickTimer = 0;
+const _resolvedUrls = {};  // cache: nodeId → url
 document.getElementById('map-world').addEventListener('click', e => {
   const node = e.target.closest('.realm-node');
   if (!node) return;
   const key = node.dataset.tip;
   if (!key || !_topology) return;
-  const topoNode = _topology.nodes.find(n => n.id === key);
-  if (!topoNode || topoNode.type !== 'tower' || !topoNode.ip) return;
+  const topoNode = _nodeMap.get(key);
+  if (!topoNode) return;
+  // Explicit url field — use directly
+  if (topoNode.url) {
+    clearTimeout(_apClickTimer);
+    _apClickTimer = setTimeout(() => window.open(topoNode.url, '_blank'), 250);
+    return;
+  }
+  // Cached resolved url
+  if (_resolvedUrls[key]) {
+    clearTimeout(_apClickTimer);
+    _apClickTimer = setTimeout(() => window.open(_resolvedUrls[key], '_blank'), 250);
+    return;
+  }
+  // Server-side probe with fallback chain
+  const hostname = topoNode._hostname || topoNode.label || key;
+  const ip = topoNode.ip || '';
+  const services = (topoNode.tip?.stats?.find(s => s[0] === 'Services') || [])[1] || '';
   clearTimeout(_apClickTimer);
-  _apClickTimer = setTimeout(() => window.open(`http://${key}`, '_blank'), 250);
+  _apClickTimer = setTimeout(() => {
+    fetch(`/resolve-url?hostname=${encodeURIComponent(hostname)}&ip=${encodeURIComponent(ip)}&services=${encodeURIComponent(services)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.url) {
+          _resolvedUrls[key] = data.url;
+          window.open(data.url, '_blank');
+        } else if (ip) {
+          // Nothing resolved — last resort: raw IP
+          _resolvedUrls[key] = `http://${ip}`;
+          window.open(`http://${ip}`, '_blank');
+        }
+      })
+      .catch(() => { if (ip) window.open(`http://${ip}`, '_blank'); });
+  }, 250);
 });
 
 // Double-click a node to open persona editor (delegated — survives topology refresh)

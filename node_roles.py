@@ -649,8 +649,8 @@ def _probe_ports(ip, timeout=1.5):
     }
     results = {"open_ports": [], "role_hint": None, "os_hint": None}
     for port, (service, role_hint, os_hint) in PROBES.items():
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(timeout)
             if s.connect_ex((ip, port)) == 0:
                 results["open_ports"].append((port, service))
@@ -658,9 +658,10 @@ def _probe_ports(ip, timeout=1.5):
                     results["role_hint"] = role_hint
                 if os_hint and not results["os_hint"]:
                     results["os_hint"] = os_hint
-            s.close()
         except (socket.error, OSError):
             pass
+        finally:
+            s.close()
     return results
 
 

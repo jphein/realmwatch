@@ -1,4 +1,4 @@
-# LitRPG Fantasy Voice Project
+# Realmwatch
 
 ## Project Vision
 A fantasy-themed network monitoring dashboard with AI voice narration, serving a homelab network via HTTP API on port 8777.
@@ -40,7 +40,7 @@ A fantasy-themed network monitoring dashboard with AI voice narration, serving a
 
 ## Architecture
 - `map_server.py`: HTTP server on :8777 (standalone, all endpoints)
-- `engine.py`: LitRPGEngine core — sensor monitoring, fantasy data mapping
+- `engine.py`: RealmEngine core — sensor monitoring, fantasy data mapping
 - `oracle_daemon.py`: AI oracle daemon — polls events, calls Azure AI
 - `realm_herald.py`: Voice daemon — TTS announcements
 - `system_persona.txt`: The System persona prompt text
