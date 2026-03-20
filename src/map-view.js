@@ -1157,7 +1157,10 @@ let _gridHue = 0;
       const v = parseFloat(dockOpSlider.value);
       if (dockOpVal) dockOpVal.textContent = v.toFixed(2);
       const dock = document.getElementById('sealed-dock');
-      if (dock) dock.style.opacity = v;
+      if (dock) {
+        dock.style.setProperty('--dock-bg-opacity', v);
+        dock.style.setProperty('--dock-shadow-opacity', v);
+      }
       saveSettings();
     });
   }
