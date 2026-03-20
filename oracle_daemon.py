@@ -19,7 +19,7 @@ import urllib.request
 from openai import AzureOpenAI
 import realm_db
 
-MAP_URL = "http://localhost:8777"
+MAP_URL = "http://localhost"
 CHAT_CONFIG_PATH = os.path.expanduser("~/.config/azure-chat-assistant/config.json")
 SPEECH_CONFIG_PATH = os.path.expanduser("~/.config/speech-to-cli/config.json")
 PERSONAS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "personas.json")

@@ -18,7 +18,7 @@ import time
 import urllib.request
 from collectd_reader import get_all_summaries
 
-MAP_URL = "http://localhost:8777"
+MAP_URL = "http://localhost"
 
 # ── Node voice templates ──
 # Each node has themed report templates using {placeholders} filled from collectd data.

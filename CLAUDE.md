@@ -15,7 +15,7 @@ Single machine, local dev. Most of this is already built and working.
 ## Build
 ```bash
 npm run build              # esbuild src/main.js → realm-map.js
-python3 map_server.py          # HTTP :8777 (standalone, all endpoints)
+python3 map_server.py          # HTTP :80 (standalone, all endpoints)
 python3 oracle_daemon.py --no-voice  # AI oracle daemon
 ```
 
@@ -23,7 +23,7 @@ python3 oracle_daemon.py --no-voice  # AI oracle daemon
 | File | Role | Notes |
 |------|------|-------|
 | engine.py | RealmEngine core | Single source of truth |
-| map_server.py | HTTP :8777 | All endpoints, herald management |
+| map_server.py | HTTP :80 | All endpoints, herald management |
 | sse_broker.py | SSE event stream | Pushes collectd + latency + events to browser |
 | realm_db.py | SQLite (realm.db) | Settings, events, personas, topology, notion |
 | oracle_daemon.py | AI oracle daemon | Polls events, calls Azure AI o1/o4-mini |
@@ -80,7 +80,7 @@ Panel manager settings: auto-snap, show-anchors (toggles in Spellbook Enchant ta
 ## Architecture
 ```
 Browser (realm-map.html)
-  → HTTP → map_server.py :8777
+  → HTTP → map_server.py :80
     GET  / (splash.html) /realm-map.html (main app)
     GET  /status /topology /config /settings /energy /personas /debug
     GET  /latency /firewall /scan /scan/status /scan/wifi /chat/sessions
@@ -90,7 +90,7 @@ Browser (realm-map.html)
     SSE  /events (collectd rates, latency, map events)
 
 CLI agents (Claude Code / Gemini / Copilot)
-  → HTTP → map_server.py :8777 (same endpoints)
+  → HTTP → map_server.py :80 (same endpoints)
 
 Daemons: oracle_daemon.py, realm_herald.py (independent)
 Data:    collectd → collectd_reader/listener → realm_db → SSE
@@ -117,6 +117,6 @@ Config:  ~/.config/azure-chat-assistant/config.json
 ## Todo: Frontend chat + speech
 Plain fetch + vanilla JS in existing src/ modules. No frameworks.
 ```
-src/chat.js    # fetch → :8777 chat endpoints
+src/chat.js    # fetch → :80 chat endpoints
 src/speech.js  # fetch → speech-to-cli, Web Audio
 ```

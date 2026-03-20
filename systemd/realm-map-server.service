@@ -1,4 +1,4 @@
-# Realm Map Server — HTTP :8777 frontend + all background scanners
+# Realm Map Server — HTTP :80 frontend + all background scanners
 # Install: cp systemd/*.service ~/.config/systemd/user/
 #          systemctl --user daemon-reload
 #          systemctl --user enable realm-map-server
@@ -6,7 +6,7 @@
 #   Logs:  journalctl --user -u realm-map-server -f
 
 [Unit]
-Description=Realm Map Server — HTTP :8777 for realmwatch
+Description=Realm Map Server — HTTP :80 for realmwatch
 After=network-online.target
 Wants=network-online.target
 

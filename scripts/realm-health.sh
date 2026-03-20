@@ -5,7 +5,7 @@
 #   ./scripts/realm-health.sh
 #
 # Description:
-#   Checks each Realm service with pgrep, verifies :8777 is responding,
+#   Checks each Realm service with pgrep, verifies :80 is responding,
 #   inspects realm.db size and row counts (if sqlite3 is available), and
 #   shows whether required API tokens (NOTION_TOKEN, HA_TOKEN, AZURE_API_KEY)
 #   are set in the current environment. Color-coded output: green=OK, red=down.
@@ -41,7 +41,7 @@ check_proc "collectd_listener" "collectd_listener.py (metrics)"
 
 echo ""
 echo -e "${Y}Ports:${N}"
-check_port 8777 "map_server" "/status"
+check_port 80 "map_server" "/status"
 
 echo ""
 echo -e "${Y}Database:${N}"

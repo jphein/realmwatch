@@ -87,8 +87,8 @@ In do_POST after /quest-update (~line 645): validate source (quest/sub/event) an
 
 - [ ] **Step 3: Restart map server and test endpoints**
 
-Run: `curl -s http://localhost:8777/player | python3 -m json.tool`
-Run: `curl -s -X POST -H "Content-Type: application/json" -d '{"source":"event","id":"999999"}' http://localhost:8777/player/reward | python3 -m json.tool`
+Run: `curl -s http://localhost:80/player | python3 -m json.tool`
+Run: `curl -s -X POST -H "Content-Type: application/json" -d '{"source":"event","id":"999999"}' http://localhost:80/player/reward | python3 -m json.tool`
 
 - [ ] **Step 4: Commit**
 

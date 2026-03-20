@@ -12,7 +12,7 @@ Browser (realm-map.html)
        |
        |  HTTP polls + SSE stream
        v
-  map_server.py  :8777
+  map_server.py  :80
   ├── GET  /status /topology /config /settings /energy /personas /debug
   ├── GET  /latency /firewall /scan /scan/wifi /collectd /observation
   ├── GET  /chat/sessions /herald
@@ -46,7 +46,7 @@ Independent daemons (separate processes):
 | File | Role |
 |------|------|
 | `engine.py` | RealmEngine core — single source of truth for all logic |
-| `map_server.py` | HTTP :8777 — all endpoints, scanner lifecycle, herald management |
+| `map_server.py` | HTTP :80 — all endpoints, scanner lifecycle, herald management |
 | `sse_broker.py` | SSE event stream — pushes collectd rates, latency, map events |
 | `realm_db.py` | SQLite (realm.db) — settings, events, personas, topology, notion |
 | `oracle_daemon.py` | AI oracle daemon — polls events, calls Azure AI |
@@ -76,7 +76,7 @@ Independent daemons (separate processes):
 
 > **Build:** `npm run build` — esbuild `src/main.js` → `realm-map.js` (built output, do not edit directly)
 
-## HTTP API (:8777)
+## HTTP API (:80)
 
 | Endpoint | Description |
 |----------|-------------|
@@ -152,7 +152,7 @@ Independent daemons (separate processes):
 ### Utilities
 | Script | What it does |
 |--------|-------------|
-| `scripts/realm-health.sh` | Color-coded status: processes, :8777, realm.db, env tokens |
+| `scripts/realm-health.sh` | Color-coded status: processes, :80, realm.db, env tokens |
 | `scripts/reset-camera.sh` | USB reset for Razer Kiyo Pro when it hangs (UVC -71/-110 errors) |
 
 ## VLAN Registry
@@ -183,7 +183,7 @@ python3 oracle_daemon.py --no-voice
 python3 realm_herald.py
 
 # Frontend
-http://localhost:8777
+http://localhost:80
 ```
 
 Required env vars:

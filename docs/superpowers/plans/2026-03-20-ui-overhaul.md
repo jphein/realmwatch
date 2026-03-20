@@ -480,7 +480,7 @@ In `src/spellbook.js`, find the Sealed Runes section. Add a 3-button row:
 
 Check that `map_server.py` serves PNG files correctly. If the static file handler doesn't include `image/png` in content-type mapping, add it. Test:
 ```bash
-curl -I http://localhost:8777/assets/icons/style-b/realm-panel.png
+curl -I http://localhost/assets/icons/style-b/realm-panel.png
 ```
 Expected: `Content-Type: image/png`, 200 OK.
 
