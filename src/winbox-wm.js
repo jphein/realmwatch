@@ -88,12 +88,8 @@ function _cascadePosition() {
 function _restorePanel(panelId, wb) {
   const panel = document.getElementById(panelId);
   if (panel) {
-    // Restore native panel header visibility
-    const header = panel.querySelector('.panel-header');
-    if (header) header.style.display = '';
-
-    // Reset inline styles we applied
-    panel.style.position = '';
+    // Clear any inline display override we set
+    panel.style.display = '';
 
     // Move panel DOM back to original location
     const orig = _origParents.get(panelId);
@@ -163,13 +159,9 @@ export function openWinBoxPanel(panelId) {
     nextSibling: panel.nextSibling,
   });
 
-  // Hide native panel header (WinBox provides its own titlebar)
-  const header = panel.querySelector('.panel-header');
-  if (header) header.style.display = 'none';
-
-  // Make panel flow naturally inside WinBox body
+  // CSS handles header hiding and position reset via .realm-window .wb-body rules
+  // Just ensure the panel is visible (it may have been sealed/hidden)
   panel.style.display = '';
-  panel.style.position = 'relative';
 
   // Determine position/size — saved or cascaded default
   const positions = _loadPositions();

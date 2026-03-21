@@ -8637,8 +8637,10 @@ body.perf-low .conjure-orbit-ring { animation: none; }
     var(--grimoire-radial, rgba(8,6,20,0.92)) !important;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  overflow: auto;
   border: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* ── Resize Handles ── */
@@ -8726,6 +8728,97 @@ body.perf-low .conjure-orbit-ring { animation: none; }
 .realm-window.wb-full::before,
 .realm-window.wb-full::after {
   display: none;
+}
+
+/* ── Panel Reset Inside WinBox ──
+   Strips position:fixed, hardcoded sizing, and backgrounds from panels
+   mounted inside .wb-body so they fill the WinBox container naturally. */
+.realm-window .wb-body {
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+.realm-window .wb-body > .panel,
+.realm-window .wb-body > [id] {
+  position: static !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  min-width: 0 !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  margin: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  z-index: auto !important;
+  opacity: 1 !important;
+  transform: none !important;
+  animation: none !important;
+}
+/* Hide native panel headers — WinBox titlebar replaces them */
+.realm-window .wb-body .panel-header,
+.realm-window .wb-body .panel-hdr {
+  display: none !important;
+}
+/* Panel body fills remaining space and scrolls */
+/* All known panel body containers — flex-fill + scroll */
+.realm-window .wb-body .panel-body,
+.realm-window .wb-body .ag-body,
+.realm-window .wb-body .st-body,
+.realm-window .wb-body .st-crystal {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  max-height: none !important;
+  height: auto !important;
+}
+/* Legend has no body wrapper — make the panel itself scroll */
+.realm-window .wb-body #legend {
+  overflow-y: auto !important;
+}
+/* Spellbook pages — hidden tabs fill remaining space */
+.realm-window .wb-body .spell-page {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  max-height: none !important;
+  display: none;
+}
+.realm-window .wb-body .spell-page.active {
+  display: block !important;
+}
+/* Tab bars stay pinned at top */
+.realm-window .wb-body .panel-tab-bar,
+.realm-window .wb-body .quest-filter-bar,
+.realm-window .wb-body .spellbook-tabs,
+.realm-window .wb-body .codex-tabs,
+.realm-window .wb-body .grimoire-tabs,
+.realm-window .wb-body .pe-tabs {
+  flex: 0 0 auto !important;
+}
+/* Status bars / footers / input rows stay pinned at bottom */
+.realm-window .wb-body .panel-footer,
+.realm-window .wb-body .panel-status,
+.realm-window .wb-body .st-input-row {
+  flex: 0 0 auto !important;
+}
+/* Scrying terminal body needs flex column for crystal + input */
+.realm-window .wb-body .st-body {
+  display: flex !important;
+  flex-direction: column !important;
 }
 
 /* ── Reduced Motion Override ── */
