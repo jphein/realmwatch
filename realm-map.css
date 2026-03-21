@@ -2631,6 +2631,30 @@
   .sr-item[data-kind="Panel"] .sr-type { color: #f0d890; background: rgba(240,216,144,0.1); }
   .sr-item[data-kind="Legend"] .sr-type { color: #80b0ff; background: rgba(128,176,255,0.1); }
   .sr-empty { padding: 16px; text-align: center; font-size: 11px; color: #504030; font-style: italic; }
+  /* ── Panel Resize Handles (Window Manager) ── */
+  .panel-resize {
+    position: absolute;
+    z-index: 10;
+  }
+  .panel-resize--n  { top: -3px; left: 8px; right: 8px; height: 6px; cursor: n-resize; }
+  .panel-resize--s  { bottom: -3px; left: 8px; right: 8px; height: 6px; cursor: s-resize; }
+  .panel-resize--e  { top: 8px; bottom: 8px; right: -3px; width: 6px; cursor: e-resize; }
+  .panel-resize--w  { top: 8px; bottom: 8px; left: -3px; width: 6px; cursor: w-resize; }
+  .panel-resize--ne { top: -3px; right: -3px; width: 12px; height: 12px; cursor: ne-resize; }
+  .panel-resize--nw { top: -3px; left: -3px; width: 12px; height: 12px; cursor: nw-resize; }
+  .panel-resize--se { bottom: -3px; right: -3px; width: 12px; height: 12px; cursor: se-resize; }
+  .panel-resize--sw { bottom: -3px; left: -3px; width: 12px; height: 12px; cursor: sw-resize; }
+  /* Visible grip on hover */
+  .panel:hover .panel-resize--se::after {
+    content: '';
+    position: absolute;
+    bottom: 3px; right: 3px;
+    width: 8px; height: 8px;
+    border-right: 2px solid rgba(180,160,120,0.3);
+    border-bottom: 2px solid rgba(180,160,120,0.3);
+  }
+  .panel { overflow: visible; }
+
   /* ── Unified Panel Chrome ── */
   .panel {
     position: relative;
@@ -7736,12 +7760,16 @@ body.perf-low .conjure-orbit-ring { animation: none; }
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Forest Theme Container ── */
+#forest-overlay,
 .forest-theme-layer {
   position: fixed;
   inset: 0;
-  pointer-events: none;
-  z-index: 9999;
+  pointer-events: none !important;
+  z-index: 1;
   overflow: hidden;
+}
+#forest-overlay * {
+  pointer-events: none !important;
 }
 
 /* ── Forest Wisp — Glowing Orbs Drifting Through the Canopy ── */
