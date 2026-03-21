@@ -337,6 +337,16 @@ function _dbgRefresh() {
 
   _dbgBody.innerHTML = html;
 
+  // Show empty state when filter matches nothing
+  if (filter && !_dbgBody.querySelector('.dbg-kv, .dbg-tree')) {
+    _dbgBody.textContent = '';
+    const emptyEl = document.createElement('div');
+    emptyEl.className = 'panel-empty';
+    emptyEl.textContent = 'No matches';
+    _dbgBody.appendChild(emptyEl);
+    return;
+  }
+
   // Collapse toggle for sections
   _dbgBody.querySelectorAll('.dbg-section-title').forEach(el => {
     el.addEventListener('click', () => {

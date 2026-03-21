@@ -21,6 +21,7 @@ import { initSpellbook, invalidateSearchIndex } from './spellbook.js';
 import { saveSettings, scheduleSave } from './layout.js';
 import { scheduleDebugRefresh } from './debug.js';
 import { initWinBoxWM, toggleWinBoxMode } from './winbox-wm.js';
+import { applyFormation } from './panel-manager.js';
 
 let liveOk = false;
 
@@ -331,7 +332,8 @@ if (_wbcb) {
   _wbcb.checked = localStorage.getItem('realm-winbox-mode') === 'true';
   _wbcb.addEventListener('change', () => {
     toggleWinBoxMode(_wbcb.checked);
-    location.reload(); // WM mode change requires reload for clean DOM state
+    // Re-apply current formation to mount/unmount panels in WinBox
+    applyFormation('grimoire-binding');
   });
 }
 

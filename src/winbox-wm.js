@@ -1,5 +1,3 @@
-'use strict';
-
 // ── WinBox Window Manager — Arcane Pane Conjuration ──
 // Wraps existing .panel DOM elements into WinBox.js windows,
 // granting each panel the power of free movement across the realm map.
@@ -32,177 +30,100 @@ const STORAGE_MODE_KEY = 'realm-winbox-mode';
 const STORAGE_POS_KEY  = 'realm-winbox-positions';
 
 // ── Default window dimensions ──
-const DEFAULT_WIDTH  = 360;
-const DEFAULT_HEIGHT = 420;
+const DEFAULT_WIDTH  = 420;
+const DEFAULT_HEIGHT = 340;
 const MIN_WIDTH      = 200;
 const MIN_HEIGHT     = 120;
 
+// ── Cascade defaults ──
+const CASCADE_OFFSET = 30;
+let _cascadeIndex = 0;
+
 // ── State ──
-// Active WinBox instances keyed by panel ID
-const _instances = new Map();
-
-// Saved positions/sizes, loaded from localStorage on init
-let _savedPositions = {};
-
-// Whether WinBox mode is currently active
 let _active = false;
+const _instances = new Map();          // panelId → WinBox instance
+const _origParents = new Map();        // panelId → { parent, nextSibling }
 
-// Original parent elements for each panel (to restore on disable)
-const _originalParents = new Map();
-const _originalNextSiblings = new Map();
+// ── Debounced position save ──
+let _saveTimer = null;
 
 // ── Position persistence ──
 
-/** Load saved window positions from the realm's memory crystal */
 function _loadPositions() {
   try {
     const raw = localStorage.getItem(STORAGE_POS_KEY);
-    _savedPositions = raw ? JSON.parse(raw) : {};
-  } catch {
-    _savedPositions = {};
-  }
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
 }
 
-/** Inscribe current window positions into localStorage */
-function _savePositions() {
+function _savePositions(positions) {
   try {
-    localStorage.setItem(STORAGE_POS_KEY, JSON.stringify(_savedPositions));
+    localStorage.setItem(STORAGE_POS_KEY, JSON.stringify(positions));
   } catch { /* storage full — silently ignore */ }
 }
 
-/** Record a panel's position and size */
-function _recordPosition(panelId, x, y, w, h) {
-  _savedPositions[panelId] = { x, y, w, h };
-  _savePositions();
+function _debouncedSavePosition(panelId, x, y, w, h) {
+  if (_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => {
+    const positions = _loadPositions();
+    positions[panelId] = { x, y, w, h };
+    _savePositions(positions);
+    _saveTimer = null;
+  }, 100);
 }
 
-// ── WinBox instance creation ──
+// ── Cascade position for new windows ──
 
-/**
- * Conjure a WinBox window for the given panel element.
- * The panel DOM node is mounted (moved) into the WinBox body.
- */
-function _createWinBox(panelId) {
-  const el = document.getElementById(panelId);
-  if (!el) {
-    console.warn(`[WinBox WM] Panel element not found: ${panelId}`);
-    return null;
+function _cascadePosition() {
+  const idx = _cascadeIndex % 8;
+  _cascadeIndex++;
+  return {
+    x: 100 + idx * CASCADE_OFFSET,
+    y: 80  + idx * CASCADE_OFFSET,
+  };
+}
+
+// ── Internal: restore a panel's DOM and close its WinBox ──
+
+function _restorePanel(panelId, wb) {
+  const panel = document.getElementById(panelId);
+  if (panel) {
+    // Restore native panel header visibility
+    const header = panel.querySelector('.panel-header');
+    if (header) header.style.display = '';
+
+    // Reset inline styles we applied
+    panel.style.position = '';
+
+    // Move panel DOM back to original location
+    const orig = _origParents.get(panelId);
+    if (orig && orig.parent) {
+      if (orig.nextSibling && orig.nextSibling.parentNode === orig.parent) {
+        orig.parent.insertBefore(panel, orig.nextSibling);
+      } else {
+        orig.parent.appendChild(panel);
+      }
+    }
   }
 
-  const title = PANELS[panelId] || panelId;
-
-  // Preserve original DOM location for restoration
-  if (!_originalParents.has(panelId)) {
-    _originalParents.set(panelId, el.parentNode);
-    _originalNextSiblings.set(panelId, el.nextSibling);
+  // Force-close WinBox (bypass onclose handler)
+  if (wb && wb.dom) {
+    wb.close(true);
   }
-
-  // Retrieve saved geometry or use defaults
-  const saved = _savedPositions[panelId];
-  const width  = saved?.w || DEFAULT_WIDTH;
-  const height = saved?.h || DEFAULT_HEIGHT;
-  const x      = saved?.x ?? 'center';
-  const y      = saved?.y ?? 100;
-
-  const wb = new WinBox({
-    title,
-    mount: el,
-    class: 'realm-window',
-    width,
-    height,
-    x,
-    y,
-    minwidth:  MIN_WIDTH,
-    minheight: MIN_HEIGHT,
-    background: 'transparent',
-    border: 0,
-
-    // Prevent destruction — panels are eternal wards, merely hidden when dismissed
-    onclose(force) {
-      if (force) return; // allow forced destruction during cleanup
-      this.minimize();
-      // Signal panel-manager that this panel was sealed
-      el.dispatchEvent(new CustomEvent('panel-sealed', {
-        bubbles: true,
-        detail: { panelId },
-      }));
-      return false; // block destroy
-    },
-
-    // Focus brings window to front (WinBox handles z-index automatically)
-    onfocus() {},
-
-    onblur() {},
-
-    // Persist geometry on resize
-    onresize(w, h) {
-      _recordPosition(panelId, this.x, this.y, w, h);
-    },
-
-    // Persist geometry on move
-    onmove(x, y) {
-      _recordPosition(panelId, x, y, this.width, this.height);
-    },
-
-    onminimize() {
-      // Let WinBox handle the minimize animation
-    },
-  });
-
-  _instances.set(panelId, wb);
-  return wb;
 }
 
 // ── Public API ──
 
 /**
  * Initialize the WinBox window management system.
- * Call after all .panel elements exist in the DOM.
- * Does NOT auto-open panels — they await summoning.
+ * Loads saved positions from localStorage. If WinBox mode was previously
+ * enabled, sets _active = true but does NOT auto-open panels —
+ * panel-manager handles that via applyFormation.
  */
 export function initWinBoxWM() {
-  _loadPositions();
-
-  // Restore mode from localStorage if previously enabled
   const stored = localStorage.getItem(STORAGE_MODE_KEY);
   if (stored === 'true') {
     _active = true;
-  }
-}
-
-/**
- * Open (or reveal) a WinBox window for the given panel.
- * If no instance exists, conjures a new one.
- * If minimized, restores it to the mortal plane.
- */
-export function openWinBoxPanel(panelId) {
-  if (!_active) return;
-  if (!PANELS[panelId]) {
-    console.warn(`[WinBox WM] Unknown panel: ${panelId}`);
-    return;
-  }
-
-  let wb = _instances.get(panelId);
-
-  if (!wb) {
-    // First summoning — conjure the window
-    wb = _createWinBox(panelId);
-    if (!wb) return;
-  } else {
-    // Already conjured — restore if minimized
-    wb.restore();
-    wb.focus();
-  }
-}
-
-/**
- * Minimize (seal) a WinBox window without destroying it.
- * The panel can be re-opened later with openWinBoxPanel.
- */
-export function closeWinBoxPanel(panelId) {
-  const wb = _instances.get(panelId);
-  if (wb) {
-    wb.minimize();
   }
 }
 
@@ -214,35 +135,160 @@ export function isWinBoxMode() {
 }
 
 /**
+ * Open (or restore/focus) a panel inside a WinBox window.
+ * If WinBox mode is not active, this is a no-op.
+ */
+export function openWinBoxPanel(panelId) {
+  if (!_active) return;
+
+  const panel = document.getElementById(panelId);
+  if (!panel) return;
+
+  // Already has a WinBox instance — restore and focus
+  const existing = _instances.get(panelId);
+  if (existing) {
+    if (existing.dom) {
+      existing.restore();
+      existing.focus();
+      return;
+    }
+    // Dead instance — clean up and fall through to recreate
+    _instances.delete(panelId);
+    _origParents.delete(panelId);
+  }
+
+  // Save original DOM position for later restoration
+  _origParents.set(panelId, {
+    parent: panel.parentNode,
+    nextSibling: panel.nextSibling,
+  });
+
+  // Hide native panel header (WinBox provides its own titlebar)
+  const header = panel.querySelector('.panel-header');
+  if (header) header.style.display = 'none';
+
+  // Make panel flow naturally inside WinBox body
+  panel.style.display = '';
+  panel.style.position = 'relative';
+
+  // Determine position/size — saved or cascaded default
+  const positions = _loadPositions();
+  const saved = positions[panelId];
+  let x, y, w, h;
+
+  if (saved) {
+    x = saved.x;
+    y = saved.y;
+    w = saved.w;
+    h = saved.h;
+  } else {
+    const cascade = _cascadePosition();
+    x = cascade.x;
+    y = cascade.y;
+    w = DEFAULT_WIDTH;
+    h = DEFAULT_HEIGHT;
+  }
+
+  const title = PANELS[panelId] || panelId;
+
+  const wb = new WinBox({
+    title,
+    mount: panel,
+    class: 'realm-window',
+    background: 'transparent',
+    border: 0,
+    x, y,
+    width: w,
+    height: h,
+    minwidth: MIN_WIDTH,
+    minheight: MIN_HEIGHT,
+
+    // X button: minimize instead of destroy, dispatch event for panel-manager
+    onclose(force) {
+      if (force) return; // allow forced destruction (returns undefined → falsy)
+      this.minimize();
+      document.dispatchEvent(new CustomEvent('winbox-minimized', {
+        detail: { panelId },
+      }));
+      return true; // prevent default close
+    },
+
+    onmove(mx, my) {
+      _debouncedSavePosition(panelId, mx, my, this.width, this.height);
+    },
+
+    onresize(rw, rh) {
+      _debouncedSavePosition(panelId, this.x, this.y, rw, rh);
+    },
+
+    onminimize() {
+      document.dispatchEvent(new CustomEvent('winbox-minimized', {
+        detail: { panelId },
+      }));
+    },
+  });
+
+  _instances.set(panelId, wb);
+}
+
+/**
+ * Minimize a WinBox panel and dispatch 'winbox-minimized' so panel-manager
+ * can create a rune in the dock.
+ */
+export function closeWinBoxPanel(panelId) {
+  const wb = _instances.get(panelId);
+  if (!wb || !wb.dom) return;
+
+  wb.minimize();
+  document.dispatchEvent(new CustomEvent('winbox-minimized', {
+    detail: { panelId },
+  }));
+}
+
+/**
  * Toggle WinBox mode on or off.
- * When disabled, all WinBox windows are destroyed and panels
- * return to their original DOM positions for legacy layout.
+ *
+ * Enabling: sets _active, saves to localStorage. Does NOT open panels —
+ * caller (panel-manager / app.js) is responsible for that.
+ *
+ * Disabling: restores all panel DOM back to original parents, force-closes
+ * all WinBox instances, clears state.
  */
 export function toggleWinBoxMode(enabled) {
-  _active = !!enabled;
-  localStorage.setItem(STORAGE_MODE_KEY, _active ? 'true' : 'false');
-
-  if (!_active) {
-    // Banish all WinBox windows — return panels to their ancestral DOM homes
+  if (enabled) {
+    _active = true;
+    localStorage.setItem(STORAGE_MODE_KEY, 'true');
+  } else {
+    // Tear down every WinBox instance, restoring DOM
     for (const [panelId, wb] of _instances) {
-      const el = document.getElementById(panelId);
-      if (el) {
-        // Restore to original DOM position
-        const parent = _originalParents.get(panelId);
-        const sibling = _originalNextSiblings.get(panelId);
-        if (parent) {
-          if (sibling && sibling.parentNode === parent) {
-            parent.insertBefore(el, sibling);
-          } else {
-            parent.appendChild(el);
-          }
-        }
-      }
-      // Force-close to bypass the onclose prevention
-      wb.close(true);
+      _restorePanel(panelId, wb);
     }
     _instances.clear();
-    _originalParents.clear();
-    _originalNextSiblings.clear();
+    _origParents.clear();
+    _cascadeIndex = 0;
+    _active = false;
+    localStorage.setItem(STORAGE_MODE_KEY, 'false');
   }
+}
+
+/**
+ * Force-close and clean up a single panel's WinBox window.
+ * Used when panel-manager seals a panel while WinBox mode is active.
+ * Restores .panel-header display and moves DOM back to original parent.
+ */
+export function destroyWinBoxPanel(panelId) {
+  const wb = _instances.get(panelId);
+  if (!wb) return;
+
+  _restorePanel(panelId, wb);
+  _instances.delete(panelId);
+  _origParents.delete(panelId);
+}
+
+/**
+ * Returns the WinBox instance for a panel, or undefined.
+ * Useful for panel-manager to check if a panel is currently in a WinBox window.
+ */
+export function getWinBoxInstance(panelId) {
+  return _instances.get(panelId);
 }
