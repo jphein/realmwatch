@@ -1244,8 +1244,8 @@
       "y": 340,
       "icon": "&#128241;",
       "label": "The Old Herald",
-      "sublabel": "Pixel-4 \u2022 10.0.11.101",
-      "ip": "10.0.11.101",
+      "sublabel": "Pixel-4 \u2022 10.0.11.252",
+      "ip": "10.0.11.252",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1520,#0f0a15)",
         "borderColor": "rgba(100,180,100,0.3)",
@@ -1267,7 +1267,7 @@
           ],
           [
             "IP",
-            "10.0.11.101"
+            "10.0.11.252"
           ]
         ]
       },
@@ -1677,6 +1677,41 @@
         ]
       },
       "_role": "tv"
+    },
+    {
+      "id": "ts-instance",
+      "type": "tailscale",
+      "tsHost": "instance-1",
+      "ssh": "instance-1",
+      "ip": "100.75.240.4",
+      "x": 1918,
+      "y": 865,
+      "online": true,
+      "icon": "&#9729;",
+      "label": "The Cloud Spire",
+      "sublabel": "instance-1 \u2022 100.75.240.4",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#10101a,#08080f)",
+        "width": "50px",
+        "height": "50px",
+        "fontSize": "22px"
+      },
+      "pulse": true,
+      "collectd": "instance-1",
+      "tip": {
+        "title": "The Cloud Spire",
+        "stats": [
+          [
+            "Type",
+            "GCP Instance"
+          ],
+          [
+            "IP",
+            "100.75.240.4"
+          ]
+        ]
+      },
+      "_role": "tailscale"
     },
     {
       "id": "ts-iperf",
@@ -2996,12 +3031,12 @@
       "_auto": true,
       "x": 2370,
       "y": 750,
-      "ip": "10.0.11.253",
+      "ip": "10.0.11.220",
       "mac": "3e:75:92:ac:0b:69",
       "_last_seen": 1773528249.0501041,
       "label": "Flip3",
       "icon": "&#128241;",
-      "sublabel": "10.0.11.253 \u2022 Randomized MAC",
+      "sublabel": "10.0.11.220 \u2022 Randomized MAC",
       "iconStyle": {
         "background": "radial-gradient(circle,#a080c020,#0a0510)",
         "borderColor": "#a080c080",
@@ -3021,7 +3056,7 @@
           ],
           [
             "IP",
-            "10.0.11.253"
+            "10.0.11.220"
           ],
           [
             "MAC",
@@ -3046,12 +3081,12 @@
       "_auto": true,
       "x": 2510,
       "y": 800,
-      "ip": "10.0.11.107",
+      "ip": "10.0.6.113",
       "mac": "60:f6:77:5f:36:3d",
       "_last_seen": 1773534894.9827955,
       "label": "Device 363d",
       "icon": "&#128123;",
-      "sublabel": "10.0.11.107",
+      "sublabel": "10.0.6.113",
       "iconStyle": {
         "background": "radial-gradient(circle,#80808020,#0a0510)",
         "borderColor": "#80808080",
@@ -3070,7 +3105,7 @@
           ],
           [
             "IP",
-            "10.0.11.107"
+            "10.0.6.113"
           ],
           [
             "MAC",
@@ -3165,7 +3200,7 @@
       },
       "_role": "sensor",
       "_vendor": "Espressif",
-      "_hostname": "wlan0",
+      "_hostname": "Nest-Thermostat-B56D",
       "tip": {
         "title": "ESP",
         "stats": [
@@ -3261,13 +3296,13 @@
       "_auto": true,
       "x": 2800,
       "y": 750,
-      "ip": "10.0.6.249",
+      "ip": "10.0.6.112",
       "mac": "c2:13:db:2f:cd:3e",
       "_last_seen": 1773631840.9300303,
       "_wired": true,
       "label": "Admin Device cd3e",
       "icon": "&#128123;",
-      "sublabel": "10.0.6.249 \u2022 Randomized MAC",
+      "sublabel": "10.0.6.112 \u2022 Randomized MAC",
       "iconStyle": {
         "background": "radial-gradient(circle,#80808020,#0a0510)",
         "borderColor": "#80808080",
@@ -3284,7 +3319,7 @@
           ],
           [
             "IP",
-            "10.0.6.249"
+            "10.0.6.112"
           ],
           [
             "MAC",
@@ -3304,7 +3339,7 @@
       "_vendor": null,
       "_os": null,
       "_model": null,
-      "_hostname": "Galaxy-Z-Flip3-5G",
+      "_hostname": "Flip3",
       "_ha_entity": null,
       "_ha_battery": null
     },
@@ -3744,7 +3779,7 @@
       "_vendor": null,
       "_os": null,
       "_model": null,
-      "_hostname": "Nest-Thermostat-333F",
+      "_hostname": "Galaxy-A54-5G",
       "_ha_entity": null,
       "_ha_battery": null
     },
@@ -4066,7 +4101,7 @@
       "_vendor": null,
       "_os": null,
       "_model": null,
-      "_hostname": "Flip3",
+      "_hostname": "<Owner>-s-S24-Ultra",
       "_ha_entity": null,
       "_ha_battery": null
     },
@@ -4182,13 +4217,13 @@
       "_auto": true,
       "x": 3010,
       "y": 800,
-      "ip": "10.0.11.254",
+      "ip": "10.0.11.250",
       "mac": "6a:c0:03:cc:dc:23",
       "_last_seen": 1773967403.0889618,
       "_wired": true,
       "label": "Guest Device dc23",
       "icon": "&#128241;",
-      "sublabel": "10.0.11.254 \u2022 Randomized MAC",
+      "sublabel": "10.0.11.250 \u2022 Randomized MAC",
       "iconStyle": {
         "background": "radial-gradient(circle,#a080c020,#0a0510)",
         "borderColor": "#a080c080",
@@ -4205,7 +4240,7 @@
           ],
           [
             "IP",
-            "10.0.11.254"
+            "10.0.11.250"
           ],
           [
             "MAC",
@@ -4235,13 +4270,13 @@
       "_auto": true,
       "x": 2800,
       "y": 750,
-      "ip": "10.0.10.249",
+      "ip": "10.0.10.122",
       "mac": "ae:34:f7:75:c1:27",
       "_last_seen": 1773967495.406855,
       "_wired": true,
       "label": "Pixel-7a",
       "icon": "&#128241;",
-      "sublabel": "10.0.10.249 \u2022 Google Pixel Android",
+      "sublabel": "10.0.10.122 \u2022 Google Pixel Android",
       "iconStyle": {
         "background": "radial-gradient(circle,#a080c020,#0a0510)",
         "borderColor": "#a080c080",
@@ -4266,7 +4301,7 @@
           ],
           [
             "IP",
-            "10.0.10.249"
+            "10.0.10.122"
           ],
           [
             "MAC",
@@ -4513,6 +4548,44 @@
       "_hostname": null,
       "_ha_entity": null,
       "_ha_battery": null
+    },
+    {
+      "id": "_unknown_cca7c15e89f9",
+      "type": "device",
+      "_auto": true,
+      "x": 2370,
+      "y": 800,
+      "ip": "10.0.10.123",
+      "mac": "cc:a7:c1:5e:89:f9",
+      "_last_seen": 1773991179.3302789,
+      "label": "Device 89f9",
+      "icon": "&#128123;",
+      "sublabel": "cc:a7:c1...",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#80808020,#0a0510)",
+        "borderColor": "#80808080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "_role": "unknown",
+      "_vendor": null,
+      "tip": {
+        "title": "Unknown Device",
+        "stats": [
+          [
+            "Role",
+            "Unknown Device"
+          ],
+          [
+            "MAC",
+            "cc:a7:c1:5e:89:f9"
+          ]
+        ]
+      },
+      "_os": null,
+      "_model": null,
+      "_hostname": "Device 89f9"
     },
     {
       "id": "jellyfin",
@@ -5030,80 +5103,6 @@
       "_hostname": "Galaxy-Z-Flip3-5G",
       "_ha_entity": null,
       "_ha_battery": null
-    },
-    {
-      "id": "_unknown_cca7c15e89f9",
-      "type": "device",
-      "_auto": true,
-      "x": 2370,
-      "y": 800,
-      "ip": "10.0.10.80",
-      "mac": "cc:a7:c1:5e:89:f9",
-      "_last_seen": 1774073957.312911,
-      "label": "Device 89f9",
-      "icon": "&#128123;",
-      "sublabel": "cc:a7:c1...",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "MAC",
-            "cc:a7:c1:5e:89:f9"
-          ]
-        ]
-      },
-      "_os": null,
-      "_model": null,
-      "_hostname": "Device 89f9"
-    },
-    {
-      "id": "ts-instance",
-      "type": "tailscale",
-      "tsHost": "instance-1",
-      "ssh": "instance-1",
-      "ip": "100.75.240.4",
-      "x": 1215,
-      "y": 359,
-      "online": true,
-      "icon": "&#9729;",
-      "label": "The Cloud Spire",
-      "sublabel": "instance-1 \u2022 100.75.240.4",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#10101a,#08080f)",
-        "width": "50px",
-        "height": "50px",
-        "fontSize": "22px"
-      },
-      "pulse": true,
-      "collectd": "instance-1",
-      "tip": {
-        "title": "The Cloud Spire",
-        "stats": [
-          [
-            "Type",
-            "GCP Instance"
-          ],
-          [
-            "IP",
-            "100.75.240.4"
-          ]
-        ]
-      },
-      "_role": "tailscale",
-      "url": "https://jphein.com"
     }
   ],
   "connections": [
@@ -5466,7 +5465,7 @@
     },
     {
       "from": "esp32-a90c10",
-      "to": "eap225-outdoor",
+      "to": "wndr4300sw-shed",
       "type": "active",
       "vlan": 6
     },
@@ -5517,7 +5516,7 @@
     },
     {
       "from": "_unknown_be68f45be203",
-      "to": "onhub-office",
+      "to": "onhub-closet",
       "type": "active"
     },
     {

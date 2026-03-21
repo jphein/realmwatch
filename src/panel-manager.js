@@ -135,6 +135,14 @@ let _anchoredDrag = null; // For dragging anchored/conjured runes
 let _anchorElements = [];     // Cached ley-anchor DOM elements (populated in _createAnchorOverlay)
 let _prevHighlightedAnchorId = null; // Track previously highlighted anchor to avoid redundant classList toggles
 
+// ── Window Manager: Resize + Z-Stacking ──
+let _resizing = null;       // { panel, handle, startX, startY, startRect }
+let _topZ = 50;             // monotonically increasing z counter
+const _panelSizes = {};     // { panelId: { width, height } } persisted sizes
+const RESIZE_HANDLES = ['n','ne','e','se','s','sw','w','nw'];
+const MIN_W = 200;
+const MIN_H = 100;
+
 // ── HUD Settings ──
 const HUD_POSITIONS = {
   'top-left':     { top: '10px', left: '10px', right: 'auto', bottom: 'auto' },
@@ -523,12 +531,37 @@ function _attachDragHandlers() {
 
     // Double-click to minimize/restore (kept as backup)
     header.addEventListener('dblclick', () => _toggleMinimize(panel));
+
+    // ── Resize handles ──
+    if (!panel.querySelector('.panel-resize')) {
+      RESIZE_HANDLES.forEach(dir => {
+        const h = document.createElement('div');
+        h.className = 'panel-resize panel-resize--' + dir;
+        h.dataset.resize = dir;
+        h.addEventListener('mousedown', e => _startResize(e, panel, dir));
+        h.addEventListener('touchstart', e => _startResize(e, panel, dir), { passive: false });
+        panel.appendChild(h);
+      });
+    }
+
+    // ── Click to bring to front (z-stacking) ──
+    panel.addEventListener('mousedown', () => _bringToFront(panel));
+
+    // ── Restore saved size ──
+    if (_panelSizes[panel.id]) {
+      panel.style.width = _panelSizes[panel.id].width + 'px';
+      panel.style.height = _panelSizes[panel.id].height + 'px';
+    }
   });
 
   document.addEventListener('mousemove', _onDrag);
   document.addEventListener('touchmove', _onDrag, { passive: false });
   document.addEventListener('mouseup', _endDrag);
   document.addEventListener('touchend', _endDrag);
+  document.addEventListener('mousemove', _onResize);
+  document.addEventListener('touchmove', _onResize, { passive: false });
+  document.addEventListener('mouseup', _endResize);
+  document.addEventListener('touchend', _endResize);
 }
 
 let _dragStartPos = null;
@@ -631,6 +664,62 @@ function _endDrag() {
   _stopParticleTrail();
 
   _dragging = null;
+  _saveFormation();
+}
+
+// ── Z-Stacking: Click to Bring to Front ──
+function _bringToFront(panel) {
+  if (panel.classList.contains('panel-sealed')) return;
+  _topZ++;
+  panel.style.zIndex = _topZ;
+}
+
+// ── Resize Handlers ──
+function _startResize(e, panel, dir) {
+  e.preventDefault();
+  e.stopPropagation();
+  const cx = e.touches ? e.touches[0].clientX : e.clientX;
+  const cy = e.touches ? e.touches[0].clientY : e.clientY;
+  const rect = panel.getBoundingClientRect();
+  _resizing = { panel, dir, startX: cx, startY: cy, startRect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height } };
+  panel.style.transition = 'none';
+  panel.style.position = 'fixed';
+  _bringToFront(panel);
+}
+
+function _onResize(e) {
+  if (!_resizing) return;
+  e.preventDefault();
+  const cx = e.touches ? e.touches[0].clientX : e.clientX;
+  const cy = e.touches ? e.touches[0].clientY : e.clientY;
+  const { panel, dir, startX, startY, startRect } = _resizing;
+  const dx = cx - startX;
+  const dy = cy - startY;
+
+  let { left, top, width, height } = startRect;
+
+  // Adjust based on handle direction
+  if (dir.includes('e')) width = Math.max(MIN_W, width + dx);
+  if (dir.includes('w')) { width = Math.max(MIN_W, width - dx); left = startRect.left + startRect.width - width; }
+  if (dir.includes('s')) height = Math.max(MIN_H, height + dy);
+  if (dir.includes('n')) { height = Math.max(MIN_H, height - dy); top = startRect.top + startRect.height - height; }
+
+  panel.style.left = left + 'px';
+  panel.style.top = top + 'px';
+  panel.style.right = 'auto';
+  panel.style.bottom = 'auto';
+  panel.style.width = width + 'px';
+  panel.style.height = height + 'px';
+}
+
+function _endResize() {
+  if (!_resizing) return;
+  const { panel } = _resizing;
+  panel.style.transition = '';
+  // Save size
+  const rect = panel.getBoundingClientRect();
+  _panelSizes[panel.id] = { width: Math.round(rect.width), height: Math.round(rect.height) };
+  _resizing = null;
   _saveFormation();
 }
 
@@ -1753,6 +1842,7 @@ function _saveFormation() {
     hudScale: _hudScale,
     hudDraggable: _hudDraggable,
     hudCustomPos: _hudCustomPos,
+    panelSizes: {},
   };
 
   Object.keys(PANELS).forEach(id => {
@@ -1765,6 +1855,10 @@ function _saveFormation() {
       if (panel.dataset.anchor) {
         state.anchors[id] = panel.dataset.anchor;
       }
+    }
+    // Save custom sizes
+    if (_panelSizes[id]) {
+      state.panelSizes[id] = _panelSizes[id];
     }
   });
 
@@ -1792,6 +1886,10 @@ function _loadFormation() {
     if (saved.hudScale != null) _hudScale = saved.hudScale;
     if (saved.hudDraggable != null) _hudDraggable = saved.hudDraggable;
     if (saved.hudCustomPos) _hudCustomPos = saved.hudCustomPos;
+    // Restore panel sizes
+    if (saved.panelSizes) {
+      Object.assign(_panelSizes, saved.panelSizes);
+    }
     applyFormation('grimoire-binding');
     // Migrate runes to saved seal mode (applyFormation always loads into dock)
     if (_sealMode !== 'dock') _migrateSealedRunes(_sealMode);

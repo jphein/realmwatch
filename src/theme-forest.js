@@ -34,7 +34,7 @@ function _ensureOverlay() {
     _overlay.id = 'forest-overlay';
     document.body.appendChild(_overlay);
   }
-  _overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;overflow:hidden;pointer-events:none;';
+  _overlay.style.cssText = 'position:fixed;inset:0;z-index:1;overflow:hidden;pointer-events:none;';
 }
 
 // Create a particle element, add to overlay, auto-remove after lifetime
