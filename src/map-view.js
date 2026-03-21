@@ -1341,4 +1341,20 @@ let _gridHue = 0;
       saveSettings();
     });
   }
+  // Apply saved slider values now — restoreSettings() fires before these listeners
+  // exist (circular import: layout.js executes before map-view.js), so the dispatched
+  // input events were lost. Re-apply any non-default values.
+  for (const [sliderId, sel, isMulti, multiSel] of opacityLayers) {
+    const sl = document.getElementById(sliderId);
+    if (!sl || sl.value == 1) continue;
+    const v = sl.value;
+    if (sel) {
+      const el = document.querySelector(sel);
+      if (el) el.style.opacity = v;
+    } else if (multiSel) {
+      document.querySelectorAll(multiSel).forEach(el => { el.style.opacity = v; });
+      if (!window._layerOpacity) window._layerOpacity = {};
+      window._layerOpacity[multiSel] = v;
+    }
+  }
 })();

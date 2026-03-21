@@ -8393,3 +8393,602 @@ body.perf-low .conjure-orbit-ring { animation: none; }
     animation: none !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ── Puter.js SDK Integration Theme ──
+   Window manager, auth, toasts, dialogs, cloud sync, action buttons
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Puter Window Manager ── */
+.puter-window {
+  position: absolute;
+  min-width: 280px;
+  min-height: 180px;
+  border: 1px solid rgba(200,168,76,0.3);
+  border-radius: 8px;
+  background:
+    var(--grimoire-grain),
+    var(--grimoire-radial);
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.6),
+    0 0 1px rgba(200,168,76,0.4),
+    inset 0 1px 0 rgba(200,170,110,0.08);
+  overflow: hidden;
+  z-index: 1000;
+  opacity: 0;
+  transform: scale(0.92) translateY(8px);
+  animation: puterWindowOpen 250ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.puter-window.closing {
+  animation: puterWindowClose 250ms cubic-bezier(0.55, 0, 1, 0.45) forwards;
+}
+.puter-window.focused {
+  border-color: rgba(200,168,76,0.5);
+  box-shadow:
+    0 12px 48px rgba(0,0,0,0.7),
+    0 0 16px rgba(200,168,76,0.12),
+    0 0 1px rgba(200,168,76,0.6),
+    inset 0 1px 0 rgba(200,170,110,0.1);
+}
+
+@keyframes puterWindowOpen {
+  from { opacity: 0; transform: scale(0.92) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes puterWindowClose {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to   { opacity: 0; transform: scale(0.92) translateY(8px); }
+}
+
+/* Title bar */
+.puter-window-titlebar {
+  display: flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 10px;
+  background: linear-gradient(180deg, rgba(40,30,60,0.95) 0%, rgba(28,20,45,0.98) 100%);
+  border-bottom: 1px solid rgba(200,168,76,0.15);
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.puter-window-titlebar:active {
+  cursor: grabbing;
+}
+.puter-window-title {
+  flex: 1;
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #c8a84c;
+  text-shadow: 0 0 6px rgba(200,168,76,0.35);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.puter-window-controls {
+  display: flex;
+  gap: 6px;
+  margin-left: 8px;
+}
+.puter-window-btn {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(200,168,76,0.25);
+  background: rgba(200,168,76,0.08);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+  position: relative;
+}
+.puter-window-btn:hover {
+  background: rgba(200,168,76,0.2);
+  border-color: rgba(200,168,76,0.5);
+  box-shadow: 0 0 6px rgba(200,168,76,0.2);
+}
+.puter-window-btn--close:hover {
+  background: rgba(180,60,60,0.4);
+  border-color: rgba(220,80,80,0.5);
+  box-shadow: 0 0 6px rgba(220,80,80,0.3);
+}
+.puter-window-btn--minimize:hover {
+  background: rgba(200,168,76,0.25);
+}
+.puter-window-btn--maximize:hover {
+  background: rgba(80,180,120,0.25);
+  border-color: rgba(80,180,120,0.5);
+}
+
+/* Body */
+.puter-window-body {
+  padding: 12px;
+  overflow: auto;
+  color: var(--text-leather);
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Resize handle */
+.puter-window-resize {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+}
+.puter-window-resize::after {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  right: 3px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid rgba(200,168,76,0.2);
+  border-bottom: 2px solid rgba(200,168,76,0.2);
+}
+
+/* ── Auth Badge ── */
+.puter-auth-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #c8a84c;
+  background: rgba(20,16,40,0.85);
+  border: 1px solid rgba(200,168,76,0.2);
+  border-radius: 14px;
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.puter-auth-badge:hover {
+  border-color: rgba(200,168,76,0.4);
+  box-shadow: 0 0 8px rgba(200,168,76,0.15);
+}
+.puter-auth-badge.signed-in {
+  border-color: rgba(200,168,76,0.35);
+  box-shadow: 0 0 10px rgba(200,168,76,0.1);
+}
+.puter-auth-badge.signed-in::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #c8a84c;
+  box-shadow: 0 0 6px rgba(200,168,76,0.6);
+  animation: puterAuthPulse 2.5s ease-in-out infinite;
+}
+@keyframes puterAuthPulse {
+  0%, 100% { box-shadow: 0 0 4px rgba(200,168,76,0.4); }
+  50%      { box-shadow: 0 0 10px rgba(200,168,76,0.7); }
+}
+
+/* Auth dropdown */
+.puter-auth-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 160px;
+  background:
+    var(--grimoire-grain),
+    var(--grimoire-radial);
+  border: 1px solid rgba(200,168,76,0.25);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  padding: 6px 0;
+  z-index: 2000;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.puter-auth-badge.open .puter-auth-dropdown {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.puter-auth-dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 8px 14px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--text-leather);
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.puter-auth-dropdown-item:hover {
+  background: rgba(200,168,76,0.08);
+  color: #e0c068;
+}
+.puter-auth-dropdown-divider {
+  height: 1px;
+  margin: 4px 10px;
+  background: rgba(200,168,76,0.12);
+}
+
+/* ── Toast Notifications ── */
+.realm-toast-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 8px;
+  pointer-events: none;
+  max-height: 80vh;
+  overflow: hidden;
+}
+.realm-toast {
+  pointer-events: auto;
+  min-width: 260px;
+  max-width: 380px;
+  padding: 12px 16px;
+  background:
+    var(--grimoire-grain),
+    var(--grimoire-radial);
+  border: 1px solid rgba(200,168,76,0.25);
+  border-radius: 8px;
+  box-shadow:
+    0 6px 24px rgba(0,0,0,0.5),
+    0 0 1px rgba(200,168,76,0.3);
+  color: var(--text-leather);
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.4;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  animation: realmToastIn 300ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.realm-toast.dismissing {
+  animation: realmToastOut 400ms cubic-bezier(0.55, 0, 1, 0.45) forwards;
+}
+
+@keyframes realmToastIn {
+  from { opacity: 0; transform: translateX(40px) scale(0.95); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes realmToastOut {
+  from { opacity: 1; transform: translateX(0) scale(1); }
+  to   { opacity: 0; transform: translateX(40px) scale(0.92); }
+}
+
+.realm-toast-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  line-height: 18px;
+  text-align: center;
+  font-size: 13px;
+}
+.realm-toast-content {
+  flex: 1;
+}
+.realm-toast-title {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+.realm-toast-message {
+  font-size: 11px;
+  color: rgba(200,180,150,0.8);
+}
+
+/* Toast severity: info (sapphire) */
+.realm-toast--info {
+  border-color: rgba(90,160,255,0.3);
+}
+.realm-toast--info .realm-toast-icon { color: var(--gem-sapphire); }
+.realm-toast--info .realm-toast-title { color: var(--gem-sapphire); }
+
+/* Toast severity: warning (amber) */
+.realm-toast--warning {
+  border-color: rgba(240,192,96,0.35);
+}
+.realm-toast--warning .realm-toast-icon { color: var(--gem-amber); }
+.realm-toast--warning .realm-toast-title { color: var(--gem-amber); }
+
+/* Toast severity: critical (ruby) */
+.realm-toast--critical {
+  border-color: rgba(255,100,100,0.35);
+  box-shadow:
+    0 6px 24px rgba(0,0,0,0.5),
+    0 0 12px rgba(255,80,60,0.1),
+    0 0 1px rgba(255,80,60,0.4);
+}
+.realm-toast--critical .realm-toast-icon { color: var(--gem-ruby); }
+.realm-toast--critical .realm-toast-title { color: var(--gem-ruby); }
+
+/* ── Puter Dialogs ── */
+.puter-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(6,4,16,0.7);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  animation: puterOverlayIn 200ms ease-out forwards;
+}
+.puter-dialog-overlay.closing {
+  animation: puterOverlayOut 200ms ease-in forwards;
+}
+@keyframes puterOverlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes puterOverlayOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+.puter-dialog {
+  min-width: 320px;
+  max-width: 480px;
+  width: 90%;
+  background:
+    var(--grimoire-grain),
+    var(--grimoire-radial);
+  border: 1px solid rgba(200,168,76,0.3);
+  border-radius: 10px;
+  box-shadow:
+    0 16px 64px rgba(0,0,0,0.7),
+    0 0 1px rgba(200,168,76,0.5);
+  overflow: hidden;
+  transform: scale(0.94);
+  animation: puterDialogIn 250ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.puter-dialog-overlay.closing .puter-dialog {
+  animation: puterDialogOut 200ms ease-in forwards;
+}
+@keyframes puterDialogIn {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes puterDialogOut {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.94); }
+}
+
+.puter-dialog-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(200,168,76,0.15);
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #c8a84c;
+  text-shadow: 0 0 6px rgba(200,168,76,0.3);
+}
+.puter-dialog-body {
+  padding: 16px 18px;
+  color: var(--text-leather);
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.puter-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid rgba(200,168,76,0.1);
+}
+
+/* Dialog inputs — matches cfg-input style */
+.puter-dialog-input {
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(16,12,8,0.8);
+  color: #d4c5a0;
+  border: 1px solid rgba(120,90,40,0.2);
+  border-radius: 6px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.puter-dialog-input:focus {
+  border-color: rgba(192,128,255,0.5);
+  outline: none;
+  box-shadow: 0 0 8px rgba(192,128,255,0.2), inset 0 0 4px rgba(192,128,255,0.05);
+}
+.puter-dialog-input::placeholder {
+  color: rgba(200,180,150,0.35);
+}
+
+/* Dialog fantasy buttons */
+.puter-dialog-btn {
+  padding: 7px 18px;
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  border-radius: 6px;
+  border: 1px solid rgba(200,168,76,0.25);
+  background: rgba(200,168,76,0.06);
+  color: #c8a84c;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.1s;
+}
+.puter-dialog-btn:hover {
+  background: rgba(200,168,76,0.14);
+  border-color: rgba(200,168,76,0.45);
+  box-shadow: 0 0 8px rgba(200,168,76,0.15);
+}
+.puter-dialog-btn:active {
+  transform: scale(0.97);
+}
+.puter-dialog-btn--primary {
+  background: rgba(200,168,76,0.15);
+  border-color: rgba(200,168,76,0.4);
+  box-shadow: 0 0 4px rgba(200,168,76,0.1);
+}
+.puter-dialog-btn--primary:hover {
+  background: rgba(200,168,76,0.25);
+  border-color: rgba(200,168,76,0.6);
+  box-shadow: 0 0 12px rgba(200,168,76,0.2);
+}
+.puter-dialog-btn--danger {
+  color: var(--gem-ruby);
+  border-color: rgba(255,100,100,0.25);
+  background: rgba(255,80,60,0.06);
+}
+.puter-dialog-btn--danger:hover {
+  background: rgba(255,80,60,0.15);
+  border-color: rgba(255,100,100,0.45);
+  box-shadow: 0 0 8px rgba(255,80,60,0.15);
+}
+
+/* ── Cloud Sync Indicator ── */
+.cloud-sync-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  font-family: var(--font-body);
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: rgba(200,180,150,0.6);
+  border: 1px solid rgba(200,168,76,0.12);
+  border-radius: 10px;
+  background: rgba(20,16,40,0.6);
+}
+.cloud-sync-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.3s, box-shadow 0.3s;
+}
+
+/* Synced — green */
+.cloud-sync-badge--synced .cloud-sync-dot {
+  background: var(--gem-emerald);
+  box-shadow: 0 0 5px rgba(128,232,160,0.5);
+}
+.cloud-sync-badge--synced {
+  color: rgba(128,232,160,0.7);
+  border-color: rgba(128,232,160,0.2);
+}
+
+/* Syncing — amber + spinner */
+.cloud-sync-badge--syncing .cloud-sync-dot {
+  background: var(--gem-amber);
+  box-shadow: 0 0 5px rgba(240,192,96,0.5);
+  animation: cloudSyncSpin 1s linear infinite;
+}
+.cloud-sync-badge--syncing {
+  color: rgba(240,192,96,0.7);
+  border-color: rgba(240,192,96,0.2);
+}
+@keyframes cloudSyncSpin {
+  0%   { transform: rotate(0deg) scale(1); }
+  50%  { transform: rotate(180deg) scale(0.7); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+/* Offline — red */
+.cloud-sync-badge--offline .cloud-sync-dot {
+  background: var(--gem-ruby);
+  box-shadow: 0 0 5px rgba(255,144,144,0.4);
+}
+.cloud-sync-badge--offline {
+  color: rgba(255,144,144,0.6);
+  border-color: rgba(255,144,144,0.15);
+}
+
+/* ── Puter Action Buttons (Export / Share) ── */
+.puter-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #c8a84c;
+  background: rgba(200,168,76,0.06);
+  border: 1px solid rgba(200,168,76,0.25);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.1s;
+}
+.puter-action-btn:hover {
+  background: rgba(200,168,76,0.14);
+  border-color: rgba(200,168,76,0.45);
+  box-shadow: 0 0 10px rgba(200,168,76,0.15);
+  transform: translateY(-1px);
+}
+.puter-action-btn:active {
+  transform: scale(0.97) translateY(0);
+}
+.puter-action-btn-icon {
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0.85;
+}
+.puter-action-btn-text {
+  line-height: 1;
+}
+.puter-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Puter Theme: Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .puter-window {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .puter-window.closing {
+    animation: none;
+  }
+  .realm-toast {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .realm-toast.dismissing {
+    animation: none;
+  }
+  .puter-dialog-overlay,
+  .puter-dialog {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .puter-auth-badge.signed-in::before {
+    animation: none;
+  }
+  .cloud-sync-badge--syncing .cloud-sync-dot {
+    animation: none;
+  }
+}
