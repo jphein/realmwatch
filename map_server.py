@@ -727,10 +727,10 @@ class RealmHandler(SimpleHTTPRequestHandler):
                     resolved = f"https://{jphe}"
                 elif _tcp_open(jphe_ip, 80):
                     resolved = f"http://{jphe}"
-            # 2. Try direct IP standard ports
+            # 2. Try direct IP standard ports (prefer hostname for SSL cert match)
             if not resolved and ip:
                 if _tcp_open(ip, 443):
-                    resolved = f"https://{ip}"
+                    resolved = f"https://{hostname}" if hostname else f"https://{ip}"
                 elif _tcp_open(ip, 80):
                     resolved = f"http://{ip}"
             # 3. Try known web service ports (parallel scan on IP)
