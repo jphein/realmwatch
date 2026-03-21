@@ -20,6 +20,7 @@ import { renderControlPane, renderGroupPane, renderShellPane, renderConnectionsP
 import { initSpellbook, invalidateSearchIndex } from './spellbook.js';
 import { saveSettings, scheduleSave } from './layout.js';
 import { scheduleDebugRefresh } from './debug.js';
+import { initWinBoxWM, toggleWinBoxMode } from './winbox-wm.js';
 
 let liveOk = false;
 
@@ -315,11 +316,22 @@ export const getSseConnected = () => _sseConnected;
 initScanner();
 initSkills();
 initForestTheme();
+initWinBoxWM();
 
 // Spellbook toggle for forest theme
 const _fcb = document.getElementById('forest-theme-cb');
 if (_fcb) {
   _fcb.checked = localStorage.getItem('realm-forest-theme') === 'true';
   _fcb.addEventListener('change', () => toggleForestTheme(_fcb.checked));
+}
+
+// Spellbook toggle for WinBox window manager
+const _wbcb = document.getElementById('winbox-wm-cb');
+if (_wbcb) {
+  _wbcb.checked = localStorage.getItem('realm-winbox-mode') === 'true';
+  _wbcb.addEventListener('change', () => {
+    toggleWinBoxMode(_wbcb.checked);
+    location.reload(); // WM mode change requires reload for clean DOM state
+  });
 }
 
