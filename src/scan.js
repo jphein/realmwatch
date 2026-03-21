@@ -274,6 +274,11 @@ function _makeCard(scan) {
   const logBody = document.createElement('div');
   logBody.className = 'scan-log-body scan-log-body--hidden';
 
+  const notYet = document.createElement('div');
+  notYet.className = 'panel-empty';
+  notYet.textContent = 'Not yet run';
+  logBody.appendChild(notYet);
+
   logWrap.appendChild(logToggle);
   logWrap.appendChild(logBody);
   card.appendChild(logWrap);
@@ -310,12 +315,19 @@ function _updateCard(scan) {
   logBody.classList.toggle('scan-log-body--hidden', !s.expanded);
   // Rebuild log lines using textContent — no innerHTML with untrusted data
   logBody.textContent = '';
-  s.log.forEach(line => {
-    const lineEl = document.createElement('div');
-    lineEl.className = line.startsWith('──') ? 'scan-log-head' : 'scan-log-line';
-    lineEl.textContent = line;
-    logBody.appendChild(lineEl);
-  });
+  if (s.log.length === 0 && !s.lastRun) {
+    const notYet = document.createElement('div');
+    notYet.className = 'panel-empty';
+    notYet.textContent = 'Not yet run';
+    logBody.appendChild(notYet);
+  } else {
+    s.log.forEach(line => {
+      const lineEl = document.createElement('div');
+      lineEl.className = line.startsWith('──') ? 'scan-log-head' : 'scan-log-line';
+      lineEl.textContent = line;
+      logBody.appendChild(lineEl);
+    });
+  }
 
   const logToggle = card.querySelector('.scan-log-toggle');
   logToggle.textContent = s.expanded ? 'details ▴' : 'details ▾';

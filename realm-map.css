@@ -1087,8 +1087,9 @@
   }
   .latency-body {
     padding: 6px 10px 8px;
-    max-height: 50vh;
+    flex: 1 1 0;
     overflow-y: auto;
+    min-height: 0;
   }
   .latency-group-title {
     font-size: 8px;
@@ -1168,9 +1169,8 @@
   }
   .wifi-body {
     padding: 6px 10px 8px;
-    max-height: 50vh;
-    overflow-y: auto;
     flex: 1 1 0;
+    overflow-y: auto;
     min-height: 0;
   }
   .wifi-loading {
@@ -1273,9 +1273,8 @@
   }
   .scanner-body {
     padding: 6px 8px 8px;
-    max-height: 55vh;
-    overflow-y: auto;
     flex: 1 1 0;
+    overflow-y: auto;
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -1496,8 +1495,9 @@
   .skills-tab-label { font-family: 'Cinzel', serif; letter-spacing: 0.5px; }
   .skills-content {
     padding: 8px;
-    max-height: 50vh;
+    flex: 1 1 0;
     overflow-y: auto;
+    min-height: 0;
   }
 
   /* Skills split layout */
@@ -1511,13 +1511,11 @@
     border-right: 1px solid rgba(140,120,200,0.15);
     padding-right: 8px;
     overflow-y: auto;
-    max-height: 45vh;
   }
   .skills-detail {
     flex: 1;
     min-width: 0;
     overflow-y: auto;
-    max-height: 45vh;
   }
 
   /* Skills list items */
@@ -1583,7 +1581,7 @@
     color: rgba(160,150,200,0.4);
     font-style: italic;
   }
-  .skills-empty {
+  .skills-empty, .panel-empty {
     padding: 16px 8px;
     text-align: center;
     font-size: 9px;
@@ -1769,8 +1767,9 @@
 
   .firewall-body {
     padding: 8px 12px 10px;
-    max-height: 55vh;
+    flex: 1 1 0;
     overflow-y: auto;
+    min-height: 0;
   }
   .fw-section-title {
     font-size: 9px;
@@ -2658,6 +2657,8 @@
   /* ── Unified Panel Chrome ── */
   .panel {
     position: relative;
+    display: flex;
+    flex-direction: column;
     background:
       radial-gradient(ellipse at 25% 0%, rgba(50,40,25,0.07) 0%, transparent 50%),
       rgba(10,10,25,0.96);
@@ -2807,8 +2808,57 @@
 
   /* ── Panel Body / Content Areas ── */
   .panel-body {
+    flex: 1 1 0;
+    overflow-y: auto;
+    padding: 8px 12px;
+    min-height: 0;
     background: rgba(15,10,25,0.85);
     border: 1px solid rgba(200,170,90,0.08);
+  }
+  .panel-body::-webkit-scrollbar { width: 4px; }
+  .panel-body::-webkit-scrollbar-thumb {
+    background: rgba(200,170,90,0.2);
+    border-radius: 2px;
+  }
+  .panel-body::-webkit-scrollbar-track { background: transparent; }
+
+  /* ── Panel Tab Bar (shared base) ── */
+  .panel-tab-bar {
+    display: flex;
+    gap: 2px;
+    padding: 4px 8px;
+    background: rgba(13,10,22,0.6);
+    border-bottom: 1px solid rgba(200,170,90,0.1);
+    flex-shrink: 0;
+  }
+  .panel-tab-bar button {
+    flex: 1;
+    padding: 4px 8px;
+    background: rgba(40,30,60,0.4);
+    border: 1px solid rgba(200,170,90,0.1);
+    border-radius: 4px;
+    color: rgba(200,170,90,0.5);
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+  .panel-tab-bar button.active,
+  .panel-tab-bar button:hover {
+    background: rgba(60,40,90,0.5);
+    color: #f0d890;
+    border-color: rgba(200,170,90,0.3);
+  }
+
+  /* ── Panel Empty State ── */
+  .panel-empty {
+    text-align: center;
+    padding: 24px 12px;
+    color: rgba(200,170,90,0.3);
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    font-style: italic;
   }
 
   /* ── Panel Seal Button ── */
@@ -3585,10 +3635,10 @@
     font-family: 'MedievalSharp', cursive;
   }
   #codex-body {
-    flex: 1;
+    flex: 1 1 0;
     overflow-y: auto;
     padding: 8px 12px;
-
+    min-height: 0;
     font-size: 11px;
     line-height: 1.5;
     color: #b0a080;
@@ -3922,14 +3972,15 @@
   .pe-stats-body {
     padding: 0 18px 14px;
     overflow-y: auto;
-    max-height: 55vh;
-
+    flex: 1 1 0;
+    min-height: 0;
   }
   /* Control Panel */
   .pe-control-body {
     padding: 12px 18px 14px;
     overflow-y: auto;
-    max-height: 55vh;
+    flex: 1 1 0;
+    min-height: 0;
   }
   .pe-control-status {
     font-size: 10px;
@@ -4279,10 +4330,10 @@
     font-family: 'MedievalSharp', cursive;
   }
   #quest-log-body {
-    flex: 1;
+    flex: 1 1 0;
     overflow-y: auto;
     padding: 6px 0;
-
+    min-height: 0;
   }
   /* ── Quest Log: Chat-Bubble Entries ── */
   .log-entry {
@@ -5371,7 +5422,7 @@
   /* Output area */
   .st-output {
     min-height: 180px;
-    max-height: 50vh;
+    flex: 1 1 0;
     overflow-y: auto;
     padding: 12px 14px;
     font-family: 'MedievalSharp', serif;
@@ -7120,7 +7171,6 @@
     50%      { opacity: 1;   text-shadow: 0 0 10px rgba(var(--rc), 0.5), 0 0 20px rgba(var(--rc), 0.25), 0 1px 3px rgba(0,0,0,0.9); }
   }
 
-  /* Dock labels — always on, staggered breathing */
   /* Dock labels — constrain width, line-wrap instead of truncate */
   .dock-tray .sealed-rune .rune-label {
     opacity: 1;

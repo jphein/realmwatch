@@ -149,6 +149,7 @@
 
 <div id="realm-panel" class="panel" style="--panel-accent:rgba(240,216,144,0.5)">
   <div class="panel-header"><span class="panel-hdr-icon">&#9876;</span><span class="panel-hdr-title">Realm Vitals</span></div>
+  <div class="panel-body">
   <div class="realm-gauge">
     <span class="gauge-label">Great Forge</span>
     <div class="gauge-track"><div class="gauge-fill" id="g-forge" style="width:8.8%;background:linear-gradient(90deg,#4a90d9,#f09040)"></div></div>
@@ -182,6 +183,7 @@
   <div style="text-align:center;margin-top:10px;font-size:10px;color:#706040;font-family:'Cinzel',serif">
     Towers: <span id="towers-online">--</span>/<span id="towers-total">--</span>
   </div>
+  </div>
 </div>
 
 <div id="legend" class="panel" style="--panel-accent:rgba(128,176,255,0.5)">
@@ -214,7 +216,7 @@
 
 <div id="spellbook" class="panel" style="--panel-accent:rgba(192,160,255,0.5)">
   <div class="panel-header"><span class="panel-hdr-icon">&#128214;</span><span class="panel-hdr-title">Spellbook</span></div>
-  <div class="spell-tab-bar" id="spell-tab-bar">
+  <div class="spell-tab-bar panel-tab-bar" id="spell-tab-bar">
     <button class="spell-tab active" data-spell="0" title="Panel visibility &amp; layout"><span class="spell-tab-icon">&#9878;</span><span class="spell-tab-label">Panels</span></button>
     <button class="spell-tab" data-spell="1" title="Map layers, elements, scale"><span class="spell-tab-icon">&#128506;</span><span class="spell-tab-label">Map</span></button>
     <button class="spell-tab" data-spell="2" title="Visual effects &amp; overlays"><span class="spell-tab-icon">&#10024;</span><span class="spell-tab-label">Style</span></button>
@@ -792,7 +794,7 @@
     <span class="panel-hdr-title">The Realm Codex</span>
     <span class="panel-hdr-badge codex-subtitle">Archives &amp; Lore</span>
   </div>
-  <div id="codex-body">
+  <div id="codex-body" class="panel-body">
 
     <!-- ── The Realm (overview) ── -->
     <div class="codex-section">
@@ -938,7 +940,7 @@
     <button class="notion-sync-btn" id="notion-sync-btn" title="Sync quests from Notion">&#127744; Sync Portal</button>
     <span class="panel-hdr-badge log-count" id="log-count">0 entries</span>
   </div>
-  <div id="quest-log-tabs">
+  <div id="quest-log-tabs" class="panel-tab-bar">
     <div class="log-tab active" data-tab="all">All</div>
     <div class="log-tab" data-tab="speech">Speech</div>
     <div class="log-tab" data-tab="alert">Alerts</div>
@@ -946,7 +948,7 @@
     <div class="log-tab" data-tab="quest">Quests</div>
     <div class="log-tab" data-tab="notion">Notion</div>
   </div>
-  <div id="quest-log-body"></div>
+  <div id="quest-log-body" class="panel-body"></div>
 </div>
 
 <div id="debug-panel" class="panel" style="display:none;--panel-accent:rgba(160,112,208,0.5)">
@@ -956,7 +958,7 @@
     <span id="debug-poll-count" class="debug-stat"></span>
     <button id="debug-close" class="panel-close">&times;</button>
   </div>
-  <div id="debug-tabs">
+  <div id="debug-tabs" class="panel-tab-bar">
     <div class="debug-tab active" data-dtab="all">All</div>
     <div class="debug-tab" data-dtab="status">Status</div>
     <div class="debug-tab" data-dtab="collectd">Collectd</div>
@@ -970,7 +972,7 @@
   <div id="debug-filter">
     <input type="text" id="debug-search" placeholder="Filter..." autocomplete="off" spellcheck="false">
   </div>
-  <div id="debug-body"></div>
+  <div id="debug-body" class="panel-body"></div>
 </div>
 
 <!-- Persona Editor Modal -->
@@ -1144,7 +1146,7 @@
     <span class="panel-hdr-title">Realm Census</span>
     <span class="panel-hdr-badge nl-count" id="nl-count">-- nodes</span>
   </div>
-  <div id="node-list-body"></div>
+  <div id="node-list-body" class="panel-body"></div>
 </div>
 
 
@@ -1153,7 +1155,7 @@
     <span class="panel-hdr-icon">&#128506;</span>
     <span class="panel-hdr-title">Cartographer</span>
   </div>
-  <div class="carto-body">
+  <div class="carto-body panel-body">
     <div class="carto-modes">
       <button class="carto-mode active" data-layout="world-tree">
         <span class="carto-icon">&#127795;</span>
@@ -1255,7 +1257,7 @@
     <span class="panel-hdr-icon">&#9889;</span>
     <span class="panel-hdr-title">Realm Energy</span>
   </div>
-  <div class="energy-body">
+  <div class="energy-body panel-body">
     <div class="energy-row energy-solar">
       <span class="energy-icon">&#9728;</span>
       <span class="energy-label">Solar</span>
@@ -1296,7 +1298,7 @@
     <span class="panel-hdr-title">Arcane Pulse</span>
     <span class="latency-summary" id="latency-summary">--</span>
   </div>
-  <div class="latency-body" id="latency-body"></div>
+  <div class="latency-body panel-body" id="latency-body"></div>
 </div>
 
 <div id="firewall-panel" class="panel" style="--panel-accent:rgba(220,160,80,0.5)">
@@ -1304,7 +1306,7 @@
     <span class="panel-hdr-icon">&#128737;</span>
     <span class="panel-hdr-title">Realm Wards</span>
   </div>
-  <div class="firewall-body">
+  <div class="firewall-body panel-body">
     <div class="fw-section-title">Warded Domains</div>
     <div class="fw-vlan" data-vlan="6">
       <div class="fw-vlan-header">
@@ -1456,7 +1458,7 @@
     <span class="panel-hdr-title">Survey Glass</span>
     <button id="scanner-run-all" class="scanner-run-all-btn">Run All</button>
   </div>
-  <div class="scanner-body" id="scanner-body"></div>
+  <div class="scanner-body panel-body" id="scanner-body"></div>
 </div>
 
 <div id="skills-panel" class="panel" style="--panel-accent:rgba(160,140,220,0.5)">
@@ -1464,8 +1466,8 @@
     <span class="panel-hdr-icon">&#9998;</span>
     <span class="panel-hdr-title">Inscription Codex</span>
   </div>
-  <div id="skills-tab-bar" class="skills-tab-bar"></div>
-  <div id="skills-content" class="skills-content"></div>
+  <div id="skills-tab-bar" class="skills-tab-bar panel-tab-bar"></div>
+  <div id="skills-content" class="skills-content panel-body"></div>
 </div>
 
 <div id="wifi-panel" class="panel" style="--panel-accent:rgba(100,200,255,0.5)">
@@ -1474,7 +1476,7 @@
     <span class="panel-hdr-title">Aether Towers</span>
     <span class="panel-hdr-badge" id="wifi-ap-count"></span>
   </div>
-  <div class="wifi-body" id="wifi-body">
+  <div class="wifi-body panel-body" id="wifi-body">
     <div class="wifi-loading">Scrying towers...</div>
   </div>
 </div>

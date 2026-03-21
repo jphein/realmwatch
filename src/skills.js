@@ -131,8 +131,8 @@ function _renderSkillsTab(container) {
 
   if (_skills.length === 0) {
     const empty = document.createElement('div');
-    empty.className = 'skills-empty';
-    empty.textContent = 'No skills inscribed';
+    empty.className = 'panel-empty';
+    empty.textContent = 'None found';
     list.appendChild(empty);
   } else {
     _skills.forEach(sk => {
@@ -285,10 +285,15 @@ function _renderClaudeMdTab(container) {
     actions.appendChild(saveBtn);
     actions.appendChild(cancelBtn);
     container.appendChild(actions);
+  } else if (!_claudeMd) {
+    const empty = document.createElement('div');
+    empty.className = 'panel-empty';
+    empty.textContent = 'No CLAUDE.md found';
+    container.appendChild(empty);
   } else {
     const bodyEl = document.createElement('div');
     bodyEl.className = 'claudemd-body';
-    (_claudeMd || 'No CLAUDE.md found').split('\n').forEach(line => {
+    _claudeMd.split('\n').forEach(line => {
       const el = document.createElement('div');
       if (line.startsWith('# ')) { el.className = 'skills-line-h1'; el.textContent = line.slice(2); }
       else if (line.startsWith('## ')) { el.className = 'skills-line-h2'; el.textContent = line.slice(3); }
@@ -315,8 +320,8 @@ function _renderClaudeMdTab(container) {
 function _renderHooksTab(container) {
   if (_hooks.length === 0) {
     const empty = document.createElement('div');
-    empty.className = 'skills-empty';
-    empty.textContent = 'No hooks configured';
+    empty.className = 'panel-empty';
+    empty.textContent = 'None found';
     container.appendChild(empty);
     return;
   }
@@ -355,8 +360,8 @@ function _renderHooksTab(container) {
 function _renderAgentsTab(container) {
   if (_agents.length === 0) {
     const empty = document.createElement('div');
-    empty.className = 'skills-empty';
-    empty.textContent = 'No custom agents defined';
+    empty.className = 'panel-empty';
+    empty.textContent = 'None found';
     container.appendChild(empty);
     return;
   }

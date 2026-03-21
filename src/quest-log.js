@@ -98,6 +98,18 @@ document.querySelectorAll('.log-tab').forEach(tab => {
         entry.style.display = entry.classList.contains('log-' + activeTab) ? '' : 'none';
       }
     });
+    // Show empty message if no entries visible for this tab
+    if (_logBodyEl) {
+      let emptyEl = _logBodyEl.querySelector('.panel-empty');
+      if (!emptyEl) {
+        emptyEl = document.createElement('div');
+        emptyEl.className = 'panel-empty';
+        emptyEl.textContent = 'No entries yet';
+        _logBodyEl.appendChild(emptyEl);
+      }
+      const hasVisible = _logBodyEl.querySelector('.log-entry:not([style*="display: none"])');
+      emptyEl.style.display = hasVisible ? 'none' : '';
+    }
   });
 });
 
@@ -280,6 +292,12 @@ export function addLogEntry(evt, nodeEl) {
       if (evt.type === 'quest' && evt.text) _questTexts.delete(evt.text);
       logCount = Math.max(0, logCount - 1);
       _logCounter.textContent = `${logCount} entries`;
+      // Show empty state if no visible entries remain
+      const emptyEl = body.querySelector('.panel-empty');
+      if (emptyEl) {
+        const hasVisible = body.querySelector('.log-entry:not([style*="display: none"])');
+        emptyEl.style.display = hasVisible ? 'none' : '';
+      }
     });
   });
 
@@ -330,6 +348,12 @@ export function addLogEntry(evt, nodeEl) {
   body.insertBefore(entry, body.firstChild);
   logCount++;
   setTimeout(() => entry.classList.remove('log-entry-new'), 3000);
+
+  // Hide empty state if this entry is visible
+  if (entry.style.display !== 'none') {
+    const emptyEl = body.querySelector('.panel-empty');
+    if (emptyEl) emptyEl.style.display = 'none';
+  }
 
   // Event rewards — only for SSE events with a DB id, not local/transient
   if (evt.id && !evt._local && !_rewardedEvents.has(evt.id)) {
