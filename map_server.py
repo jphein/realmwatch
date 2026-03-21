@@ -826,6 +826,86 @@ window.location.href = '/';
             self.end_headers()
             self.wfile.write(html.encode())
 
+        elif self.path == "/skills":
+            # List all skills from .claude/skills/
+            skills_dir = os.path.join(os.path.dirname(__file__), ".claude", "skills")
+            result = []
+            if os.path.isdir(skills_dir):
+                for name in sorted(os.listdir(skills_dir)):
+                    skill_file = os.path.join(skills_dir, name, "SKILL.md")
+                    if os.path.isfile(skill_file):
+                        with open(skill_file, "r") as f:
+                            raw = f.read()
+                        meta = {"name": name, "description": "", "path": f".claude/skills/{name}/SKILL.md", "body": raw}
+                        # Parse YAML frontmatter
+                        if raw.startswith("---"):
+                            parts = raw.split("---", 2)
+                            if len(parts) >= 3:
+                                for line in parts[1].strip().split("\n"):
+                                    if line.startswith("name:"):
+                                        meta["name"] = line.split(":", 1)[1].strip()
+                                    elif line.startswith("description:"):
+                                        meta["description"] = line.split(":", 1)[1].strip()
+                                meta["body"] = parts[2].strip()
+                        result.append(meta)
+            self._json_response(result)
+
+        elif self.path == "/claude-md":
+            # Read CLAUDE.md
+            claude_md = os.path.join(os.path.dirname(__file__), "CLAUDE.md")
+            if os.path.isfile(claude_md):
+                with open(claude_md, "r") as f:
+                    content = f.read()
+                self._json_response({"content": content, "path": "CLAUDE.md"})
+            else:
+                self._json_response({"content": "", "path": "CLAUDE.md"})
+
+        elif self.path == "/agents":
+            # List custom agent definitions from .claude/agents/ and ~/.claude/agents/
+            result = []
+            for base in [os.path.join(os.path.dirname(__file__), ".claude", "agents"),
+                         os.path.expanduser("~/.claude/agents")]:
+                if not os.path.isdir(base):
+                    continue
+                for fname in sorted(os.listdir(base)):
+                    if not fname.endswith(".md"):
+                        continue
+                    fpath = os.path.join(base, fname)
+                    with open(fpath, "r") as f:
+                        raw = f.read()
+                    agent = {"name": fname.replace(".md", ""), "description": "", "path": fpath, "body": raw}
+                    # Parse frontmatter
+                    if raw.startswith("---"):
+                        parts = raw.split("---", 2)
+                        if len(parts) >= 3:
+                            for line in parts[1].strip().split("\n"):
+                                if line.startswith("name:"):
+                                    agent["name"] = line.split(":", 1)[1].strip()
+                                elif line.startswith("description:"):
+                                    agent["description"] = line.split(":", 1)[1].strip()
+                            agent["body"] = parts[2].strip()
+                    result.append(agent)
+            self._json_response(result)
+
+        elif self.path == "/hooks":
+            # Read hooks config
+            hooks_file = os.path.join(os.path.dirname(__file__), ".claude", "settings.json")
+            result = {"hooks": [], "path": ".claude/settings.json"}
+            if os.path.isfile(hooks_file):
+                try:
+                    with open(hooks_file, "r") as f:
+                        settings = json.load(f)
+                    for event_type, hooks in settings.get("hooks", {}).items():
+                        for hook in hooks:
+                            result["hooks"].append({
+                                "event": event_type,
+                                "command": hook.get("command", ""),
+                                "matcher": hook.get("matcher", ""),
+                            })
+                except Exception:
+                    pass
+            self._json_response(result)
+
         else:
             # Static files — serve splash.html as index
             if self.path == '/' or self.path == '/index.html':
@@ -1210,6 +1290,43 @@ window.location.href = '/';
                 self._json_response({"error": "Command timed out (30s)"}, 504)
             except (json.JSONDecodeError, KeyError) as e:
                 self._json_response({"error": str(e)}, 400)
+
+        elif self.path == "/skills":
+            # Save a skill
+            try:
+                req = json.loads(body)
+                name = req.get("name", "").strip()
+                description = req.get("description", "").strip()
+                skill_body = req.get("body", "")
+                if not name:
+                    self._json_response({"error": "missing name"}, 400)
+                    return
+                # Sanitize name — alphanumeric + hyphens only
+                safe_name = "".join(c for c in name if c.isalnum() or c in "-_").strip("-_")
+                if not safe_name:
+                    self._json_response({"error": "invalid name"}, 400)
+                    return
+                skills_dir = os.path.join(os.path.dirname(__file__), ".claude", "skills", safe_name)
+                os.makedirs(skills_dir, exist_ok=True)
+                skill_file = os.path.join(skills_dir, "SKILL.md")
+                content = f"---\nname: {safe_name}\ndescription: {description}\n---\n\n{skill_body}\n"
+                with open(skill_file, "w") as f:
+                    f.write(content)
+                self._json_response({"ok": True, "name": safe_name})
+            except Exception as e:
+                self._json_response({"error": str(e)}, 500)
+
+        elif self.path == "/claude-md":
+            # Save CLAUDE.md
+            try:
+                req = json.loads(body)
+                content = req.get("content", "")
+                claude_md = os.path.join(os.path.dirname(__file__), "CLAUDE.md")
+                with open(claude_md, "w") as f:
+                    f.write(content)
+                self._json_response({"ok": True})
+            except Exception as e:
+                self._json_response({"error": str(e)}, 500)
 
         else:
             self.send_error(404)

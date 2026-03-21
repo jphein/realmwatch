@@ -2,6 +2,7 @@
 import { SSE_URL } from './config.js';
 import { refreshTopology, setTopologyRefreshHook } from './topology.js';
 import { initScanner } from './scan.js';
+import { initSkills } from './skills.js';
 import { renderTopoLayer, setLastTopoCollectd, initTopoControls } from './terrain.js';
 import { updateConnectionTraffic, updateConnectionTrafficSSE, trafficToCollectd, setTrafficScale } from './traffic.js';
 import { setLatencyMap, setLatencyFlat, setWifiMap,
@@ -311,4 +312,5 @@ export const getSseConnected = () => _sseConnected;
 })();
 
 initScanner();
+initSkills();
 

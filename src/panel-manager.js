@@ -54,6 +54,8 @@ const SIGILS = {
   'arcane-grimoire': _SIGIL('<path d="M4 19V5a2 2 0 012-2h12a2 2 0 012 2v14" stroke="#b89040"/><path d="M4 19a2 2 0 012-2h12a2 2 0 012 2" stroke="#b89040"/><path d="M12 7l1.5 3 3 .5-2.2 2 .7 3L12 14.5 8.8 16l.7-3.5-2-1.5 3-.5z" fill="#e0b848" stroke="none"/>'),
   // Scrying Terminal — crystal ball with inner light (frost blue)
   'scrying-terminal': _SIGIL('<circle cx="12" cy="11" r="7" stroke="#70b0d8" fill="rgba(100,170,220,0.08)"/><path d="M9 20h6" stroke="#88c0e0"/><path d="M10 18h4" stroke="#88c0e0"/><path d="M10 9a3 3 0 013-3" stroke="#a0d0f0" opacity="0.5"/><circle cx="12" cy="11" r="2" fill="#90c8f0" stroke="none" opacity="0.5"/>'),
+  // Inscription Codex — quill over rune tablet (arcane silver/indigo)
+  'skills-panel': _SIGIL('<rect x="4" y="3" width="16" height="18" rx="2" stroke="#9090c0" fill="rgba(140,140,200,0.08)"/><path d="M8 8h8M8 12h5" stroke="#a0a0d0" opacity="0.6"/><path d="M17 2l-4 4-1 3 3-1 4-4a1.5 1.5 0 00-2-2z" stroke="#c0a0ff" fill="rgba(180,140,255,0.15)"/>'),
 };
 
 // Panel definitions with default anchors and priority
@@ -74,6 +76,7 @@ const PANELS = {
   'node-chat-dialog': { name: 'Oracle Commune', anchor: 'se', priority: 14, icon: '\uD83D\uDCAC' },
   'arcane-grimoire':  { name: 'Grimoire', anchor: 'nw', priority: 15, icon: '\uD83D\uDCD6' },
   'scrying-terminal': { name: 'Scrying Terminal', anchor: 'sw', priority: 16, icon: '\uD83D\uDD2E' },
+  'skills-panel':     { name: 'Inscription Codex', anchor: 'nw', priority: 18, icon: '\u270E' },
 };
 
 // Arcane Formations (presets)
