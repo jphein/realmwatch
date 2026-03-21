@@ -2685,6 +2685,10 @@
     font-size: 13px;
     color: #f0d890;
     flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     text-shadow: 0 0 12px rgba(240,216,144,0.12);
     letter-spacing: 0.5px;
   }
@@ -6661,7 +6665,7 @@
 
   .dock-tray {
     display: flex;
-    gap: 10px;
+    gap: 28px;
     align-items: flex-start;
     justify-content: center;
     min-height: 48px;
@@ -7093,8 +7097,16 @@
   }
 
   /* Dock labels — always on, staggered breathing */
+  /* Dock labels — constrain width, line-wrap instead of truncate */
   .dock-tray .sealed-rune .rune-label {
     opacity: 1;
+    max-width: 72px;
+    font-size: 9.5px;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    text-align: center;
+    line-height: 1.2;
   }
   .dock-tray .sealed-rune:nth-child(2n) .rune-label { animation-delay: -1.3s; }
   .dock-tray .sealed-rune:nth-child(3n) .rune-label { animation-delay: -2.7s; }
