@@ -52,6 +52,8 @@ python3 oracle_daemon.py --no-voice  # AI oracle daemon
 | src/topology.js | Rendering | Node/connection rendering, tips, 90s auto-refresh |
 | src/utils.js | Helpers | Format bytes, rates, percentages |
 | scripts/ | Setup + ops scripts | Bedrock/Vertex/provider switcher, AP audit/migrate/VLAN/firewall, realm-health |
+| scripts/setup-ssl-certs.sh | SSL cert generator | Local CA + per-device certs w/ SAN, pushes to 13 OpenWrt devices |
+| scripts/fix-chrome-ssl.sh | Chrome CA import | Imports realm CA into Chrome NSS db (~/.pki/nssdb/) |
 
 ## Navigation
 
@@ -113,6 +115,20 @@ Config:  ~/.config/azure-chat-assistant/config.json
 - Gatekeeper (OpenWrt): fw4 zones → VLANs: admin→6, iot→8, lan→10, family→11
 - HP switch at 10.0.6.103
 - SSH hop: katana → gatekeeper for nft/router commands
+- DNS: 45 UCI `hostrecord` sections in gatekeeper dnsmasq → unconditional `host-record=` A records; `domain=lan` DHCP search domain makes systemd-resolved append `.lan` to bare names
+- SSL: local CA at `~/.local/share/realm-ca/`, 13 OpenWrt devices have HTTPS certs (825-day validity)
+- `/resolve-url` returns `https://hostname` (not IP) when port 443 open, so Chrome matches cert SAN
+
+## Realm Launcher
+- Port 8899 — restart map_server: `curl -X POST http://localhost:8899/api/restart`
+
+## SSL/DNS Gotchas
+- Chrome on Linux uses NSS db (`~/.pki/nssdb/`), NOT system trust store — need `certutil` (libnss3-tools)
+- OpenWrt lacks sftp-server — use `ssh cat` pipe to transfer files (scp fails)
+- dnsmasq `dhcp-host` only creates DNS for active DHCP leases; static IP devices need UCI `hostrecord` sections
+- UCI `domain` sections don't render as host-records in dnsmasq config (OpenWrt bug/limitation)
+- UCI `address=` records don't match `.lan` suffix (only exact domain + subdomains)
+- UCI `hostrecord` must be proper sections (`config hostrecord` with `option name`/`option ip`), not `add_list`
 
 ## Todo: Frontend chat + speech
 Plain fetch + vanilla JS in existing src/ modules. No frameworks.
