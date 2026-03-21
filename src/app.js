@@ -3,6 +3,7 @@ import { SSE_URL } from './config.js';
 import { refreshTopology, setTopologyRefreshHook } from './topology.js';
 import { initScanner } from './scan.js';
 import { initSkills } from './skills.js';
+import { initForestTheme, toggleForestTheme } from './theme-forest.js';
 import { renderTopoLayer, setLastTopoCollectd, initTopoControls } from './terrain.js';
 import { updateConnectionTraffic, updateConnectionTrafficSSE, trafficToCollectd, setTrafficScale } from './traffic.js';
 import { setLatencyMap, setLatencyFlat, setWifiMap,
@@ -313,4 +314,12 @@ export const getSseConnected = () => _sseConnected;
 
 initScanner();
 initSkills();
+initForestTheme();
+
+// Spellbook toggle for forest theme
+const _fcb = document.getElementById('forest-theme-cb');
+if (_fcb) {
+  _fcb.checked = localStorage.getItem('realm-forest-theme') === 'true';
+  _fcb.addEventListener('change', () => toggleForestTheme(_fcb.checked));
+}
 

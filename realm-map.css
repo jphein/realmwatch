@@ -7718,3 +7718,678 @@ body.perf-low .conjure-orbit-ring { animation: none; }
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ENCHANTED FOREST THEME — Particle Effects & Ambient Atmosphere
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Forest Theme Container ── */
+.forest-theme-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+/* ── Forest Wisp — Glowing Orbs Drifting Through the Canopy ── */
+.forest-wisp {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%,
+    rgba(180,255,140,0.9) 0%,
+    rgba(120,230,80,0.6) 25%,
+    rgba(80,200,50,0.3) 50%,
+    rgba(40,160,20,0.1) 75%,
+    transparent 100%);
+  box-shadow:
+    0 0 6px rgba(100,220,80,0.7),
+    0 0 14px rgba(80,200,60,0.45),
+    0 0 28px rgba(60,180,40,0.25),
+    0 0 48px rgba(40,150,20,0.12);
+  animation: wisp-drift var(--wisp-duration, 18s) linear infinite;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.forest-wisp:nth-child(3n) {
+  background: radial-gradient(circle at 45% 40%,
+    rgba(200,255,180,0.85) 0%,
+    rgba(140,240,100,0.5) 30%,
+    rgba(80,200,60,0.2) 60%,
+    transparent 100%);
+  box-shadow:
+    0 0 8px rgba(140,240,100,0.6),
+    0 0 20px rgba(100,220,80,0.35),
+    0 0 40px rgba(60,180,40,0.15);
+}
+
+.forest-wisp:nth-child(5n) {
+  background: radial-gradient(circle at 35% 30%,
+    rgba(160,255,200,0.8) 0%,
+    rgba(80,220,120,0.5) 30%,
+    rgba(40,180,80,0.2) 60%,
+    transparent 100%);
+  box-shadow:
+    0 0 6px rgba(80,220,120,0.65),
+    0 0 16px rgba(60,200,100,0.4),
+    0 0 36px rgba(40,160,80,0.18);
+}
+
+@keyframes wisp-drift {
+  0% {
+    transform: translateX(-100px) translateY(0);
+    opacity: 0;
+  }
+  5% {
+    opacity: 0.6;
+  }
+  15% {
+    transform: translateX(calc(15vw)) translateY(-30px);
+    opacity: 0.85;
+  }
+  30% {
+    transform: translateX(calc(30vw)) translateY(20px);
+    opacity: 0.7;
+  }
+  45% {
+    transform: translateX(calc(45vw)) translateY(-25px);
+    opacity: 0.9;
+  }
+  60% {
+    transform: translateX(calc(60vw)) translateY(15px);
+    opacity: 0.75;
+  }
+  75% {
+    transform: translateX(calc(75vw)) translateY(-20px);
+    opacity: 0.65;
+  }
+  90% {
+    transform: translateX(calc(90vw)) translateY(10px);
+    opacity: 0.4;
+  }
+  95% {
+    opacity: 0.15;
+  }
+  100% {
+    transform: translateX(calc(100vw + 100px)) translateY(-10px);
+    opacity: 0;
+  }
+}
+
+/* ── Forest Butterfly — Winged Creatures with Fluttering Flight ── */
+.forest-butterfly {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  animation: butterfly-path var(--butterfly-duration, 28s) ease-in-out infinite;
+  opacity: 0;
+  will-change: transform, opacity;
+  filter: hue-rotate(var(--butterfly-hue, 0deg));
+}
+
+.forest-butterfly::before,
+.forest-butterfly::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 14px;
+  border-radius: 50% 50% 50% 0;
+  background: radial-gradient(ellipse at 60% 40%,
+    rgba(160,120,255,0.85) 0%,
+    rgba(120,80,220,0.6) 40%,
+    rgba(80,50,180,0.4) 70%,
+    rgba(60,30,140,0.2) 100%);
+  box-shadow:
+    0 0 6px rgba(140,100,240,0.5),
+    0 0 14px rgba(100,60,200,0.25),
+    inset 0 0 4px rgba(200,180,255,0.3);
+  transform-origin: 100% 50%;
+  animation: butterfly-flutter 0.4s ease-in-out infinite alternate;
+}
+
+.forest-butterfly::before {
+  right: 50%;
+  transform: translateY(-50%) rotateY(0deg) rotateZ(-15deg);
+}
+
+.forest-butterfly::after {
+  left: 50%;
+  transform: translateY(-50%) rotateY(0deg) rotateZ(15deg) scaleX(-1);
+  animation-delay: 0.05s;
+}
+
+.forest-butterfly:nth-child(2n)::before,
+.forest-butterfly:nth-child(2n)::after {
+  background: radial-gradient(ellipse at 60% 40%,
+    rgba(100,220,160,0.8) 0%,
+    rgba(60,180,120,0.55) 40%,
+    rgba(30,140,80,0.35) 70%,
+    rgba(20,100,60,0.15) 100%);
+  box-shadow:
+    0 0 6px rgba(80,200,140,0.5),
+    0 0 12px rgba(60,180,100,0.25),
+    inset 0 0 4px rgba(160,255,200,0.3);
+}
+
+.forest-butterfly:nth-child(3n)::before,
+.forest-butterfly:nth-child(3n)::after {
+  background: radial-gradient(ellipse at 55% 35%,
+    rgba(220,180,80,0.8) 0%,
+    rgba(180,140,40,0.55) 40%,
+    rgba(140,100,20,0.35) 70%,
+    rgba(100,80,10,0.15) 100%);
+  box-shadow:
+    0 0 6px rgba(220,180,80,0.5),
+    0 0 12px rgba(180,140,40,0.25),
+    inset 0 0 4px rgba(255,230,160,0.3);
+}
+
+@keyframes butterfly-flutter {
+  0% {
+    transform: translateY(-50%) rotateY(0deg);
+  }
+  100% {
+    transform: translateY(-50%) rotateY(65deg);
+  }
+}
+
+@keyframes butterfly-path {
+  0% {
+    transform: translate(-40px, 0) rotate(5deg);
+    opacity: 0;
+  }
+  5% {
+    opacity: 0.75;
+  }
+  12% {
+    transform: translate(8vw, -6vh) rotate(-8deg);
+    opacity: 0.85;
+  }
+  25% {
+    transform: translate(18vw, 4vh) rotate(12deg);
+    opacity: 0.9;
+  }
+  37% {
+    transform: translate(30vw, -8vh) rotate(-5deg);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translate(42vw, 2vh) rotate(10deg);
+    opacity: 0.85;
+  }
+  62% {
+    transform: translate(55vw, -5vh) rotate(-10deg);
+    opacity: 0.9;
+  }
+  75% {
+    transform: translate(68vw, 6vh) rotate(8deg);
+    opacity: 0.75;
+  }
+  87% {
+    transform: translate(82vw, -3vh) rotate(-6deg);
+    opacity: 0.5;
+  }
+  95% {
+    opacity: 0.15;
+  }
+  100% {
+    transform: translate(calc(100vw + 40px), 0) rotate(3deg);
+    opacity: 0;
+  }
+}
+
+/* ── Forest Firefly — Tiny Golden Pulsing Lights ── */
+.forest-firefly {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    rgba(255,240,140,0.95) 0%,
+    rgba(255,220,80,0.7) 30%,
+    rgba(255,200,40,0.3) 60%,
+    transparent 100%);
+  box-shadow:
+    0 0 3px rgba(255,230,100,0.8),
+    0 0 8px rgba(255,220,80,0.5),
+    0 0 16px rgba(255,200,40,0.25),
+    0 0 24px rgba(255,180,20,0.1);
+  animation:
+    firefly-pulse var(--firefly-pulse-duration, 2.5s) ease-in-out infinite,
+    firefly-wander var(--firefly-wander-duration, 12s) ease-in-out infinite;
+  will-change: transform, opacity, box-shadow;
+}
+
+.forest-firefly:nth-child(2n) {
+  background: radial-gradient(circle,
+    rgba(255,250,200,0.9) 0%,
+    rgba(255,235,120,0.6) 30%,
+    rgba(255,210,60,0.25) 60%,
+    transparent 100%);
+  box-shadow:
+    0 0 4px rgba(255,245,160,0.75),
+    0 0 10px rgba(255,230,100,0.4),
+    0 0 20px rgba(255,200,40,0.2);
+}
+
+.forest-firefly:nth-child(3n) {
+  background: radial-gradient(circle,
+    rgba(200,255,160,0.85) 0%,
+    rgba(160,240,100,0.55) 30%,
+    rgba(120,200,60,0.2) 60%,
+    transparent 100%);
+  box-shadow:
+    0 0 3px rgba(180,250,120,0.7),
+    0 0 8px rgba(140,230,80,0.4),
+    0 0 16px rgba(100,200,50,0.2);
+}
+
+@keyframes firefly-pulse {
+  0%, 100% {
+    opacity: 0.1;
+    box-shadow:
+      0 0 2px rgba(255,220,80,0.4),
+      0 0 6px rgba(255,200,40,0.2);
+  }
+  35% {
+    opacity: 0.85;
+    box-shadow:
+      0 0 4px rgba(255,230,100,0.9),
+      0 0 10px rgba(255,220,80,0.6),
+      0 0 20px rgba(255,200,40,0.3),
+      0 0 32px rgba(255,180,20,0.12);
+  }
+  65% {
+    opacity: 0.5;
+    box-shadow:
+      0 0 3px rgba(255,230,100,0.6),
+      0 0 8px rgba(255,220,80,0.35),
+      0 0 14px rgba(255,200,40,0.15);
+  }
+}
+
+@keyframes firefly-wander {
+  0% {
+    transform: translate(0, 0);
+  }
+  15% {
+    transform: translate(12px, -18px);
+  }
+  30% {
+    transform: translate(-8px, -10px);
+  }
+  45% {
+    transform: translate(20px, 6px);
+  }
+  60% {
+    transform: translate(-15px, -22px);
+  }
+  75% {
+    transform: translate(10px, 14px);
+  }
+  85% {
+    transform: translate(-6px, -8px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+/* ── Forest Leaf — Falling Leaves with Organic Shapes ── */
+.forest-leaf {
+  position: absolute;
+  clip-path: polygon(
+    50% 0%, 75% 15%, 95% 35%, 100% 50%,
+    95% 68%, 75% 88%, 50% 100%,
+    25% 88%, 5% 68%, 0% 50%,
+    5% 35%, 25% 15%
+  );
+  animation: leaf-fall var(--leaf-duration, 30s) linear infinite;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+/* Emerald green */
+.forest-leaf:nth-child(4n+1) {
+  background: linear-gradient(135deg,
+    rgba(40,160,60,0.85) 0%,
+    rgba(30,130,45,0.7) 40%,
+    rgba(20,100,35,0.55) 70%,
+    rgba(15,80,25,0.4) 100%);
+  box-shadow:
+    0 0 4px rgba(60,180,80,0.3),
+    inset 0 0 6px rgba(100,220,120,0.15);
+}
+
+/* Golden autumn */
+.forest-leaf:nth-child(4n+2) {
+  background: linear-gradient(135deg,
+    rgba(220,180,40,0.85) 0%,
+    rgba(200,150,30,0.7) 40%,
+    rgba(180,120,20,0.55) 70%,
+    rgba(160,100,15,0.4) 100%);
+  box-shadow:
+    0 0 4px rgba(240,200,60,0.3),
+    inset 0 0 6px rgba(255,230,100,0.15);
+}
+
+/* Amber-red */
+.forest-leaf:nth-child(4n+3) {
+  background: linear-gradient(135deg,
+    rgba(200,100,30,0.8) 0%,
+    rgba(180,80,25,0.65) 40%,
+    rgba(160,60,20,0.5) 70%,
+    rgba(140,50,15,0.35) 100%);
+  box-shadow:
+    0 0 4px rgba(220,120,40,0.3),
+    inset 0 0 6px rgba(240,160,80,0.15);
+}
+
+/* Deep forest green */
+.forest-leaf:nth-child(4n+4) {
+  background: linear-gradient(135deg,
+    rgba(25,120,45,0.85) 0%,
+    rgba(20,100,35,0.7) 40%,
+    rgba(15,80,30,0.55) 70%,
+    rgba(10,60,20,0.4) 100%);
+  box-shadow:
+    0 0 4px rgba(40,140,60,0.3),
+    inset 0 0 6px rgba(80,180,100,0.15);
+}
+
+@keyframes leaf-fall {
+  0% {
+    transform: translateY(-20px) translateX(0) rotate(0deg) scale(1);
+    opacity: 0;
+  }
+  3% {
+    opacity: 0.75;
+  }
+  15% {
+    transform: translateY(15vh) translateX(30px) rotate(120deg) scale(0.95);
+    opacity: 0.8;
+  }
+  30% {
+    transform: translateY(30vh) translateX(-20px) rotate(250deg) scale(0.9);
+    opacity: 0.85;
+  }
+  45% {
+    transform: translateY(45vh) translateX(25px) rotate(380deg) scale(0.85);
+    opacity: 0.8;
+  }
+  60% {
+    transform: translateY(60vh) translateX(-15px) rotate(500deg) scale(0.8);
+    opacity: 0.7;
+  }
+  75% {
+    transform: translateY(75vh) translateX(20px) rotate(610deg) scale(0.75);
+    opacity: 0.5;
+  }
+  90% {
+    transform: translateY(95vh) translateX(-10px) rotate(690deg) scale(0.7);
+    opacity: 0.2;
+  }
+  100% {
+    transform: translateY(110vh) translateX(5px) rotate(720deg) scale(0.65);
+    opacity: 0;
+  }
+}
+
+/* ── Forest Sparkle — Rising Diamond Motes ── */
+.forest-sparkle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: rgba(255,255,240,0.95);
+  transform: rotate(45deg);
+  box-shadow:
+    0 0 3px rgba(255,255,220,0.8),
+    0 0 8px rgba(220,255,180,0.5),
+    0 0 14px rgba(180,240,120,0.25);
+  animation: sparkle-rise var(--sparkle-duration, 6s) ease-out infinite;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.forest-sparkle:nth-child(2n) {
+  width: 2px;
+  height: 2px;
+  background: rgba(220,255,180,0.9);
+  box-shadow:
+    0 0 2px rgba(200,250,160,0.75),
+    0 0 6px rgba(160,230,100,0.4),
+    0 0 10px rgba(120,200,60,0.2);
+}
+
+.forest-sparkle:nth-child(3n) {
+  width: 4px;
+  height: 4px;
+  background: rgba(255,240,160,0.9);
+  box-shadow:
+    0 0 4px rgba(255,235,140,0.8),
+    0 0 10px rgba(255,220,80,0.45),
+    0 0 18px rgba(220,200,60,0.2);
+}
+
+@keyframes sparkle-rise {
+  0% {
+    transform: rotate(45deg) translateY(0) translateX(0) scale(0.5);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.9;
+    transform: rotate(45deg) translateY(-3vh) translateX(2px) scale(1);
+  }
+  30% {
+    opacity: 1;
+    transform: rotate(45deg) translateY(-10vh) translateX(-4px) scale(1.15);
+  }
+  50% {
+    opacity: 0.85;
+    transform: rotate(45deg) translateY(-18vh) translateX(3px) scale(1.05);
+  }
+  70% {
+    opacity: 0.55;
+    transform: rotate(45deg) translateY(-28vh) translateX(-5px) scale(0.9);
+  }
+  90% {
+    opacity: 0.15;
+    transform: rotate(45deg) translateY(-36vh) translateX(2px) scale(0.7);
+  }
+  100% {
+    transform: rotate(45deg) translateY(-40vh) translateX(0) scale(0.5);
+    opacity: 0;
+  }
+}
+
+/* ── Forest Fog — Ground-Level Atmospheric Mist ── */
+.forest-fog {
+  position: absolute;
+  bottom: 0;
+  left: -10%;
+  width: 120%;
+  height: 18vh;
+  background: linear-gradient(to top,
+    rgba(12,32,12,0.4) 0%,
+    rgba(18,45,18,0.28) 15%,
+    rgba(22,55,22,0.18) 30%,
+    rgba(25,60,25,0.08) 55%,
+    transparent 100%);
+  animation: fog-drift 14s ease-in-out infinite;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.forest-fog::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: -5%;
+  width: 110%;
+  height: 70%;
+  background: linear-gradient(to top,
+    rgba(15,40,15,0.3) 0%,
+    rgba(20,50,20,0.15) 40%,
+    transparent 100%);
+  animation: fog-drift-secondary 20s ease-in-out infinite reverse;
+  opacity: 0.7;
+}
+
+.forest-fog::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 5%;
+  width: 100%;
+  height: 50%;
+  background: linear-gradient(to top,
+    rgba(10,30,10,0.25) 0%,
+    rgba(15,40,15,0.1) 50%,
+    transparent 100%);
+  animation: fog-drift-tertiary 18s ease-in-out infinite;
+  opacity: 0.5;
+}
+
+@keyframes fog-drift {
+  0%, 100% {
+    transform: translateX(0);
+    opacity: 0.65;
+  }
+  25% {
+    transform: translateX(2%);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translateX(-1.5%);
+    opacity: 1;
+  }
+  75% {
+    transform: translateX(1%);
+    opacity: 0.75;
+  }
+}
+
+@keyframes fog-drift-secondary {
+  0%, 100% {
+    transform: translateX(0);
+    opacity: 0.6;
+  }
+  40% {
+    transform: translateX(-3%);
+    opacity: 0.85;
+  }
+  70% {
+    transform: translateX(2%);
+    opacity: 0.7;
+  }
+}
+
+@keyframes fog-drift-tertiary {
+  0%, 100% {
+    transform: translateX(0);
+    opacity: 0.5;
+  }
+  35% {
+    transform: translateX(2.5%);
+    opacity: 0.75;
+  }
+  65% {
+    transform: translateX(-2%);
+    opacity: 0.6;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FOREST THEME — Panel & UI Overrides (body.forest-active)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Panels: subtle emerald border + inner glow */
+.forest-active .panel {
+  border-color: rgba(50,120,50,0.22);
+  box-shadow:
+    inset 0 0 20px rgba(40,100,40,0.08),
+    inset 0 0 6px rgba(60,140,60,0.05),
+    0 0 12px rgba(30,80,30,0.1);
+  transition: border-color 0.6s ease, box-shadow 0.6s ease;
+}
+
+/* Panel headers: emerald gradient overlay */
+.forest-active .panel-header {
+  background-image: linear-gradient(
+    180deg,
+    rgba(40,120,50,0.12) 0%,
+    rgba(30,100,40,0.06) 50%,
+    transparent 100%
+  );
+  border-bottom-color: rgba(50,130,60,0.15);
+  transition: background-image 0.6s ease;
+}
+
+/* Panel title text: subtle green tint */
+.forest-active .panel-header .panel-title {
+  text-shadow: 0 0 12px rgba(80,200,80,0.15);
+}
+
+/* Sealed runes: green hue shift */
+.forest-active .sealed-rune .rune-glow {
+  filter: hue-rotate(-30deg) saturate(1.1);
+  transition: filter 0.6s ease;
+}
+
+/* Map canvas: very subtle green atmospheric tint */
+.forest-active #map-canvas {
+  filter: sepia(0.04) hue-rotate(70deg) saturate(1.05);
+  transition: filter 0.8s ease;
+}
+
+/* Connection lines: green undertone */
+.forest-active .connection-line {
+  filter: hue-rotate(-15deg) brightness(1.05);
+}
+
+/* Node labels: faint emerald glow */
+.forest-active .node-label {
+  text-shadow:
+    0 0 8px rgba(60,160,60,0.12),
+    0 1px 2px rgba(0,0,0,0.6);
+}
+
+/* Spellbook panel forest treatment */
+.forest-active .spellbook-panel {
+  border-color: rgba(50,120,50,0.2);
+  box-shadow:
+    inset 0 0 16px rgba(40,100,40,0.06),
+    0 0 10px rgba(30,80,30,0.08);
+}
+
+/* Dock tray: forest-floor treatment */
+.forest-active .dock-tray {
+  background: linear-gradient(
+    to top,
+    rgba(10,30,10,0.3) 0%,
+    rgba(15,35,15,0.15) 60%,
+    transparent 100%
+  );
+  border-top-color: rgba(50,120,50,0.15);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FOREST THEME — Reduced Motion Override
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  .forest-wisp,
+  .forest-butterfly,
+  .forest-firefly,
+  .forest-leaf,
+  .forest-sparkle {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+  .forest-fog {
+    animation: none !important;
+  }
+  .forest-butterfly::before,
+  .forest-butterfly::after {
+    animation: none !important;
+  }
+}
