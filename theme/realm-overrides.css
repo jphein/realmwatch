@@ -1,0 +1,403 @@
+
+/* ═══════════════════════════════════════════════════════════════
+   REALM THEME — Fantasy Grimoire Theme for OpenWrt LuCI
+   Inspired by Realmwatch (realm.watch)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* --- Force dark realm palette on both light and dark modes --- */
+:root, :root[data-darkmode="true"] {
+  /* Background: deep void purple — noticeably purple, not just dark gray */
+  --background-color-delta-l-sign: 1;
+  --background-color-h: 272;
+  --background-color-s: 40%;
+  --background-color-l: 8%;
+
+  /* Text: warm parchment gold — distinctly warm, not white */
+  --text-color-delta-l-sign: -1;
+  --text-color-h: 30;
+  --text-color-s: 50%;
+  --text-color-l: 80%;
+
+  /* Borders: gold rim — visible warmth */
+  --border-color-delta-l-sign: 1;
+  --border-color-h: 42;
+  --border-color-s: 40%;
+  --border-color-l: 22%;
+
+  /* Primary: warm gold */
+  --primary-color-high: #d4a050;
+  --primary-color-medium: #c09040;
+  --primary-color-low: #a07830;
+  --on-primary-color: #0a0510;
+
+  /* Error: ruby */
+  --error-color-high-rgb: 210, 90, 85;
+  --error-color-high: rgb(var(--error-color-high-rgb));
+  --error-color-medium: #b84a48;
+  --error-color-low: #a04040;
+  --on-error-color: #f0e0d0;
+
+  /* Success: emerald */
+  --success-color-high-rgb: 70, 170, 110;
+  --success-color-high: rgb(var(--success-color-high-rgb));
+  --success-color-medium: #2a8855;
+  --success-color-low: #1a7040;
+  --on-success-color: #0a0510;
+
+  /* Warning: amber */
+  --warn-color-high: #c8a040;
+  --warn-color-medium: #b89030;
+  --warn-color-low: #a08028;
+  --on-warn-color: #0a0510;
+
+  --disabled-opacity: .4;
+  color-scheme: dark;
+}
+
+/* --- Body: grimoire base with grain texture --- */
+body {
+  font-family: Georgia, 'Times New Roman', 'DejaVu Serif', serif;
+  background-color: #0a0510;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Ccircle cx='4' cy='4' r='0.7' fill='rgba(200,170,110,0.025)'/%3E%3C/svg%3E");
+  color: #d4a574;
+}
+
+/* --- Header bar: deep leather --- */
+header {
+  background: linear-gradient(135deg, #1a0e20 0%, #10061a 100%) !important;
+  border-bottom: 1px solid rgba(200, 170, 90, 0.15) !important;
+  box-shadow: 0 2px 8px rgba(10, 5, 16, 0.6);
+}
+
+/* --- Top nav bar links --- */
+.nav a {
+  color: #b8a080 !important;
+}
+
+.nav a:hover {
+  color: #f0d080 !important;
+}
+
+.nav .active > a {
+  background-color: rgba(200, 170, 90, 0.1) !important;
+  color: #f0d080 !important;
+}
+
+.nav a.menu:hover {
+  background: rgba(200, 170, 90, 0.06) !important;
+}
+
+/* --- Dropdown menus (hardcoded grays in base CSS) --- */
+.dropdown-menu,
+.nav .dropdown-menu {
+  background-color: #14101a !important;
+  border-color: rgba(200, 170, 90, 0.15) !important;
+  box-shadow: 0 4px 16px rgba(10, 5, 16, 0.8) !important;
+}
+
+.dropdown-menu a,
+.nav .dropdown-menu li a {
+  color: #b8a080 !important;
+  text-shadow: none !important;
+}
+
+.dropdown-menu a:hover,
+.nav .dropdown-menu li a:hover {
+  background-color: rgba(200, 170, 90, 0.08) !important;
+  background-image: none !important;
+  color: #f0d080 !important;
+}
+
+.dropdown-menu li {
+  background-color: transparent !important;
+}
+
+/* --- Main sidebar/nav --- */
+.main > .main-left {
+  background: linear-gradient(180deg, #10061a 0%, #0c0414 100%) !important;
+  border-right: 1px solid rgba(200, 170, 90, 0.08);
+}
+
+.main-left li > a {
+  color: #b8a080 !important;
+  font-family: Georgia, 'Times New Roman', serif;
+  transition: color 0.15s, text-shadow 0.15s;
+}
+
+.main-left li > a:hover {
+  color: #f0d080 !important;
+  text-shadow: 0 0 10px rgba(240, 216, 144, 0.25);
+  text-decoration: none;
+}
+
+.main-left li.active > a,
+.main-left li.selected > a {
+  color: #f0d080 !important;
+  text-shadow: 0 0 10px rgba(240, 216, 144, 0.2);
+}
+
+.main-left li.active,
+.main-left li.selected {
+  background: rgba(200, 170, 90, 0.06) !important;
+  border-left: 3px solid rgba(200, 170, 90, 0.35);
+}
+
+/* --- Headings: serif, gold --- */
+h1, h2, h3, h4, h5, h6, legend {
+  font-family: Georgia, 'Times New Roman', serif;
+  color: #d4a574;
+}
+
+h1, h2 {
+  text-shadow: 0 0 20px rgba(240, 216, 144, 0.12);
+}
+
+/* --- Links: gold --- */
+a {
+  color: #d4a050;
+}
+
+a:hover {
+  color: #f0d080;
+  text-shadow: 0 0 6px rgba(240, 216, 144, 0.15);
+}
+
+/* --- Buttons: grimoire styled --- */
+.cbi-button, .btn, .item::after {
+  --default-btn-background: linear-gradient(#1a1218, #1a1218 25%, #14101a) !important;
+  font-family: Georgia, 'Times New Roman', serif;
+  border: 1px solid rgba(200, 170, 90, 0.2) !important;
+  border-radius: 3px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.cbi-button:hover, .btn:hover {
+  border-color: rgba(200, 170, 90, 0.35) !important;
+  box-shadow: 0 0 8px rgba(240, 216, 144, 0.1);
+}
+
+/* Save / Apply — emerald */
+.cbi-button-positive,
+.cbi-button-save,
+.cbi-button-apply,
+.btn.cbi-button-positive,
+.btn.cbi-button-save,
+.btn.cbi-button-apply {
+  background: linear-gradient(180deg, #2a5a38 0%, #1a3a24 100%) !important;
+  border-color: rgba(80, 180, 120, 0.25) !important;
+  color: #80e8a0 !important;
+}
+
+/* Remove / Reset — ruby */
+.cbi-button-negative,
+.cbi-button-remove,
+.cbi-button-reset,
+.btn.cbi-button-negative,
+.btn.cbi-button-remove {
+  background: linear-gradient(180deg, #5a2020 0%, #3a1414 100%) !important;
+  border-color: rgba(210, 90, 85, 0.25) !important;
+  color: #ff9090 !important;
+}
+
+/* Action / Neutral — gold */
+.cbi-button-neutral,
+.cbi-button-action,
+.btn.cbi-button-action,
+.btn.cbi-button-neutral {
+  background: linear-gradient(180deg, #302818 0%, #201810 100%) !important;
+  border-color: rgba(200, 170, 90, 0.2) !important;
+  color: #d4a574 !important;
+}
+
+/* --- Form inputs: dark recessed --- */
+input[type="text"],
+input[type="password"],
+input[type="number"],
+input[type="email"],
+input[type="url"],
+input[type="search"],
+select,
+textarea {
+  background: rgba(8, 4, 14, 0.7) !important;
+  border: 1px solid rgba(200, 170, 90, 0.12) !important;
+  color: #d4a574 !important;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: rgba(200, 170, 90, 0.35) !important;
+  box-shadow: 0 0 6px rgba(240, 216, 144, 0.12);
+  outline: none;
+}
+
+/* --- Tables: subtle gold grid --- */
+.table .tr:nth-child(even),
+tr:nth-child(even) {
+  background: rgba(200, 170, 90, 0.025);
+}
+
+.table .tr:hover,
+tr:hover {
+  background: rgba(200, 170, 90, 0.05);
+}
+
+.table .th, th {
+  font-family: Georgia, 'Times New Roman', serif;
+  color: #b89870;
+  border-bottom-color: rgba(200, 170, 90, 0.12);
+}
+
+/* --- CBI sections (config panels): grimoire cards --- */
+.cbi-section {
+  background: rgba(16, 10, 24, 0.5);
+  border: 1px solid rgba(200, 170, 90, 0.07);
+  border-radius: 4px;
+  box-shadow: inset 0 1px 0 rgba(200, 170, 110, 0.04),
+              0 2px 6px rgba(10, 5, 16, 0.35);
+}
+
+/* --- Tabs --- */
+.cbi-tabmenu li > a,
+.tabs li > a {
+  color: #b8a080;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.cbi-tabmenu li.cbi-tab > a,
+.cbi-tabmenu li > a:hover,
+.tabs li.active > a,
+.tabs li > a:hover {
+  color: #f0d080;
+  border-bottom-color: rgba(200, 170, 90, 0.45);
+}
+
+/* --- Alerts / notices --- */
+.alert-message.warning, .alert-warning {
+  background: rgba(80, 50, 10, 0.3);
+  border: 1px solid rgba(240, 192, 96, 0.18);
+  color: #f0c060;
+}
+
+.alert-message.error, .alert-danger, .alert-error {
+  background: rgba(80, 20, 20, 0.3);
+  border: 1px solid rgba(210, 90, 85, 0.18);
+  color: #ff9090;
+}
+
+.alert-message.success, .alert-success {
+  background: rgba(20, 60, 38, 0.3);
+  border: 1px solid rgba(80, 180, 120, 0.18);
+  color: #80e8a0;
+}
+
+.alert-message.info, .alert-info {
+  background: rgba(20, 48, 80, 0.3);
+  border: 1px solid rgba(144, 200, 255, 0.18);
+  color: #90c8ff;
+}
+
+/* --- Footer --- */
+footer {
+  border-top: 1px solid rgba(200, 170, 90, 0.08);
+  color: #5a4830;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+/* --- Code / preformatted --- */
+code, pre {
+  background: rgba(8, 4, 14, 0.5);
+  color: #c8b898;
+  border-color: rgba(200, 170, 90, 0.08);
+}
+
+/* --- Scrollbars (Chromium) --- */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0510;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(200, 170, 90, 0.18);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(200, 170, 90, 0.3);
+}
+
+/* --- Status badges / interface badges --- */
+.ifacebadge {
+  background: rgba(16, 10, 24, 0.6) !important;
+  border: 1px solid rgba(200, 170, 90, 0.1) !important;
+  border-radius: 3px;
+}
+
+/* --- Modals / popups --- */
+.modal {
+  background: #12081a !important;
+  border: 1px solid rgba(200, 170, 90, 0.18) !important;
+  box-shadow: 0 4px 20px rgba(10, 5, 16, 0.8);
+}
+
+.modal-overlay {
+  background: rgba(10, 5, 16, 0.7) !important;
+}
+
+/* --- Progress bars: gold fill --- */
+.cbi-progressbar > div {
+  background: linear-gradient(90deg, #a07830, #d4a050) !important;
+}
+
+/* --- Tooltips --- */
+[data-tooltip]:hover::before {
+  background: #1a1020;
+  border: 1px solid rgba(200, 170, 90, 0.15);
+  color: #d4a574;
+}
+
+/* --- System status icons: warm filter --- */
+.ifacebadge img,
+.cbi-section img {
+  filter: sepia(0.15) hue-rotate(-10deg);
+}
+
+/* --- Hostname in header --- */
+header .hostname {
+  color: #f0d080 !important;
+  font-family: Georgia, 'Times New Roman', serif;
+  text-shadow: 0 0 12px rgba(240, 216, 144, 0.2);
+}
+
+/* --- Dropdown menus --- */
+.cbi-dropdown > ul {
+  background: #12081a !important;
+  border: 1px solid rgba(200, 170, 90, 0.15) !important;
+}
+
+.cbi-dropdown > ul > li:hover,
+.cbi-dropdown > ul > li[selected] {
+  background: rgba(200, 170, 90, 0.08) !important;
+}
+
+/* --- Checkboxes / toggle switches --- */
+.cbi-checkbox input[type="checkbox"]:checked + label::before {
+  background: #2a5a38;
+  border-color: rgba(80, 180, 120, 0.4);
+}
+
+/* --- Notification bar (top) --- */
+#maincontent > .container > .alert {
+  border-radius: 3px;
+}
+
+/* --- Spinner / loading --- */
+.spinning.border {
+  border-color: rgba(200, 170, 90, 0.2);
+  border-top-color: #d4a050;
+}
