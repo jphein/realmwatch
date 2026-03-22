@@ -22,8 +22,7 @@ RestartSec=5
 MemoryHigh=1G
 MemoryMax=1536M
 
-# Security hardening
-NoNewPrivileges=yes
+# Security hardening (NoNewPrivileges removed — fping needs CAP_NET_RAW escalation)
 ProtectSystem=strict
 
 # Logging
