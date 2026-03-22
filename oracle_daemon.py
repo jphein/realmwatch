@@ -151,8 +151,12 @@ def _post_event(event):
         return False
 
 
-def _speak(text, voice="en-US-BrianNeural"):
-    """Speak text via Azure Speech TTS (direct API call)."""
+def _speak(text, voice="en-US-BrianNeural", save_dir=None):
+    """Speak text via Azure Speech TTS (direct API call).
+
+    If save_dir is set, saves the MP3 audio alongside playback.
+    Returns the saved file path, or None.
+    """
     try:
         cfg = {}
         try:
@@ -166,11 +170,12 @@ def _speak(text, voice="en-US-BrianNeural"):
         key = cfg.get("speech_key", os.environ.get("AZURE_SPEECH_KEY", ""))
         region = cfg.get("speech_region", os.environ.get("AZURE_SPEECH_REGION", ""))
         if not key or not region:
-            return
+            return None
 
+        safe = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
         ssml = (
             f'<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">'
-            f'<voice name="{voice}">{text}</voice></speak>'
+            f'<voice name="{voice}">{safe}</voice></speak>'
         )
         url = f"https://{region}.tts.speech.microsoft.com/cognitiveservices/v1"
         req = urllib.request.Request(url, data=ssml.encode("utf-8"), headers={
@@ -181,19 +186,34 @@ def _speak(text, voice="en-US-BrianNeural"):
         with urllib.request.urlopen(req, timeout=10) as r:
             audio = r.read()
 
-        # Play via aplay or mpv
+        # Save to file if requested
+        saved_path = None
+        if save_dir and audio:
+            os.makedirs(save_dir, exist_ok=True)
+            ts = time.strftime("%Y%m%d-%H%M%S")
+            saved_path = os.path.join(save_dir, f"oracle_{ts}.mp3")
+            with open(saved_path, "wb") as f:
+                f.write(audio)
+            print(f"  Saved: {saved_path} ({len(audio)} bytes)")
+
+        # Play via mpv
         import subprocess
         proc = subprocess.Popen(
             ["mpv", "--no-terminal", "--no-video", "-"],
             stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
         proc.communicate(audio, timeout=30)
+        return saved_path
     except Exception as e:
         print(f"  TTS failed: {e}")
+        return None
 
 
-def oracle_loop(poll_interval=10, use_voice=True, once=False):
-    """Main loop: poll for oracle queries and respond."""
+def oracle_loop(poll_interval=10, use_voice=True, once=False, save_audio=None):
+    """Main loop: poll for oracle queries and respond.
+
+    If save_audio is a directory path, saves each TTS response as an MP3 file there.
+    """
     chat_config = _load_chat_config()
     if not chat_config.get("api_key"):
         print("Warning: No Azure AI API key found in chat assistant config")
@@ -208,6 +228,8 @@ def oracle_loop(poll_interval=10, use_voice=True, once=False):
     print(f"  Azure model: {persona.get('model', 'o1')}")
     print(f"  Reasoning: {persona.get('reasoning_effort', 'high')}")
     print(f"  Voice: {'enabled' if use_voice else 'disabled'}")
+    if save_audio:
+        print(f"  Save audio: {save_audio}")
 
     while True:
         try:
@@ -241,10 +263,18 @@ def oracle_loop(poll_interval=10, use_voice=True, once=False):
                     "color": "#e0b0ff",
                 })
 
-                # Speak aloud
+                # Speak aloud (and optionally save)
                 if use_voice:
                     voice = _load_persona().get("voice", "en-US-BrianNeural")
-                    _speak(response, voice=voice)
+                    saved_path = _speak(response, voice=voice, save_dir=save_audio)
+                    if saved_path:
+                        # Include audio file reference in a follow-up event
+                        _post_event({
+                            "type": "oracle_audio",
+                            "node": "scrying-pool",
+                            "text": saved_path,
+                            "color": "#e0b0ff",
+                        })
 
             backoff = 0  # Reset on successful poll
 
@@ -267,5 +297,6 @@ if __name__ == "__main__":
     parser.add_argument("--interval", type=int, default=10, help="Poll interval in seconds")
     parser.add_argument("--no-voice", action="store_true", help="Disable TTS")
     parser.add_argument("--once", action="store_true", help="Process pending queries and exit")
+    parser.add_argument("--save-audio", metavar="DIR", help="Save TTS audio to this directory as MP3 files")
     args = parser.parse_args()
-    oracle_loop(poll_interval=args.interval, use_voice=not args.no_voice, once=args.once)
+    oracle_loop(poll_interval=args.interval, use_voice=not args.no_voice, once=args.once, save_audio=args.save_audio)

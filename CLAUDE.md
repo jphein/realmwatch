@@ -1,3 +1,4 @@
+<!-- claude-md-version: d3c3e7d | updated: 2026-03-22 -->
 # Realmwatch — Claude Code Brief
 
 Fantasy-themed homelab network monitor + AI voice assistant. Visualizes 12 VLANs, 130+ nodes, collectd metrics, firewall rules, WiFi roaming, Home Assistant devices, and energy data on an interactive SVG map with high-fantasy theming. Single machine, local dev. Most of this is already built and working.
