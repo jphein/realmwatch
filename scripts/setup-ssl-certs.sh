@@ -33,7 +33,7 @@ declare -A SWITCHES=(
   [hp]="10.0.6.103"
 )
 
-SSH_PASS="<REDACTED-WIFI-PSK>"
+SSH_PASS="${OPENWRT_SSH_PASS:-$(bw get password gatekeeper-openwrt 2>/dev/null)}"
 SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5"
 
 info()  { echo -e "\033[1;33m[realm-ssl]\033[0m $*"; }

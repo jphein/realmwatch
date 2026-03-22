@@ -14,13 +14,13 @@
 #   per-client signal/SNR/bitrate metrics under wifi_clients-<MAC>/.
 #
 # Requires: sshpass, collectd already running on APs (see setup-collectd-openwrt.sh)
-# Note:     Uses hardcoded password via sshpass (AP root password).
+# Note:     SSH password from OPENWRT_SSH_PASS env var or Bitwarden vault (bw CLI).
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SSH_OPTS="-o ConnectTimeout=4 -o StrictHostKeyChecking=no"
-SSH_PASS="sshpass -p <REDACTED-WIFI-PSK>"
+SSH_PASS="sshpass -p ${OPENWRT_SSH_PASS:-$(bw get password gatekeeper-openwrt 2>/dev/null)}"
 
 deploy_ap() {
     local AP_IP="$1"
