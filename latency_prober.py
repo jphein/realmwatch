@@ -89,8 +89,8 @@ def _load_topology():
         _ip_to_node = ip_map
         _node_to_ip = node_map
         _wired_ips = list(ip_map.keys())
-    except (OSError, json.JSONDecodeError) as e:
-        print(f"latency_prober: topology load error: {e}")
+    except Exception as e:
+        print(f"latency_prober: topology load error: {e}", flush=True)
 
 
 def _probe_fping():
@@ -134,25 +134,37 @@ def _probe_ping_fallback():
     return latencies
 
 
+_last_probe_ts = 0.0  # epoch of last successful probe (for health checks)
+
+
 def _probe_loop():
     """Background thread: reload topology + probe every PROBE_INTERVAL seconds."""
-    global _latency_map
+    global _latency_map, _last_probe_ts
     while _running:
-        _load_topology()
-        ip_latencies = _probe_fping()
-        # Convert {ip: rtt} → {node_id: rtt}
-        new_map = {}
-        for ip, rtt in ip_latencies.items():
-            nid = _ip_to_node.get(ip)
-            if nid:
-                new_map[nid] = rtt
-        _latency_map = new_map  # atomic reference swap
+        try:
+            _load_topology()
+            ip_latencies = _probe_fping()
+            # Convert {ip: rtt} → {node_id: rtt}
+            new_map = {}
+            for ip, rtt in ip_latencies.items():
+                nid = _ip_to_node.get(ip)
+                if nid:
+                    new_map[nid] = rtt
+            _latency_map = new_map  # atomic reference swap
+            _last_probe_ts = time.time()
+        except Exception as e:
+            print(f"latency_prober: probe error: {e}", flush=True)
         time.sleep(_PROBE_INTERVAL)
 
 
 def get_latency_map():
     """Return current {node_id: rtt_ms} map. Thread-safe (reads atomic reference)."""
     return _latency_map
+
+
+def get_last_probe_ts():
+    """Return epoch timestamp of last successful probe, or 0 if never probed."""
+    return _last_probe_ts
 
 
 def get_latency_grouped(topo_nodes=None):
