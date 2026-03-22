@@ -15,21 +15,33 @@ realm.db-wal
 __pycache__/
 *.rrd
 *.pyc
+*.log
 monitor_3min.log
+.map_server.pid
 
 # Dependencies
 .venv/
 venv/
 node_modules/
 model-cache/
+package-lock.json
 
 # Secrets
 .env
+.mcp.json
 
-# Playwright MCP cache
-.playwright-mcp/
+# Images / screenshots (binary)
+*.png
+*.jpg
+*.jpeg
+*.pdf
+*.svg
 
-# Large files — skip unless targeted
-access-to-power.pdf
 # Large style file — use Grep + Edit for targeted CSS changes
 realm-map.css
+
+# Tooling
+.playwright-mcp/
+.superpowers/
+.worktrees/
+.claude/
