@@ -29,6 +29,9 @@ access-to-power.pdf
 # Brainstorm sessions
 .superpowers/
 
+# Playwright MCP cache
+.playwright-mcp/
+
 # Claude Code session data (keep skills)
 .claude/*
 !.claude/skills/

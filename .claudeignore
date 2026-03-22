@@ -23,9 +23,11 @@ venv/
 node_modules/
 model-cache/
 
-# Utilities (not core)
-monitor_3min.py
-test_mcp.py
+# Secrets
+.env
+
+# Playwright MCP cache
+.playwright-mcp/
 
 # Large files — skip unless targeted
 access-to-power.pdf
