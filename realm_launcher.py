@@ -182,6 +182,7 @@ LAUNCHER_HTML = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='30' fill='%230a0a1a' stroke='%235030a0' stroke-width='2'/><circle cx='32' cy='30' r='18' fill='%237040c0' opacity='.6'/><polygon points='32,10 36,26 52,26 39,35 43,51 32,41 21,51 25,35 12,26 28,26' fill='none' stroke='%23c0a0ff' stroke-width='1.5' stroke-linejoin='round'/><circle cx='32' cy='30' r='3' fill='%23fff' opacity='.8'/></svg>">
 <title>Realm Launcher</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cinzel+Decorative:wght@400;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <style>
