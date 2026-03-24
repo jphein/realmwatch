@@ -1,7 +1,7 @@
 {
   "name": "ansible",
   "version": "1.0.0",
-  "type": "on-demand",
+  "type": "integrated",
   "description": "Ansible playbook execution and infrastructure management",
   "fantasy_name": "War Room",
   "icon": "\u2694\ufe0f",

@@ -486,8 +486,6 @@ _route_table = RouteTable()
 def _h_get_status(req, params):
     return build_status()
 
-def _h_get_latency(req, params):
-    return latency_prober.get_latency_map()
 
 def _h_get_firewall(req, params):
     cached = firewall_parser.get_cached()
@@ -1275,7 +1273,6 @@ def _h_delete_settings(req, params):
 # ── Register All Core Routes ──
 
 _route_table.add("GET", "/status", _h_get_status)
-_route_table.add("GET", "/latency", _h_get_latency)
 _route_table.add("GET", "/firewall", _h_get_firewall)
 _route_table.add("GET", "/quests", _h_get_quests)
 _route_table.add("GET", "/events", _h_get_events)
