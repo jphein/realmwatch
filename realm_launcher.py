@@ -875,6 +875,20 @@ const BRANCHES = {
     ],
     tags: {},
   },
+  'feat/plugin-system': {
+    icon: '\uD83E\uDDE9',
+    name: 'Plugin Architects',
+    desc: 'Modular plugin system &mdash; drop-in plugins with manifests, SSE sources, panels, and node enrichment.',
+    features: [
+      'Plugin loader with topological sort <span class="tag tag-new">NEW</span>',
+      'RouteTable replaces if/elif chains',
+      'Ansible War Room plugin <span class="tag tag-new">NEW</span>',
+      'Latency prober extracted as plugin',
+      'RealmAPI frontend global for plugins',
+      'Performance: CSS containment, RAF batching',
+    ],
+    tags: {},
+  },
 };
 
 let currentBranch = '';
@@ -1086,7 +1100,7 @@ class LauncherHandler(http.server.BaseHTTPRequestHandler):
         elif self.path == '/api/status':
             branch = _get_branch()
             ahead = {}
-            for b in ['feature/winbox-wm', 'feature/puter-wm']:
+            for b in ['feature/winbox-wm', 'feature/puter-wm', 'feat/plugin-system']:
                 ahead[b] = _get_ahead_count(b)
             with _log_lock:
                 log_copy = list(_log_lines)
