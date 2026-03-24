@@ -1,0 +1,34 @@
+{
+  "name": "latency",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Background latency prober — batch-pings wired nodes via fping, provides RTT map and pre-grouped latency data.",
+  "fantasy_name": "Arcane Pulse",
+  "icon": "\ud83c\udff8",
+
+  "python": {
+    "module": "plugin",
+    "entry": "setup"
+  },
+
+  "panel": {
+    "id": "latency-panel",
+    "name": "Arcane Pulse",
+    "html": "panel.html",
+    "js": "panel.js",
+    "css": "panel.css",
+    "anchor": "e",
+    "priority": 11
+  },
+
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/latency",
+      "handler": "handle_latency",
+      "raw_path": true
+    }
+  ],
+
+  "sse_types": ["latency"]
+}
