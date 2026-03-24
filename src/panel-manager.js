@@ -99,7 +99,7 @@ const FORMATIONS = {
     name: 'Grand Arcanum',
     icon: '\u2728',
     desc: 'Summon all panels',
-    visible: Object.keys(PANELS),
+    get visible() { return Object.keys(PANELS); },
     anchors: null, // auto-arrange
   },
   'grimoire-binding': {
@@ -1220,6 +1220,7 @@ function _animateWandering() {
 function _arrangeConjuredRunes() {
   const conjured = document.getElementById('conjured-runes');
   if (!conjured) return;
+  _invalidateConjureCache();  // Rune set changed — force re-query in orbit tick
 
   const runes = [...conjured.querySelectorAll('.sealed-rune')];
   const count = runes.length;
@@ -1264,23 +1265,31 @@ function _arrangeConjuredRunes() {
   });
 }
 
+let _conjureRuneCache = null;  // Cached rune elements for orbit animation
+function _invalidateConjureCache() { _conjureRuneCache = null; }
+
 function _startConjureOrbit() {
   if (_conjureRaf) return;
   _conjureAngle = 0;
+  _conjureRuneCache = null;  // Force fresh cache on start
   function tick() {
     const conjured = document.getElementById('conjured-runes');
-    if (!conjured || _sealMode !== 'conjure') { _conjureRaf = 0; return; }
-    const runes = [...conjured.querySelectorAll('.sealed-rune')];
-    if (runes.length === 0) { _conjureRaf = 0; return; }
+    if (!conjured || _sealMode !== 'conjure') { _conjureRaf = 0; _conjureRuneCache = null; return; }
+    // Cache rune elements — only re-query when cache is invalidated
+    if (!_conjureRuneCache) {
+      _conjureRuneCache = [...conjured.querySelectorAll('.sealed-rune')];
+    }
+    const runes = _conjureRuneCache;
+    if (runes.length === 0) { _conjureRaf = 0; _conjureRuneCache = null; return; }
     _conjureAngle += 0.003; // Slow orbit
-    runes.forEach(rune => {
-      if (rune.classList.contains('rune-dragging')) return;
+    for (let j = 0; j < runes.length; j++) {
+      const rune = runes[j];
+      if (rune.classList.contains('rune-dragging')) continue;
       const i = parseInt(rune.dataset.orbitIndex) || 0;
       const n = parseInt(rune.dataset.orbitTotal) || 1;
       const cx = parseFloat(rune.dataset.orbitCx) || window.innerWidth / 2;
       const cy = parseFloat(rune.dataset.orbitCy) || window.innerHeight / 2;
       const r = parseFloat(rune.dataset.orbitR) || 60;
-      // Each rune has its own orbit offset + slight wobble
       const baseAngle = (i / n) * Math.PI * 2 - Math.PI / 2;
       const angle = baseAngle + _conjureAngle;
       const wobble = Math.sin(_conjureAngle * 3 + i * 1.7) * 4;
@@ -1289,7 +1298,7 @@ function _startConjureOrbit() {
       rune.style.transition = 'none';
       rune.style.left = x + 'px';
       rune.style.top = y + 'px';
-    });
+    }
     _conjureRaf = requestAnimationFrame(tick);
   }
   _conjureRaf = requestAnimationFrame(tick);
@@ -2158,14 +2167,59 @@ function _flashSaveEffect() {
 // Register a panel created after initPanelManager (e.g. lazy dialogs)
 export function registerPanel(panel) {
   if (!panel || !PANELS[panel.id]) return;
+  _attachPanelHandlers(panel);
+}
+
+// Register a plugin-created panel (adds to PANELS registry + attaches handlers)
+export function registerPluginPanel(panel, { name, icon, anchor, priority }) {
+  if (!panel || !panel.id) return;
+  // Add to PANELS registry so all formation/seal/drag logic works
+  PANELS[panel.id] = {
+    name: name || panel.id,
+    anchor: anchor || 'sw',
+    priority: priority || 50,
+    icon: icon || '\u2726',
+  };
+  _attachPanelHandlers(panel);
+}
+
+// Remove a plugin panel from the PANELS registry
+export function unregisterPanel(panelId) {
+  delete PANELS[panelId];
+}
+
+// Programmatic open: unseal if sealed, show if hidden
+export function openPanel(panelId) {
+  const panel = document.getElementById(panelId);
+  if (!panel || !PANELS[panelId]) return;
+  if (panel.classList.contains('panel-sealed')) {
+    _unsealPanel(panel);
+    _saveFormation();
+  } else if (panel.style.display === 'none') {
+    panel.style.display = '';
+    _saveFormation();
+  }
+}
+
+// Programmatic close: seal the panel
+export function closePanel(panelId) {
+  const panel = document.getElementById(panelId);
+  if (!panel || !PANELS[panelId]) return;
+  if (!panel.classList.contains('panel-sealed')) {
+    _sealPanel(panel);
+  }
+}
+
+// Shared handler setup for both core and plugin panels
+function _attachPanelHandlers(panel) {
   const header = panel.querySelector('.panel-header');
   if (!header) return;
 
-  // Add seal button (skip if already added by _attachDragHandlers)
+  // Add seal button (skip if already added)
   if (!header.querySelector('.panel-seal-btn')) {
     const sealBtn = document.createElement('button');
     sealBtn.className = 'panel-seal-btn';
-    sealBtn.innerHTML = '◈';
+    sealBtn.textContent = '\u25C8'; // ◈
     sealBtn.title = 'Seal panel to dock';
     sealBtn.addEventListener('click', e => {
       e.stopPropagation();

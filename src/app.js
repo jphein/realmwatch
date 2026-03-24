@@ -20,6 +20,8 @@ import { renderControlPane, renderGroupPane, renderShellPane, renderConnectionsP
 import { initSpellbook, invalidateSearchIndex } from './spellbook.js';
 import { saveSettings, scheduleSave } from './layout.js';
 import { scheduleDebugRefresh } from './debug.js';
+import { initRealmAPI, dispatchPluginSSE } from './plugin-api.js';
+import { registerPluginPanel, openPanel, closePanel } from './panel-manager.js';
 
 let liveOk = false;
 
@@ -119,11 +121,23 @@ export const getSseConnected = () => _sseConnected;
   let _consecutiveFailures = 0;
   let _reconnectTimer = null;
   let _trafficRafPending = false;
+  let _statusRafPending = false;
+  let _pendingStatusData = null;
 
   // ── Stream attunement tracker (lights up loading screen indicators) ──
+  const _attuneCache = {};
+  const _attuneDone = {};
   function _attuneStream(name) {
-    const el = document.querySelector(`.rl-stream[data-stream="${name}"]`);
-    if (el && !el.classList.contains('attuned')) el.classList.add('attuned');
+    if (_attuneDone[name]) return;  // Already attuned — skip DOM access entirely
+    let el = _attuneCache[name];
+    if (!el) {
+      el = document.querySelector(`.rl-stream[data-stream="${name}"]`);
+      _attuneCache[name] = el;
+    }
+    if (el && !el.classList.contains('attuned')) {
+      el.classList.add('attuned');
+      _attuneDone[name] = true;  // One-shot — never query again
+    }
   }
 
   // Reset backoff on any successful message — the connection is healthy
@@ -207,9 +221,10 @@ export const getSseConnected = () => _sseConnected;
       const d = JSON.parse(e.data);
       _sseRestoreMode = false;
       if (isZoomActive() && liveOk) { setDeferredStatus(d); if (d.wifi) setWifiMap(d.wifi); return; }
-      updateUI(d);
-      if (d.wifi) setWifiMap(d.wifi);
+      // First status must apply immediately (loading screen depends on it)
       if (!liveOk) {
+        updateUI(d);
+        if (d.wifi) setWifiMap(d.wifi);
         liveOk = true;
         console.log('Realm Map: SSE live data connected');
         if (window._advanceLoadStage) window._advanceLoadStage(4);
@@ -220,6 +235,20 @@ export const getSseConnected = () => _sseConnected;
             setTimeout(() => { loadEl.style.display = 'none'; }, 1300);
           }, 1200);
         }
+        return;
+      }
+      // Subsequent status updates: batch via RAF to avoid layout thrashing
+      _pendingStatusData = d;
+      if (!_statusRafPending) {
+        _statusRafPending = true;
+        requestAnimationFrame(() => {
+          _statusRafPending = false;
+          if (_pendingStatusData) {
+            if (isZoomActive()) { setDeferredStatus(_pendingStatusData); if (_pendingStatusData.wifi) setWifiMap(_pendingStatusData.wifi); }
+            else { updateUI(_pendingStatusData); if (_pendingStatusData.wifi) setWifiMap(_pendingStatusData.wifi); }
+            _pendingStatusData = null;
+          }
+        });
       }
     });
 
@@ -279,6 +308,22 @@ export const getSseConnected = () => _sseConnected;
       _teardown();
       _scheduleReconnect();
     });
+
+    // ── Plugin SSE dispatch ──
+    // Attach listeners for plugin-declared SSE types (re-attached on each reconnect)
+    if (window._realmPluginSSETypes) {
+      for (const eventType of window._realmPluginSSETypes) {
+        sse.addEventListener(eventType, e => {
+          _onMessageReceived();
+          try {
+            const data = JSON.parse(e.data);
+            dispatchPluginSSE(eventType, data);
+          } catch (err) {
+            console.error(`Plugin SSE parse error (${eventType}):`, err);
+          }
+        });
+      }
+    }
   }
 
   // ── Visibility change: force immediate reconnect if tab becomes visible ──
@@ -315,6 +360,84 @@ export const getSseConnected = () => _sseConnected;
 initScanner();
 initSkills();
 initForestTheme();
+
+// ── Initialize RealmAPI for plugins ──
+initRealmAPI({
+  registerPanelFn: registerPluginPanel,
+  openPanelFn: openPanel,
+  closePanelFn: closePanel,
+});
+
+// ── Plugin loading sequence ──
+// Fetch plugin list, inject CSS/JS, call init() on each
+(async function loadPlugins() {
+  try {
+    const res = await fetch('/plugins');
+    if (!res.ok) return;
+    const plugins = await res.json();
+    if (!Array.isArray(plugins) || plugins.length === 0) return;
+
+    // Track loaded plugin SSE types for dispatch
+    const pluginSSETypes = new Set();
+
+    // Inject all CSS in parallel (non-blocking)
+    for (const plugin of plugins) {
+      if (plugin.css) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = `/plugins/${plugin.name}/${plugin.css}`;
+        document.head.appendChild(link);
+      }
+      if (plugin.sse_types) {
+        for (const t of plugin.sse_types) pluginSSETypes.add(t);
+      }
+    }
+
+    // Load all plugin JS in parallel
+    const t0 = performance.now();
+    await Promise.all(plugins.filter(p => p.js).map(plugin =>
+      new Promise(resolve => {
+        const script = document.createElement('script');
+        script.src = `/plugins/${plugin.name}/${plugin.js}`;
+        script.onload = resolve;
+        script.onerror = () => {
+          console.error(`Plugin ${plugin.name}: failed to load ${plugin.js}`);
+          resolve();
+        };
+        document.head.appendChild(script);
+      })
+    ));
+    console.log(`Realm Map: plugin JS loaded in ${(performance.now() - t0).toFixed(0)}ms`);
+
+    // Init plugins sequentially (order may matter for registration)
+    for (const plugin of plugins) {
+      const pluginObj = window.RealmPlugins?.[plugin.name];
+      if (pluginObj && typeof pluginObj.init === 'function') {
+        try {
+          window.RealmAPI._currentPlugin = plugin.name;
+          pluginObj.init(window.RealmAPI);
+          window.RealmAPI._currentPlugin = null;
+        } catch (e) {
+          console.error(`Plugin ${plugin.name}: init() failed`, e);
+          window.RealmAPI._currentPlugin = null;
+        }
+      }
+    }
+
+    // Wire up SSE dispatch for plugin event types
+    // This is done via the existing EventSource — we add listeners for plugin types
+    // The SSE connection is set up above in initSSE(); we need to attach to it.
+    // Store the plugin types for the SSE handler to check.
+    window._realmPluginSSETypes = pluginSSETypes;
+
+    if (plugins.length > 0) {
+      console.log(`Realm Map: ${plugins.length} plugin(s) loaded`);
+    }
+  } catch (e) {
+    // Plugin loading is non-critical — don't break the app
+    console.warn('Realm Map: plugin loading failed', e);
+  }
+})();
 
 // Spellbook toggle for forest theme
 const _fcb = document.getElementById('forest-theme-cb');

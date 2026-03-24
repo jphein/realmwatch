@@ -419,17 +419,924 @@ def _get_firewall_data():
         firewall_parser.update_cache(parsed)
     return parsed
 
-from sse_broker import SSEBroker
-_sse_broker = SSEBroker(
-    build_status, _get_energy_data,
-    latency_fn=latency_prober.get_latency_map,
-    firewall_fn=_get_firewall_data,
-    wifi_fn=ap_scanner.get_ap_info,
-)
+from sse_broker import SSEBroker, SSESource
+_sse_broker = SSEBroker(build_status)
+
+# Register core data sources that were previously hardcoded in the broker.
+# These will be migrated to plugins eventually; for now they register here.
+_sse_broker.register_source(SSESource(
+    name="energy",
+    event_type="energy",
+    collect_fn=_get_energy_data,
+    interval_seconds=30,
+    burst=True,
+    burst_priority=3,
+    burst_filter=lambda d: "error" not in d,
+))
+
+def _collect_latency():
+    from latency_prober import get_latency_grouped
+    topo_nodes = realm_db.get_topology().get("nodes", [])
+    return get_latency_grouped(topo_nodes)
+
+_sse_broker.register_source(SSESource(
+    name="latency",
+    event_type="latency",
+    collect_fn=_collect_latency,
+    interval_seconds=30,
+    burst=True,
+    burst_priority=4,
+))
+
+_sse_broker.register_source(SSESource(
+    name="firewall",
+    event_type="firewall",
+    collect_fn=_get_firewall_data,
+    interval_seconds=60,
+    burst=False,  # May trigger slow SSH — skip in burst
+))
+
+_sse_broker.register_source(SSESource(
+    name="wifi",
+    event_type="wifi",
+    collect_fn=ap_scanner.get_ap_info,
+    interval_seconds=120,
+    burst=False,  # May trigger slow SSH — skip in burst
+))
+
+# Plugin system — initialized in __main__ after DB init
+_plugin_registry = None
 
 
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
     daemon_threads = True
+
+
+# ── Route Table Setup ──
+from route_table import RouteTable
+from plugin_context import PluginRequest
+
+_route_table = RouteTable()
+
+
+# ── GET Route Handlers ──
+# Each handler takes (req: PluginRequest, params: dict) and returns dict | None.
+# Return dict for JSON response, None if handler already sent the response.
+
+def _h_get_status(req, params):
+    return build_status()
+
+def _h_get_latency(req, params):
+    return latency_prober.get_latency_map()
+
+def _h_get_firewall(req, params):
+    cached = firewall_parser.get_cached()
+    if cached:
+        return cached
+    raw = engine._run_router_cmd("nft -j list ruleset")
+    if not raw:
+        req.respond({"error": "Cannot reach gatekeeper"}, 503)
+        return None
+    parsed = firewall_parser.parse_nft_json(raw)
+    if parsed:
+        firewall_parser.update_cache(parsed)
+        return parsed
+    req.respond({"error": "Failed to parse nft rules"}, 500)
+    return None
+
+def _h_get_quests(req, params):
+    return realm_db.get_quests()
+
+def _h_get_events(req, params):
+    qp = req.query_params
+    since = float(qp.get("since", 0) or 0)
+    limit = int(qp.get("limit", 0) or 0)
+    events = get_events_since(since)
+    if limit > 0:
+        events = events[-limit:]
+    return events
+
+def _h_get_notion_sync(req, params):
+    try:
+        if "force=1" in req.path:
+            notion_sync.force_resync()
+        result = notion_sync.sync_to_events()
+        if "error" in result:
+            req.respond(result, 503)
+            return None
+        for evt in result.get("events", []):
+            push_event(evt)
+        return result
+    except Exception as e:
+        req.respond({"error": str(e)}, 500)
+        return None
+
+def _h_get_personas(req, params):
+    return _load_personas()
+
+def _h_get_topology(req, params):
+    return _load_topology()
+
+def _h_get_scan(req, params):
+    return ap_scanner.scan_and_update()
+
+def _h_get_scan_status(req, params):
+    return ap_scanner.get_last_scan()
+
+def _h_get_scan_lldp(req, params):
+    links = ap_scanner.detect_ethernet_topology()
+    topo = _load_topology()
+    auto_switches = [n for n in topo.get("nodes", []) if n.get("_auto_switch")]
+    return {
+        "links": len(links),
+        "switches": len(auto_switches),
+        "connections": [
+            {"from": l["from_node"], "to": l["to_node"],
+             "type": l.get("protocol", "lldp")}
+            for l in links
+        ],
+        "cliques": [n["id"] for n in auto_switches],
+    }
+
+def _h_get_scan_wifi(req, params):
+    return ap_scanner.get_wifi_signal()
+
+def _h_get_wifi_aps(req, params):
+    return ap_scanner.get_ap_info()
+
+def _h_get_ping_ip(req, params):
+    ip = params.get("ip", "")
+    try:
+        result = subprocess.run(
+            ["ping", "-c", "3", "-W", "2", ip],
+            capture_output=True, text=True, timeout=10
+        )
+        if result.returncode == 0:
+            for line in result.stdout.split("\n"):
+                if "avg" in line.lower() or "rtt" in line.lower():
+                    parts = line.split("=")[-1].split("/")
+                    if len(parts) >= 2:
+                        return {"ok": True, "ip": ip, "rtt_ms": float(parts[1])}
+            return {"ok": True, "ip": ip, "rtt_ms": None}
+        else:
+            return {"ok": False, "ip": ip, "error": "Host unreachable"}
+    except Exception as e:
+        return {"ok": False, "ip": ip, "error": str(e)}
+
+def _h_get_server_info(req, params):
+    import platform
+    return {
+        "port": PORT,
+        "domain": os.environ.get("REALM_DOMAIN", ""),
+        "hostname": platform.node(),
+        "python": platform.python_version(),
+        "pid": os.getpid(),
+        "uptime": int(time.time() - _server_start_time),
+    }
+
+def _h_get_config(req, params):
+    return {
+        "chat": realm_db.get_settings("chat"),
+        "speech": realm_db.get_settings("speech"),
+        "oracle": realm_db.get_persona("scrying-pool") or {},
+    }
+
+def _h_get_settings(req, params):
+    return realm_db.get_settings("ui")
+
+def _h_get_codex_sync(req, params):
+    try:
+        force = "force=1" in req.path
+        data = codex_sync.get_grouped() if not force else None
+        if force:
+            codex_sync.fetch_codex(force=True)
+            data = codex_sync.get_grouped()
+        return data
+    except Exception as e:
+        req.respond({"error": str(e)}, 500)
+        return None
+
+def _h_get_codex(req, params):
+    req.redirect("/codex/")
+    return None
+
+def _h_get_codex_index(req, params):
+    codex_path = os.path.join(MAP_DIR, "docs", "codex", "index.html")
+    if os.path.isfile(codex_path):
+        req._handler.path = "/docs/codex/index.html"
+        req._handler._serve_static_gzip()
+    else:
+        req._handler.send_error(404, "Codex not found")
+    return None
+
+def _h_get_energy(req, params):
+    return _get_energy_data()
+
+def _h_get_collectd(req, params):
+    qp = req.query_params
+    hostname = qp.get("host")
+    if hostname:
+        summary = get_host_summary(hostname)
+        return summary or {"error": f"No data for {hostname}"}
+    return get_all_summaries()
+
+def _h_get_observation(req, params):
+    status = engine.get_status()
+    return {
+        "observation": engine.adult_observation(status),
+        "status": status,
+    }
+
+def _h_get_herald(req, params):
+    qp = req.query_params
+    action = qp.get("action", "status")
+    if action == "status":
+        return _herald_status()
+    elif action == "start":
+        interval = int(qp.get("interval", 90))
+        pid = _herald_start(interval)
+        return {"ok": True, "pid": pid, "interval": interval}
+    elif action == "stop":
+        _herald_stop()
+        return {"ok": True, "stopped": True}
+    elif action == "once":
+        return _herald_once()
+    else:
+        req.respond({"error": f"Unknown action: {action}"}, 400)
+        return None
+
+def _h_get_player(req, params):
+    return realm_db.get_player_stats()
+
+def _h_get_ping(req, params):
+    return {"t": time.time()}
+
+def _h_get_resolve_url(req, params):
+    import socket, urllib.request, urllib.error, ssl
+    qp = req.query_params
+    hostname = qp.get("hostname", "").strip()
+    ip = qp.get("ip", "").strip()
+    if not hostname and not ip:
+        req.respond({"error": "need hostname or ip"}, 400)
+        return None
+    def _tcp_open(host, port, timeout=0.3):
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(timeout)
+            r = s.connect_ex((host, port))
+            s.close()
+            return r == 0
+        except Exception:
+            return False
+    def _dns_resolve(name):
+        try:
+            return socket.gethostbyname(name)
+        except socket.gaierror:
+            return None
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    resolved = None
+    jphe = f"{hostname}.jphe.in" if hostname else None
+    jphe_ip = _dns_resolve(jphe) if jphe else None
+    if jphe_ip:
+        if _tcp_open(jphe_ip, 443):
+            resolved = f"https://{jphe}"
+        elif _tcp_open(jphe_ip, 80):
+            resolved = f"http://{jphe}"
+    if not resolved and ip:
+        if _tcp_open(ip, 443):
+            resolved = f"https://{hostname}" if hostname else f"https://{ip}"
+        elif _tcp_open(ip, 80):
+            resolved = f"http://{ip}"
+    if not resolved and ip:
+        from concurrent.futures import as_completed
+        WEB_PORTS = [(8123, "https"), (1880, "http"), (8096, "http"), (4533, "http"),
+                     (2283, "http"), (8384, "https"), (8080, "http"), (8443, "https"),
+                     (9090, "http"), (3000, "http"), (5000, "http"), (8888, "http")]
+        futures = {_resolve_pool.submit(_tcp_open, ip, port): (port, scheme)
+                   for port, scheme in WEB_PORTS}
+        for fut in as_completed(futures):
+            port, scheme = futures[fut]
+            if fut.result():
+                host = jphe if jphe_ip == ip else ip
+                resolved = f"{scheme}://{host}:{port}"
+                break
+    return {"url": resolved}
+
+def _h_get_debug(req, params):
+    c = realm_db._conn()
+    _DEBUG_TABLES = frozenset(("settings", "events", "personas", "nodes",
+                               "connections", "regions", "notion_synced", "wifi_scans"))
+    counts = {}
+    for table in _DEBUG_TABLES:
+        try:
+            counts[table] = c.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+        except Exception:
+            counts[table] = -1
+    scan = realm_db.get_wifi_scan()
+    return {
+        "tables": counts,
+        "db_path": realm_db.DB_PATH,
+        "db_size": os.path.getsize(realm_db.DB_PATH) if os.path.exists(realm_db.DB_PATH) else 0,
+        "wifi_scan_ts": scan.get("ts", 0),
+        "notion_synced": len(realm_db.get_notion_synced()),
+        "settings_ns": list(realm_db.get_settings().keys()),
+    }
+
+def _h_get_scripts(req, params):
+    scripts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scripts")
+    scripts = []
+    if os.path.isdir(scripts_dir):
+        for f in sorted(os.listdir(scripts_dir)):
+            fp = os.path.join(scripts_dir, f)
+            if os.path.isfile(fp) and os.access(fp, os.X_OK):
+                desc = ""
+                try:
+                    with open(fp) as fh:
+                        for line in fh:
+                            line = line.strip()
+                            if line.startswith("#!"):
+                                continue
+                            if line.startswith("#"):
+                                desc = line.lstrip("# ").strip()
+                            break
+                except Exception:
+                    pass
+                scripts.append({"name": f, "path": f"scripts/{f}", "description": desc})
+    return {"scripts": scripts}
+
+def _h_get_chat_sessions(req, params):
+    sessions = chat_bridge.list_sessions()
+    return {"sessions": sessions, "current": chat_bridge.DEFAULT_SESSION}
+
+def _h_get_chat_history(req, params):
+    qp = req.query_params
+    session = qp.get("session")
+    history = chat_bridge.get_session_history(session)
+    return {"history": history, "session": session or chat_bridge.DEFAULT_SESSION}
+
+def _h_get_reset(req, params):
+    realm_db.set_settings("ui", {})
+    html = """<!DOCTYPE html><html><head><title>Reset</title></head><body>
+<script>
+localStorage.removeItem('realm-map-settings-v3');
+localStorage.removeItem('realm-panel-formation');
+localStorage.removeItem('realm-map-layout');
+localStorage.clear();
+window.location.href = '/';
+</script>
+<p>Clearing settings and redirecting...</p>
+</body></html>"""
+    req.respond_html(html)
+    return None
+
+def _h_get_skills(req, params):
+    skills_dir = os.path.join(os.path.dirname(__file__), ".claude", "skills")
+    result = []
+    if os.path.isdir(skills_dir):
+        for name in sorted(os.listdir(skills_dir)):
+            skill_file = os.path.join(skills_dir, name, "SKILL.md")
+            if os.path.isfile(skill_file):
+                with open(skill_file, "r") as f:
+                    raw = f.read()
+                meta = {"name": name, "description": "", "path": f".claude/skills/{name}/SKILL.md", "body": raw}
+                if raw.startswith("---"):
+                    parts = raw.split("---", 2)
+                    if len(parts) >= 3:
+                        for line in parts[1].strip().split("\n"):
+                            if line.startswith("name:"):
+                                meta["name"] = line.split(":", 1)[1].strip()
+                            elif line.startswith("description:"):
+                                meta["description"] = line.split(":", 1)[1].strip()
+                        meta["body"] = parts[2].strip()
+                result.append(meta)
+    return result
+
+def _h_get_claude_md(req, params):
+    claude_md = os.path.join(os.path.dirname(__file__), "CLAUDE.md")
+    if os.path.isfile(claude_md):
+        with open(claude_md, "r") as f:
+            content = f.read()
+        return {"content": content, "path": "CLAUDE.md"}
+    return {"content": "", "path": "CLAUDE.md"}
+
+def _h_get_agents(req, params):
+    result = []
+    for base in [os.path.join(os.path.dirname(__file__), ".claude", "agents"),
+                 os.path.expanduser("~/.claude/agents")]:
+        if not os.path.isdir(base):
+            continue
+        for fname in sorted(os.listdir(base)):
+            if not fname.endswith(".md"):
+                continue
+            fpath = os.path.join(base, fname)
+            with open(fpath, "r") as f:
+                raw = f.read()
+            agent = {"name": fname.replace(".md", ""), "description": "", "path": fpath, "body": raw}
+            if raw.startswith("---"):
+                parts = raw.split("---", 2)
+                if len(parts) >= 3:
+                    for line in parts[1].strip().split("\n"):
+                        if line.startswith("name:"):
+                            agent["name"] = line.split(":", 1)[1].strip()
+                        elif line.startswith("description:"):
+                            agent["description"] = line.split(":", 1)[1].strip()
+                    agent["body"] = parts[2].strip()
+            result.append(agent)
+    return result
+
+def _h_get_hooks(req, params):
+    hooks_file = os.path.join(os.path.dirname(__file__), ".claude", "settings.json")
+    result = {"hooks": [], "path": ".claude/settings.json"}
+    if os.path.isfile(hooks_file):
+        try:
+            with open(hooks_file, "r") as f:
+                settings = json.load(f)
+            for event_type, hooks in settings.get("hooks", {}).items():
+                for hook in hooks:
+                    result["hooks"].append({
+                        "event": event_type,
+                        "command": hook.get("command", ""),
+                        "matcher": hook.get("matcher", ""),
+                    })
+        except Exception:
+            pass
+    return result
+
+def _h_get_plugins(req, params):
+    """List loaded plugins with status."""
+    plugins = []
+    if _plugin_registry:
+        for p in _plugin_registry.get_all_plugins():
+            info = {"name": p.name, "version": p.version, "type": p.plugin_type,
+                    "description": p.description, "fantasy_name": p.fantasy_name,
+                    "icon": p.icon, "status": p.status}
+            panels = [pnl for pnl in _plugin_registry.get_panels() if pnl.plugin == p.name]
+            if panels:
+                pnl = panels[0]
+                info["panel"] = {"id": pnl.id, "name": pnl.name, "anchor": pnl.anchor,
+                                 "priority": pnl.priority,
+                                 "html": pnl.html, "js": pnl.js, "css": pnl.css}
+            plugins.append(info)
+    else:
+        # Fallback: scan plugin directories before registry is initialized
+        plugins_dir = os.path.join(MAP_DIR, "plugins")
+        if os.path.isdir(plugins_dir):
+            for name in sorted(os.listdir(plugins_dir)):
+                manifest_path = os.path.join(plugins_dir, name, "plugin.json")
+                if os.path.isfile(manifest_path):
+                    try:
+                        with open(manifest_path, "r") as f:
+                            manifest = json.load(f)
+                        plugins.append({
+                            "name": name,
+                            "version": manifest.get("version", "0.0.0"),
+                            "type": manifest.get("type", "unknown"),
+                            "description": manifest.get("description", ""),
+                            "fantasy_name": manifest.get("fantasy_name", name),
+                            "icon": manifest.get("icon", ""),
+                            "status": "discovered",
+                        })
+                    except Exception:
+                        plugins.append({"name": name, "status": "error"})
+    return {"plugins": plugins}
+
+def _h_get_sse_sources(req, params):
+    """List registered SSE sources."""
+    sources = _sse_broker.get_sources()
+    return {"sources": [
+        {"name": s.name, "event_type": s.event_type,
+         "interval": s.interval_seconds, "burst": s.burst,
+         "burst_priority": s.burst_priority}
+        for s in sources
+    ]}
+
+
+# ── POST Route Handlers ──
+
+def _h_post_chat(req, params):
+    try:
+        data = req.json()
+        message = data.get("message", "").strip()
+        if not message:
+            req.respond({"error": "Missing 'message'"}, 400)
+            return None
+        node_id = data.get("node")
+        session = data.get("session")
+        extra_context = data.get("context")
+        future = asyncio.run_coroutine_threadsafe(
+            chat_bridge.chat(message, node_id, session, extra_context),
+            _async_loop,
+        )
+        result = future.result(timeout=120)
+        if result.get("error"):
+            req.respond(result, 500)
+            return None
+        response_text = result.get("response") or ""
+        push_event({
+            "type": "oracle_query",
+            "node": node_id or "scrying-pool",
+            "text": message[:100] + ("..." if len(message) > 100 else ""),
+        })
+        if response_text:
+            push_event({
+                "type": "oracle_response",
+                "node": node_id or "scrying-pool",
+                "text": response_text[:200] + ("..." if len(response_text) > 200 else ""),
+            })
+        return result
+    except (json.JSONDecodeError, KeyError) as e:
+        req.respond({"error": str(e)}, 400)
+        return None
+
+def _h_post_chat_clear(req, params):
+    try:
+        data = req.json()
+        chat_bridge.clear_session(data.get("session"))
+        return {"ok": True}
+    except (json.JSONDecodeError, KeyError) as e:
+        req.respond({"error": str(e)}, 400)
+        return None
+
+def _h_post_event(req, params):
+    try:
+        push_event(req.json())
+        return {"ok": True}
+    except (json.JSONDecodeError, KeyError) as e:
+        req.respond({"error": str(e)}, 400)
+        return None
+
+def _h_post_personas(req, params):
+    try:
+        update = req.json()
+        node_key = update.get("node")
+        if not node_key:
+            req.respond({"error": "missing 'node' key"}, 400)
+            return None
+        if update.get("_delete"):
+            realm_db.delete_persona(node_key)
+        else:
+            existing = realm_db.get_persona(node_key) or {}
+            for field in ("name", "title", "voice", "system_prompt", "hints"):
+                if field in update:
+                    existing[field] = update[field]
+            realm_db.set_persona(node_key, existing)
+        personas = realm_db.get_personas()
+        with open(PERSONAS_FILE, "w") as f:
+            json.dump(personas, f, indent=2)
+        return {"ok": True, "personas": personas}
+    except (json.JSONDecodeError, KeyError) as e:
+        req.respond({"error": str(e)}, 400)
+        return None
+
+def _h_post_quest_delete(req, params):
+    try:
+        data = req.json()
+        quest_id = data.get("id", "")
+        text = data.get("text", "")
+        if quest_id:
+            deleted = realm_db.delete_quest(quest_id)
+        elif text:
+            deleted = realm_db.delete_quest_by_text(text)
+        else:
+            req.respond({"error": "missing id or text"}, 400)
+            return None
+        return {"deleted": deleted}
+    except Exception as e:
+        req.respond({"error": str(e)}, 500)
+        return None
+
+def _h_post_quest_update(req, params):
+    try:
+        data = req.json()
+        quest_id = data.get("id", "")
+        status = data.get("status", "")
+        if not quest_id or not status:
+            req.respond({"error": "missing id or status"}, 400)
+            return None
+        ok = realm_db.update_quest_status(quest_id, status)
+        if ok:
+            return {"ok": True, "id": quest_id, "status": status}
+        req.respond({"error": "quest not found"}, 404)
+        return None
+    except Exception as e:
+        req.respond({"error": str(e)}, 500)
+        return None
+
+def _h_post_player_reward(req, params):
+    try:
+        data = req.json()
+        source = data.get("source", "")
+        source_id = data.get("id", "")
+        if source not in ("quest", "sub", "event") or not source_id:
+            req.respond({"error": "missing or invalid source/id"}, 400)
+            return None
+        result = realm_db.grant_reward(source, str(source_id))
+        result["ok"] = True
+        return result
+    except Exception as e:
+        req.respond({"error": str(e)}, 500)
+        return None
+
+def _h_post_quest_create(req, params):
+    try:
+        quest = req.json()
+        if "id" not in quest or "title" not in quest:
+            req.respond({"error": "missing id or title"}, 400)
+            return None
+        realm_db.upsert_quest(quest)
+        return {"ok": True, "id": quest["id"]}
+    except Exception as e:
+        req.respond({"error": str(e)}, 500)
+        return None
+
+def _h_post_notion_complete(req, params):
+    try:
+        data = req.json()
+        notion_id = data.get("notion_id", "")
+        if not notion_id:
+            req.respond({"error": "missing notion_id"}, 400)
+            return None
+        result = notion_sync.complete(notion_id)
+        if "error" in result:
+            req.respond(result, 503)
+            return None
+        push_event({
+            "type": "system",
+            "node": "notion-portal",
+            "text": "A quest has been sealed in the archives.",
+        })
+        return result
+    except Exception as e:
+        req.respond({"error": str(e)}, 500)
+        return None
+
+def _h_post_config(req, params):
+    try:
+        data = req.json()
+        if "chat" in data:
+            safe = {k: v for k, v in data["chat"].items() if k in _CHAT_SAFE_KEYS}
+            realm_db.set_settings("chat", safe)
+            _write_config_file(_CHAT_CONFIG, safe, _CHAT_SAFE_KEYS)
+        if "speech" in data:
+            safe = {k: v for k, v in data["speech"].items() if k in _SPEECH_SAFE_KEYS}
+            realm_db.set_settings("speech", safe)
+            _write_config_file(_SPEECH_CONFIG, safe, _SPEECH_SAFE_KEYS)
+        if "oracle" in data:
+            oracle = realm_db.get_persona("scrying-pool") or {}
+            for k in ("model", "reasoning_effort", "voice", "system_prompt"):
+                if k in data["oracle"]:
+                    oracle[k] = data["oracle"][k]
+            realm_db.set_persona("scrying-pool", oracle)
+            personas = realm_db.get_personas()
+            with open(PERSONAS_FILE, "w") as f:
+                json.dump(personas, f, indent=2)
+        return {"ok": True}
+    except Exception as e:
+        req.respond({"error": str(e)}, 500)
+        return None
+
+def _h_post_settings(req, params):
+    try:
+        realm_db.set_settings("ui", req.json())
+        return {"ok": True}
+    except Exception as e:
+        req.respond({"error": str(e)}, 500)
+        return None
+
+def _h_post_wled_state(req, params):
+    try:
+        data = req.json()
+        return wled_bridge.set_wled_state(
+            params.get("node_id", ""),
+            on=data.get("on"), brightness=data.get("bri"), effect=data.get("fx")
+        )
+    except Exception as e:
+        req.respond({"error": str(e)}, 500)
+        return None
+
+def _h_post_wol(req, params):
+    try:
+        data = req.json()
+        mac = data.get("mac", "").replace(":", "").replace("-", "").lower()
+        if len(mac) != 12:
+            req.respond({"error": "Invalid MAC address"}, 400)
+            return None
+        mac_bytes = bytes.fromhex(mac)
+        magic = b'\xff' * 6 + mac_bytes * 16
+        import socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        sock.sendto(magic, ("255.255.255.255", 9))
+        if data.get("ip"):
+            ip_parts = data["ip"].rsplit(".", 1)
+            if len(ip_parts) == 2:
+                sock.sendto(magic, (ip_parts[0] + ".255", 9))
+        sock.close()
+        return {"ok": True, "mac": mac, "sent": True}
+    except Exception as e:
+        req.respond({"error": str(e)}, 500)
+        return None
+
+def _h_post_connections(req, params):
+    try:
+        data = req.json()
+        conns = data.get("connections")
+        if conns is None:
+            req.respond({"error": "missing 'connections'"}, 400)
+            return None
+        realm_db.set_connections(conns)
+        realm_db.save_topology_json(TOPOLOGY_FILE)
+        return {"ok": True, "count": len(conns)}
+    except (json.JSONDecodeError, KeyError) as e:
+        req.respond({"error": str(e)}, 400)
+        return None
+
+def _h_post_node(req, params):
+    try:
+        data = req.json()
+        node_id = data.get("id", "").strip()
+        if not node_id:
+            req.respond({"error": "missing 'id'"}, 400)
+            return None
+        if data.get("_delete"):
+            realm_db.delete_node(node_id)
+        elif "x" in data and "y" in data and len(data) <= 3:
+            realm_db.update_node_position(node_id, data["x"], data["y"])
+        else:
+            existing = realm_db.get_node(node_id)
+            if existing:
+                existing.update(data)
+                realm_db.set_node(node_id, existing)
+            else:
+                realm_db.set_node(node_id, data)
+        realm_db.save_topology_json(TOPOLOGY_FILE)
+        return {"ok": True}
+    except (json.JSONDecodeError, KeyError) as e:
+        req.respond({"error": str(e)}, 400)
+        return None
+
+def _h_post_topology(req, params):
+    try:
+        data = req.json()
+        if "nodes" in data:
+            for node in data["nodes"]:
+                nid = node.get("id", "")
+                if nid:
+                    realm_db.set_node(nid, node)
+        if "connections" in data:
+            realm_db.set_connections(data["connections"])
+        if "regions" in data:
+            realm_db.set_regions(data["regions"])
+        realm_db.save_topology_json(TOPOLOGY_FILE)
+        return {"ok": True}
+    except (json.JSONDecodeError, KeyError) as e:
+        req.respond({"error": str(e)}, 400)
+        return None
+
+def _h_post_ssh(req, params):
+    try:
+        data = req.json()
+        host = data.get("host", "")
+        command = data.get("command", "")
+        topo = _load_topology()
+        allowed = {n["ssh"] for n in topo.get("nodes", []) if n.get("ssh")}
+        if host not in allowed:
+            req.respond({"error": f"Host '{host}' not permitted"}, 403)
+            return None
+        if not command.strip():
+            req.respond({"error": "Empty command"}, 400)
+            return None
+        result = subprocess.run(
+            ["ssh", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=no",
+             host, command],
+            capture_output=True, text=True, timeout=30
+        )
+        return {
+            "output": result.stdout[-50000:] if result.stdout else "",
+            "error": result.stderr[-5000:] if result.returncode != 0 else None,
+            "exit_code": result.returncode,
+        }
+    except subprocess.TimeoutExpired:
+        req.respond({"error": "Command timed out (30s)"}, 504)
+        return None
+    except (json.JSONDecodeError, KeyError) as e:
+        req.respond({"error": str(e)}, 400)
+        return None
+
+def _h_post_skills(req, params):
+    try:
+        data = req.json()
+        name = data.get("name", "").strip()
+        description = data.get("description", "").strip()
+        skill_body = data.get("body", "")
+        if not name:
+            req.respond({"error": "missing name"}, 400)
+            return None
+        safe_name = "".join(c for c in name if c.isalnum() or c in "-_").strip("-_")
+        if not safe_name:
+            req.respond({"error": "invalid name"}, 400)
+            return None
+        skills_dir = os.path.join(os.path.dirname(__file__), ".claude", "skills", safe_name)
+        os.makedirs(skills_dir, exist_ok=True)
+        skill_file = os.path.join(skills_dir, "SKILL.md")
+        content = f"---\nname: {safe_name}\ndescription: {description}\n---\n\n{skill_body}\n"
+        with open(skill_file, "w") as f:
+            f.write(content)
+        return {"ok": True, "name": safe_name}
+    except Exception as e:
+        req.respond({"error": str(e)}, 500)
+        return None
+
+def _h_post_claude_md(req, params):
+    try:
+        content = req.json().get("content", "")
+        claude_md = os.path.join(os.path.dirname(__file__), "CLAUDE.md")
+        with open(claude_md, "w") as f:
+            f.write(content)
+        return {"ok": True}
+    except Exception as e:
+        req.respond({"error": str(e)}, 500)
+        return None
+
+
+# ── DELETE Route Handlers ──
+
+def _h_delete_settings(req, params):
+    try:
+        realm_db.set_settings("ui", {})
+        return {"ok": True}
+    except Exception as e:
+        req.respond({"error": str(e)}, 500)
+        return None
+
+
+# ── Register All Core Routes ──
+
+_route_table.add("GET", "/status", _h_get_status)
+_route_table.add("GET", "/latency", _h_get_latency)
+_route_table.add("GET", "/firewall", _h_get_firewall)
+_route_table.add("GET", "/quests", _h_get_quests)
+_route_table.add("GET", "/events", _h_get_events)
+_route_table.add("GET", "/notion-sync", _h_get_notion_sync)
+_route_table.add("GET", "/personas", _h_get_personas)
+_route_table.add("GET", "/topology", _h_get_topology)
+_route_table.add("GET", "/scan", _h_get_scan)
+_route_table.add("GET", "/scan/status", _h_get_scan_status)
+_route_table.add("GET", "/scan/lldp", _h_get_scan_lldp)
+_route_table.add("GET", "/scan/wifi", _h_get_scan_wifi)
+_route_table.add("GET", "/wifi/aps", _h_get_wifi_aps)
+_route_table.add("GET", "/ping/<ip>", _h_get_ping_ip)
+_route_table.add("GET", "/server-info", _h_get_server_info)
+_route_table.add("GET", "/config", _h_get_config)
+_route_table.add("GET", "/settings", _h_get_settings)
+_route_table.add("GET", "/codex-sync", _h_get_codex_sync)
+_route_table.add("GET", "/codex", _h_get_codex)
+_route_table.add("GET", "/codex/", _h_get_codex_index)
+_route_table.add("GET", "/energy", _h_get_energy)
+_route_table.add("GET", "/collectd", _h_get_collectd)
+_route_table.add("GET", "/observation", _h_get_observation)
+_route_table.add("GET", "/herald", _h_get_herald)
+_route_table.add("GET", "/player", _h_get_player)
+_route_table.add("GET", "/ping", _h_get_ping)
+_route_table.add("GET", "/resolve-url", _h_get_resolve_url)
+_route_table.add("GET", "/debug", _h_get_debug)
+_route_table.add("GET", "/scripts", _h_get_scripts)
+_route_table.add("GET", "/chat/sessions", _h_get_chat_sessions)
+_route_table.add("GET", "/chat/history", _h_get_chat_history)
+_route_table.add("GET", "/reset", _h_get_reset)
+_route_table.add("GET", "/skills", _h_get_skills)
+_route_table.add("GET", "/claude-md", _h_get_claude_md)
+_route_table.add("GET", "/agents", _h_get_agents)
+_route_table.add("GET", "/hooks", _h_get_hooks)
+_route_table.add("GET", "/plugins", _h_get_plugins)
+_route_table.add("GET", "/plugins/", _h_get_plugins)
+_route_table.add("GET", "/sse/sources", _h_get_sse_sources)
+
+_route_table.add("POST", "/chat", _h_post_chat)
+_route_table.add("POST", "/chat/clear", _h_post_chat_clear)
+_route_table.add("POST", "/event", _h_post_event)
+_route_table.add("POST", "/personas", _h_post_personas)
+_route_table.add("POST", "/quest-delete", _h_post_quest_delete)
+_route_table.add("POST", "/quest-update", _h_post_quest_update)
+_route_table.add("POST", "/player/reward", _h_post_player_reward)
+_route_table.add("POST", "/quest-create", _h_post_quest_create)
+_route_table.add("POST", "/notion-complete", _h_post_notion_complete)
+_route_table.add("POST", "/config", _h_post_config)
+_route_table.add("POST", "/settings", _h_post_settings)
+_route_table.add("POST", "/wled/<node_id>/state", _h_post_wled_state)
+_route_table.add("POST", "/wol", _h_post_wol)
+_route_table.add("POST", "/connections", _h_post_connections)
+_route_table.add("POST", "/node", _h_post_node)
+_route_table.add("POST", "/topology", _h_post_topology)
+_route_table.add("POST", "/ssh", _h_post_ssh)
+_route_table.add("POST", "/skills", _h_post_skills)
+_route_table.add("POST", "/claude-md", _h_post_claude_md)
+
+_route_table.add("DELETE", "/settings", _h_delete_settings)
+
+_route_table.check_conflicts()
 
 
 class RealmHandler(SimpleHTTPRequestHandler):
@@ -446,214 +1353,8 @@ class RealmHandler(SimpleHTTPRequestHandler):
         self.wfile.write(payload)
 
     def do_GET(self):
-        if self.path == "/status":
-            self._json_response(build_status())
-
-        elif self.path == "/latency":
-            self._json_response(latency_prober.get_latency_map())
-
-        elif self.path == "/firewall":
-            cached = firewall_parser.get_cached()
-            if cached:
-                self._json_response(cached)
-            else:
-                # SSH to gatekeeper, get nft JSON, parse it
-                raw = engine._run_router_cmd("nft -j list ruleset")
-                if not raw:
-                    self._json_response({"error": "Cannot reach gatekeeper"}, 503)
-                else:
-                    parsed = firewall_parser.parse_nft_json(raw)
-                    if parsed:
-                        firewall_parser.update_cache(parsed)
-                        self._json_response(parsed)
-                    else:
-                        self._json_response({"error": "Failed to parse nft rules"}, 500)
-
-        elif self.path == "/quests":
-            self._json_response(realm_db.get_quests())
-
-        elif self.path.startswith("/events"):
-            since = 0
-            limit = 0
-            if "?" in self.path:
-                for param in self.path.split("?", 1)[1].split("&"):
-                    if param.startswith("since="):
-                        try:
-                            since = float(param.split("=", 1)[1])
-                        except ValueError:
-                            pass
-                    elif param.startswith("limit="):
-                        try:
-                            limit = int(param.split("=", 1)[1])
-                        except ValueError:
-                            pass
-            events = get_events_since(since)
-            if limit > 0:
-                events = events[-limit:]
-            self._json_response(events)
-
-        elif self.path.startswith("/notion-sync"):
-            try:
-                if "force=1" in self.path:
-                    notion_sync.force_resync()
-                result = notion_sync.sync_to_events()
-                if "error" in result:
-                    self._json_response(result, 503)
-                    return
-                for evt in result.get("events", []):
-                    push_event(evt)
-                self._json_response(result)
-            except Exception as e:
-                self._json_response({"error": str(e)}, 500)
-
-        elif self.path == "/personas":
-            self._json_response(_load_personas())
-
-        elif self.path == "/topology":
-            self._json_response(_load_topology())
-
-        elif self.path == "/scan":
-            result = ap_scanner.scan_and_update()
-            self._json_response(result)
-
-        elif self.path == "/scan/status":
-            self._json_response(ap_scanner.get_last_scan())
-
-        elif self.path == "/scan/lldp":
-            links = ap_scanner.detect_ethernet_topology()
-            topo = _load_topology()
-            auto_switches = [n for n in topo.get("nodes", []) if n.get("_auto_switch")]
-            self._json_response({
-                "links": len(links),
-                "switches": len(auto_switches),
-                "connections": [
-                    {"from": l["from_node"], "to": l["to_node"],
-                     "type": l.get("protocol", "lldp")}
-                    for l in links
-                ],
-                "cliques": [n["id"] for n in auto_switches],
-            })
-
-        elif self.path == "/scan/wifi":
-            self._json_response(ap_scanner.get_wifi_signal())
-
-        elif self.path == "/wifi/aps":
-            self._json_response(ap_scanner.get_ap_info())
-
-        elif self.path.startswith("/ping/"):
-            ip = self.path.split("/ping/", 1)[1].split("?")[0]
-            try:
-                import subprocess
-                result = subprocess.run(
-                    ["ping", "-c", "3", "-W", "2", ip],
-                    capture_output=True, text=True, timeout=10
-                )
-                if result.returncode == 0:
-                    # Parse average RTT
-                    for line in result.stdout.split("\n"):
-                        if "avg" in line.lower() or "rtt" in line.lower():
-                            parts = line.split("=")[-1].split("/")
-                            if len(parts) >= 2:
-                                self._json_response({"ok": True, "ip": ip, "rtt_ms": float(parts[1])})
-                                return
-                    self._json_response({"ok": True, "ip": ip, "rtt_ms": None})
-                else:
-                    self._json_response({"ok": False, "ip": ip, "error": "Host unreachable"})
-            except Exception as e:
-                self._json_response({"ok": False, "ip": ip, "error": str(e)})
-
-        elif self.path == "/server-info":
-            import platform
-            self._json_response({
-                "port": PORT,
-                "domain": os.environ.get("REALM_DOMAIN", ""),
-                "hostname": platform.node(),
-                "python": platform.python_version(),
-                "pid": os.getpid(),
-                "uptime": int(time.time() - _server_start_time),
-            })
-
-        elif self.path == "/config":
-            self._json_response({
-                "chat": realm_db.get_settings("chat"),
-                "speech": realm_db.get_settings("speech"),
-                "oracle": realm_db.get_persona("scrying-pool") or {},
-            })
-
-        elif self.path == "/settings":
-            # UI settings (sliders, checkboxes, layout, spellbook page)
-            self._json_response(realm_db.get_settings("ui"))
-
-        elif self.path.startswith("/codex-sync"):
-            try:
-                force = "force=1" in self.path
-                data = codex_sync.get_grouped() if not force else None
-                if force:
-                    codex_sync.fetch_codex(force=True)
-                    data = codex_sync.get_grouped()
-                self._json_response(data)
-            except Exception as e:
-                self._json_response({"error": str(e)}, 500)
-
-        elif self.path == "/codex":
-            self.send_response(301)
-            self.send_header("Location", "/codex/")
-            self.end_headers()
-
-        elif self.path == "/codex/" or self.path.startswith("/codex/?"):
-            codex_path = os.path.join(MAP_DIR, "docs", "codex", "index.html")
-            if os.path.isfile(codex_path):
-                self.path = "/docs/codex/index.html"
-                self._serve_static_gzip()
-            else:
-                self.send_error(404, "Codex not found")
-
-        elif self.path == "/energy":
-            # Fetch energy data from HA
-            energy = _get_energy_data()
-            self._json_response(energy)
-
-        elif self.path.startswith("/collectd"):
-            # Per-host or all collectd summaries
-            if "?" in self.path:
-                params = dict(p.split("=", 1) for p in self.path.split("?", 1)[1].split("&") if "=" in p)
-                hostname = params.get("host")
-                if hostname:
-                    summary = get_host_summary(hostname)
-                    self._json_response(summary or {"error": f"No data for {hostname}"})
-                    return
-            self._json_response(get_all_summaries())
-
-        elif self.path == "/observation":
-            status = engine.get_status()
-            self._json_response({
-                "observation": engine.adult_observation(status),
-                "status": status,
-            })
-
-        elif self.path.startswith("/herald"):
-            params = {}
-            if "?" in self.path:
-                params = dict(p.split("=", 1) for p in self.path.split("?", 1)[1].split("&") if "=" in p)
-            action = params.get("action", "status")
-            if action == "status":
-                self._json_response(_herald_status())
-            elif action == "start":
-                interval = int(params.get("interval", 90))
-                pid = _herald_start(interval)
-                self._json_response({"ok": True, "pid": pid, "interval": interval})
-            elif action == "stop":
-                _herald_stop()
-                self._json_response({"ok": True, "stopped": True})
-            elif action == "once":
-                self._json_response(_herald_once())
-            else:
-                self._json_response({"error": f"Unknown action: {action}"}, 400)
-
-        elif self.path == "/player":
-            self._json_response(realm_db.get_player_stats())
-
-        elif self.path.startswith("/sse"):
+        # SSE endpoint — requires persistent connection, can't use route table
+        if self.path.startswith("/sse") and not self.path.startswith("/sse/"):
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
             self.send_header("Cache-Control", "no-cache")
@@ -678,239 +1379,24 @@ class RealmHandler(SimpleHTTPRequestHandler):
                 _sse_broker.remove_client(client_q)
             return
 
-        elif self.path == "/ping":
-            self._json_response({"t": time.time()})
+        # Route table lookup — handles all core + plugin GET endpoints
+        match = _route_table.match("GET", self.path)
+        if match:
+            handler, params = match
+            result = handler(PluginRequest(self), params)
+            if result is not None:
+                self._json_response(result)
+            return
 
-        elif self.path.startswith("/resolve-url"):
-            # Probe a hostname to find the best reachable URL
-            # Chain: hostname.jphe.in → ip:443 → ip:80 → ip:known-ports
-            # Uses fast TCP connect probes — no slow HTTP/DNS timeouts
-            import socket, urllib.request, urllib.error, ssl
-            params = dict(p.split("=", 1) for p in self.path.split("?", 1)[-1].split("&") if "=" in p)
-            hostname = params.get("hostname", "").strip()
-            ip = params.get("ip", "").strip()
-            if not hostname and not ip:
-                self._json_response({"error": "need hostname or ip"}, 400)
-                return
-            def _tcp_open(host, port, timeout=0.3):
-                try:
-                    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    s.settimeout(timeout)
-                    r = s.connect_ex((host, port))
-                    s.close()
-                    return r == 0
-                except Exception:
-                    return False
-            def _dns_resolve(name):
-                try:
-                    return socket.gethostbyname(name)
-                except socket.gaierror:
-                    return None
-            ctx = ssl.create_default_context()
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_NONE
-            def _http_ok(url):
-                try:
-                    req = urllib.request.Request(url, method="HEAD")
-                    urllib.request.urlopen(req, timeout=1.5, context=ctx)
-                    return True
-                except urllib.error.HTTPError:
-                    return True  # server responded (401/403/etc)
-                except Exception:
-                    return False
-            resolved = None
-            jphe = f"{hostname}.jphe.in" if hostname else None
-            jphe_ip = _dns_resolve(jphe) if jphe else None
-            # 1. Try hostname.jphe.in on standard ports (reverse proxy)
-            if jphe_ip:
-                if _tcp_open(jphe_ip, 443):
-                    resolved = f"https://{jphe}"
-                elif _tcp_open(jphe_ip, 80):
-                    resolved = f"http://{jphe}"
-            # 2. Try direct IP standard ports (prefer hostname for SSL cert match)
-            if not resolved and ip:
-                if _tcp_open(ip, 443):
-                    resolved = f"https://{hostname}" if hostname else f"https://{ip}"
-                elif _tcp_open(ip, 80):
-                    resolved = f"http://{ip}"
-            # 3. Try known web service ports (parallel scan on IP)
-            if not resolved and ip:
-                from concurrent.futures import as_completed
-                WEB_PORTS = [(8123, "https"), (1880, "http"), (8096, "http"), (4533, "http"),
-                             (2283, "http"), (8384, "https"), (8080, "http"), (8443, "https"),
-                             (9090, "http"), (3000, "http"), (5000, "http"), (8888, "http")]
-                futures = {_resolve_pool.submit(_tcp_open, ip, port): (port, scheme)
-                           for port, scheme in WEB_PORTS}
-                for fut in as_completed(futures):
-                    port, scheme = futures[fut]
-                    if fut.result():
-                        # Prefer .jphe.in domain if DNS resolves to this IP
-                        host = jphe if jphe_ip == ip else ip
-                        resolved = f"{scheme}://{host}:{port}"
-                        break
-            self._json_response({"url": resolved})
+        # Plugin static files: /plugins/<name>/<file>
+        if self.path.startswith("/plugins/"):
+            self._serve_plugin_static(self.path)
+            return
 
-        elif self.path == "/debug":
-            c = realm_db._conn()
-            _DEBUG_TABLES = frozenset(("settings", "events", "personas", "nodes",
-                                       "connections", "regions", "notion_synced", "wifi_scans"))
-            counts = {}
-            for table in _DEBUG_TABLES:
-                try:
-                    # table names are from the frozen whitelist above — never from user input
-                    counts[table] = c.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
-                except Exception:
-                    counts[table] = -1
-            scan = realm_db.get_wifi_scan()
-            self._json_response({
-                "tables": counts,
-                "db_path": realm_db.DB_PATH,
-                "db_size": os.path.getsize(realm_db.DB_PATH) if os.path.exists(realm_db.DB_PATH) else 0,
-                "wifi_scan_ts": scan.get("ts", 0),
-                "notion_synced": len(realm_db.get_notion_synced()),
-                "settings_ns": list(realm_db.get_settings().keys()),
-            })
-
-        elif self.path == "/scripts":
-            scripts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scripts")
-            scripts = []
-            if os.path.isdir(scripts_dir):
-                for f in sorted(os.listdir(scripts_dir)):
-                    fp = os.path.join(scripts_dir, f)
-                    if os.path.isfile(fp) and os.access(fp, os.X_OK):
-                        # Read first comment line as description
-                        desc = ""
-                        try:
-                            with open(fp) as fh:
-                                for line in fh:
-                                    line = line.strip()
-                                    if line.startswith("#!"):
-                                        continue
-                                    if line.startswith("#"):
-                                        desc = line.lstrip("# ").strip()
-                                    break
-                        except Exception:
-                            pass
-                        scripts.append({"name": f, "path": f"scripts/{f}", "description": desc})
-            self._json_response({"scripts": scripts})
-
-        elif self.path == "/chat/sessions":
-            sessions = chat_bridge.list_sessions()
-            self._json_response({"sessions": sessions, "current": chat_bridge.DEFAULT_SESSION})
-
-        elif self.path.startswith("/chat/history"):
-            session = None
-            if "?" in self.path:
-                for param in self.path.split("?", 1)[1].split("&"):
-                    if param.startswith("session="):
-                        session = param.split("=", 1)[1]
-            history = chat_bridge.get_session_history(session)
-            self._json_response({"history": history, "session": session or chat_bridge.DEFAULT_SESSION})
-
-        elif self.path == "/reset":
-            # Clear all UI settings in DB and serve page that clears localStorage
-            realm_db.set_settings("ui", {})
-            html = """<!DOCTYPE html><html><head><title>Reset</title></head><body>
-<script>
-localStorage.removeItem('realm-map-settings-v3');
-localStorage.removeItem('realm-panel-formation');
-localStorage.removeItem('realm-map-layout');
-localStorage.clear();
-window.location.href = '/';
-</script>
-<p>Clearing settings and redirecting...</p>
-</body></html>"""
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html")
-            self.send_header("Content-Length", len(html))
-            self.end_headers()
-            self.wfile.write(html.encode())
-
-        elif self.path == "/skills":
-            # List all skills from .claude/skills/
-            skills_dir = os.path.join(os.path.dirname(__file__), ".claude", "skills")
-            result = []
-            if os.path.isdir(skills_dir):
-                for name in sorted(os.listdir(skills_dir)):
-                    skill_file = os.path.join(skills_dir, name, "SKILL.md")
-                    if os.path.isfile(skill_file):
-                        with open(skill_file, "r") as f:
-                            raw = f.read()
-                        meta = {"name": name, "description": "", "path": f".claude/skills/{name}/SKILL.md", "body": raw}
-                        # Parse YAML frontmatter
-                        if raw.startswith("---"):
-                            parts = raw.split("---", 2)
-                            if len(parts) >= 3:
-                                for line in parts[1].strip().split("\n"):
-                                    if line.startswith("name:"):
-                                        meta["name"] = line.split(":", 1)[1].strip()
-                                    elif line.startswith("description:"):
-                                        meta["description"] = line.split(":", 1)[1].strip()
-                                meta["body"] = parts[2].strip()
-                        result.append(meta)
-            self._json_response(result)
-
-        elif self.path == "/claude-md":
-            # Read CLAUDE.md
-            claude_md = os.path.join(os.path.dirname(__file__), "CLAUDE.md")
-            if os.path.isfile(claude_md):
-                with open(claude_md, "r") as f:
-                    content = f.read()
-                self._json_response({"content": content, "path": "CLAUDE.md"})
-            else:
-                self._json_response({"content": "", "path": "CLAUDE.md"})
-
-        elif self.path == "/agents":
-            # List custom agent definitions from .claude/agents/ and ~/.claude/agents/
-            result = []
-            for base in [os.path.join(os.path.dirname(__file__), ".claude", "agents"),
-                         os.path.expanduser("~/.claude/agents")]:
-                if not os.path.isdir(base):
-                    continue
-                for fname in sorted(os.listdir(base)):
-                    if not fname.endswith(".md"):
-                        continue
-                    fpath = os.path.join(base, fname)
-                    with open(fpath, "r") as f:
-                        raw = f.read()
-                    agent = {"name": fname.replace(".md", ""), "description": "", "path": fpath, "body": raw}
-                    # Parse frontmatter
-                    if raw.startswith("---"):
-                        parts = raw.split("---", 2)
-                        if len(parts) >= 3:
-                            for line in parts[1].strip().split("\n"):
-                                if line.startswith("name:"):
-                                    agent["name"] = line.split(":", 1)[1].strip()
-                                elif line.startswith("description:"):
-                                    agent["description"] = line.split(":", 1)[1].strip()
-                            agent["body"] = parts[2].strip()
-                    result.append(agent)
-            self._json_response(result)
-
-        elif self.path == "/hooks":
-            # Read hooks config
-            hooks_file = os.path.join(os.path.dirname(__file__), ".claude", "settings.json")
-            result = {"hooks": [], "path": ".claude/settings.json"}
-            if os.path.isfile(hooks_file):
-                try:
-                    with open(hooks_file, "r") as f:
-                        settings = json.load(f)
-                    for event_type, hooks in settings.get("hooks", {}).items():
-                        for hook in hooks:
-                            result["hooks"].append({
-                                "event": event_type,
-                                "command": hook.get("command", ""),
-                                "matcher": hook.get("matcher", ""),
-                            })
-                except Exception:
-                    pass
-            self._json_response(result)
-
-        else:
-            # Static files — serve splash.html as index
-            if self.path == '/' or self.path == '/index.html':
-                self.path = '/splash.html'
-            self._serve_static_gzip()
+        # Static files — serve splash.html as index
+        if self.path == '/' or self.path == '/index.html':
+            self.path = '/splash.html'
+        self._serve_static_gzip()
 
     _GZIP_TYPES = {'.js', '.css', '.html', '.json', '.svg', '.map'}
 
@@ -966,6 +1452,52 @@ window.location.href = '/';
         else:
             super().do_GET()
 
+    _MIME_TYPES = {
+        '.html': 'text/html', '.js': 'application/javascript',
+        '.css': 'text/css', '.json': 'application/json',
+        '.svg': 'image/svg+xml', '.png': 'image/png',
+        '.jpg': 'image/jpeg', '.gif': 'image/gif',
+        '.woff2': 'font/woff2', '.woff': 'font/woff',
+    }
+
+    def _serve_plugin_static(self, url_path):
+        """Serve static files from plugin directories with path traversal prevention."""
+        # Parse /plugins/<name>/<file_path>
+        parts = url_path.split("/", 3)  # ['', 'plugins', 'name', 'file']
+        if len(parts) < 4:
+            self.send_error(404)
+            return
+
+        plugin_name = parts[2]
+        file_path = parts[3].split("?")[0]  # strip query string
+
+        # Resolve and verify path stays within plugin directory
+        plugins_dir = os.path.join(MAP_DIR, "plugins", plugin_name)
+        full_path = os.path.normpath(os.path.join(plugins_dir, file_path))
+
+        if not full_path.startswith(os.path.normpath(plugins_dir)):
+            self.send_error(403, "Access denied")
+            return
+
+        if not os.path.isfile(full_path):
+            self.send_error(404)
+            return
+
+        ext = os.path.splitext(full_path)[1].lower()
+        content_type = self._MIME_TYPES.get(ext, 'application/octet-stream')
+
+        try:
+            with open(full_path, 'rb') as f:
+                data = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", len(data))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(data)
+        except Exception:
+            self.send_error(500)
+
     def end_headers(self):
         # Default to no-cache (allows ETag/304 revalidation) unless already set
         # Check if Cache-Control was already explicitly sent in this response
@@ -976,370 +1508,26 @@ window.location.href = '/';
         super().end_headers()
 
     def do_POST(self):
-        length = int(self.headers.get("Content-Length", 0))
-        body = self.rfile.read(length)
-
-        if self.path == "/chat":
-            try:
-                req = json.loads(body)
-                message = req.get("message", "").strip()
-                if not message:
-                    self._json_response({"error": "Missing 'message'"}, 400)
-                    return
-                node_id = req.get("node")
-                session = req.get("session")
-                extra_context = req.get("context")
-                # Run async chat in persistent event loop (avoids loop creation per request)
-                future = asyncio.run_coroutine_threadsafe(
-                    chat_bridge.chat(message, node_id, session, extra_context),
-                    _async_loop,
-                )
-                result = future.result(timeout=120)
-                if result.get("error"):
-                    self._json_response(result, 500)
-                else:
-                    response_text = result.get("response") or ""
-                    # Fire event for chat interaction
-                    push_event({
-                        "type": "oracle_query",
-                        "node": node_id or "scrying-pool",
-                        "text": message[:100] + ("..." if len(message) > 100 else ""),
-                    })
-                    if response_text:
-                        push_event({
-                            "type": "oracle_response",
-                            "node": node_id or "scrying-pool",
-                            "text": response_text[:200] + ("..." if len(response_text) > 200 else ""),
-                        })
-                    self._json_response(result)
-            except (json.JSONDecodeError, KeyError) as e:
-                self._json_response({"error": str(e)}, 400)
-
-        elif self.path == "/chat/clear":
-            try:
-                req = json.loads(body)
-                session = req.get("session")
-                chat_bridge.clear_session(session)
-                self._json_response({"ok": True})
-            except (json.JSONDecodeError, KeyError) as e:
-                self._json_response({"error": str(e)}, 400)
-
-        elif self.path == "/event":
-            try:
-                event = json.loads(body)
-                push_event(event)
-                self._json_response({"ok": True})
-            except (json.JSONDecodeError, KeyError) as e:
-                self._json_response({"error": str(e)}, 400)
-
-        elif self.path == "/personas":
-            try:
-                update = json.loads(body)
-                node_key = update.get("node")
-                if not node_key:
-                    self._json_response({"error": "missing 'node' key"}, 400)
-                    return
-                if update.get("_delete"):
-                    realm_db.delete_persona(node_key)
-                else:
-                    existing = realm_db.get_persona(node_key) or {}
-                    for field in ("name", "title", "voice", "system_prompt", "hints"):
-                        if field in update:
-                            existing[field] = update[field]
-                    realm_db.set_persona(node_key, existing)
-                # Write-through to JSON
-                personas = realm_db.get_personas()
-                with open(PERSONAS_FILE, "w") as f:
-                    json.dump(personas, f, indent=2)
-                self._json_response({"ok": True, "personas": personas})
-            except (json.JSONDecodeError, KeyError) as e:
-                self._json_response({"error": str(e)}, 400)
-        elif self.path == "/quest-delete":
-            try:
-                req = json.loads(body)
-                # Support both legacy text-based and new id-based deletion
-                quest_id = req.get("id", "")
-                text = req.get("text", "")
-                if quest_id:
-                    deleted = realm_db.delete_quest(quest_id)
-                elif text:
-                    deleted = realm_db.delete_quest_by_text(text)
-                else:
-                    self._json_response({"error": "missing id or text"}, 400)
-                    return
-                self._json_response({"deleted": deleted})
-            except Exception as e:
-                self._json_response({"error": str(e)}, 500)
-
-        elif self.path == "/quest-update":
-            try:
-                req = json.loads(body)
-                quest_id = req.get("id", "")
-                status = req.get("status", "")
-                if not quest_id or not status:
-                    self._json_response({"error": "missing id or status"}, 400)
-                    return
-                ok = realm_db.update_quest_status(quest_id, status)
-                if ok:
-                    self._json_response({"ok": True, "id": quest_id, "status": status})
-                else:
-                    self._json_response({"error": "quest not found"}, 404)
-            except Exception as e:
-                self._json_response({"error": str(e)}, 500)
-
-        elif self.path == "/player/reward":
-            try:
-                req = json.loads(body)
-                source = req.get("source", "")
-                source_id = req.get("id", "")
-                if source not in ("quest", "sub", "event") or not source_id:
-                    self._json_response({"error": "missing or invalid source/id"}, 400)
-                    return
-                result = realm_db.grant_reward(source, str(source_id))
-                result["ok"] = True
+        # Route table lookup — handles all core + plugin POST endpoints
+        match = _route_table.match("POST", self.path)
+        if match:
+            handler, params = match
+            result = handler(PluginRequest(self), params)
+            if result is not None:
                 self._json_response(result)
-            except Exception as e:
-                self._json_response({"error": str(e)}, 500)
-
-        elif self.path == "/quest-create":
-            try:
-                quest = json.loads(body)
-                if "id" not in quest or "title" not in quest:
-                    self._json_response({"error": "missing id or title"}, 400)
-                    return
-                realm_db.upsert_quest(quest)
-                self._json_response({"ok": True, "id": quest["id"]})
-            except Exception as e:
-                self._json_response({"error": str(e)}, 500)
-
-        elif self.path == "/notion-complete":
-            try:
-                req = json.loads(body)
-                notion_id = req.get("notion_id", "")
-                if not notion_id:
-                    self._json_response({"error": "missing notion_id"}, 400)
-                    return
-                result = notion_sync.complete(notion_id)
-                if "error" in result:
-                    self._json_response(result, 503)
-                    return
-                push_event({
-                    "type": "system",
-                    "node": "notion-portal",
-                    "text": "A quest has been sealed in the archives.",
-                })
-                self._json_response(result)
-            except Exception as e:
-                self._json_response({"error": str(e)}, 500)
-
-        elif self.path == "/config":
-            try:
-                req = json.loads(body)
-                if "chat" in req:
-                    safe = {k: v for k, v in req["chat"].items() if k in _CHAT_SAFE_KEYS}
-                    realm_db.set_settings("chat", safe)
-                    _write_config_file(_CHAT_CONFIG, safe, _CHAT_SAFE_KEYS)
-                if "speech" in req:
-                    safe = {k: v for k, v in req["speech"].items() if k in _SPEECH_SAFE_KEYS}
-                    realm_db.set_settings("speech", safe)
-                    _write_config_file(_SPEECH_CONFIG, safe, _SPEECH_SAFE_KEYS)
-                if "oracle" in req:
-                    oracle = realm_db.get_persona("scrying-pool") or {}
-                    for k in ("model", "reasoning_effort", "voice", "system_prompt"):
-                        if k in req["oracle"]:
-                            oracle[k] = req["oracle"][k]
-                    realm_db.set_persona("scrying-pool", oracle)
-                    # Write-through to personas.json
-                    personas = realm_db.get_personas()
-                    with open(PERSONAS_FILE, "w") as f:
-                        json.dump(personas, f, indent=2)
-                self._json_response({"ok": True})
-            except Exception as e:
-                self._json_response({"error": str(e)}, 500)
-
-        elif self.path == "/settings":
-            try:
-                req = json.loads(body)
-                realm_db.set_settings("ui", req)
-                self._json_response({"ok": True})
-            except Exception as e:
-                self._json_response({"error": str(e)}, 500)
-
-        elif self.path.startswith("/wled/") and self.path.endswith("/state"):
-            # WLED control: POST /wled/{node_id}/state
-            try:
-                parts = self.path.split("/")
-                node_id = parts[2]
-                req = json.loads(body)
-                result = wled_bridge.set_wled_state(
-                    node_id,
-                    on=req.get("on"),
-                    brightness=req.get("bri"),
-                    effect=req.get("fx")
-                )
-                self._json_response(result)
-            except Exception as e:
-                self._json_response({"error": str(e)}, 500)
-
-        elif self.path == "/wol":
-            # Wake-on-LAN: POST /wol with {mac, ip}
-            try:
-                req = json.loads(body)
-                mac = req.get("mac", "").replace(":", "").replace("-", "").lower()
-                if len(mac) != 12:
-                    self._json_response({"error": "Invalid MAC address"}, 400)
-                    return
-                # Build magic packet: 6 x 0xFF + 16 x MAC
-                mac_bytes = bytes.fromhex(mac)
-                magic = b'\xff' * 6 + mac_bytes * 16
-                # Send via UDP broadcast
-                import socket
-                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-                # Send to broadcast on port 9
-                sock.sendto(magic, ("255.255.255.255", 9))
-                # Also send to subnet broadcast if IP provided
-                if req.get("ip"):
-                    ip_parts = req["ip"].rsplit(".", 1)
-                    if len(ip_parts) == 2:
-                        subnet_broadcast = ip_parts[0] + ".255"
-                        sock.sendto(magic, (subnet_broadcast, 9))
-                sock.close()
-                self._json_response({"ok": True, "mac": mac, "sent": True})
-            except Exception as e:
-                self._json_response({"error": str(e)}, 500)
-
-        elif self.path == "/connections":
-            try:
-                req = json.loads(body)
-                conns = req.get("connections")
-                if conns is None:
-                    self._json_response({"error": "missing 'connections'"}, 400)
-                    return
-                realm_db.set_connections(conns)
-                realm_db.save_topology_json(TOPOLOGY_FILE)
-                self._json_response({"ok": True, "count": len(conns)})
-            except (json.JSONDecodeError, KeyError) as e:
-                self._json_response({"error": str(e)}, 400)
-
-        elif self.path == "/node":
-            try:
-                req = json.loads(body)
-                node_id = req.get("id", "").strip()
-                if not node_id:
-                    self._json_response({"error": "missing 'id'"}, 400)
-                    return
-                if req.get("_delete"):
-                    realm_db.delete_node(node_id)
-                elif "x" in req and "y" in req and len(req) <= 3:
-                    realm_db.update_node_position(node_id, req["x"], req["y"])
-                else:
-                    existing = realm_db.get_node(node_id)
-                    if existing:
-                        existing.update(req)
-                        realm_db.set_node(node_id, existing)
-                    else:
-                        realm_db.set_node(node_id, req)
-                realm_db.save_topology_json(TOPOLOGY_FILE)
-                self._json_response({"ok": True})
-            except (json.JSONDecodeError, KeyError) as e:
-                self._json_response({"error": str(e)}, 400)
-
-        elif self.path == "/topology":
-            try:
-                req = json.loads(body)
-                if "nodes" in req:
-                    for node in req["nodes"]:
-                        nid = node.get("id", "")
-                        if nid:
-                            realm_db.set_node(nid, node)
-                if "connections" in req:
-                    realm_db.set_connections(req["connections"])
-                if "regions" in req:
-                    realm_db.set_regions(req["regions"])
-                realm_db.save_topology_json(TOPOLOGY_FILE)
-                self._json_response({"ok": True})
-            except (json.JSONDecodeError, KeyError) as e:
-                self._json_response({"error": str(e)}, 400)
-
-        elif self.path == "/ssh":
-            try:
-                req = json.loads(body)
-                host = req.get("host", "")
-                command = req.get("command", "")
-                # Validate host against topology ssh fields
-                topo = _load_topology()
-                allowed = {n["ssh"] for n in topo.get("nodes", []) if n.get("ssh")}
-                if host not in allowed:
-                    self._json_response({"error": f"Host '{host}' not permitted"}, 403)
-                    return
-                if not command.strip():
-                    self._json_response({"error": "Empty command"}, 400)
-                    return
-                result = subprocess.run(
-                    ["ssh", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=no",
-                     host, command],
-                    capture_output=True, text=True, timeout=30
-                )
-                self._json_response({
-                    "output": result.stdout[-50000:] if result.stdout else "",
-                    "error": result.stderr[-5000:] if result.returncode != 0 else None,
-                    "exit_code": result.returncode,
-                })
-            except subprocess.TimeoutExpired:
-                self._json_response({"error": "Command timed out (30s)"}, 504)
-            except (json.JSONDecodeError, KeyError) as e:
-                self._json_response({"error": str(e)}, 400)
-
-        elif self.path == "/skills":
-            # Save a skill
-            try:
-                req = json.loads(body)
-                name = req.get("name", "").strip()
-                description = req.get("description", "").strip()
-                skill_body = req.get("body", "")
-                if not name:
-                    self._json_response({"error": "missing name"}, 400)
-                    return
-                # Sanitize name — alphanumeric + hyphens only
-                safe_name = "".join(c for c in name if c.isalnum() or c in "-_").strip("-_")
-                if not safe_name:
-                    self._json_response({"error": "invalid name"}, 400)
-                    return
-                skills_dir = os.path.join(os.path.dirname(__file__), ".claude", "skills", safe_name)
-                os.makedirs(skills_dir, exist_ok=True)
-                skill_file = os.path.join(skills_dir, "SKILL.md")
-                content = f"---\nname: {safe_name}\ndescription: {description}\n---\n\n{skill_body}\n"
-                with open(skill_file, "w") as f:
-                    f.write(content)
-                self._json_response({"ok": True, "name": safe_name})
-            except Exception as e:
-                self._json_response({"error": str(e)}, 500)
-
-        elif self.path == "/claude-md":
-            # Save CLAUDE.md
-            try:
-                req = json.loads(body)
-                content = req.get("content", "")
-                claude_md = os.path.join(os.path.dirname(__file__), "CLAUDE.md")
-                with open(claude_md, "w") as f:
-                    f.write(content)
-                self._json_response({"ok": True})
-            except Exception as e:
-                self._json_response({"error": str(e)}, 500)
-
-        else:
-            self.send_error(404)
+            return
+        self.send_error(404)
 
     def do_DELETE(self):
-        if self.path == "/settings":
-            try:
-                realm_db.set_settings("ui", {})  # Clear UI settings
-                self._json_response({"ok": True})
-            except Exception as e:
-                self._json_response({"error": str(e)}, 500)
-        else:
-            self._json_response({"error": "Not found"}, 404)
+        # Route table lookup — handles all core + plugin DELETE endpoints
+        match = _route_table.match("DELETE", self.path)
+        if match:
+            handler, params = match
+            result = handler(PluginRequest(self), params)
+            if result is not None:
+                self._json_response(result)
+            return
+        self._json_response({"error": "Not found"}, 404)
 
     def do_OPTIONS(self):
         self.send_response(200)
@@ -1369,5 +1557,29 @@ if __name__ == "__main__":
     wled_bridge.start_wled_bridge()
     event_generator.start_event_generator(push_event)
     latency_prober.start()
+
+    # ── Plugin system startup ──
+    # Plugins register into the same _route_table that core routes use (defined at module level)
+    import plugin_loader
+    print("Loading plugins...")
+    _plugin_registry = plugin_loader.load_plugins(
+        route_table=_route_table,
+        push_event_fn=push_event,
+        sse_broker=_sse_broker,
+    )
+    plugin_count = len(_plugin_registry.get_all_plugins())
+    if plugin_count:
+        print(f"Loaded {plugin_count} plugin(s)")
+        # Register plugin SSE sources with the broker
+        for source in _plugin_registry.get_sse_sources():
+            _sse_broker.register_source(SSESource(
+                name=source.plugin or source.event_type,
+                event_type=source.event_type,
+                collect_fn=source.getter_fn,
+                interval_seconds=source.interval,
+                burst=source.burst,
+                burst_priority=source.burst_priority,
+            ))
+
     _sse_broker.start()
     ThreadingHTTPServer(("", PORT), RealmHandler).serve_forever()

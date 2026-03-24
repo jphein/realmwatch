@@ -1,59 +1,119 @@
 """SSE broker -- background data collection, change detection, client push.
 
 Manages a set of connected SSE clients (thread-safe queue per client).
-A single background thread collects data from existing sources, hashes for
+A single background thread collects data from registered sources, hashes for
 changes, and pushes typed events only when data differs.
+
+Sources register via register_source(SSESource) -- core sources are registered
+internally at construction for backward compatibility; plugins add their own
+sources dynamically before start().
 """
 
 import hashlib
 import json
 import logging
+import math
 import queue
 import threading
 import time
+from dataclasses import dataclass, field
+from typing import Callable, Optional
 
 import realm_db
 from traffic_precompute import compute_traffic
 
 log = logging.getLogger(__name__)
 
+TICK_SECONDS = 5  # Base tick interval for the collect loop
+
+
+@dataclass
+class SSESource:
+    """A registered SSE data source.
+
+    Attributes:
+        name: Human-readable source identifier (e.g. "energy", "latency").
+        event_type: SSE event type string sent to clients.
+        collect_fn: Callable returning data dict (or None to skip).
+        interval_seconds: How often to collect, in seconds (minimum 5, ceiled to tick).
+        burst: Whether to include in initial burst to new clients.
+        burst_priority: Order within burst (lower = earlier). Core topology=1,
+            traffic=2, plugin sources typically 3-10, events=90, status=99.
+        burst_filter: Optional callable(data) -> bool to filter burst data
+            (e.g. energy skips if "error" in data).
+    """
+    name: str
+    event_type: str
+    collect_fn: Callable
+    interval_seconds: int = 30
+    burst: bool = False
+    burst_priority: int = 50
+    burst_filter: Optional[Callable] = None
+    # Computed at registration
+    _tick_interval: int = field(init=False, default=1)
+
+    def __post_init__(self):
+        # Minimum 5s, ceil to nearest tick
+        clamped = max(self.interval_seconds, TICK_SECONDS)
+        self._tick_interval = math.ceil(clamped / TICK_SECONDS)
+
 
 class SSEBroker:
-    def __init__(self, status_fn, energy_fn, latency_fn=None,
-                 firewall_fn=None, wifi_fn=None):
+    def __init__(self, status_fn):
         """Initialize broker.
 
         Args:
-            status_fn: callable returning the full status dict (map_server.build_status)
-            energy_fn: callable returning energy data dict (map_server._get_energy_data)
-            latency_fn: callable returning latency map dict (latency_prober.get_latency_map)
-            firewall_fn: callable returning firewall parsed dict (firewall_parser)
-            wifi_fn: callable returning AP info dict (ap_scanner.get_ap_info)
+            status_fn: callable returning the full status dict (map_server.build_status).
+                This is the only required source -- all others register via register_source().
         """
         self._status_fn = status_fn
-        self._energy_fn = energy_fn
-        self._latency_fn = latency_fn
-        self._firewall_fn = firewall_fn
-        self._wifi_fn = wifi_fn
         self._clients = []  # list of queue.Queue
         self._lock = threading.Lock()
         self._hashes = {}  # {event_type: last_hash}
         self._last_event_ts = 0.0
         self._running = False
+        self._sources = []  # list of SSESource (plugin + migrated core sources)
+        self._sources_lock = threading.Lock()
+
+    # ── Source Registration ──
+
+    def register_source(self, source: SSESource):
+        """Register a data source for periodic collection and optional burst.
+
+        Must be called before start() for sources to participate in the collect loop.
+        Thread-safe for dynamic registration, but sources added after start() will
+        only take effect on the next tick.
+        """
+        source.__post_init__()  # Recompute _tick_interval in case interval was changed
+        with self._sources_lock:
+            # Replace existing source with same event_type
+            self._sources = [s for s in self._sources if s.event_type != source.event_type]
+            self._sources.append(source)
+        log.info("SSE source registered: %s (event=%s, interval=%ds, burst=%s priority=%d)",
+                 source.name, source.event_type, source.interval_seconds,
+                 source.burst, source.burst_priority)
+
+    def get_sources(self):
+        """Return a snapshot of registered sources (for introspection)."""
+        with self._sources_lock:
+            return list(self._sources)
+
+    # ── Client Management ──
 
     def add_client(self):
         """Register a new SSE client. Returns a Queue that receives (event_type, data_json) tuples.
-        Sends initial burst of ALL data types so browser is fully populated on connect.
+        Sends initial burst of data so browser is fully populated on connect.
 
-        Order matters: events BEFORE status so browser processes them in restore mode
-        (10-min bubble window). Status arrives last, switches to live mode and dismisses
-        the loading screen with everything already rendered.
+        Burst sequence:
+        1. Core: topology -> traffic (hardcoded, structural)
+        2. Registered sources with burst=True, ordered by burst_priority
+        3. Core: recent events -> status (status last = dismisses loading screen)
         """
         q = queue.Queue(maxsize=1000)
         _json = lambda d: json.dumps(d, separators=(',', ':'))
         topo_nodes = []
 
-        # ── Topology first (structural data, fast DB read) ──
+        # ── Phase 1: Topology (structural, always first) ──
         try:
             topo = realm_db.get_topology()
             topo_nodes = topo.get("nodes", [])
@@ -61,7 +121,7 @@ class SSEBroker:
         except Exception:
             log.warning("SSE burst: failed to send topology", exc_info=True)
 
-        # ── Traffic (RRD reads, reasonably fast) ──
+        # ── Phase 1b: Traffic (depends on topo_nodes) ──
         if topo_nodes:
             try:
                 traffic = compute_traffic(topo_nodes)
@@ -70,28 +130,24 @@ class SSEBroker:
             except Exception:
                 log.warning("SSE burst: failed to send traffic", exc_info=True)
 
-        # ── Energy ──
-        try:
-            energy = self._energy_fn()
-            if "error" not in energy:
-                q.put_nowait(("energy", _json(energy)))
-        except Exception:
-            log.warning("SSE burst: failed to send energy", exc_info=True)
-
-        # ── Latency (reads cached fping data, fast) ──
-        if self._latency_fn:
+        # ── Phase 2: Registered burst sources, ordered by priority ──
+        with self._sources_lock:
+            burst_sources = sorted(
+                [s for s in self._sources if s.burst],
+                key=lambda s: s.burst_priority
+            )
+        for source in burst_sources:
             try:
-                from latency_prober import get_latency_grouped
-                grouped = get_latency_grouped(topo_nodes)
-                if grouped:
-                    q.put_nowait(("latency", _json(grouped)))
+                data = source.collect_fn()
+                if data is None:
+                    continue
+                if source.burst_filter and not source.burst_filter(data):
+                    continue
+                q.put_nowait((source.event_type, _json(data)))
             except Exception:
-                log.warning("SSE burst: failed to send latency", exc_info=True)
+                log.warning("SSE burst: failed to send %s", source.name, exc_info=True)
 
-        # ── Firewall + WiFi SKIPPED in burst (may trigger slow SSH) ──
-        # These arrive on the regular collect loop (60s / 120s).
-
-        # ── Events BEFORE status (processed in restore mode → 10-min bubble window) ──
+        # ── Phase 3a: Events BEFORE status (processed in restore mode) ──
         # 15-min window covers BUBBLE_RESTORE_AGE (10 min) with margin.
         # 200-event cap protects queue capacity.
         try:
@@ -105,7 +161,7 @@ class SSEBroker:
         except Exception:
             log.warning("SSE burst: failed to send recent events", exc_info=True)
 
-        # ── Status LAST (flips to live mode + dismisses loading screen) ──
+        # ── Phase 3b: Status LAST (flips to live mode + dismisses loading screen) ──
         try:
             status = self._status_fn()
             q.put_nowait(("status", _json(status)))
@@ -123,6 +179,8 @@ class SSEBroker:
                 self._clients.remove(q)
             except ValueError:
                 pass
+
+    # ── Broadcasting ──
 
     def _broadcast(self, event_type, payload):
         """Send an event to all connected clients.
@@ -159,67 +217,49 @@ class SSEBroker:
         payload = json.dumps(data, separators=(',', ':'))
         self._broadcast(event_type, payload)
 
+    # ── Collect Loop ──
+
     def _collect_loop(self):
-        """Main background loop -- runs every 5s, checks for changes, pushes events."""
+        """Main background loop -- runs every 5s, checks for changes, pushes events.
+
+        Core sources (topology, status, traffic, events) are hardcoded here for
+        performance and ordering guarantees. Registered sources run after core,
+        respecting their configured intervals.
+        """
         tick = 0
         topo_nodes = []
         while self._running:
             try:
-                # -- Topology: every 12th tick (60s) — first so topo_nodes is populated --
+                # -- Core: Topology every 12th tick (60s) — first so topo_nodes is populated --
                 if tick % 12 == 0:
                     topo = realm_db.get_topology()
                     topo_nodes = topo.get("nodes", [])
                     self._check_and_push("topology", topo)
 
-                # -- Status: every 2nd tick (10s) --
+                # -- Core: Status every 2nd tick (10s) --
                 if tick % 2 == 0:
                     status = self._status_fn()
                     self._check_and_push("status", status)
 
-                # -- Traffic: every tick (5s) --
+                # -- Core: Traffic every tick (5s) --
                 if topo_nodes:
                     traffic = compute_traffic(topo_nodes)
                     if traffic:
                         self._check_and_push("traffic", traffic)
 
-                # -- Energy: every 6th tick (30s) --
-                if tick % 6 == 0:
-                    try:
-                        energy = self._energy_fn()
-                        if "error" not in energy:
-                            self._check_and_push("energy", energy)
-                    except Exception:
-                        pass
+                # -- Registered sources (plugins + migrated core like energy, latency, etc.) --
+                with self._sources_lock:
+                    sources_snapshot = list(self._sources)
+                for source in sources_snapshot:
+                    if source._tick_interval > 0 and tick % source._tick_interval == 0:
+                        try:
+                            data = source.collect_fn()
+                            if data:
+                                self._check_and_push(source.event_type, data)
+                        except Exception:
+                            log.debug("SSE source %s collect error", source.name, exc_info=True)
 
-                # -- Latency: every 6th tick (30s) — send pre-grouped data --
-                if tick % 6 == 0 and self._latency_fn:
-                    try:
-                        from latency_prober import get_latency_grouped
-                        grouped = get_latency_grouped(topo_nodes)
-                        if grouped:
-                            self._check_and_push("latency", grouped)
-                    except Exception:
-                        pass
-
-                # -- Firewall: every 12th tick (60s) — matches previous client poll --
-                if tick % 12 == 0 and self._firewall_fn:
-                    try:
-                        fw = self._firewall_fn()
-                        if fw:
-                            self._check_and_push("firewall", fw)
-                    except Exception:
-                        pass
-
-                # -- WiFi APs: every 24th tick (120s) — matches previous client poll --
-                if tick % 24 == 0 and self._wifi_fn:
-                    try:
-                        wifi = self._wifi_fn()
-                        if wifi:
-                            self._check_and_push("wifi", wifi)
-                    except Exception:
-                        pass
-
-                # -- Events: every tick (last, so structural data gets priority) --
+                # -- Core: Events every tick (last, so structural data gets priority) --
                 events = realm_db.get_events_since(self._last_event_ts)
                 for evt in events:
                     self._last_event_ts = max(self._last_event_ts, evt.get("ts", 0))
@@ -231,7 +271,7 @@ class SSEBroker:
                 traceback.print_exc()
 
             tick += 1
-            time.sleep(5)
+            time.sleep(TICK_SECONDS)
 
     def start(self):
         """Start the background collection thread."""
@@ -239,6 +279,7 @@ class SSEBroker:
             return
         self._running = True
         self._last_event_ts = time.time()  # Only collect NEW events; burst handles replay
+        log.info("SSE broker starting with %d registered sources", len(self._sources))
         t = threading.Thread(target=self._collect_loop, daemon=True, name="sse-broker")
         t.start()
 

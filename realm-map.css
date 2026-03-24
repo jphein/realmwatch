@@ -2668,6 +2668,7 @@
       0 4px 24px rgba(0,0,0,0.45),
       inset 0 1px 0 rgba(212,197,160,0.05);
     --panel-accent: rgba(240,216,144,0.5);
+    contain: layout style;
   }
   .panel::before {
     content: '';
@@ -7792,9 +7793,11 @@ body.perf-low .conjure-orbit-ring { animation: none; }
 }
 .panel-unsealing {
   animation: panelUnseal 400ms cubic-bezier(0.34,1.56,0.64,1) forwards;
+  will-change: transform, opacity;
 }
 .panel-sealing {
   animation: panelSeal 300ms ease-in forwards;
+  will-change: transform, opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {
