@@ -212,6 +212,60 @@ if (_syncBtn) {
   });
 }
 
+// ── Delegated event handlers on quest log body (avoids per-entry listeners) ──
+if (_logBody) {
+  // Click entry to navigate to node and open oracle chat
+  _logBody.addEventListener('click', (e) => {
+    // Dismiss button
+    const dismissBtn = e.target.closest('.panel-close');
+    if (dismissBtn) {
+      e.stopPropagation();
+      const entry = dismissBtn.closest('.log-entry');
+      if (!entry) return;
+      entry.classList.add('log-entry-dismiss');
+      const evtText = entry.dataset.evtText;
+      const evtType = entry.dataset.evtType;
+      if (evtText) {
+        for (const b of _activeBubbles) {
+          if (b.querySelector('.bubble-text')?.textContent?.includes(evtText)) {
+            _dismissBubble(b);
+            break;
+          }
+        }
+        if (!_dismissedQuests.has(evtText)) {
+          _dismissedQuests.add(evtText);
+          _saveDismissed();
+        }
+        if (evtType === 'quest') {
+          fetch('/quest-delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: evtText }) }).catch(() => {});
+        }
+      }
+      entry.addEventListener('animationend', () => {
+        entry.remove();
+        if (evtType === 'quest' && evtText) _questTexts.delete(evtText);
+        logCount = Math.max(0, logCount - 1);
+        _logCounter.textContent = `${logCount} entries`;
+        const emptyEl = _logBody.querySelector('.panel-empty');
+        if (emptyEl) {
+          const hasVisible = _logBody.querySelector('.log-entry:not([style*="display: none"])');
+          emptyEl.style.display = hasVisible ? 'none' : '';
+        }
+      });
+      return;
+    }
+    // Quest checkbox handled by per-entry listener (needs closure state)
+    if (e.target.closest('.quest-check')) return;
+    // Navigate to node on entry click
+    const entry = e.target.closest('.log-entry');
+    if (!entry) return;
+    const nodeId = entry.dataset.nodeId;
+    if (!nodeId) return;
+    const tn = _nodeMap.get(nodeId);
+    if (tn) panToNode(tn.x, tn.y);
+    _openNodeChat(nodeId, entry.dataset.evtText, false);
+  });
+}
+
 // Set-based quest dedup — avoids O(n) DOM iteration per addLogEntry call
 const _questTexts = new Set();
 
@@ -251,55 +305,12 @@ export function addLogEntry(evt, nodeEl) {
   }
 
   const communeHint = evt.node ? '<span class="log-commune" title="Click to commune with this node">\u{1F52E}</span>' : '';
-  entry.innerHTML = `<button class="panel-close panel-close--danger" title="Dismiss">\u2715</button><div class="log-time">${timeStr}</div><div class="log-speaker">${name}${communeHint}</div>${textContent}`;  // log entry — event text from trusted server
-  entry._nodeId = evt.node;
-
-  // Click entry to navigate to node and open oracle chat
-  entry.addEventListener('click', (e) => {
-    // Don't navigate if clicking dismiss button or quest checkbox
-    if (e.target.closest('.panel-close') || e.target.closest('.quest-check')) return;
-    const nodeId = entry._nodeId;
-    if (!nodeId) return;
-    const tn = _nodeMap.get(nodeId);
-    if (tn) panToNode(tn.x, tn.y);
-    _openNodeChat(nodeId, evt.text, false);
-  });
-
-  // Dismiss button — also removes matching speech bubble and persists
-  entry.querySelector('.panel-close').addEventListener('click', (e) => {
-    e.stopPropagation();
-    entry.classList.add('log-entry-dismiss');
-    if (evt.text) {
-      // Dismiss matching bubble
-      for (const b of _activeBubbles) {
-        if (b.querySelector('.bubble-text')?.textContent?.includes(evt.text)) {
-          _dismissBubble(b);
-          break;
-        }
-      }
-      // Persist dismissal
-      if (!_dismissedQuests.has(evt.text)) {
-        _dismissedQuests.add(evt.text);
-        _saveDismissed();
-      }
-      // Delete quest from DB
-      if (evt.type === 'quest') {
-        fetch('/quest-delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: evt.text }) }).catch(() => {});
-      }
-    }
-    entry.addEventListener('animationend', () => {
-      entry.remove();
-      if (evt.type === 'quest' && evt.text) _questTexts.delete(evt.text);
-      logCount = Math.max(0, logCount - 1);
-      _logCounter.textContent = `${logCount} entries`;
-      // Show empty state if no visible entries remain
-      const emptyEl = body.querySelector('.panel-empty');
-      if (emptyEl) {
-        const hasVisible = body.querySelector('.log-entry:not([style*="display: none"])');
-        emptyEl.style.display = hasVisible ? 'none' : '';
-      }
-    });
-  });
+  // trusted server data — event text from realm server, not user input
+  entry.innerHTML = `<button class="panel-close panel-close--danger" title="Dismiss">\u2715</button><div class="log-time">${timeStr}</div><div class="log-speaker">${name}${communeHint}</div>${textContent}`;
+  // Store event data for delegated handlers (avoids per-entry listeners)
+  entry.dataset.nodeId = evt.node || '';
+  entry.dataset.evtText = evt.text || '';
+  entry.dataset.evtType = evt.type || 'speech';
 
   // Quest checkbox toggle — persists completed state + Notion sync
   const check = entry.querySelector('.quest-check');

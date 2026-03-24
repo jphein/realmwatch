@@ -674,8 +674,12 @@ canvas.addEventListener('wheel', e => {
 
 // Init -- centerMap sets default; restoreSettings (later) overrides with saved zoom/pan
 centerMap();
-// On resize, preserve current zoom -- just refresh the canvas rect cache
-window.addEventListener('resize', () => { _canvasRect = canvas.getBoundingClientRect(); });
+// On resize, preserve current zoom -- just refresh the canvas rect cache (debounced)
+let _resizeTimer = 0;
+window.addEventListener('resize', () => {
+  if (_resizeTimer) return;
+  _resizeTimer = setTimeout(() => { _resizeTimer = 0; _canvasRect = canvas.getBoundingClientRect(); }, 100);
+});
 
 // ── Draggable Map Nodes (mouse + touch) ──
 // Late-bound callback for openPersonaEditor (set by app.js to avoid circular dep)

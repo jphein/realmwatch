@@ -1,0 +1,159 @@
+/* -- Ward Stones Firewall Plugin Panel Styles -- */
+
+.firewall-body {
+  padding: 6px 10px 8px;
+  flex: 1 1 0;
+  overflow-y: auto;
+  min-height: 0;
+}
+.fw-section-title {
+  font-size: 8px;
+  color: rgba(100,200,160,0.5);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin: 6px 0 4px;
+}
+.fw-vlan {
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(80,140,100,0.1);
+}
+.fw-vlan:last-of-type { border-bottom: none; }
+.fw-vlan-secondary { opacity: 0.8; }
+.fw-vlan-wan { border-left: 2px solid rgba(255,100,130,0.3); padding-left: 4px; }
+.fw-vlan-reserved { opacity: 0.5; padding: 3px 0; }
+.fw-vlan-reserved .fw-vlan-name { font-style: italic; }
+.fw-vlan-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.fw-vlan-icon {
+  font-size: 11px;
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.fw-vlan-name {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  color: #90c8a0;
+  flex: 1;
+}
+.fw-vlan-tag {
+  font-size: 7px;
+  color: rgba(120,180,140,0.5);
+  background: rgba(60,120,80,0.15);
+  padding: 1px 4px;
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+}
+.fw-vlan-status {
+  font-size: 7px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+}
+.fw-status-active    { color: rgba(100,220,140,0.9); border: 1px solid rgba(100,220,140,0.3); }
+.fw-status-planned   { color: rgba(100,180,220,0.9); border: 1px solid rgba(100,180,220,0.3); }
+.fw-status-standby   { color: rgba(220,180,100,0.9); border: 1px solid rgba(220,180,100,0.3); }
+.fw-status-inactive  { color: rgba(160,140,120,0.6); border: 1px solid rgba(160,140,120,0.2); }
+.fw-status-reserved  { color: rgba(140,140,160,0.6); border: 1px solid rgba(140,140,160,0.2); }
+.fw-status-deprecated { color: rgba(180,100,100,0.6); border: 1px solid rgba(180,100,100,0.2); }
+.fw-vlan-desc {
+  font-size: 8px;
+  color: rgba(120,180,140,0.4);
+  margin: 1px 0 2px 21px;
+}
+.fw-vlan-traffic {
+  display: flex;
+  gap: 10px;
+  margin-left: 21px;
+  font-size: 8px;
+}
+.fw-rx { color: rgba(100,200,140,0.8); }
+.fw-tx { color: rgba(200,140,100,0.8); }
+.fw-divider {
+  height: 1px;
+  background: rgba(80,140,100,0.15);
+  margin: 6px 0;
+}
+.fw-gates {
+  display: flex;
+  gap: 12px;
+  padding: 2px 0;
+}
+.fw-gate {
+  display: flex; gap: 6px; align-items: center;
+}
+.fw-gate-label {
+  font-size: 8px;
+  color: rgba(120,180,140,0.5);
+}
+.fw-gate-val {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  color: #a0d8b0;
+}
+.fw-zone-stats {
+  font-size: 8px;
+  margin-left: 21px;
+  margin-top: 1px;
+}
+.fw-stat-accept { color: rgba(120,180,140,0.8); }
+.fw-stat-reject { color: rgba(220,100,80,0.8); }
+.fw-dns-badge {
+  font-size: 7px;
+  color: rgba(100,200,180,0.8);
+  background: rgba(60,140,120,0.2);
+  border: 1px solid rgba(100,200,180,0.3);
+  padding: 0 3px;
+  border-radius: 3px;
+  margin-left: 4px;
+}
+.fw-blocks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin: 2px 0 0 21px;
+}
+.fw-block-ip {
+  font-size: 7px;
+  color: rgba(220,120,100,0.8);
+  background: rgba(140,60,60,0.15);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+.fw-block-inactive {
+  color: rgba(160,140,120,0.5);
+  background: rgba(100,80,60,0.1);
+}
+.fw-reach {
+  font-size: 8px;
+  color: rgba(140,200,160,0.6);
+  margin: 2px 0 0 21px;
+}
+.fw-suggestions {
+  padding-top: 4px;
+}
+.fw-sug {
+  font-size: 8px;
+  padding: 3px 4px;
+  border-radius: 3px;
+  margin-bottom: 2px;
+  display: flex;
+  align-items: flex-start;
+}
+.fw-sug-icon { margin-right: 4px; }
+.fw-sug-info {
+  background: rgba(60,120,140,0.1);
+  color: rgba(120,200,220,0.8);
+}
+.fw-sug-warn {
+  background: rgba(140,120,60,0.1);
+  color: rgba(220,200,100,0.8);
+}
+.fw-sug-critical {
+  background: rgba(140,60,60,0.15);
+  color: rgba(240,120,100,0.9);
+}

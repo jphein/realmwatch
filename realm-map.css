@@ -784,6 +784,7 @@
     background: radial-gradient(circle, rgba(255,248,220,0.95) 0%, rgba(240,216,144,0) 70%);
     animation: sparkle-twinkle var(--sparkle-dur, 3s) ease-in-out forwards;
     pointer-events: none;
+    will-change: transform, opacity;
   }
   @keyframes sparkle-twinkle {
     0%   { opacity: 0; transform: scale(0) rotate(0deg); }
@@ -2313,6 +2314,7 @@
   /* Only animate when traffic is active (class added by JS) */
   .conn-line.conn-animated {
     animation: dashFlow var(--speed, 20s) linear infinite var(--dir, normal);
+    transform: translateZ(0);
   }
   /* ── VLAN Ley-Line Hues ── */
   .conn-line[data-vlan="3"]  { --vr:180; --vg:120; --vb:100; } /* Backup WAN — Ember Brown */
@@ -2668,7 +2670,7 @@
       0 4px 24px rgba(0,0,0,0.45),
       inset 0 1px 0 rgba(212,197,160,0.05);
     --panel-accent: rgba(240,216,144,0.5);
-    contain: layout style;
+    contain: layout style paint;
   }
   .panel::before {
     content: '';
@@ -6332,6 +6334,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    content-visibility: auto;
+    contain-intrinsic-size: 50px 50px;
     background: radial-gradient(circle at 30% 30%,
       rgba(80, 60, 120, 0.95),
       rgba(40, 30, 60, 0.95)) !important;

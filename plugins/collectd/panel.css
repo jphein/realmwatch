@@ -1,0 +1,144 @@
+/* -- Realm Census Plugin Panel Styles -- */
+
+#node-list-panel {
+  --panel-accent: rgba(180,160,120,0.5);
+}
+
+.census-header {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  gap: 6px;
+}
+
+.census-count {
+  font-size: 9px;
+  color: rgba(140,180,220,0.6);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.census-body {
+  padding: 6px 10px 8px;
+  flex: 1 1 0;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* Group headings */
+.nl-group {
+  margin-bottom: 4px;
+}
+
+.nl-group-title {
+  font-size: 8px;
+  color: rgba(180,160,120,0.6);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin: 8px 0 3px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid rgba(180,160,120,0.15);
+  font-family: 'Cinzel', serif;
+}
+
+.nl-group:first-child .nl-group-title {
+  margin-top: 0;
+}
+
+/* Node rows */
+.nl-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.nl-item:hover {
+  background: rgba(180,160,120,0.08);
+}
+
+/* Status dot */
+.nl-status {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.4s ease, box-shadow 0.4s ease;
+}
+
+.nl-status.online {
+  background: #40c060;
+  box-shadow: 0 0 4px rgba(64,192,96,0.5);
+}
+
+.nl-status.offline {
+  background: #c04040;
+  box-shadow: 0 0 4px rgba(192,64,64,0.4);
+}
+
+.nl-status.unknown {
+  background: rgba(100,120,140,0.4);
+}
+
+/* Node icon */
+.nl-icon {
+  font-size: 13px;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* Node info block */
+.nl-info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.nl-name {
+  font-size: 10px;
+  color: #b0c8e0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'Cinzel', serif;
+}
+
+.nl-sub {
+  font-size: 8px;
+  color: rgba(140,160,180,0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Highlight animation for clicked nodes */
+.node-highlight {
+  animation: census-highlight-pulse 2s ease-out;
+}
+
+@keyframes census-highlight-pulse {
+  0% { filter: brightness(1.8) drop-shadow(0 0 8px rgba(240,216,144,0.7)); }
+  100% { filter: brightness(1) drop-shadow(0 0 0 transparent); }
+}
+
+/* Scrollbar styling */
+.census-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.census-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.census-body::-webkit-scrollbar-thumb {
+  background: rgba(180,160,120,0.2);
+  border-radius: 2px;
+}
+
+.census-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(180,160,120,0.4);
+}

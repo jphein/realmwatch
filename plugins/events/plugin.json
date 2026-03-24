@@ -1,0 +1,13 @@
+{
+  "name": "events",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Event generator — monitors collectd metrics and Home Assistant states, fires themed alerts when thresholds are crossed.",
+  "fantasy_name": "Sentinel Wards",
+  "icon": "\u26a1",
+
+  "python": {
+    "module": "plugin",
+    "entry": "setup"
+  }
+}

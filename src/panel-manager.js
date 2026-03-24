@@ -498,7 +498,11 @@ function _createParticleCanvas() {
   _particleCanvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9998;';
   document.body.appendChild(_particleCanvas);
   _resizeParticleCanvas();
-  window.addEventListener('resize', _resizeParticleCanvas);
+  let _particleResizeTimer = 0;
+  window.addEventListener('resize', () => {
+    if (_particleResizeTimer) return;
+    _particleResizeTimer = setTimeout(() => { _particleResizeTimer = 0; _resizeParticleCanvas(); }, 100);
+  });
 }
 
 function _resizeParticleCanvas() {

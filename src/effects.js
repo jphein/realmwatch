@@ -159,7 +159,11 @@ function resizeMoteCanvas() {
   moteCanvas.height = window.innerHeight;
 }
 resizeMoteCanvas();
-window.addEventListener('resize', resizeMoteCanvas);
+let _moteResizeTimer = 0;
+window.addEventListener('resize', () => {
+  if (_moteResizeTimer) return;
+  _moteResizeTimer = setTimeout(() => { _moteResizeTimer = 0; resizeMoteCanvas(); }, 100);
+});
 
 export function spawnMote(x, y, color) {
   const angle = Math.random() * Math.PI * 2;
@@ -296,7 +300,11 @@ const _sparkleRectWorld = document.getElementById('map-world');
 function _updateSparkleRect() {
   if (_sparkleRectWorld) _sparkleRect = _sparkleRectWorld.getBoundingClientRect();
 }
-window.addEventListener('resize', _updateSparkleRect);
+let _sparkleResizeTimer = 0;
+window.addEventListener('resize', () => {
+  if (_sparkleResizeTimer) return;
+  _sparkleResizeTimer = setTimeout(() => { _sparkleResizeTimer = 0; _updateSparkleRect(); }, 100);
+});
 _updateSparkleRect();
 
 // Separate FPS tracking loop — only runs while the FPS overlay is visible

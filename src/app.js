@@ -357,9 +357,10 @@ export const getSseConnected = () => _sseConnected;
   _connect();
 })();
 
-initScanner();
-initSkills();
-initForestTheme();
+// Defer non-critical init to idle time — SSE connection is the priority
+const _deferInit = window.requestIdleCallback || (cb => setTimeout(cb, 50));
+_deferInit(() => { initScanner(); initSkills(); });
+_deferInit(() => { initForestTheme(); });
 
 // ── Initialize RealmAPI for plugins ──
 initRealmAPI({

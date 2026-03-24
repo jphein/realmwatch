@@ -1,0 +1,24 @@
+{
+  "name": "wled",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "WLED bridge — polls WLED LED devices for stats, provides control API for setting state.",
+  "fantasy_name": "Prismatic Lights",
+  "icon": "\ud83d\udca1",
+
+  "python": {
+    "module": "plugin",
+    "entry": "setup"
+  },
+
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/wled/<node_id>/state",
+      "handler": "handle_wled_state",
+      "raw_path": true
+    }
+  ],
+
+  "sse_types": []
+}

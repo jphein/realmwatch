@@ -1,0 +1,22 @@
+{
+  "name": "herald",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Herald daemon manager — starts/stops the realm herald subprocess that generates themed node speech events.",
+  "fantasy_name": "Town Crier",
+  "icon": "\ud83d\udcef",
+
+  "python": {
+    "module": "plugin",
+    "entry": "setup"
+  },
+
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/herald",
+      "handler": "handle_herald",
+      "raw_path": true
+    }
+  ]
+}

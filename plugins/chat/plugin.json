@@ -1,0 +1,40 @@
+{
+  "name": "chat",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Azure AI chat integration — session-based chat with o4-mini, context-aware node discussions.",
+  "fantasy_name": "Oracle Link",
+  "icon": "\ud83d\udcac",
+
+  "python": {
+    "module": "plugin",
+    "entry": "setup"
+  },
+
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/chat",
+      "handler": "handle_chat",
+      "raw_path": true
+    },
+    {
+      "method": "POST",
+      "path": "/chat/clear",
+      "handler": "handle_chat_clear",
+      "raw_path": true
+    },
+    {
+      "method": "GET",
+      "path": "/chat/sessions",
+      "handler": "handle_sessions",
+      "raw_path": true
+    },
+    {
+      "method": "GET",
+      "path": "/chat/history",
+      "handler": "handle_history",
+      "raw_path": true
+    }
+  ]
+}

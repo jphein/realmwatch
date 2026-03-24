@@ -24,19 +24,8 @@ import queue
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from socketserver import ThreadingMixIn
 from engine import RealmEngine
-from collectd_reader import get_all_summaries, get_host_summary
-import notion_sync
-import ap_scanner
-import codex_sync
-import ha_bridge
-import wled_bridge
 import node_roles
 import realm_db
-import event_generator
-import chat_bridge
-import asyncio
-import latency_prober
-import firewall_parser
 
 engine = RealmEngine()
 PORT = int(os.environ.get("REALM_PORT", 80))
@@ -44,19 +33,8 @@ _server_start_time = time.time()
 MAP_DIR = os.path.dirname(os.path.abspath(__file__))
 PERSONAS_FILE = os.path.join(MAP_DIR, "personas.json")
 TOPOLOGY_FILE = os.path.join(MAP_DIR, "topology.json")
-VENV_PYTHON = os.path.join(MAP_DIR, "venv", "bin", "python3")
 _CHAT_CONFIG = os.path.expanduser("~/.config/azure-chat-assistant/config.json")
 _SPEECH_CONFIG = os.path.expanduser("~/.config/speech-to-cli/config.json")
-
-# ── Persistent asyncio event loop (avoids creating/destroying per request) ──
-_async_loop = asyncio.new_event_loop()
-
-def _start_async_loop():
-    asyncio.set_event_loop(_async_loop)
-    _async_loop.run_forever()
-
-_async_thread = threading.Thread(target=_start_async_loop, daemon=True)
-_async_thread.start()
 
 # ── Shared thread pool for /resolve-url (avoids creating executor per request) ──
 from concurrent.futures import ThreadPoolExecutor
@@ -75,82 +53,10 @@ _STATUS_TTL = 5  # seconds
 _topo_cache = {"data": None, "mtime": 0}
 _topo_cache_lock = threading.Lock()
 
-# ── Energy data TTL cache ──
-_energy_cache = {"data": None, "ts": 0}
-_energy_cache_lock = threading.Lock()
-_ENERGY_TTL = 30  # seconds
-
 # ── Sublabel host lookup cache ──
 _sublabel_host_map = {"map": {}, "topo_mtime": 0, "collectd_keys": frozenset()}
 _sublabel_host_lock = threading.Lock()
 
-
-# ── Herald process management ──
-_herald_proc = None
-
-
-def _herald_start(interval=90):
-    """Start the herald daemon as a subprocess."""
-    global _herald_proc
-    _herald_stop()
-    _herald_proc = subprocess.Popen(
-        [VENV_PYTHON, "realm_herald.py", "--interval", str(interval)],
-        cwd=MAP_DIR, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        start_new_session=True,
-    )
-    return _herald_proc.pid
-
-
-def _herald_stop():
-    """Stop the herald daemon."""
-    global _herald_proc
-    if _herald_proc and _herald_proc.poll() is None:
-        _herald_proc.terminate()
-        try:
-            _herald_proc.wait(timeout=3)
-        except subprocess.TimeoutExpired:
-            _herald_proc.kill()
-    _herald_proc = None
-    # Also kill by script name
-    try:
-        out = subprocess.check_output(
-            ["pgrep", "-f", "realm_herald.py"], text=True, timeout=3
-        ).strip()
-        for pid in (int(p) for p in out.split("\n") if p.strip()):
-            try:
-                os.kill(pid, signal.SIGTERM)
-            except OSError:
-                pass
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-        pass
-
-
-def _herald_status():
-    """Check herald daemon status."""
-    running = _herald_proc is not None and _herald_proc.poll() is None
-    pids = []
-    try:
-        out = subprocess.check_output(
-            ["pgrep", "-f", "realm_herald.py"], text=True, timeout=3
-        ).strip()
-        pids = [int(p) for p in out.split("\n") if p.strip()]
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-        pass
-    return {"running": running or len(pids) > 0, "pids": pids}
-
-
-def _herald_once():
-    """Run a single herald round (blocking, returns output)."""
-    try:
-        out = subprocess.check_output(
-            [VENV_PYTHON, "realm_herald.py", "--once"],
-            cwd=MAP_DIR, text=True, timeout=15, stderr=subprocess.STDOUT,
-        )
-        return {"ok": True, "output": out}
-    except subprocess.TimeoutExpired:
-        return {"error": "Herald round timed out (15s)"}
-    except subprocess.CalledProcessError as e:
-        return {"error": f"Herald round failed: {e}"}
 
 # Settings exposed to UI (keys safe to read/write — no secrets)
 _CHAT_SAFE_KEYS = {"deployment", "model", "model_type", "max_completion_tokens", "temperature",
@@ -199,67 +105,6 @@ def _load_topology():
         _topo_cache["data"] = data
         _topo_cache["mtime"] = mtime
     return data
-
-
-def _get_energy_data():
-    """Fetch energy-related data from HA via ha_bridge (30s TTL cache)."""
-    now = time.time()
-    with _energy_cache_lock:
-        if _energy_cache["data"] is not None and (now - _energy_cache["ts"]) < _ENERGY_TTL:
-            return _energy_cache["data"]
-
-    import ssl
-    import urllib.request
-
-    ha_url = os.environ.get("HA_URL", "https://10.0.6.108:8123")
-    ha_token = os.environ.get("HA_TOKEN", "")
-    if not ha_token:
-        return {"error": "No HA_TOKEN"}
-
-    ssl_ctx = ssl.create_default_context()
-    ssl_ctx.check_hostname = False
-    ssl_ctx.verify_mode = ssl.CERT_NONE
-
-    try:
-        req = urllib.request.Request(
-            f"{ha_url}/api/states",
-            headers={"Authorization": f"Bearer {ha_token}"},
-        )
-        resp = urllib.request.urlopen(req, context=ssl_ctx, timeout=10)
-        states = {s["entity_id"]: s for s in json.loads(resp.read())}
-    except Exception as e:
-        return {"error": str(e)}
-
-    def num(eid):
-        s = states.get(eid, {}).get("state")
-        if s in (None, "unavailable", "unknown"):
-            return None
-        try:
-            return float(s)
-        except (ValueError, TypeError):
-            return None
-
-    result = {
-        "solar_kw": num("sensor.pv_power"),  # W
-        "solar_today_kwh": num("sensor.today_s_pv_generation"),
-        "solar_total_kwh": num("sensor.total_pv_generation"),
-        "battery_soc": num("sensor.battery_state_of_charge"),
-        "battery_power": num("sensor.battery_power"),  # W, negative=charging
-        "battery_voltage": num("sensor.battery_voltage"),
-        "grid_power": num("sensor.grid_power"),  # kW
-        "grid_import_kwh": num("sensor.total_energy_import"),
-        "grid_export_kwh": num("sensor.total_energy_export"),
-        "house_load": num("sensor.house_consumption"),  # W
-        "today_load_kwh": num("sensor.today_load"),
-        "goodwe_kw": num("sensor.goodwe_kw"),
-        "yurt_kw": num("sensor.yurt_consumption"),
-        "inverter_temp_f": num("sensor.inverter_temperature_module"),
-        "ts": time.time(),
-    }
-    with _energy_cache_lock:
-        _energy_cache["data"] = result
-        _energy_cache["ts"] = now
-    return result
 
 
 def _save_personas(data):
@@ -374,20 +219,32 @@ def _compute_sublabels(status, topo_nodes):
 
 
 def _build_status_fresh():
-    """Build the full status blob (internal, always fresh)."""
+    """Build the full status blob (internal, always fresh).
+
+    Plugin status providers (ha, wled, collectd, wifi) are merged in by the
+    plugin registry after load_plugins() — see __main__ block.
+    """
     status = engine.get_status()
     status["tailscale"] = engine.get_tailscale_status()
     status["adult"] = engine.adult_observation(status)
     status["host"] = engine.get_host_config()
-    status["collectd"] = get_all_summaries()
-    status["wifi"] = ap_scanner.get_wifi_signal()
-    status["ha"] = ha_bridge.get_ha_states()
-    status["wled"] = wled_bridge.get_wled_states()
     topo_nodes = _load_topology().get("nodes", [])
     status["roles"] = {n["id"]: node_roles.get_role(n["id"], n) for n in topo_nodes}
     status["groups"] = node_roles.get_ha_map()
-    # Update latency prober with current WiFi clients
-    latency_prober.set_wifi_nodes(status.get("wifi", {}))
+    # Merge plugin status providers (collectd, ha, wled, wifi, etc.)
+    if _plugin_registry:
+        for provider_fn, plugin_name in _plugin_registry.get_status_providers():
+            try:
+                extra = provider_fn()
+                if isinstance(extra, dict):
+                    status.update(extra)
+            except Exception:
+                pass
+    # Update latency prober with current WiFi clients (via plugin API)
+    if _plugin_registry:
+        lat_api = _plugin_registry.get_plugin_api("latency")
+        if lat_api and "set_wifi_nodes" in lat_api:
+            lat_api["set_wifi_nodes"](status.get("wifi", {}))
     # Pre-compute sublabels (saves client hostname matching + string formatting)
     status["sublabels"] = _compute_sublabels(status, topo_nodes)
     return status
@@ -406,64 +263,10 @@ def build_status():
     return data
 
 
-def _get_firewall_data():
-    """Get firewall data, refreshing cache via SSH if stale."""
-    cached = firewall_parser.get_cached()
-    if cached:
-        return cached
-    raw = engine._run_router_cmd("nft -j list ruleset")
-    if not raw:
-        return None
-    parsed = firewall_parser.parse_nft_json(raw)
-    if parsed:
-        firewall_parser.update_cache(parsed)
-    return parsed
-
 from sse_broker import SSEBroker, SSESource
 _sse_broker = SSEBroker(build_status)
 
-# Register core data sources that were previously hardcoded in the broker.
-# These will be migrated to plugins eventually; for now they register here.
-_sse_broker.register_source(SSESource(
-    name="energy",
-    event_type="energy",
-    collect_fn=_get_energy_data,
-    interval_seconds=30,
-    burst=True,
-    burst_priority=3,
-    burst_filter=lambda d: "error" not in d,
-))
-
-def _collect_latency():
-    from latency_prober import get_latency_grouped
-    topo_nodes = realm_db.get_topology().get("nodes", [])
-    return get_latency_grouped(topo_nodes)
-
-_sse_broker.register_source(SSESource(
-    name="latency",
-    event_type="latency",
-    collect_fn=_collect_latency,
-    interval_seconds=30,
-    burst=True,
-    burst_priority=4,
-))
-
-_sse_broker.register_source(SSESource(
-    name="firewall",
-    event_type="firewall",
-    collect_fn=_get_firewall_data,
-    interval_seconds=60,
-    burst=False,  # May trigger slow SSH — skip in burst
-))
-
-_sse_broker.register_source(SSESource(
-    name="wifi",
-    event_type="wifi",
-    collect_fn=ap_scanner.get_ap_info,
-    interval_seconds=120,
-    burst=False,  # May trigger slow SSH — skip in burst
-))
-
+# All SSE sources (energy, latency, firewall, wifi) now register via plugins.
 # Plugin system — initialized in __main__ after DB init
 _plugin_registry = None
 
@@ -487,21 +290,6 @@ def _h_get_status(req, params):
     return build_status()
 
 
-def _h_get_firewall(req, params):
-    cached = firewall_parser.get_cached()
-    if cached:
-        return cached
-    raw = engine._run_router_cmd("nft -j list ruleset")
-    if not raw:
-        req.respond({"error": "Cannot reach gatekeeper"}, 503)
-        return None
-    parsed = firewall_parser.parse_nft_json(raw)
-    if parsed:
-        firewall_parser.update_cache(parsed)
-        return parsed
-    req.respond({"error": "Failed to parse nft rules"}, 500)
-    return None
-
 def _h_get_quests(req, params):
     return realm_db.get_quests()
 
@@ -514,53 +302,11 @@ def _h_get_events(req, params):
         events = events[-limit:]
     return events
 
-def _h_get_notion_sync(req, params):
-    try:
-        if "force=1" in req.path:
-            notion_sync.force_resync()
-        result = notion_sync.sync_to_events()
-        if "error" in result:
-            req.respond(result, 503)
-            return None
-        for evt in result.get("events", []):
-            push_event(evt)
-        return result
-    except Exception as e:
-        req.respond({"error": str(e)}, 500)
-        return None
-
 def _h_get_personas(req, params):
     return _load_personas()
 
 def _h_get_topology(req, params):
     return _load_topology()
-
-def _h_get_scan(req, params):
-    return ap_scanner.scan_and_update()
-
-def _h_get_scan_status(req, params):
-    return ap_scanner.get_last_scan()
-
-def _h_get_scan_lldp(req, params):
-    links = ap_scanner.detect_ethernet_topology()
-    topo = _load_topology()
-    auto_switches = [n for n in topo.get("nodes", []) if n.get("_auto_switch")]
-    return {
-        "links": len(links),
-        "switches": len(auto_switches),
-        "connections": [
-            {"from": l["from_node"], "to": l["to_node"],
-             "type": l.get("protocol", "lldp")}
-            for l in links
-        ],
-        "cliques": [n["id"] for n in auto_switches],
-    }
-
-def _h_get_scan_wifi(req, params):
-    return ap_scanner.get_wifi_signal()
-
-def _h_get_wifi_aps(req, params):
-    return ap_scanner.get_ap_info()
 
 def _h_get_ping_ip(req, params):
     ip = params.get("ip", "")
@@ -602,66 +348,12 @@ def _h_get_config(req, params):
 def _h_get_settings(req, params):
     return realm_db.get_settings("ui")
 
-def _h_get_codex_sync(req, params):
-    try:
-        force = "force=1" in req.path
-        data = codex_sync.get_grouped() if not force else None
-        if force:
-            codex_sync.fetch_codex(force=True)
-            data = codex_sync.get_grouped()
-        return data
-    except Exception as e:
-        req.respond({"error": str(e)}, 500)
-        return None
-
-def _h_get_codex(req, params):
-    req.redirect("/codex/")
-    return None
-
-def _h_get_codex_index(req, params):
-    codex_path = os.path.join(MAP_DIR, "docs", "codex", "index.html")
-    if os.path.isfile(codex_path):
-        req._handler.path = "/docs/codex/index.html"
-        req._handler._serve_static_gzip()
-    else:
-        req._handler.send_error(404, "Codex not found")
-    return None
-
-def _h_get_energy(req, params):
-    return _get_energy_data()
-
-def _h_get_collectd(req, params):
-    qp = req.query_params
-    hostname = qp.get("host")
-    if hostname:
-        summary = get_host_summary(hostname)
-        return summary or {"error": f"No data for {hostname}"}
-    return get_all_summaries()
-
 def _h_get_observation(req, params):
     status = engine.get_status()
     return {
         "observation": engine.adult_observation(status),
         "status": status,
     }
-
-def _h_get_herald(req, params):
-    qp = req.query_params
-    action = qp.get("action", "status")
-    if action == "status":
-        return _herald_status()
-    elif action == "start":
-        interval = int(qp.get("interval", 90))
-        pid = _herald_start(interval)
-        return {"ok": True, "pid": pid, "interval": interval}
-    elif action == "stop":
-        _herald_stop()
-        return {"ok": True, "stopped": True}
-    elif action == "once":
-        return _herald_once()
-    else:
-        req.respond({"error": f"Unknown action: {action}"}, 400)
-        return None
 
 def _h_get_player(req, params):
     return realm_db.get_player_stats()
@@ -763,16 +455,6 @@ def _h_get_scripts(req, params):
                     pass
                 scripts.append({"name": f, "path": f"scripts/{f}", "description": desc})
     return {"scripts": scripts}
-
-def _h_get_chat_sessions(req, params):
-    sessions = chat_bridge.list_sessions()
-    return {"sessions": sessions, "current": chat_bridge.DEFAULT_SESSION}
-
-def _h_get_chat_history(req, params):
-    qp = req.query_params
-    session = qp.get("session")
-    history = chat_bridge.get_session_history(session)
-    return {"history": history, "session": session or chat_bridge.DEFAULT_SESSION}
 
 def _h_get_reset(req, params):
     realm_db.set_settings("ui", {})
@@ -913,50 +595,6 @@ def _h_get_sse_sources(req, params):
 
 # ── POST Route Handlers ──
 
-def _h_post_chat(req, params):
-    try:
-        data = req.json()
-        message = data.get("message", "").strip()
-        if not message:
-            req.respond({"error": "Missing 'message'"}, 400)
-            return None
-        node_id = data.get("node")
-        session = data.get("session")
-        extra_context = data.get("context")
-        future = asyncio.run_coroutine_threadsafe(
-            chat_bridge.chat(message, node_id, session, extra_context),
-            _async_loop,
-        )
-        result = future.result(timeout=120)
-        if result.get("error"):
-            req.respond(result, 500)
-            return None
-        response_text = result.get("response") or ""
-        push_event({
-            "type": "oracle_query",
-            "node": node_id or "scrying-pool",
-            "text": message[:100] + ("..." if len(message) > 100 else ""),
-        })
-        if response_text:
-            push_event({
-                "type": "oracle_response",
-                "node": node_id or "scrying-pool",
-                "text": response_text[:200] + ("..." if len(response_text) > 200 else ""),
-            })
-        return result
-    except (json.JSONDecodeError, KeyError) as e:
-        req.respond({"error": str(e)}, 400)
-        return None
-
-def _h_post_chat_clear(req, params):
-    try:
-        data = req.json()
-        chat_bridge.clear_session(data.get("session"))
-        return {"ok": True}
-    except (json.JSONDecodeError, KeyError) as e:
-        req.respond({"error": str(e)}, 400)
-        return None
-
 def _h_post_event(req, params):
     try:
         push_event(req.json())
@@ -1049,27 +687,6 @@ def _h_post_quest_create(req, params):
         req.respond({"error": str(e)}, 500)
         return None
 
-def _h_post_notion_complete(req, params):
-    try:
-        data = req.json()
-        notion_id = data.get("notion_id", "")
-        if not notion_id:
-            req.respond({"error": "missing notion_id"}, 400)
-            return None
-        result = notion_sync.complete(notion_id)
-        if "error" in result:
-            req.respond(result, 503)
-            return None
-        push_event({
-            "type": "system",
-            "node": "notion-portal",
-            "text": "A quest has been sealed in the archives.",
-        })
-        return result
-    except Exception as e:
-        req.respond({"error": str(e)}, 500)
-        return None
-
 def _h_post_config(req, params):
     try:
         data = req.json()
@@ -1099,17 +716,6 @@ def _h_post_settings(req, params):
     try:
         realm_db.set_settings("ui", req.json())
         return {"ok": True}
-    except Exception as e:
-        req.respond({"error": str(e)}, 500)
-        return None
-
-def _h_post_wled_state(req, params):
-    try:
-        data = req.json()
-        return wled_bridge.set_wled_state(
-            params.get("node_id", ""),
-            on=data.get("on"), brightness=data.get("bri"), effect=data.get("fx")
-        )
     except Exception as e:
         req.respond({"error": str(e)}, 500)
         return None
@@ -1273,35 +879,20 @@ def _h_delete_settings(req, params):
 # ── Register All Core Routes ──
 
 _route_table.add("GET", "/status", _h_get_status)
-_route_table.add("GET", "/firewall", _h_get_firewall)
 _route_table.add("GET", "/quests", _h_get_quests)
 _route_table.add("GET", "/events", _h_get_events)
-_route_table.add("GET", "/notion-sync", _h_get_notion_sync)
 _route_table.add("GET", "/personas", _h_get_personas)
 _route_table.add("GET", "/topology", _h_get_topology)
-_route_table.add("GET", "/scan", _h_get_scan)
-_route_table.add("GET", "/scan/status", _h_get_scan_status)
-_route_table.add("GET", "/scan/lldp", _h_get_scan_lldp)
-_route_table.add("GET", "/scan/wifi", _h_get_scan_wifi)
-_route_table.add("GET", "/wifi/aps", _h_get_wifi_aps)
 _route_table.add("GET", "/ping/<ip>", _h_get_ping_ip)
 _route_table.add("GET", "/server-info", _h_get_server_info)
 _route_table.add("GET", "/config", _h_get_config)
 _route_table.add("GET", "/settings", _h_get_settings)
-_route_table.add("GET", "/codex-sync", _h_get_codex_sync)
-_route_table.add("GET", "/codex", _h_get_codex)
-_route_table.add("GET", "/codex/", _h_get_codex_index)
-_route_table.add("GET", "/energy", _h_get_energy)
-_route_table.add("GET", "/collectd", _h_get_collectd)
 _route_table.add("GET", "/observation", _h_get_observation)
-_route_table.add("GET", "/herald", _h_get_herald)
 _route_table.add("GET", "/player", _h_get_player)
 _route_table.add("GET", "/ping", _h_get_ping)
 _route_table.add("GET", "/resolve-url", _h_get_resolve_url)
 _route_table.add("GET", "/debug", _h_get_debug)
 _route_table.add("GET", "/scripts", _h_get_scripts)
-_route_table.add("GET", "/chat/sessions", _h_get_chat_sessions)
-_route_table.add("GET", "/chat/history", _h_get_chat_history)
 _route_table.add("GET", "/reset", _h_get_reset)
 _route_table.add("GET", "/skills", _h_get_skills)
 _route_table.add("GET", "/claude-md", _h_get_claude_md)
@@ -1311,18 +902,14 @@ _route_table.add("GET", "/plugins", _h_get_plugins)
 _route_table.add("GET", "/plugins/", _h_get_plugins)
 _route_table.add("GET", "/sse/sources", _h_get_sse_sources)
 
-_route_table.add("POST", "/chat", _h_post_chat)
-_route_table.add("POST", "/chat/clear", _h_post_chat_clear)
 _route_table.add("POST", "/event", _h_post_event)
 _route_table.add("POST", "/personas", _h_post_personas)
 _route_table.add("POST", "/quest-delete", _h_post_quest_delete)
 _route_table.add("POST", "/quest-update", _h_post_quest_update)
 _route_table.add("POST", "/player/reward", _h_post_player_reward)
 _route_table.add("POST", "/quest-create", _h_post_quest_create)
-_route_table.add("POST", "/notion-complete", _h_post_notion_complete)
 _route_table.add("POST", "/config", _h_post_config)
 _route_table.add("POST", "/settings", _h_post_settings)
-_route_table.add("POST", "/wled/<node_id>/state", _h_post_wled_state)
 _route_table.add("POST", "/wol", _h_post_wol)
 _route_table.add("POST", "/connections", _h_post_connections)
 _route_table.add("POST", "/node", _h_post_node)
@@ -1546,16 +1133,10 @@ if __name__ == "__main__":
     realm_db.migrate_config("speech", _SPEECH_CONFIG, _SPEECH_SAFE_KEYS)
     realm_db.migrate_topology(TOPOLOGY_FILE)
     node_roles.migrate_to_db()
-    print(f"collectd RRD: /var/lib/collectd/rrd/")
-    ap_scanner._event_callback = push_event
-    ap_scanner._topo_callback = lambda: _sse_broker.send_event("topology", realm_db.get_topology())
-    ap_scanner.start_background_scanner()
-    ha_bridge.start_ha_bridge()
-    wled_bridge.start_wled_bridge()
-    event_generator.start_event_generator(push_event)
-    latency_prober.start()
 
     # ── Plugin system startup ──
+    # All bridges (HA, WLED, WiFi, firewall, collectd, events, chat, notion, codex, herald)
+    # are now loaded as plugins. Latency prober is also started by its plugin.
     # Plugins register into the same _route_table that core routes use (defined at module level)
     import plugin_loader
     print("Loading plugins...")
