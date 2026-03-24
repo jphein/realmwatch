@@ -1,0 +1,33 @@
+# Update Ubuntu hosts — apt update + upgrade with safety checks
+---
+- name: Update Ubuntu Hosts
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    reboot_required: false
+
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Upgrade all packages
+      ansible.builtin.apt:
+        upgrade: safe
+        autoremove: true
+        autoclean: true
+      register: upgrade_result
+
+    - name: Check if reboot is required
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+      register: reboot_file
+
+    - name: Display upgrade summary
+      ansible.builtin.debug:
+        msg: >-
+          Upgrade complete.
+          Changed: {{ upgrade_result.changed }}.
+          Reboot required: {{ reboot_file.stat.exists | default(false) }}.

@@ -1,0 +1,44 @@
+# Backup OpenWrt config — sysupgrade backup to local directory
+---
+- name: Backup OpenWrt Configuration
+  hosts: all
+  gather_facts: false
+  vars:
+    backup_dir: /tmp/openwrt-backups
+    timestamp: "{{ lookup('pipe', 'date +%Y%m%d-%H%M%S') }}"
+
+  tasks:
+    - name: Create local backup directory
+      ansible.builtin.file:
+        path: "{{ backup_dir }}"
+        state: directory
+        mode: '0755'
+      delegate_to: localhost
+      run_once: true
+
+    - name: Generate sysupgrade backup on device
+      ansible.builtin.raw: sysupgrade -b /tmp/backup-{{ inventory_hostname }}.tar.gz
+      register: backup_result
+      changed_when: backup_result.rc == 0
+
+    - name: Fetch backup to controller
+      ansible.builtin.fetch:
+        src: /tmp/backup-{{ inventory_hostname }}.tar.gz
+        dest: "{{ backup_dir }}/{{ inventory_hostname }}-{{ timestamp }}.tar.gz"
+        flat: true
+
+    - name: Clean up remote backup
+      ansible.builtin.raw: rm -f /tmp/backup-{{ inventory_hostname }}.tar.gz
+
+    - name: Verify backup exists locally
+      ansible.builtin.stat:
+        path: "{{ backup_dir }}/{{ inventory_hostname }}-{{ timestamp }}.tar.gz"
+      delegate_to: localhost
+      register: backup_stat
+
+    - name: Report backup status
+      ansible.builtin.debug:
+        msg: >-
+          Backup {{ 'succeeded' if backup_stat.stat.exists else 'FAILED' }}
+          for {{ inventory_hostname }}.
+          Size: {{ backup_stat.stat.size | default(0) }} bytes.

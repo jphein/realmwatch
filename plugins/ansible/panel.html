@@ -1,0 +1,66 @@
+<!-- Ansible War Room — Three-tab panel -->
+<div class="panel-tab-bar ansible-tab-bar">
+  <button class="active" data-tab="inventory">Inventory</button>
+  <button data-tab="playbooks">Playbooks</button>
+  <button data-tab="ai-assist">AI Assist</button>
+</div>
+
+<!-- ── Inventory Tab ── -->
+<div class="ansible-tab ansible-tab-inventory active" data-tab-content="inventory">
+  <div class="ansible-toolbar">
+    <button class="ansible-btn ansible-btn--sm" id="ansible-refresh-inv">Refresh</button>
+    <span class="ansible-selected-count">0 selected</span>
+    <button class="ansible-btn ansible-btn--sm ansible-btn--ghost" id="ansible-select-all">All</button>
+    <button class="ansible-btn ansible-btn--sm ansible-btn--ghost" id="ansible-select-none">None</button>
+  </div>
+  <div class="ansible-inventory-groups" id="ansible-inventory">
+    <div class="ansible-loading">Summoning inventory...</div>
+  </div>
+</div>
+
+<!-- ── Playbooks Tab ── -->
+<div class="ansible-tab ansible-tab-playbooks" data-tab-content="playbooks">
+  <div class="ansible-toolbar">
+    <button class="ansible-btn ansible-btn--sm" id="ansible-refresh-pb">Refresh</button>
+    <label class="ansible-check-toggle">
+      <input type="checkbox" id="ansible-check-mode" checked>
+      <span class="ansible-check-label">Dry Run</span>
+    </label>
+  </div>
+  <div class="ansible-playbook-list" id="ansible-playbooks">
+    <div class="ansible-loading">Gathering playbooks...</div>
+  </div>
+
+  <!-- Run output area -->
+  <div class="ansible-run-output" id="ansible-run-output" style="display:none">
+    <div class="ansible-run-header">
+      <span class="ansible-run-status" id="ansible-run-status">Running</span>
+      <span class="ansible-run-id" id="ansible-run-label"></span>
+    </div>
+    <pre class="ansible-output-pre" id="ansible-output-pre"></pre>
+  </div>
+
+  <!-- Run history -->
+  <div class="ansible-run-history" id="ansible-run-history">
+    <div class="ansible-section-title">Battle Log</div>
+    <div id="ansible-history-list"></div>
+  </div>
+</div>
+
+<!-- ── AI Assist Tab ── -->
+<div class="ansible-tab ansible-tab-ai" data-tab-content="ai-assist">
+  <div class="ansible-ai-messages" id="ansible-ai-messages">
+    <div class="ansible-ai-welcome">
+      <div class="ansible-ai-welcome-icon">&#x1F9D9;</div>
+      <div class="ansible-ai-welcome-text">
+        The War Sage awaits your command.<br>
+        Ask about playbooks, infrastructure, or strategy.
+      </div>
+    </div>
+  </div>
+  <div class="ansible-ai-input-row">
+    <input type="text" id="ansible-ai-input" class="ansible-ai-input"
+           placeholder="Speak, commander..." autocomplete="off">
+    <button class="ansible-btn ansible-btn--primary" id="ansible-ai-send">Send</button>
+  </div>
+</div>
