@@ -580,7 +580,7 @@ def _h_get_plugins(req, params):
                         })
                     except Exception:
                         plugins.append({"name": name, "status": "error"})
-    return {"plugins": plugins}
+    return plugins
 
 def _h_get_sse_sources(req, params):
     """List registered SSE sources."""
