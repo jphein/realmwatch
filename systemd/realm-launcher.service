@@ -1,0 +1,32 @@
+# Realm Launcher — branch-switching portal on :8899
+# Install: cp systemd/*.service ~/.config/systemd/user/
+#          systemctl --user daemon-reload
+#          systemctl --user enable realm-launcher
+#          systemctl --user start realm-launcher
+#   Logs:  journalctl --user -u realm-launcher -f
+
+[Unit]
+Description=Realm Launcher — branch portal on :8899
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Projects/realmwatch
+ExecStart=%h/Projects/realmwatch/venv/bin/python3 realm_launcher.py
+Restart=on-failure
+RestartSec=5
+
+# Lightweight — just serves HTML and runs git/build commands
+MemoryHigh=256M
+MemoryMax=512M
+
+# Security hardening
+ProtectSystem=strict
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

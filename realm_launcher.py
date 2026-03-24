@@ -14,6 +14,17 @@ PORT = 8899
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 MAP_SERVER = os.path.join(PROJECT_DIR, 'map_server.py')
 
+def _launcher_version():
+    """Git short hash at import time — verifies you're running the latest code."""
+    try:
+        r = subprocess.run(['git', 'log', '--oneline', '-1', '--', 'realm_launcher.py'],
+                           capture_output=True, text=True, cwd=PROJECT_DIR)
+        return r.stdout.strip()[:7] if r.stdout.strip() else '???'
+    except Exception:
+        return '???'
+
+LAUNCHER_VERSION = _launcher_version()
+
 _server_proc = None
 _log_lines = []
 _log_lock = threading.Lock()
@@ -798,7 +809,7 @@ LAUNCHER_HTML = r"""<!DOCTYPE html>
   <div class="header">
     <div class="header-sigil"></div>
     <h1>Realm Launcher</h1>
-    <div class="subtitle">Choose thy portal &mdash; three paths through the realm</div>
+    <div class="subtitle">Choose thy portal &mdash; four paths through the realm &middot; <span style="opacity:0.4;font-size:10px" id="launcher-ver"></span></div>
     <div class="current-info" id="current-info"></div>
   </div>
 
@@ -987,6 +998,8 @@ async function fetchStatus() {
     const data = await r.json();
     renderPortals(data);
     renderInfo(data);
+    const verEl = document.getElementById('launcher-ver');
+    if (verEl && data.launcher_version) verEl.textContent = data.launcher_version;
     if (data.log && data.log.length) {
       const consoleEl = document.getElementById('console');
       const existing = consoleEl.querySelectorAll('.log-line').length;
@@ -1110,6 +1123,7 @@ class LauncherHandler(http.server.BaseHTTPRequestHandler):
                 'server': _is_server_running(),
                 'ahead': ahead,
                 'log': log_copy,
+                'launcher_version': LAUNCHER_VERSION,
             })
         else:
             self.send_error(404)
