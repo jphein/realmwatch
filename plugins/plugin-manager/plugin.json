@@ -1,0 +1,18 @@
+{
+  "name": "plugin-manager",
+  "version": "1.0.0",
+  "type": "standalone",
+  "description": "Plugin management panel — shows all loaded plugins, their status, endpoints, SSE sources, and panels.",
+  "fantasy_name": "Enchantment Registry",
+  "icon": "\ud83d\udcdc",
+
+  "panel": {
+    "id": "plugin-manager-panel",
+    "name": "Enchantment Registry",
+    "html": "panel.html",
+    "js": "panel.js",
+    "css": "panel.css",
+    "anchor": "se",
+    "priority": 20
+  }
+}

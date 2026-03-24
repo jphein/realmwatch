@@ -1673,7 +1673,9 @@ export function applyFormation(formationId) {
         }
       }
     } else {
+      // No saved formation — start all panels sealed in dock
       visible = Object.keys(PANELS);
+      minimized = Object.keys(PANELS);
       anchors = null;
     }
   }
@@ -2185,6 +2187,14 @@ export function registerPluginPanel(panel, { name, icon, anchor, priority }) {
     icon: icon || '\u2726',
   };
   _attachPanelHandlers(panel);
+
+  // Seal by default unless saved formation explicitly has it open
+  const saved = _loadSavedFormation();
+  const isOpen = saved && saved.visible?.includes(panel.id)
+    && !(saved.minimized || []).includes(panel.id);
+  if (!isOpen) {
+    _sealPanel(panel);
+  }
 }
 
 // Remove a plugin panel from the PANELS registry

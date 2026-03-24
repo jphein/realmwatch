@@ -1,0 +1,145 @@
+/* ── Plugin Manager Panel Styles ── */
+
+.pm-badge {
+  font-size: 9px;
+  color: rgba(180,140,255,0.6);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.pm-body {
+  padding: 6px 10px 8px;
+  flex: 1 1 0;
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pm-loading {
+  font-size: 9px;
+  color: rgba(140,140,180,0.5);
+  text-align: center;
+  padding: 20px 0;
+  font-style: italic;
+}
+
+.pm-summary {
+  font-size: 8px;
+  color: rgba(180,140,255,0.5);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(180,140,255,0.1);
+  text-align: center;
+}
+
+.pm-card {
+  background: rgba(40,30,60,0.4);
+  border: 1px solid rgba(180,140,255,0.12);
+  border-radius: 6px;
+  padding: 6px 8px;
+  transition: border-color 0.3s ease, background 0.3s ease;
+}
+.pm-card:hover {
+  border-color: rgba(180,140,255,0.3);
+  background: rgba(50,38,75,0.5);
+}
+.pm-card-error {
+  border-color: rgba(220,80,80,0.25);
+  background: rgba(60,20,20,0.3);
+}
+
+.pm-card-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pm-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.pm-name {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  color: #c0b0e0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pm-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 4px currentColor;
+}
+
+.pm-sub {
+  font-size: 7.5px;
+  color: rgba(140,120,180,0.4);
+  margin-top: 1px;
+  letter-spacing: 0.3px;
+}
+
+.pm-desc {
+  font-size: 8px;
+  color: rgba(160,140,200,0.5);
+  margin-top: 3px;
+  line-height: 1.3;
+}
+
+.pm-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 4px;
+}
+
+.pm-tag {
+  font-size: 7px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.pm-tag-type {
+  background: rgba(100,80,160,0.2);
+  color: rgba(160,140,220,0.7);
+  border: 1px solid rgba(100,80,160,0.15);
+}
+
+.pm-tag-panel {
+  background: rgba(80,160,100,0.15);
+  color: rgba(120,200,140,0.7);
+  border: 1px solid rgba(80,160,100,0.15);
+}
+
+.pm-tag-sse {
+  background: rgba(200,160,60,0.15);
+  color: rgba(220,180,80,0.7);
+  border: 1px solid rgba(200,160,60,0.15);
+}
+
+/* ── Light theme ── */
+@media (prefers-color-scheme: light) {
+  .pm-badge { color: rgba(100,60,180,0.7); }
+  .pm-summary { color: rgba(100,60,180,0.6); border-bottom-color: rgba(100,60,180,0.15); }
+  .pm-card { background: rgba(240,235,255,0.6); border-color: rgba(100,60,180,0.15); }
+  .pm-card:hover { background: rgba(230,220,255,0.8); border-color: rgba(100,60,180,0.3); }
+  .pm-card-error { background: rgba(255,230,230,0.6); border-color: rgba(200,60,60,0.2); }
+  .pm-name { color: #4a3080; }
+  .pm-sub { color: rgba(80,60,120,0.5); }
+  .pm-desc { color: rgba(80,60,120,0.6); }
+  .pm-loading { color: rgba(80,60,120,0.4); }
+  .pm-tag-type { background: rgba(100,60,180,0.1); color: rgba(80,50,150,0.8); }
+  .pm-tag-panel { background: rgba(40,140,60,0.1); color: rgba(30,120,50,0.8); }
+  .pm-tag-sse { background: rgba(180,130,30,0.1); color: rgba(160,110,20,0.8); }
+}
