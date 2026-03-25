@@ -126,6 +126,46 @@ def _stop_server():
     # Also kill any orphaned server on :80
     _kill_port(80)
 
+
+def _stop_all_services():
+    """Stop all realm services except the launcher itself."""
+    _stop_server()
+    for svc in ("realm-map-server", "oracle-daemon", "realm-herald"):
+        try:
+            r = subprocess.run(
+                ["systemctl", "--user", "is-active", svc],
+                capture_output=True, text=True, timeout=5
+            )
+            if r.stdout.strip() == "active":
+                _log(f"Stopping {svc}...")
+                subprocess.run(
+                    ["systemctl", "--user", "stop", svc],
+                    capture_output=True, timeout=10
+                )
+                _log(f"  {svc} stopped")
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            _log(f"  Failed to stop {svc}")
+
+
+def _start_all_services():
+    """Start all realm services (map server via subprocess, others via systemd)."""
+    _start_server()
+    for svc in ("oracle-daemon", "realm-herald"):
+        try:
+            r = subprocess.run(
+                ["systemctl", "--user", "is-enabled", svc],
+                capture_output=True, text=True, timeout=5
+            )
+            if r.stdout.strip() == "enabled":
+                _log(f"Starting {svc}...")
+                subprocess.run(
+                    ["systemctl", "--user", "start", svc],
+                    capture_output=True, timeout=10
+                )
+                _log(f"  {svc} started")
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            _log(f"  Failed to start {svc}")
+
 def _start_server():
     global _server_proc
     _stop_server()
@@ -1144,11 +1184,11 @@ class LauncherHandler(http.server.BaseHTTPRequestHandler):
             self._json({'ok': ok})
 
         elif self.path == '/api/restart':
-            _start_server()
+            _start_all_services()
             self._json({'ok': _is_server_running()})
 
         elif self.path == '/api/stop':
-            _stop_server()
+            _stop_all_services()
             self._json({'ok': True})
 
         else:
