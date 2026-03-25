@@ -25,6 +25,10 @@ TIMEOUT = 60
 _cache = {}
 CACHE_MAX = 100
 
+# Cached Azure AI client (avoids creating httpx connection pool per request)
+_ai_client = None
+_ai_client_key = None  # (endpoint, api_key) tuple to detect config changes
+
 # Default session for realm map
 DEFAULT_SESSION = "realm-chat"
 
@@ -225,12 +229,17 @@ async def chat(message, node_id=None, session_name=None, extra_context=None):
             "cached": True
         }
 
-    # Call Azure AI via OpenAI SDK
-    client = AsyncAzureOpenAI(
-        azure_endpoint=endpoint,
-        api_key=api_key,
-        api_version="2024-12-01-preview",
-    )
+    # Reuse cached client (avoids leaking httpx connection pools per request)
+    global _ai_client, _ai_client_key
+    key = (endpoint, api_key)
+    if _ai_client is None or _ai_client_key != key:
+        _ai_client = AsyncAzureOpenAI(
+            azure_endpoint=endpoint,
+            api_key=api_key,
+            api_version="2024-12-01-preview",
+        )
+        _ai_client_key = key
+    client = _ai_client
 
     start = time.time()
     try:

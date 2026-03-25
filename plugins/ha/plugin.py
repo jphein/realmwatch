@@ -43,8 +43,8 @@ def _get_energy_data():
             f"{ha_url}/api/states",
             headers={"Authorization": f"Bearer {ha_token}"},
         )
-        resp = urllib.request.urlopen(req, context=ssl_ctx, timeout=10)
-        states = {s["entity_id"]: s for s in json.loads(resp.read())}
+        with urllib.request.urlopen(req, context=ssl_ctx, timeout=10) as resp:
+            states = {s["entity_id"]: s for s in json.loads(resp.read())}
     except Exception as e:
         return {"error": str(e)}
 

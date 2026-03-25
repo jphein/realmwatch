@@ -80,8 +80,8 @@ def _fetch_states():
         headers={"Authorization": f"Bearer {token}"},
     )
     try:
-        resp = urllib.request.urlopen(req, context=_ssl_ctx, timeout=10)
-        return json.loads(resp.read())
+        with urllib.request.urlopen(req, context=_ssl_ctx, timeout=10) as resp:
+            return json.loads(resp.read())
     except Exception as e:
         print(f"[HA Bridge] Fetch error: {e}")
         return []
@@ -103,8 +103,8 @@ def _fetch_device_registry():
                 f"{HA_URL}{path}",
                 headers={"Authorization": f"Bearer {token}"},
             )
-            resp = urllib.request.urlopen(req, context=_ssl_ctx, timeout=10)
-            data = json.loads(resp.read())
+            with urllib.request.urlopen(req, context=_ssl_ctx, timeout=10) as resp:
+                data = json.loads(resp.read())
             if isinstance(data, list):
                 return data
         except Exception:
@@ -127,8 +127,8 @@ def _call_service(domain, service, entity_id, data=None):
         },
     )
     try:
-        resp = urllib.request.urlopen(req, context=_ssl_ctx, timeout=10)
-        return {"ok": True, "status": resp.status}
+        with urllib.request.urlopen(req, context=_ssl_ctx, timeout=10) as resp:
+            return {"ok": True, "status": resp.status}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 

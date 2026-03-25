@@ -371,11 +371,9 @@ def _h_get_resolve_url(req, params):
         return None
     def _tcp_open(host, port, timeout=0.3):
         try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(timeout)
-            r = s.connect_ex((host, port))
-            s.close()
-            return r == 0
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(timeout)
+                return s.connect_ex((host, port)) == 0
         except Exception:
             return False
     def _dns_resolve(name):
@@ -730,14 +728,13 @@ def _h_post_wol(req, params):
         mac_bytes = bytes.fromhex(mac)
         magic = b'\xff' * 6 + mac_bytes * 16
         import socket
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        sock.sendto(magic, ("255.255.255.255", 9))
-        if data.get("ip"):
-            ip_parts = data["ip"].rsplit(".", 1)
-            if len(ip_parts) == 2:
-                sock.sendto(magic, (ip_parts[0] + ".255", 9))
-        sock.close()
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            sock.sendto(magic, ("255.255.255.255", 9))
+            if data.get("ip"):
+                ip_parts = data["ip"].rsplit(".", 1)
+                if len(ip_parts) == 2:
+                    sock.sendto(magic, (ip_parts[0] + ".255", 9))
         return {"ok": True, "mac": mac, "sent": True}
     except Exception as e:
         req.respond({"error": str(e)}, 500)
@@ -947,16 +944,21 @@ class RealmHandler(SimpleHTTPRequestHandler):
             self.end_headers()
             client_q = _sse_broker.add_client()
             try:
+                # Set socket write timeout so half-open connections don't hang forever
+                self.connection.settimeout(30)
                 self.wfile.write(b": connected\n\n")
                 self.wfile.flush()
+                _sse_broker.client_wrote(client_q)
                 while True:
                     try:
                         event_type, payload = client_q.get(timeout=15)
                         self.wfile.write(f"event: {event_type}\ndata: {payload}\n\n".encode())
                         self.wfile.flush()
+                        _sse_broker.client_wrote(client_q)
                     except queue.Empty:
                         self.wfile.write(b": keepalive\n\n")
                         self.wfile.flush()
+                        _sse_broker.client_wrote(client_q)
             except (BrokenPipeError, ConnectionResetError, OSError):
                 pass
             finally:

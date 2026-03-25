@@ -68,6 +68,7 @@ class SSEBroker:
         """
         self._status_fn = status_fn
         self._clients = []  # list of queue.Queue
+        self._client_ts = {}  # {id(queue): last_successful_write_time}
         self._lock = threading.Lock()
         self._hashes = {}  # {event_type: last_hash}
         self._last_event_ts = 0.0
@@ -109,7 +110,7 @@ class SSEBroker:
         2. Registered sources with burst=True, ordered by burst_priority
         3. Core: recent events -> status (status last = dismisses loading screen)
         """
-        q = queue.Queue(maxsize=1000)
+        q = queue.Queue(maxsize=100)
         _json = lambda d: json.dumps(d, separators=(',', ':'))
         topo_nodes = []
 
@@ -170,6 +171,7 @@ class SSEBroker:
 
         with self._lock:
             self._clients.append(q)
+            self._client_ts[id(q)] = time.time()
         return q
 
     def remove_client(self, q):
@@ -179,6 +181,12 @@ class SSEBroker:
                 self._clients.remove(q)
             except ValueError:
                 pass
+            self._client_ts.pop(id(q), None)
+
+    def client_wrote(self, q):
+        """Mark a client as having successfully written (called by SSE handler)."""
+        with self._lock:
+            self._client_ts[id(q)] = time.time()
 
     # ── Broadcasting ──
 
@@ -190,17 +198,28 @@ class SSEBroker:
             payload: pre-serialized JSON string ready for the wire.
         """
         dead = []
+        now = time.time()
         with self._lock:
             for q in self._clients:
                 try:
                     q.put_nowait((event_type, payload))
                 except queue.Full:
                     dead.append(q)
+                else:
+                    # Evict clients that haven't consumed from their queue in 60s.
+                    # This catches half-open TCP connections where wfile.write hangs.
+                    last = self._client_ts.get(id(q), now)
+                    if now - last > 60:
+                        dead.append(q)
             for q in dead:
                 try:
                     self._clients.remove(q)
                 except ValueError:
                     pass
+                self._client_ts.pop(id(q), None)
+        if dead:
+            log.info("SSE: evicted %d stale client(s), %d active",
+                     len(dead), len(self._clients))
 
     def _check_and_push(self, event_type, data):
         """Serialize once, hash the bytes, broadcast only if changed."""
