@@ -22,6 +22,8 @@ import { saveSettings, scheduleSave } from './layout.js';
 import { scheduleDebugRefresh } from './debug.js';
 import { initRealmAPI, dispatchPluginSSE } from './plugin-api.js';
 import { registerPluginPanel, openPanel, closePanel } from './panel-manager.js';
+import { initWinBoxWM, toggleWinBoxMode } from './winbox-wm.js';
+import { applyFormation } from './panel-manager.js';
 
 let liveOk = false;
 
@@ -360,7 +362,7 @@ export const getSseConnected = () => _sseConnected;
 // Defer non-critical init to idle time — SSE connection is the priority
 const _deferInit = window.requestIdleCallback || (cb => setTimeout(cb, 50));
 _deferInit(() => { initScanner(); initSkills(); });
-_deferInit(() => { initForestTheme(); });
+_deferInit(() => { initForestTheme(); initWinBoxWM(); });
 
 // ── Initialize RealmAPI for plugins ──
 initRealmAPI({
@@ -469,5 +471,16 @@ const _fcb = document.getElementById('forest-theme-cb');
 if (_fcb) {
   _fcb.checked = localStorage.getItem('realm-forest-theme') === 'true';
   _fcb.addEventListener('change', () => toggleForestTheme(_fcb.checked));
+}
+
+// Spellbook toggle for WinBox window manager
+const _wbcb = document.getElementById('winbox-wm-cb');
+if (_wbcb) {
+  _wbcb.checked = localStorage.getItem('realm-winbox-mode') === 'true';
+  _wbcb.addEventListener('change', () => {
+    toggleWinBoxMode(_wbcb.checked);
+    // Re-apply current formation to mount/unmount panels in WinBox
+    applyFormation('grimoire-binding');
+  });
 }
 

@@ -3,6 +3,7 @@
 
 import { _PERF } from './config.js';
 import { spawnWispTrail, spawnUnsealBurst } from './effects.js';
+import { isWinBoxMode, openWinBoxPanel, closeWinBoxPanel, destroyWinBoxPanel } from './winbox-wm.js';
 
 const ANCHORS = [
   { id: 'nw', x: 0, y: 0, label: 'Northwest Anchor' },
@@ -166,6 +167,15 @@ export function initPanelManager() {
   _attachDragHandlers();
   _loadFormation();
   _injectFormationUI();
+
+  // When WinBox minimizes a window, create a dock rune for it
+  document.addEventListener('winbox-minimized', (e) => {
+    const { panelId } = e.detail;
+    const panel = document.getElementById(panelId);
+    if (!panel || panel.classList.contains('panel-sealed')) return;
+    // Seal panel (creates rune) but skip the native seal animation since WinBox already minimized
+    _quickSeal(panel);
+  });
 }
 
 function _createSealedDock() {
@@ -775,12 +785,57 @@ function _toggleMinimize(panel) {
   const isMinimized = panel.classList.contains('panel-sealed');
 
   if (isMinimized) {
-    _unsealPanel(panel);
+    if (isWinBoxMode()) {
+      // Unseal: remove rune, then open in WinBox
+      _unsealPanel(panel);  // handles rune removal + display restoration
+      openWinBoxPanel(panel.id);  // mount into WinBox window
+    } else {
+      _unsealPanel(panel);
+    }
     _saveFormation();
   } else {
-    _sealPanel(panel);
+    if (isWinBoxMode()) {
+      // In WinBox mode, "seal" means minimize the WinBox window + create dock rune
+      closeWinBoxPanel(panel.id);  // minimizes WinBox
+      _sealPanel(panel);  // creates rune in dock
+    } else {
+      _sealPanel(panel);
+    }
     // _saveFormation is called from _finalizeSeal after animation completes
   }
+}
+
+// Quick-seal for WinBox minimize events — creates dock rune without native shrink animation
+function _quickSeal(panel) {
+  const def = PANELS[panel.id];
+  if (!def) return;
+
+  // Store original position
+  const rect = panel.getBoundingClientRect();
+  panel.dataset.originalAnchor = panel.dataset.anchor || def.anchor;
+  panel.dataset.originalLeft = panel.style.left || (rect.left + 'px');
+  panel.dataset.originalTop = panel.style.top || (rect.top + 'px');
+  panel.dataset.originalRight = panel.style.right;
+  panel.dataset.originalBottom = panel.style.bottom;
+  panel.dataset.originalTransform = panel.style.transform;
+  panel.dataset.originalWidth = rect.width;
+  panel.dataset.originalHeight = rect.height;
+
+  // Create rune in dock
+  const rune = _createRune(panel.id, def);
+  const tray = _sealedDock?.querySelector('.dock-tray');
+  if (tray) {
+    _insertRuneInOrder(tray, rune);
+    _sealedDock.classList.add('has-runes');
+    if (_sealedDock.style.bottom === '-80px') _sealedDock.style.bottom = '0';
+  }
+
+  // Mark as sealed
+  panel.classList.add('panel-sealed');
+  panel.style.display = 'none';
+  _saveFormation();
+  _updateDockBadge();
+  document.dispatchEvent(new CustomEvent('panel-layout-change', { detail: { action: 'seal', id: panel.id } }));
 }
 
 function _sealPanel(panel) {
@@ -1465,6 +1520,13 @@ function _unsealPanel(panel) {
   const _visCb = document.getElementById(_visMap[panel.id]);
   if (_visCb && !_visCb.checked) _visCb.checked = true;
 
+  // If WinBox mode, skip native positioning and animation — WinBox handles it
+  if (isWinBoxMode()) {
+    _saveFormation();
+    document.dispatchEvent(new CustomEvent('panel-layout-change', { detail: { action: 'unseal', id: panel.id } }));
+    return;
+  }
+
   // Restore to exact saved position, clamped to viewport
   const savedLeft = panel.dataset.originalLeft;
   const savedTop = panel.dataset.originalTop;
@@ -1711,6 +1773,15 @@ export function applyFormation(formationId) {
       const panel = document.getElementById(id);
       if (!panel) return;
       _restoreSealedToDoc(panel, anchors?.[id] || PANELS[id]?.anchor);
+    });
+  }
+
+  // If WinBox mode, mount visible (non-minimized) panels into WinBox windows
+  if (isWinBoxMode()) {
+    visible.forEach(id => {
+      if (minimized.includes(id)) return;
+      const panel = document.getElementById(id);
+      if (panel) openWinBoxPanel(id);
     });
   }
 
