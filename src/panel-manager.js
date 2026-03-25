@@ -2260,6 +2260,11 @@ function _setRuneIcon(iconEl, panelId, def) {
     img.alt = def.name || panelId;
     img.className = 'rune-icon-img';
     img.draggable = false;
+    img.onerror = () => {
+      img.remove();
+      iconEl.textContent = def.icon || '\u2726';
+      iconEl.classList.add('rune-icon--emoji');
+    };
     iconEl.appendChild(img);
     return;
   }

@@ -23,7 +23,7 @@ STYLE_SUFFIX = (
     "no text, no letters, no words"
 )
 
-# All 15 panel icons with descriptive subject prompts
+# All panel icons with descriptive subject prompts
 PANELS = {
     "realm-panel":      "a cracked heart stone pulsing with green energy veins, ancient relic",
     "legend":           "a golden compass artifact with emerald inlay and spinning needle",
@@ -41,6 +41,9 @@ PANELS = {
     "arcane-grimoire":  "an ancient leather-bound book with a golden star bookmark and glowing pages",
     "scrying-terminal": "a frost crystal lens mounted in a brass monocle frame with etched runes",
     "scanner-panel":    "a golden magnifying glass with an emerald lens revealing hidden runes and glowing script",
+    "ansible-panel":    "a pair of crossed enchanted war swords over a glowing battle map table with miniature fortress tokens",
+    "node-list-panel":  "a crystal census ledger floating open with glowing rows of emerald runes listing names",
+    "plugin-manager-panel": "an ornate enchantment registry tome with glowing purple sigils and floating arcane scroll fragments",
 }
 
 SEED = 42
