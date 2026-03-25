@@ -202,6 +202,13 @@ def get_setting(namespace, key, default=None):
         return row["value"]
 
 
+def delete_setting(namespace, key):
+    """Delete a single setting by namespace and key."""
+    c = _conn()
+    c.execute("DELETE FROM settings WHERE namespace=? AND key=?", (namespace, key))
+    c.commit()
+
+
 # ── Events ──
 
 _DEDUP_WINDOW = 300  # suppress identical node+type+text within 5 minutes

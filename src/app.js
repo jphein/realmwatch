@@ -377,8 +377,10 @@ initRealmAPI({
   try {
     const res = await fetch('/plugins');
     if (!res.ok) return;
-    const plugins = await res.json();
-    if (!Array.isArray(plugins) || plugins.length === 0) return;
+    const allPlugins = await res.json();
+    if (!Array.isArray(allPlugins) || allPlugins.length === 0) return;
+    const plugins = allPlugins.filter(p => p.status !== 'disabled');
+    if (plugins.length === 0) return;
 
     // Track loaded plugin SSE types for dispatch
     const pluginSSETypes = new Set();

@@ -28,16 +28,72 @@
   function statusColor(s) {
     if (s === 'loaded') return '#50c878';
     if (s === 'error') return '#e05050';
+    if (s === 'disabled') return '#808080';
     if (s === 'discovered') return '#c0a040';
     return '#607080';
+  }
+
+  // ── Toggle plugin enabled/disabled ──
+  function togglePlugin(name, enabled) {
+    return fetch('/plugins/toggle', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({name: name, enabled: enabled})
+    }).then(function(r) { return r.json(); });
+  }
+
+  // ── Restart notice with button ──
+  function showRestartNotice() {
+    var notice = document.createElement('div');
+    notice.className = 'pm-restart-notice';
+    var text = document.createElement('span');
+    text.textContent = 'Changes require restart ';
+    var btn = document.createElement('button');
+    btn.className = 'pm-restart-btn';
+    btn.textContent = 'Restart Realm';
+    btn.addEventListener('click', function() {
+      btn.disabled = true;
+      btn.textContent = 'Restarting\u2026';
+      fetch('http://localhost:8899/api/restart', {method: 'POST'})
+        .then(function() {
+          notice.textContent = 'Realm is restarting\u2026';
+          notice.className = 'pm-restart-notice pm-restarting';
+          // Poll until server is back
+          var attempts = 0;
+          var poll = setInterval(function() {
+            attempts++;
+            fetch('/ping').then(function(r) {
+              if (r.ok) {
+                clearInterval(poll);
+                location.reload();
+              }
+            }).catch(function() {});
+            if (attempts > 30) {
+              clearInterval(poll);
+              notice.textContent = 'Restart timed out \u2014 check server manually';
+            }
+          }, 1000);
+        })
+        .catch(function() {
+          btn.disabled = false;
+          btn.textContent = 'Restart Realm';
+          notice.insertAdjacentHTML('beforeend',
+            '<div style="font-size:7px;margin-top:2px;opacity:0.7">Launcher not running on :8899</div>');
+        });
+    });
+    notice.appendChild(text);
+    notice.appendChild(btn);
+    body.insertBefore(notice, body.firstChild);
   }
 
   // ── Build a plugin card ──
   function makeCard(p, sseSources) {
     var card = document.createElement('div');
-    card.className = 'pm-card' + (p.status === 'error' ? ' pm-card-error' : '');
+    card.className = 'pm-card'
+      + (p.status === 'error' ? ' pm-card-error' : '')
+      + (p.status === 'disabled' ? ' pm-card-disabled' : '');
 
-    // Header row: icon + name + status dot
+    // Header row: icon + name + toggle + status dot
     var hdr = document.createElement('div');
     hdr.className = 'pm-card-header';
 
@@ -49,6 +105,30 @@
     name.className = 'pm-name';
     name.textContent = p.fantasy_name || p.name;
 
+    // Toggle switch
+    var toggle = document.createElement('label');
+    toggle.className = 'pm-toggle';
+    toggle.title = p.enabled ? 'Disable enchantment (requires restart)' : 'Enable enchantment (requires restart)';
+    var cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = p.enabled !== false;
+    cb.addEventListener('change', function() {
+      var willEnable = cb.checked;
+      toggle.title = willEnable ? 'Disable enchantment (requires restart)' : 'Enable enchantment (requires restart)';
+      togglePlugin(p.name, willEnable).then(function(res) {
+        if (res && res.ok) {
+          // Show restart notice with button
+          if (!body.querySelector('.pm-restart-notice')) {
+            showRestartNotice();
+          }
+        }
+      });
+    });
+    var slider = document.createElement('span');
+    slider.className = 'pm-slider';
+    toggle.appendChild(cb);
+    toggle.appendChild(slider);
+
     var dot = document.createElement('span');
     dot.className = 'pm-dot';
     dot.style.background = statusColor(p.status);
@@ -56,6 +136,7 @@
 
     hdr.appendChild(icon);
     hdr.appendChild(name);
+    hdr.appendChild(toggle);
     hdr.appendChild(dot);
     card.appendChild(hdr);
 
@@ -123,8 +204,18 @@
         badgeEl.textContent = loaded + '/' + plugins.length;
       }
 
+      // Preserve restart notice if present
+      var hadNotice = body.querySelector('.pm-restart-notice');
+
       // Clear and rebuild
       body.textContent = '';
+
+      if (hadNotice) {
+        var notice = document.createElement('div');
+        notice.className = 'pm-restart-notice';
+        notice.textContent = 'Restart required for changes to take effect';
+        body.appendChild(notice);
+      }
 
       // Summary bar
       var summary = document.createElement('div');
@@ -135,9 +226,12 @@
         withPanels + ' panels \u00b7 ' + sseSources.length + ' SSE streams';
       body.appendChild(summary);
 
-      // Plugin cards
+      // Plugin cards — loaded first, then disabled, then others
       plugins.sort(function(a, b) {
-        if (a.status !== b.status) return a.status === 'loaded' ? -1 : 1;
+        var order = {loaded: 0, error: 1, disabled: 2, discovered: 3};
+        var oa = order[a.status] !== undefined ? order[a.status] : 4;
+        var ob = order[b.status] !== undefined ? order[b.status] : 4;
+        if (oa !== ob) return oa - ob;
         return (a.fantasy_name || a.name).localeCompare(b.fantasy_name || b.name);
       });
 

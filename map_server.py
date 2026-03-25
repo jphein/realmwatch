@@ -544,18 +544,21 @@ def _h_get_hooks(req, params):
 
 def _h_get_plugins(req, params):
     """List loaded plugins with status."""
+    disabled = realm_db.get_settings("plugins") or {}
     plugins = []
     if _plugin_registry:
         for p in _plugin_registry.get_all_plugins():
             info = {"name": p.name, "version": p.version, "type": p.plugin_type,
                     "description": p.description, "fantasy_name": p.fantasy_name,
-                    "icon": p.icon, "status": p.status}
-            panels = [pnl for pnl in _plugin_registry.get_panels() if pnl.plugin == p.name]
-            if panels:
-                pnl = panels[0]
-                info["panel"] = {"id": pnl.id, "name": pnl.name, "anchor": pnl.anchor,
-                                 "priority": pnl.priority,
-                                 "html": pnl.html, "js": pnl.js, "css": pnl.css}
+                    "icon": p.icon, "status": p.status,
+                    "enabled": disabled.get(p.name) != "disabled"}
+            if p.status != "disabled":
+                panels = [pnl for pnl in _plugin_registry.get_panels() if pnl.plugin == p.name]
+                if panels:
+                    pnl = panels[0]
+                    info["panel"] = {"id": pnl.id, "name": pnl.name, "anchor": pnl.anchor,
+                                     "priority": pnl.priority,
+                                     "html": pnl.html, "js": pnl.js, "css": pnl.css}
             plugins.append(info)
     else:
         # Fallback: scan plugin directories before registry is initialized
@@ -589,6 +592,21 @@ def _h_get_sse_sources(req, params):
          "burst_priority": s.burst_priority}
         for s in sources
     ]}
+
+def _h_post_plugin_toggle(req, params):
+    """Toggle a plugin enabled/disabled. Requires restart to take effect."""
+    data = req.json()
+    name = data.get("name", "")
+    if not name:
+        req.respond({"error": "Missing plugin name"}, 400)
+        return
+    enabled = data.get("enabled", True)
+    if enabled:
+        # Remove the disabled marker
+        realm_db.delete_setting("plugins", name)
+    else:
+        realm_db.set_settings("plugins", {name: "disabled"})
+    return {"ok": True, "name": name, "enabled": enabled, "restart_required": True}
 
 
 # ── POST Route Handlers ──
@@ -899,6 +917,7 @@ _route_table.add("GET", "/plugins", _h_get_plugins)
 _route_table.add("GET", "/plugins/", _h_get_plugins)
 _route_table.add("GET", "/sse/sources", _h_get_sse_sources)
 
+_route_table.add("POST", "/plugins/toggle", _h_post_plugin_toggle)
 _route_table.add("POST", "/event", _h_post_event)
 _route_table.add("POST", "/personas", _h_post_personas)
 _route_table.add("POST", "/quest-delete", _h_post_quest_delete)

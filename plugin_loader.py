@@ -233,10 +233,29 @@ def load_plugins(route_table, push_event_fn, sse_broker, plugins_dir=None):
     # 2. Topological sort
     sorted_plugins, skipped = _topological_sort(found)
 
+    # 3. Check for disabled plugins
+    import realm_db
+    disabled = realm_db.get_settings("plugins") or {}
+
     # 3. Load each plugin in order
     counts = {"integrated": 0, "standalone": 0, "on-demand": 0}
 
     for name, manifest, plugin_dir in sorted_plugins:
+        if disabled.get(name) == "disabled":
+            log.info("Plugin %s: disabled by user, skipping", name)
+            info = PluginInfo(
+                name=name,
+                version=manifest.get("version", "0.0.0"),
+                plugin_type=manifest["type"],
+                description=manifest.get("description", ""),
+                fantasy_name=manifest.get("fantasy_name", name),
+                icon=manifest.get("icon", ""),
+                data_dir=plugin_dir,
+                manifest=manifest,
+                status="disabled",
+            )
+            registry.register_plugin(info)
+            continue
         plugin_type = manifest["type"]
 
         # Validate referenced files

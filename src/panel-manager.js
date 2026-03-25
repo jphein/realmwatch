@@ -1559,11 +1559,27 @@ function _unsealPanel(panel) {
     panel.style.bottom = savedBottom || '';
     panel.style.transform = panel.dataset.originalTransform || '';
     if (panel.dataset.originalAnchor) panel.dataset.anchor = panel.dataset.originalAnchor;
-  } else if (!document.body.classList.contains('panel-mode-auto')) {
-    // No saved position — snap to anchor (skip in enchant mode, auto-arrange handles it)
+  } else {
+    // No saved position — place in a visible, usable spot
     const anchorId = panel.dataset.originalAnchor;
     const anchor = ANCHORS.find(a => a.id === anchorId);
-    if (anchor) _snapToAnchor(panel, anchor);
+    if (anchor && !document.body.classList.contains('panel-mode-auto')) {
+      _snapToAnchor(panel, anchor);
+    }
+    // Always ensure bottom-positioned panels clear the dock
+    const computedBottom = parseFloat(panel.style.bottom);
+    if (!isNaN(computedBottom) && _sealedDock?.classList.contains('has-runes')) {
+      const dockH = _sealedDock.offsetHeight || 90;
+      if (computedBottom < dockH + 15) {
+        panel.style.bottom = (dockH + 15) + 'px';
+      }
+    }
+    // Fallback: if panel has no positioning at all, center it
+    if (!panel.style.left && !panel.style.right && !panel.style.bottom && !panel.style.top) {
+      panel.style.left = '50%';
+      panel.style.top = '40%';
+      panel.style.transform = 'translate(-50%, -50%)';
+    }
   }
 
   // Conjuration animation — save base transform, animate scale, restore
@@ -1724,11 +1740,12 @@ export function applyFormation(formationId) {
   if (formationId === 'grimoire-binding') {
     const saved = _loadSavedFormation();
     if (saved) {
-      visible = saved.visible;
+      const knownIds = new Set(Object.keys(PANELS));
+      visible = saved.visible.filter(id => knownIds.has(id));
       anchors = saved.anchors;
-      minimized = saved.minimized || [];
+      minimized = (saved.minimized || []).filter(id => knownIds.has(id));
       // Add any new panels not in saved state (default to sealed in dock)
-      for (const id of Object.keys(PANELS)) {
+      for (const id of knownIds) {
         if (!visible.includes(id) && !minimized.includes(id)) {
           visible.push(id);
           minimized.push(id);
@@ -1951,7 +1968,7 @@ function _saveFormation() {
   // Save minimized list in dock DOM order (preserves user's drag reorder)
   const tray = _sealedDock?.querySelector('.dock-tray');
   if (tray) {
-    tray.querySelectorAll('.sealed-rune').forEach(rune => {
+    tray.querySelectorAll('.sealed-rune:not(.exiting)').forEach(rune => {
       const pid = rune.dataset.panelId;
       if (pid) state.minimized.push(pid);
     });
@@ -2316,6 +2333,27 @@ function _attachPanelHandlers(panel) {
   header.addEventListener('mousedown', e => _startDrag(e, panel));
   header.addEventListener('touchstart', e => _startDrag(e, panel), { passive: false });
   header.addEventListener('dblclick', () => _toggleMinimize(panel));
+
+  // Resize handles (same as core panels)
+  if (!panel.querySelector('.panel-resize')) {
+    RESIZE_HANDLES.forEach(dir => {
+      const h = document.createElement('div');
+      h.className = 'panel-resize panel-resize--' + dir;
+      h.dataset.resize = dir;
+      h.addEventListener('mousedown', e => _startResize(e, panel, dir));
+      h.addEventListener('touchstart', e => _startResize(e, panel, dir), { passive: false });
+      panel.appendChild(h);
+    });
+  }
+
+  // Click to bring to front (z-stacking)
+  panel.addEventListener('mousedown', () => _bringToFront(panel));
+
+  // Restore saved size
+  if (_panelSizes[panel.id]) {
+    panel.style.width = _panelSizes[panel.id].width + 'px';
+    panel.style.height = _panelSizes[panel.id].height + 'px';
+  }
 }
 
 // ── Emoji / Sigil icon switching ──
