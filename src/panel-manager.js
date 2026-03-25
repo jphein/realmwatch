@@ -2188,13 +2188,12 @@ export function registerPluginPanel(panel, { name, icon, anchor, priority }) {
   };
   _attachPanelHandlers(panel);
 
-  // Seal by default unless saved formation explicitly has it open
-  const saved = _loadSavedFormation();
-  const isOpen = saved && saved.visible?.includes(panel.id)
-    && !(saved.minimized || []).includes(panel.id);
-  if (!isOpen) {
-    _sealPanel(panel);
-  }
+  // Always seal immediately (no animation). Plugin panels are created dynamically
+  // after initPanelManager, so saved formation state is unreliable — the async
+  // seal animation creates a race window where _saveFormation can capture a
+  // partially-sealed state (visible but no rune), which persists across reloads.
+  _restoreSealedToDoc(panel, anchor || 'sw');
+  _saveFormation();
 }
 
 // Remove a plugin panel from the PANELS registry
