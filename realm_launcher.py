@@ -1174,8 +1174,8 @@ def main():
     def _shutdown(sig, frame):
         _log('Shutting down launcher...')
         _stop_server()
-        server.shutdown()
-        sys.exit(0)
+        # shutdown() from a thread to avoid deadlock with serve_forever()
+        threading.Thread(target=server.shutdown, daemon=True).start()
 
     signal.signal(signal.SIGINT, _shutdown)
     signal.signal(signal.SIGTERM, _shutdown)
@@ -1184,6 +1184,9 @@ def main():
         server.serve_forever()
     except KeyboardInterrupt:
         _shutdown(None, None)
+    finally:
+        server.server_close()
+        _log('Launcher stopped.')
 
 
 if __name__ == '__main__':

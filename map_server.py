@@ -1181,4 +1181,19 @@ if __name__ == "__main__":
             ))
 
     _sse_broker.start()
-    ThreadingHTTPServer(("", PORT), RealmHandler).serve_forever()
+    server = ThreadingHTTPServer(("", PORT), RealmHandler)
+
+    def _shutdown(sig, frame):
+        print("Shutting down realm map server...")
+        threading.Thread(target=server.shutdown, daemon=True).start()
+
+    signal.signal(signal.SIGINT, _shutdown)
+    signal.signal(signal.SIGTERM, _shutdown)
+
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
+        print("Realm map server stopped.")

@@ -7,7 +7,7 @@
 
 [Unit]
 Description=Realm Launcher — branch portal on :8899
-After=network-online.target
+After=network-online.target realm-map-server.service
 Wants=network-online.target
 
 [Service]
@@ -16,13 +16,11 @@ WorkingDirectory=%h/Projects/realmwatch
 ExecStart=%h/Projects/realmwatch/venv/bin/python3 realm_launcher.py
 Restart=on-failure
 RestartSec=5
+TimeoutStopSec=10
 
 # Lightweight — just serves HTML and runs git/build commands
 MemoryHigh=256M
 MemoryMax=512M
-
-# Security hardening
-ProtectSystem=strict
 
 # Logging
 StandardOutput=journal
