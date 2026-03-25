@@ -6,7 +6,7 @@ import { setGpuZoomEnabled, updateBubbleTotalScale, panToNode } from './map-view
 import { getBubbleFixedSize, setBubbleFixedSize } from './node-status.js';
 import { getSparkleAmbient, setSparkleAmbient, getSparkleNodes, setSparkleNodes,
          getSparkleLeyLines, setSparkleLeyLines, getSparkleGlowSize, setSparkleGlowSize } from './effects.js';
-import { unsealPanel, saveFormation } from './panel-manager.js';
+import { unsealPanel, saveFormation, PANELS } from './panel-manager.js';
 import { showHighlight } from './quest-log.js';
 
 // ── Injected callbacks (set by app.js via initSpellbook) ──
@@ -234,19 +234,19 @@ const _searchClear = document.getElementById('search-clear');
 let _searchIndex = null; // built lazily
 let _searchActiveIdx = -1;
 
-const _panelEntries = [
-  { id: '_panel:realm-panel',  icon: '&#9876;',   label: 'Realm Vitals',  sub: 'CPU, RAM, GPU gauges',        kind: 'Panel', sel: '#realm-panel' },
-  { id: '_panel:legend',       icon: '&#128506;',  label: 'Legend',        sub: 'Ley line & node type key',    kind: 'Panel', sel: '#legend' },
-  { id: '_panel:spellbook',    icon: '&#128214;',  label: 'Spellbook',     sub: 'Effects, layers, layout',     kind: 'Panel', sel: '#spellbook' },
-  { id: '_panel:realm-codex',  icon: '&#128220;',  label: 'Realm Codex',   sub: 'Lore, tools, personas',       kind: 'Panel', sel: '#realm-codex' },
-  { id: '_panel:quest-log',    icon: '&#9753;',    label: 'Quest Log',     sub: 'Events, quests, speech',      kind: 'Panel', sel: '#quest-log' },
-  { id: '_panel:node-list',    icon: '&#9873;',    label: 'Realm Census',  sub: 'All nodes by region',         kind: 'Panel', sel: '#node-list' },
-  { id: '_panel:cartographer', icon: '&#128506;',  label: 'Cartographer',  sub: 'Map layout modes',            kind: 'Panel', sel: '#cartographer' },
-  { id: '_panel:energy-panel', icon: '&#9889;',    label: 'Realm Energy',  sub: 'Energy & data flow',          kind: 'Panel', sel: '#energy-panel' },
-  { id: '_panel:debug-panel',  icon: '&#128302;',  label: 'Arcane Mirror', sub: 'Debug panel, diagnostics',    kind: 'Panel', sel: '#debug-panel' },
-  { id: '_panel:latency-panel', icon: '&#127992;', label: 'Arcane Pulse',  sub: 'Ping latency, network health', kind: 'Panel', sel: '#latency-panel' },
-  { id: '_panel:firewall-panel', icon: '&#128737;', label: 'Realm Wards', sub: 'Firewall, VLANs, network segments', kind: 'Panel', sel: '#firewall-panel' },
-];
+// Build panel entries dynamically from PANELS registry (includes plugin panels)
+function _getPanelEntries() {
+  return Object.entries(PANELS)
+    .filter(([id]) => document.getElementById(id))
+    .map(([id, p]) => ({
+      id: '_panel:' + id,
+      icon: p.icon || '\u2726',
+      label: p.name || id,
+      sub: '',
+      kind: 'Panel',
+      sel: '#' + id,
+    }));
+}
 
 // Build comprehensive search index from topology + panels + all settings/controls
 function _buildSearchIndex() {
@@ -262,8 +262,8 @@ function _buildSearchIndex() {
       type: n.type || 'core',
       _text: [n.label, n.sublabel, n.ip, n.id, n.type].filter(Boolean).join(' ').toLowerCase(),
     })),
-    // Panel entries
-    ..._panelEntries.map(p => ({
+    // Panel entries (dynamic — includes plugin panels)
+    ..._getPanelEntries().map(p => ({
       id: p.id,
       icon: p.icon,
       label: p.label,
@@ -293,12 +293,13 @@ const _panelNames = {
 };
 
 function _indexPanelControls() {
-  const panelIds = ['spellbook', 'legend', 'realm-codex', 'realm-panel', 'cartographer', 'energy-panel', 'latency-panel', 'firewall-panel'];
+  const panelIds = Object.keys(PANELS);
   for (const panelId of panelIds) {
     const panel = document.getElementById(panelId);
     if (!panel) continue;
-    const icon = _panelIcons[panelId] || '&#9881;';
-    const panelName = _panelNames[panelId] || panelId;
+    const pDef = PANELS[panelId];
+    const icon = _panelIcons[panelId] || (pDef?.icon || '&#9881;');
+    const panelName = _panelNames[panelId] || pDef?.name || panelId;
 
     // Index sliders (type="range")
     panel.querySelectorAll('input[type="range"]').forEach(slider => {

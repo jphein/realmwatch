@@ -433,6 +433,7 @@ initRealmAPI({
 
     if (plugins.length > 0) {
       console.log(`Realm Map: ${plugins.length} plugin(s) loaded`);
+      invalidateSearchIndex();
     }
   } catch (e) {
     // Plugin loading is non-critical — don't break the app
