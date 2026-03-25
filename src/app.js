@@ -381,12 +381,13 @@ initRealmAPI({
     // Track loaded plugin SSE types for dispatch
     const pluginSSETypes = new Set();
 
-    // Inject all CSS in parallel (non-blocking)
+    // Inject all CSS in parallel (non-blocking) — top-level and panel CSS
     for (const plugin of plugins) {
-      if (plugin.css) {
+      const cssFile = plugin.css || plugin.panel?.css;
+      if (cssFile) {
         const link = document.createElement('link');
         link.rel = 'stylesheet';
-        link.href = `/plugins/${plugin.name}/${plugin.css}`;
+        link.href = `/plugins/${plugin.name}/${cssFile}`;
         document.head.appendChild(link);
       }
       if (plugin.sse_types) {
@@ -394,20 +395,42 @@ initRealmAPI({
       }
     }
 
-    // Load all plugin JS in parallel
+    // Create panel DOM for plugins that declare a panel but don't have one in HTML
+    for (const plugin of plugins) {
+      const p = plugin.panel;
+      if (!p || document.getElementById(p.id)) continue;
+      // Fetch panel HTML and register via RealmAPI
+      try {
+        const htmlRes = await fetch(`/plugins/${plugin.name}/${p.html}`);
+        const html = htmlRes.ok ? await htmlRes.text() : '';
+        window.RealmAPI.registerPanel(p.id, {
+          name: p.name || plugin.fantasy_name || plugin.name,
+          icon: plugin.icon || '\u2726',
+          anchor: p.anchor || 'sw',
+          priority: p.priority || 50,
+          html,
+        });
+      } catch (e) {
+        console.error(`Plugin ${plugin.name}: panel creation failed`, e);
+      }
+    }
+
+    // Load all plugin JS in parallel — top-level and panel JS
     const t0 = performance.now();
-    await Promise.all(plugins.filter(p => p.js).map(plugin =>
-      new Promise(resolve => {
+    const jsPlugins = plugins.filter(p => p.js || p.panel?.js);
+    await Promise.all(jsPlugins.map(plugin => {
+      const jsFile = plugin.js || plugin.panel.js;
+      return new Promise(resolve => {
         const script = document.createElement('script');
-        script.src = `/plugins/${plugin.name}/${plugin.js}`;
+        script.src = `/plugins/${plugin.name}/${jsFile}`;
         script.onload = resolve;
         script.onerror = () => {
-          console.error(`Plugin ${plugin.name}: failed to load ${plugin.js}`);
+          console.error(`Plugin ${plugin.name}: failed to load ${jsFile}`);
           resolve();
         };
         document.head.appendChild(script);
-      })
-    ));
+      });
+    }));
     console.log(`Realm Map: plugin JS loaded in ${(performance.now() - t0).toFixed(0)}ms`);
 
     // Init plugins sequentially (order may matter for registration)
