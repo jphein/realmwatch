@@ -128,31 +128,11 @@ _RX_RE = re.compile(r'RX:\s+([\d.]+)\s+MBit/s.*?(\d+)\s+Pkts')
 _TX_RE = re.compile(r'TX:\s+([\d.]+)\s+MBit/s.*?(\d+)\s+Pkts')
 
 
-def _get_ssh_pass():
-    """Get OpenWrt SSH password from env var or Bitwarden vault."""
-    pw = os.environ.get("OPENWRT_SSH_PASS")
-    if pw:
-        return pw
-    try:
-        r = subprocess.run(
-            ["bw", "get", "password", "gatekeeper-openwrt"],
-            capture_output=True, text=True, timeout=10
-        )
-        if r.returncode == 0 and r.stdout.strip():
-            return r.stdout.strip()
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        pass
-    return ""
-
-
 def _ssh(host, cmd, timeout=8):
-    """Run SSH command, return stdout or empty string on failure."""
-    pw = _get_ssh_pass()
-    if not pw:
-        return ""
+    """Run SSH command using key auth, return stdout or empty string on failure."""
     try:
         r = subprocess.run(
-            ["sshpass", "-p", pw, "ssh"] + SSH_OPTS + [f"root@{host}", cmd],
+            ["ssh"] + SSH_OPTS + ["-o", "BatchMode=yes", f"root@{host}", cmd],
             capture_output=True, text=True, timeout=timeout
         )
         return r.stdout if r.returncode == 0 else ""

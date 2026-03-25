@@ -26,6 +26,7 @@ declare -A ROUTERS=(
   [ea6350v3-family]="10.0.6.135"
   [onhub-family]="10.0.6.141"
   [onhub-bed]="10.0.6.246"
+  [gs308t]="10.0.6.110"
 )
 
 # HP managed switch — has web UI but not uhttpd (cert generated, push is manual)
@@ -33,8 +34,7 @@ declare -A SWITCHES=(
   [hp]="10.0.6.103"
 )
 
-SSH_PASS="${OPENWRT_SSH_PASS:-$(bw get password gatekeeper-openwrt 2>/dev/null)}"
-SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5"
+SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes"
 
 info()  { echo -e "\033[1;33m[realm-ssl]\033[0m $*"; }
 ok()    { echo -e "\033[1;32m[realm-ssl]\033[0m $*"; }
@@ -121,17 +121,17 @@ push_cert() {
 
   info "Pushing cert to $name ($ip)..."
 
-  if ! sshpass -p "$SSH_PASS" ssh $SSH_OPTS "root@${ip}" "echo ok" &>/dev/null; then
+  if ! ssh $SSH_OPTS "root@${ip}" "echo ok" &>/dev/null; then
     err "  Cannot reach $name at $ip — skipping"
     return 1
   fi
 
   # Upload key + cert (ssh cat — OpenWrt lacks sftp-server)
-  cat "$key"  | sshpass -p "$SSH_PASS" ssh $SSH_OPTS "root@${ip}" "cat > /etc/uhttpd.key" 2>/dev/null
-  cat "$cert" | sshpass -p "$SSH_PASS" ssh $SSH_OPTS "root@${ip}" "cat > /etc/uhttpd.crt" 2>/dev/null
+  cat "$key"  | ssh $SSH_OPTS "root@${ip}" "cat > /etc/uhttpd.key" 2>/dev/null
+  cat "$cert" | ssh $SSH_OPTS "root@${ip}" "cat > /etc/uhttpd.crt" 2>/dev/null
 
   # Configure uhttpd for HTTPS and restart
-  sshpass -p "$SSH_PASS" ssh $SSH_OPTS "root@${ip}" "
+  ssh $SSH_OPTS "root@${ip}" "
     # Ensure HTTPS listener is configured
     uci set uhttpd.main.listen_https='0.0.0.0:443'
     uci set uhttpd.main.listen_https_v6='[::]:443'
