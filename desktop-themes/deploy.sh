@@ -21,7 +21,7 @@ deploy_kitty() {
   mkdir -p ~/.config/kitty
   local scheme
   scheme=$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null || echo "'default'")
-  if [[ "$scheme" == "'prefer-light'" ]]; then
+  if [[ "$scheme" != "'prefer-dark'" ]]; then
     echo -e "${C}Kitty (light)${N} → ~/.config/kitty/"
     cp "$DIR/kitty/kitty-light.conf" ~/.config/kitty/kitty.conf
   else
@@ -35,7 +35,7 @@ deploy_ghostty() {
   mkdir -p ~/.config/ghostty/shaders
   local scheme
   scheme=$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null || echo "'default'")
-  if [[ "$scheme" == "'prefer-light'" ]]; then
+  if [[ "$scheme" != "'prefer-dark'" ]]; then
     echo -e "${C}Ghostty (light)${N} → ~/.config/ghostty/"
     cp "$DIR/ghostty/config-light" ~/.config/ghostty/config
   else
@@ -56,7 +56,7 @@ deploy_brave() {
   # Pick dark or light based on system color scheme
   local scheme
   scheme=$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null || echo "'default'")
-  if [[ "$scheme" == "'prefer-light'" ]]; then
+  if [[ "$scheme" != "'prefer-dark'" ]]; then
     echo -e "${C}Brave (light)${N} → $theme_dir/manifest.json"
     cp "$theme_dir/manifest-light.json" "$theme_dir/manifest.json"
   else
@@ -79,7 +79,7 @@ deploy_navidrome() {
   fi
   local scheme
   scheme=$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null || echo "'default'")
-  if [[ "$scheme" == "'prefer-light'" ]]; then
+  if [[ "$scheme" != "'prefer-dark'" ]]; then
     echo -e "${C}Navidrome (light)${N} → $remote:$dest"
     scp -q "$DIR/navidrome/realm-light.css" "$remote:$dest"
   else
@@ -104,7 +104,7 @@ deploy_gnome() {
   if gnome-extensions info user-theme@gnome-shell-extensions.gcampax.github.com 2>/dev/null | grep -qE "ENABLED|ACTIVE|Enabled: Yes"; then
     local scheme
     scheme=$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null || echo "'default'")
-    if [[ "$scheme" == "'prefer-light'" ]]; then
+    if [[ "$scheme" != "'prefer-dark'" ]]; then
       gsettings set org.gnome.shell.extensions.user-theme name 'Realm-Light'
       echo -e "  ${G}Applied${N} Realm-Light (matches light system scheme)"
     else
@@ -121,7 +121,7 @@ deploy_dock() {
   # Ubuntu Dock ignores shell theme CSS — must use gsettings directly
   local scheme
   scheme=$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null || echo "'default'")
-  if [[ "$scheme" == "'prefer-light'" ]]; then
+  if [[ "$scheme" != "'prefer-dark'" ]]; then
     gsettings set org.gnome.shell.extensions.dash-to-dock custom-background-color true
     gsettings set org.gnome.shell.extensions.dash-to-dock background-color '#f0e6d0'
     gsettings set org.gnome.shell.extensions.dash-to-dock background-opacity 0.88
@@ -226,7 +226,7 @@ deploy_gtk() {
   # Pick dark or light based on system color scheme
   local scheme
   scheme=$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null || echo "'default'")
-  if [[ "$scheme" == "'prefer-light'" ]]; then
+  if [[ "$scheme" != "'prefer-dark'" ]]; then
     echo -e "${C}GTK4 (light)${N} → ~/.config/gtk-4.0/"
     cp "$DIR/gtk4/gtk-light.css" ~/.config/gtk-4.0/gtk.css
   else
