@@ -1,0 +1,50 @@
+/* ══════════════════════════════════════════════════════════════
+ *   REALM GTK4 LIGHT — Enchanted Parchment for libadwaita apps
+ *   Sunlit vellum palette with deep gem-tone accents
+ * ══════════════════════════════════════════════════════════════ */
+
+@define-color accent_bg_color #8a6520;
+@define-color accent_fg_color #f5edd8;
+@define-color accent_color #8a6520;
+@define-color destructive_bg_color #a83030;
+@define-color destructive_fg_color #f5edd8;
+@define-color destructive_color #a83030;
+@define-color success_bg_color #287848;
+@define-color success_fg_color #f5edd8;
+@define-color success_color #287848;
+@define-color warning_bg_color #8a6520;
+@define-color warning_fg_color #f5edd8;
+@define-color warning_color #9a7020;
+@define-color error_bg_color #a83030;
+@define-color error_fg_color #f5edd8;
+@define-color error_color #a83030;
+@define-color window_bg_color #f5edd8;
+@define-color window_fg_color #1a1028;
+@define-color view_bg_color #f0e6d0;
+@define-color view_fg_color #1a1028;
+@define-color headerbar_bg_color #f0e6d0;
+@define-color headerbar_fg_color #2a2038;
+@define-color headerbar_border_color #8a6520;
+@define-color headerbar_backdrop_color #f0e6d0;
+@define-color headerbar_shade_color rgba(0, 0, 0, 0.07);
+@define-color card_bg_color #ece3ce;
+@define-color card_fg_color #2a2038;
+@define-color dialog_bg_color #f5edd8;
+@define-color dialog_fg_color #1a1028;
+@define-color popover_bg_color #f5edd8;
+@define-color popover_fg_color #1a1028;
+@define-color sidebar_bg_color #ece3ce;
+@define-color sidebar_fg_color #2a2038;
+@define-color sidebar_backdrop_color #ece3ce;
+@define-color sidebar_shade_color rgba(0, 0, 0, 0.07);
+@define-color shade_color rgba(0, 0, 0, 0.07);
+@define-color scrollbar_outline_color rgba(138, 101, 32, 0.15);
+
+selection {
+  background-color: rgba(138, 101, 32, 0.25);
+  color: #1a1028;
+}
+
+headerbar {
+  border-bottom: 1px solid rgba(138, 101, 32, 0.2);
+}

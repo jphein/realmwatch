@@ -1,0 +1,585 @@
+/* ══════════════════════════════════════════════════════════════
+ *   REALM LIGHT — Enchanted Parchment GNOME Shell Theme
+ *   Sunlit grimoire palette on Yaru-light foundation
+ *   Inspired by realm.watch
+ * ══════════════════════════════════════════════════════════════
+ *
+ * Palette reference (light-adapted):
+ *   Parchment: #f5edd8 (bg)       #ece3ce (surface)   #ddd4c0 (border)
+ *   Ink:       #1a1028 (fg)       #2a2038 (heading)   #5a4a68 (muted)
+ *   Gold:      #8a6520 (accent)   #6a4a10 (dark)      #b88a30 (hover)
+ *   Ruby:      #a83030            #c84040
+ *   Emerald:   #287848            #1a6838
+ *   Sapphire:  #3a5a90            #2a4a80
+ *   Amethyst:  #6a3a90            #7a4aaa
+ *   Teal:      #1a7868            #288a78
+ */
+
+/* Import the base Yaru light theme from GResource bundle */
+@import url("resource:///org/gnome/shell/theme/Yaru/gnome-shell.css");
+
+/* ── Global stage ── */
+stage {
+  color: #1a1028;
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   TOP PANEL — The Sunlit Banner
+ * ══════════════════════════════════════════════════════════════ */
+
+#panel {
+  background-color: #f0e6d0;
+  border-bottom: 1px solid rgba(138, 101, 32, 0.3);
+}
+
+#panel .panel-button {
+  color: #2a2038;
+}
+
+#panel .panel-button:focus,
+#panel .panel-button:hover {
+  color: #6a4a10;
+  box-shadow: inset 0 0 0 100px rgba(138, 101, 32, 0.1);
+}
+
+#panel .panel-button:active,
+#panel .panel-button:checked {
+  color: #6a4a10;
+  box-shadow: inset 0 0 0 100px rgba(138, 101, 32, 0.18);
+}
+
+#panel .panel-button:active:hover,
+#panel .panel-button:checked:hover {
+  box-shadow: inset 0 0 0 100px rgba(138, 101, 32, 0.24);
+}
+
+#panel .panel-button#panelActivities .workspace-dot {
+  background-color: #8a6520;
+}
+
+#panel .panel-button.clock-display .clock {
+  color: #2a2038;
+}
+
+#panel .panel-button.clock-display:focus .clock,
+#panel .panel-button.clock-display:hover .clock {
+  color: #6a4a10;
+  box-shadow: inset 0 0 0 100px rgba(138, 101, 32, 0.1);
+}
+
+#panel .panel-button.clock-display:active .clock,
+#panel .panel-button.clock-display:checked .clock {
+  color: #6a4a10;
+  box-shadow: inset 0 0 0 100px rgba(138, 101, 32, 0.18);
+}
+
+/* Overview panel transparency */
+#panel:overview,
+#panel.unlock-screen,
+#panel.login-screen {
+  background-color: transparent;
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   POPUP MENUS — Sunlit Scrolls
+ * ══════════════════════════════════════════════════════════════ */
+
+.popup-menu {
+  color: #1a1028;
+}
+
+.popup-menu-content,
+.candidate-popup-content {
+  background-color: #f5edd8;
+  border: 1px solid rgba(138, 101, 32, 0.25);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.popup-menu-item {
+  color: #2a2038;
+}
+
+.popup-menu-item:focus,
+.popup-menu-item:hover,
+.popup-menu-item.selected {
+  color: #6a4a10;
+  background-color: rgba(138, 101, 32, 0.1);
+}
+
+.popup-menu-item:active {
+  color: #6a4a10;
+  background-color: rgba(138, 101, 32, 0.18);
+}
+
+.popup-separator-menu-item .popup-separator-menu-item-separator,
+.popup-separator-menu-item .popup-menu-ornament {
+  background-color: rgba(138, 101, 32, 0.15);
+}
+
+.popup-inactive-menu-item {
+  color: #a0907a;
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   QUICK SETTINGS / SYSTEM MENU
+ * ══════════════════════════════════════════════════════════════ */
+
+.quick-settings {
+  background-color: #f5edd8;
+  border: 1px solid rgba(138, 101, 32, 0.2);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
+}
+
+.quick-settings-grid .icon-button,
+.quick-settings-grid .button {
+  color: #2a2038;
+  background-color: #ece3ce;
+}
+
+.quick-settings-grid .icon-button:hover,
+.quick-settings-grid .button:hover {
+  background-color: rgba(138, 101, 32, 0.1);
+  color: #6a4a10;
+}
+
+.quick-settings-grid .icon-button:active,
+.quick-settings-grid .icon-button:checked,
+.quick-settings-grid .button:active,
+.quick-settings-grid .button:checked {
+  background-color: rgba(138, 101, 32, 0.18);
+  color: #6a4a10;
+}
+
+.quick-toggle {
+  background-color: #ece3ce;
+  color: #2a2038;
+}
+
+.quick-toggle:hover {
+  background-color: rgba(138, 101, 32, 0.1);
+}
+
+.quick-toggle:checked {
+  background-color: rgba(138, 101, 32, 0.18);
+  color: #6a4a10;
+}
+
+.quick-toggle-menu {
+  background-color: #f5edd8;
+}
+
+.quick-slider .slider {
+  color: #8a6520;
+  -barlevel-active-background-color: #8a6520;
+  -barlevel-background-color: #ddd4c0;
+  -barlevel-overdrive-color: #a83030;
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   CALENDAR & NOTIFICATIONS — Sunlit Almanac
+ * ══════════════════════════════════════════════════════════════ */
+
+.calendar {
+  background-color: #f5edd8;
+  border: 1px solid rgba(138, 101, 32, 0.2);
+}
+
+.calendar .calendar-month-label {
+  color: #6a4a10;
+  font-weight: bold;
+}
+
+.calendar .calendar-month-header .pager-button {
+  color: #8a6520;
+  background-color: transparent;
+}
+
+.calendar .calendar-month-header .pager-button:hover {
+  color: #6a4a10;
+  background-color: rgba(138, 101, 32, 0.1);
+}
+
+.calendar .calendar-day-heading {
+  color: #a0907a;
+}
+
+.calendar .calendar-day {
+  color: #2a2038;
+}
+
+.calendar .calendar-day:hover {
+  background-color: rgba(138, 101, 32, 0.1);
+  color: #6a4a10;
+}
+
+.calendar .calendar-day:active {
+  background-color: rgba(138, 101, 32, 0.18);
+  color: #6a4a10;
+}
+
+.calendar .calendar-today {
+  color: #f5edd8;
+  background-color: #8a6520;
+  font-weight: bold;
+}
+
+.calendar .calendar-today:hover {
+  background-color: #b88a30;
+}
+
+.calendar .calendar-other-month-day {
+  color: #c0b8a0;
+}
+
+/* Notifications */
+.message-list-placeholder {
+  color: #a0907a;
+}
+
+.message {
+  background-color: #ece3ce;
+  color: #2a2038;
+  border: 1px solid rgba(138, 101, 32, 0.12);
+}
+
+.message:hover {
+  background-color: rgba(138, 101, 32, 0.08);
+}
+
+.message .message-title {
+  color: #1a1028;
+}
+
+.message .message-body {
+  color: #2a2038;
+}
+
+.message .event-time {
+  color: #8a6520;
+}
+
+.message-list-controls {
+  color: #8a6520;
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   OSD — On-Screen Runes (volume, brightness)
+ * ══════════════════════════════════════════════════════════════ */
+
+.osd-window {
+  background-color: #f5edd8;
+  border: 1px solid rgba(138, 101, 32, 0.25);
+  color: #1a1028;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.osd-window .level {
+  -barlevel-active-background-color: #8a6520;
+  -barlevel-background-color: #ddd4c0;
+  -barlevel-overdrive-color: #a83030;
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   OVERVIEW — The Sunlit Map
+ * ══════════════════════════════════════════════════════════════ */
+
+.search-entry {
+  background-color: #ece3ce;
+  color: #1a1028;
+  border: 1px solid rgba(138, 101, 32, 0.25);
+}
+
+.search-entry:focus {
+  border-color: rgba(138, 101, 32, 0.5);
+  box-shadow: 0 0 4px rgba(138, 101, 32, 0.15);
+}
+
+.search-entry:hover {
+  background-color: #e8dfc8;
+  border-color: rgba(138, 101, 32, 0.35);
+}
+
+.search-entry .search-entry-icon {
+  color: #8a6520;
+}
+
+.search-entry:focus .search-entry-icon {
+  color: #6a4a10;
+}
+
+/* Search results */
+.list-search-result,
+.search-provider-icon {
+  background-color: rgba(236, 227, 206, 0.8);
+}
+
+.list-search-result:hover,
+.search-provider-icon:hover {
+  background-color: rgba(138, 101, 32, 0.1);
+}
+
+.list-search-result-title {
+  color: #1a1028;
+}
+
+.list-search-result-description {
+  color: #2a2038;
+}
+
+.search-provider-icon .list-search-provider-content .list-search-provider-details {
+  color: #2a2038;
+}
+
+/* App grid */
+.icon-grid .overview-icon {
+  color: #2a2038;
+}
+
+.app-folder {
+  background-color: rgba(236, 227, 206, 0.8);
+}
+
+.app-folder:hover {
+  background-color: rgba(138, 101, 32, 0.1);
+}
+
+.app-folder-dialog {
+  background-color: #f5edd8;
+  border: 1px solid rgba(138, 101, 32, 0.2);
+  color: #2a2038;
+}
+
+.app-folder-dialog .folder-name-entry {
+  background-color: #ece3ce;
+  color: #1a1028;
+  border-color: rgba(138, 101, 32, 0.3);
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   DASH — The Sunlit Dock
+ * ══════════════════════════════════════════════════════════════ */
+
+#dash {
+  background-color: rgba(240, 230, 208, 0.88);
+  border: 1px solid rgba(138, 101, 32, 0.18);
+}
+
+.dash-item-container .show-apps .overview-icon {
+  background-color: rgba(138, 101, 32, 0.08);
+}
+
+.dash-item-container .show-apps:hover .overview-icon {
+  background-color: rgba(138, 101, 32, 0.15);
+}
+
+.dash-item-container .show-apps:checked .overview-icon {
+  background-color: rgba(138, 101, 32, 0.22);
+}
+
+/* Ubuntu Dock */
+#dashtodockContainer #dash {
+  background-color: rgba(240, 230, 208, 0.88);
+}
+
+.running-indicator {
+  background-color: #8a6520;
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   WORKSPACE SWITCHER
+ * ══════════════════════════════════════════════════════════════ */
+
+.workspace-switcher {
+  background-color: #f5edd8;
+  border: 1px solid rgba(138, 101, 32, 0.15);
+}
+
+.ws-switcher-active-up,
+.ws-switcher-active-down {
+  background-color: rgba(138, 101, 32, 0.15);
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   WINDOW SWITCHER (Alt-Tab)
+ * ══════════════════════════════════════════════════════════════ */
+
+.switcher-list {
+  background-color: #f5edd8;
+  border: 1px solid rgba(138, 101, 32, 0.25);
+  color: #1a1028;
+}
+
+.switcher-list .item-box:outlined {
+  border: 2px solid #8a6520;
+}
+
+.switcher-list .item-box:selected {
+  background-color: rgba(138, 101, 32, 0.12);
+  border: 2px solid #8a6520;
+}
+
+.switcher-arrow {
+  color: #8a6520;
+}
+
+.input-source-switcher-symbol {
+  color: #1a1028;
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   BUTTONS — Sunlit Gemstones
+ * ══════════════════════════════════════════════════════════════ */
+
+.button,
+.icon-button {
+  color: #2a2038;
+  background-color: #ece3ce;
+}
+
+.button:hover,
+.icon-button:hover {
+  color: #6a4a10;
+  background-color: rgba(138, 101, 32, 0.12);
+}
+
+.button:active,
+.button:checked,
+.icon-button:active,
+.icon-button:checked {
+  color: #6a4a10;
+  background-color: rgba(138, 101, 32, 0.2);
+}
+
+/* Primary / suggested buttons */
+.button:default,
+.modal-dialog .modal-dialog-linked-button:last-child {
+  color: #f5edd8;
+  background-color: #8a6520;
+}
+
+.button:default:hover,
+.modal-dialog .modal-dialog-linked-button:last-child:hover {
+  background-color: #b88a30;
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   DIALOGS — Sunlit Tomes
+ * ══════════════════════════════════════════════════════════════ */
+
+.modal-dialog {
+  background-color: #f5edd8;
+  border: 1px solid rgba(138, 101, 32, 0.25);
+  color: #1a1028;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.modal-dialog .modal-dialog-content-box .headline {
+  color: #6a4a10;
+}
+
+.modal-dialog .modal-dialog-content-box .body {
+  color: #2a2038;
+}
+
+.modal-dialog .modal-dialog-linked-button {
+  color: #2a2038;
+  background-color: #ece3ce;
+  border-color: rgba(138, 101, 32, 0.15);
+}
+
+.modal-dialog .modal-dialog-linked-button:hover {
+  color: #6a4a10;
+  background-color: rgba(138, 101, 32, 0.1);
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   TOOLTIPS — Whispered Parchments
+ * ══════════════════════════════════════════════════════════════ */
+
+.tooltip {
+  background-color: #f5edd8;
+  border: 1px solid rgba(138, 101, 32, 0.3);
+  color: #1a1028;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   MISC — Sunlit Flourishes
+ * ══════════════════════════════════════════════════════════════ */
+
+/* Scrollbars */
+StScrollBar StBin#trough {
+  background-color: #ddd4c0;
+}
+
+StScrollBar StButton#vhandle,
+StScrollBar StButton#hhandle {
+  background-color: rgba(138, 101, 32, 0.3);
+}
+
+StScrollBar StButton#vhandle:hover,
+StScrollBar StButton#hhandle:hover {
+  background-color: rgba(138, 101, 32, 0.5);
+}
+
+/* Slider tracks */
+.slider {
+  color: #8a6520;
+  -barlevel-active-background-color: #8a6520;
+  -barlevel-background-color: #ddd4c0;
+  -barlevel-overdrive-color: #a83030;
+}
+
+/* Resize popup */
+.resize-popup {
+  background-color: #f5edd8;
+  border: 1px solid rgba(138, 101, 32, 0.25);
+  color: #1a1028;
+}
+
+/* Background apps */
+.background-app-item {
+  color: #2a2038;
+}
+
+.background-app-item .title {
+  color: #1a1028;
+}
+
+.background-app-item .subtitle {
+  color: #a0907a;
+}
+
+/* World clocks & weather in calendar */
+.world-clocks-button .world-clocks-header,
+.weather-button .weather-box .weather-header-box .weather-header,
+.events-button .events-box .events-title {
+  color: #8a6520;
+}
+
+.world-clocks-button .world-clocks-grid .world-clocks-time,
+.world-clocks-button .world-clocks-grid .world-clocks-timezone {
+  color: #2a2038;
+}
+
+.weather-button .weather-box .weather-grid .weather-forecast-temp,
+.weather-button .weather-box .weather-grid .weather-forecast-time {
+  color: #2a2038;
+}
+
+/* Looking Glass (dev inspector) */
+#LookingGlassDialog {
+  background-color: #f5edd8;
+  border: 1px solid rgba(138, 101, 32, 0.25);
+  color: #1a1028;
+}
+
+#LookingGlassDialog .notebook-tab {
+  color: #2a2038;
+  background-color: #ece3ce;
+}
+
+#LookingGlassDialog .notebook-tab:selected {
+  color: #6a4a10;
+  background-color: rgba(138, 101, 32, 0.15);
+}
