@@ -437,9 +437,9 @@ def scan_and_update():
                 node_label = node_by_id.get(node_id, {}).get("label", node_id)
                 ap_label = node_by_id.get(ap_id, {}).get("label", ap_id)
                 old_ap_label = node_by_id.get(old_ap, {}).get("label", old_ap)
-                # Get signal strength if available
-                mac = node_by_id.get(node_id, {}).get("mac", "").lower()
-                sig_info = ap_clients.get(ap_id, {}).get(mac, {})
+                # Get signal strength if available (use node_mac to avoid shadowing loop var)
+                node_mac = node_by_id.get(node_id, {}).get("mac", "").lower()
+                sig_info = ap_clients.get(ap_id, {}).get(node_mac, {})
                 signal = sig_info.get("signal")
                 signal_str = f" (signal: {signal} dBm)" if signal else ""
                 # Suppress repeat events for flip-flopping devices (same AP pair in either direction)

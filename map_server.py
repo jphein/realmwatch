@@ -36,6 +36,13 @@ TOPOLOGY_FILE = os.path.join(MAP_DIR, "topology.json")
 _CHAT_CONFIG = os.path.expanduser("~/.config/azure-chat-assistant/config.json")
 _SPEECH_CONFIG = os.path.expanduser("~/.config/speech-to-cli/config.json")
 
+def _validate_ip(ip):
+    """Validate dotted-quad IPv4 address."""
+    parts = ip.split(".")
+    if len(parts) != 4:
+        return False
+    return all(p.isdigit() and 0 <= int(p) <= 255 for p in parts)
+
 # ── Shared thread pool for /resolve-url (avoids creating executor per request) ──
 from concurrent.futures import ThreadPoolExecutor
 _resolve_pool = ThreadPoolExecutor(max_workers=12)
@@ -310,6 +317,9 @@ def _h_get_topology(req, params):
 
 def _h_get_ping_ip(req, params):
     ip = params.get("ip", "")
+    if not _validate_ip(ip):
+        req.respond({"ok": False, "ip": ip, "error": "Invalid IP"}, 400)
+        return None
     try:
         result = subprocess.run(
             ["ping", "-c", "3", "-W", "2", ip],
@@ -828,8 +838,8 @@ def _h_post_ssh(req, params):
             req.respond({"error": "Empty command"}, 400)
             return None
         result = subprocess.run(
-            ["ssh", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=no",
-             host, command],
+            ["ssh", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=accept-new",
+             "-o", "BatchMode=yes", host, command],
             capture_output=True, text=True, timeout=30
         )
         return {

@@ -665,7 +665,10 @@ def update_node_position(node_id, x, y):
     row = c.execute("SELECT data FROM nodes WHERE node_id=?", (node_id,)).fetchone()
     if row is None:
         return
-    data = json.loads(row["data"])
+    try:
+        data = json.loads(row["data"])
+    except (json.JSONDecodeError, TypeError):
+        data = {}
     data["x"] = x
     data["y"] = y
     c.execute("UPDATE nodes SET x=?, y=?, data=? WHERE node_id=?",
