@@ -6,6 +6,7 @@
 #   ./desktop-themes/deploy.sh kitty    # deploy one
 #   ./desktop-themes/deploy.sh ghostty
 #   ./desktop-themes/deploy.sh brave
+#   ./desktop-themes/deploy.sh navidrome
 #   ./desktop-themes/deploy.sh gnome
 #   ./desktop-themes/deploy.sh gtk
 #   ./desktop-themes/deploy.sh dock
@@ -17,17 +18,31 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 G='\033[1;32m'; Y='\033[1;33m'; C='\033[0;36m'; N='\033[0m'
 
 deploy_kitty() {
-  echo -e "${C}Kitty${N} → ~/.config/kitty/"
   mkdir -p ~/.config/kitty
-  cp "$DIR/kitty/kitty.conf" ~/.config/kitty/kitty.conf
+  local scheme
+  scheme=$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null || echo "'default'")
+  if [[ "$scheme" == "'prefer-light'" ]]; then
+    echo -e "${C}Kitty (light)${N} → ~/.config/kitty/"
+    cp "$DIR/kitty/kitty-light.conf" ~/.config/kitty/kitty.conf
+  else
+    echo -e "${C}Kitty (dark)${N} → ~/.config/kitty/"
+    cp "$DIR/kitty/kitty-dark.conf" ~/.config/kitty/kitty.conf
+  fi
   echo -e "  ${G}OK${N}"
 }
 
 deploy_ghostty() {
-  echo -e "${C}Ghostty${N} → ~/.config/ghostty/"
   mkdir -p ~/.config/ghostty/shaders
-  cp "$DIR/ghostty/config" ~/.config/ghostty/config
-  cp "$DIR/ghostty/realm-glow.glsl" ~/.config/ghostty/shaders/realm-glow.glsl
+  local scheme
+  scheme=$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null || echo "'default'")
+  if [[ "$scheme" == "'prefer-light'" ]]; then
+    echo -e "${C}Ghostty (light)${N} → ~/.config/ghostty/"
+    cp "$DIR/ghostty/config-light" ~/.config/ghostty/config
+  else
+    echo -e "${C}Ghostty (dark)${N} → ~/.config/ghostty/"
+    cp "$DIR/ghostty/config-dark" ~/.config/ghostty/config
+    cp "$DIR/ghostty/realm-glow.glsl" ~/.config/ghostty/shaders/realm-glow.glsl
+  fi
   echo -e "  ${G}OK${N}"
 }
 
@@ -52,6 +67,26 @@ deploy_brave() {
   # Brave requires manual load of unpacked extensions the first time.
   # After that, reload the extension or restart Brave to pick up changes.
   echo -e "  First time: brave://extensions → Developer mode → Load unpacked → select $theme_dir"
+}
+
+deploy_navidrome() {
+  local remote="jp@10.0.6.120"
+  local dest="/opt/mediaserver/site/navidrome/realm-theme.css"
+  # Check if file server is reachable
+  if ! ssh -o ConnectTimeout=3 "$remote" true 2>/dev/null; then
+    echo -e "  ${Y}Skip${N} — file server unreachable"
+    return
+  fi
+  local scheme
+  scheme=$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null || echo "'default'")
+  if [[ "$scheme" == "'prefer-light'" ]]; then
+    echo -e "${C}Navidrome (light)${N} → $remote:$dest"
+    scp -q "$DIR/navidrome/realm-light.css" "$remote:$dest"
+  else
+    echo -e "${C}Navidrome (dark)${N} → $remote:$dest"
+    scp -q "$DIR/navidrome/realm-dark.css" "$remote:$dest"
+  fi
+  echo -e "  ${G}OK${N} (reload Navidrome page to see changes)"
 }
 
 deploy_gnome() {
@@ -224,8 +259,9 @@ echo ""
 case "${1:-all}" in
   kitty)   deploy_kitty ;;
   ghostty) deploy_ghostty ;;
-  brave)   deploy_brave ;;
-  gnome)   deploy_gnome ;;
+  brave)      deploy_brave ;;
+  navidrome)  deploy_navidrome ;;
+  gnome)      deploy_gnome ;;
   dock)       deploy_dock ;;
   extensions) deploy_extensions ;;
   gtk)        deploy_gtk ;;
@@ -234,6 +270,7 @@ case "${1:-all}" in
     deploy_kitty
     deploy_ghostty
     deploy_brave
+    deploy_navidrome
     deploy_gnome
     deploy_dock
     deploy_extensions
@@ -241,7 +278,7 @@ case "${1:-all}" in
     deploy_editor
     ;;
   *)
-    echo "Usage: $0 [kitty|ghostty|brave|gnome|dock|extensions|gtk|editor|all]"
+    echo "Usage: $0 [kitty|ghostty|brave|navidrome|gnome|dock|extensions|gtk|editor|all]"
     exit 1
     ;;
 esac

@@ -1,0 +1,112 @@
+# ══════════════════════════════════════════════════════════════
+#   REALM GHOSTTY LIGHT — Enchanted Parchment Terminal
+#   Sunlit vellum palette inspired by realm.watch
+# ══════════════════════════════════════════════════════════════
+
+# ── Font ──
+font-family = Ubuntu Sans Mono
+font-size = 13
+font-feature = -liga
+
+# ── Window ──
+background-opacity = 0.92
+background-blur = 20
+window-padding-x = 14
+window-padding-y = 10
+window-padding-balance = true
+window-padding-color = extend
+confirm-close-surface = false
+gtk-titlebar = true
+window-decoration = server
+window-theme = ghostty
+window-titlebar-background = #f0e6d0
+window-titlebar-foreground = #6a4a10
+
+# ── Colors: The Enchanted Parchment ──
+foreground = #1a1028
+background = #f5edd8
+minimum-contrast = 1.2
+
+# Cursor: dark gold quill
+cursor-color = #8a6520
+cursor-text = #f5edd8
+cursor-style = bar
+cursor-style-blink = true
+cursor-opacity = 0.9
+
+# Selection: warm gold wash
+selection-foreground = #1a1028
+selection-background = #dcc898
+
+# Search: sunlit highlight
+search-foreground = #f5edd8
+search-background = #8a6520
+search-selected-foreground = #f5edd8
+search-selected-background = #6a4a10
+
+# ── ANSI: Sunlit Gem Palette ──
+# Black (ink)
+palette = 0=#2a2038
+palette = 8=#5a4a68
+
+# Red (deep ruby)
+palette = 1=#a83030
+palette = 9=#c84040
+
+# Green (deep emerald)
+palette = 2=#287848
+palette = 10=#1a6838
+
+# Yellow (dark gold)
+palette = 3=#8a6520
+palette = 11=#6a4a10
+
+# Blue (deep sapphire)
+palette = 4=#3a5a90
+palette = 12=#2a4a80
+
+# Magenta (deep amethyst)
+palette = 5=#6a3a90
+palette = 13=#7a4aaa
+
+# Cyan (deep teal)
+palette = 6=#1a7868
+palette = 14=#288a78
+
+# White (parchment)
+palette = 7=#5a4a68
+palette = 15=#1a1028
+
+# ── Splits: sunlit dividers ──
+split-divider-color = #8a6520
+unfocused-split-opacity = 0.7
+unfocused-split-fill = #f0e6d0
+
+# ── Scrollback ──
+scrollback-limit = 100000
+
+# ── Bell — completely disabled ──
+bell-features = no-audio
+bell-features = no-attention
+bell-features = no-title
+
+# ── Performance (optimized for Claude Code) ──
+copy-on-select = clipboard
+mouse-scroll-multiplier = 3
+window-inherit-font-size = false
+resize-overlay = never
+
+# ── Keybindings ──
+# Scrollback pager
+keybind = ctrl+shift+h=write_screen_file:open,plain
+
+keybind = ctrl+shift+t=new_tab
+keybind = ctrl+shift+enter=new_split:right
+
+# Font size
+keybind = ctrl+equal=increase_font_size:1
+keybind = ctrl+minus=decrease_font_size:1
+keybind = ctrl+zero=reset_font_size
+
+# ── Shell Integration ──
+shell-integration = detect

@@ -1,0 +1,550 @@
+/* ══════════════════════════════════════════════════════════════
+ *   REALM NAVIDROME LIGHT — Enchanted Parchment for Navidrome
+ *   Injected via Caddy replace-response into </head>
+ *
+ *   Palette:
+ *     Parchment: #f5edd8 (bg)      #f0e6d0 (surface)   #ece3ce (card)
+ *     Ink:       #1a1028 (fg)      #2a2038 (secondary)  #5a4a68 (muted)
+ *     Gold:      #8a6520 (accent)  #6a4a10 (dark)       #b88a30 (hover)
+ *     Ruby:      #a83030            Emerald: #287848
+ *     Sapphire:  #3a5a90            Amethyst: #6a3a90
+ *     Teal:      #1a7868
+ * ══════════════════════════════════════════════════════════════ */
+
+/* ── App Bar (top nav) ── */
+.MuiAppBar-positionFixed {
+  background-color: #f0e6d0 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  border-bottom: 1px solid rgba(138, 101, 32, 0.2);
+}
+
+.MuiAppBar-positionFixed .MuiTypography-root,
+.MuiAppBar-positionFixed .MuiIconButton-root {
+  color: #2a2038 !important;
+}
+
+/* ── Sidebar ── */
+.RaSidebar-fixed,
+.RaSidebar-drawerPaper,
+[class*="RaSidebar-drawerPaper"],
+[class*="RaSidebar-fixed"] {
+  background-color: #f0e6d0 !important;
+}
+
+.MuiDrawer-root {
+  background: #f0e6d0 !important;
+}
+
+/* ── Sidebar menu items ── */
+[class*="RaMenuItemLink-root"] {
+  color: #2a2038 !important;
+}
+
+[class*="RaMenuItemLink-root"][aria-current="page"],
+[class*="RaMenuItemLink-root"][aria-current="page"] .MuiListItemIcon-root,
+[class*="RaMenuItemLink-active"],
+[class*="RaMenuItemLink-active"] .MuiListItemIcon-root {
+  color: #8a6520 !important;
+}
+
+[class*="RaMenuItemLink-root"] .MuiListItemIcon-root {
+  color: #2a2038 !important;
+}
+
+[class*="RaMenuItemLink-root"]:hover {
+  background-color: rgba(138, 101, 32, 0.08) !important;
+  color: #6a4a10 !important;
+}
+
+/* ── Main layout ── */
+[class*="RaLayout-content"] {
+  padding: 0 !important;
+  background: #f5edd8 !important;
+}
+
+[class*="RaLayout-root"] {
+  background-color: #f0e6d0 !important;
+}
+
+/* ── Paper / Cards ── */
+.MuiPaper-root {
+  color: #1a1028 !important;
+  background-color: #f5edd8 !important;
+}
+
+.MuiCard-root {
+  background-color: #ece3ce !important;
+}
+
+/* ── List toolbar ── */
+[class*="RaListToolbar-toolbar"],
+[class*="RaList-content"] {
+  background-color: #f0e6d0 !important;
+}
+
+/* ── Tables ── */
+.MuiTableCell-root {
+  color: #2a2038 !important;
+  border-bottom-color: rgba(138, 101, 32, 0.1) !important;
+}
+
+.MuiTableCell-head {
+  color: #8a6520 !important;
+  background-color: #f0e6d0 !important;
+}
+
+.MuiTableRow-root:hover {
+  background-color: rgba(138, 101, 32, 0.06) !important;
+}
+
+.MuiTableSortLabel-root {
+  color: #8a6520 !important;
+}
+
+.MuiTableSortLabel-root:hover {
+  color: #6a4a10 !important;
+}
+
+.MuiTableSortLabel-root.Mui-active {
+  color: #6a4a10 !important;
+}
+
+.MuiTableSortLabel-root.Mui-active .MuiTableSortLabel-icon {
+  color: #6a4a10 !important;
+}
+
+/* ── Buttons ── */
+.MuiButton-textPrimary {
+  color: #8a6520 !important;
+}
+
+.MuiButton-textSecondary {
+  color: #2a2038 !important;
+}
+
+.MuiButton-containedPrimary {
+  background-color: #8a6520 !important;
+  color: #f5edd8 !important;
+}
+
+.MuiButton-containedPrimary:hover {
+  background-color: #b88a30 !important;
+}
+
+.MuiIconButton-root {
+  color: #2a2038 !important;
+}
+
+.MuiIconButton-root:hover {
+  color: #8a6520 !important;
+}
+
+/* ── Chips ── */
+.MuiChip-root {
+  background-color: #ddd4c0 !important;
+  color: #2a2038 !important;
+}
+
+/* ── Inputs & Forms ── */
+.MuiInputBase-root {
+  color: #1a1028 !important;
+}
+
+.MuiInput-underline:before {
+  border-bottom-color: rgba(138, 101, 32, 0.2) !important;
+}
+
+.MuiInput-underline:hover:not(.Mui-disabled):before {
+  border-bottom-color: rgba(138, 101, 32, 0.4) !important;
+}
+
+.MuiInput-underline:after {
+  border-bottom-color: #8a6520 !important;
+}
+
+.MuiOutlinedInput-notchedOutline {
+  border-color: rgba(138, 101, 32, 0.2) !important;
+}
+
+.MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: rgba(138, 101, 32, 0.4) !important;
+}
+
+.MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: #8a6520 !important;
+}
+
+.MuiInputLabel-root {
+  color: #5a4a68 !important;
+}
+
+.MuiInputLabel-root.Mui-focused {
+  color: #8a6520 !important;
+}
+
+.MuiFormGroup-root {
+  color: #1a1028 !important;
+}
+
+.MuiSelect-icon {
+  color: #2a2038 !important;
+}
+
+/* ── Links ── */
+[class*="RaLink-link"],
+a.MuiTypography-colorPrimary {
+  color: #1a7868 !important;
+}
+
+a.MuiTypography-colorPrimary:hover,
+[class*="RaLink-link"]:hover {
+  color: #288a78 !important;
+}
+
+/* ── Pagination ── */
+[class*="RaPaginationActions-currentPageButton"] {
+  border: 2px solid #8a6520 !important;
+}
+
+[class*="RaPaginationActions-button"] {
+  background-color: #ece3ce !important;
+  color: #2a2038 !important;
+}
+
+/* ── Album Grid ── */
+[class*="NDAlbumGridView-albumName"] {
+  color: #1a1028 !important;
+  font-weight: 700;
+}
+
+[class*="NDAlbumGridView-albumSubtitle"] {
+  color: #5a4a68 !important;
+}
+
+[class*="NDAlbumGridView-albumContainer"] {
+  background-color: #ece3ce !important;
+  border-radius: 8px;
+  transition: background-color 0.3s ease;
+}
+
+[class*="NDAlbumGridView-albumContainer"]:hover {
+  background-color: #ddd4c0 !important;
+}
+
+[class*="NDAlbumGridView-albumPlayButton"] {
+  background-color: #287848 !important;
+  border-radius: 50%;
+  box-shadow: 0 8px 8px rgba(0, 0, 0, 0.12);
+}
+
+[class*="NDAlbumGridView-albumPlayButton"]:hover {
+  background: #287848 !important;
+}
+
+/* ── Album Details ── */
+[class*="NDAlbumDetails-root"] {
+  background: linear-gradient(#ddd4c0, transparent) !important;
+  box-shadow: none !important;
+}
+
+[class*="NDAlbumDetails-recordName"] {
+  color: #1a1028 !important;
+  font-weight: 700;
+}
+
+[class*="NDAlbumDetails-recordArtist"] {
+  color: #8a6520 !important;
+  font-weight: 700;
+}
+
+[class*="NDAlbumDetails-recordMeta"] {
+  color: #5a4a68 !important;
+}
+
+/* ── Playlist Details ── */
+[class*="NDPlaylistDetails-container"] {
+  background: linear-gradient(#ddd4c0, transparent) !important;
+  box-shadow: none !important;
+}
+
+[class*="NDPlaylistDetails-title"] {
+  color: #1a1028 !important;
+  font-weight: 700;
+}
+
+[class*="NDPlaylistDetails-details"] {
+  color: #5a4a68 !important;
+}
+
+/* ── Comments ── */
+[class*="NDCollapsibleComment-commentBlock"] {
+  color: #5a4a68 !important;
+}
+
+/* ── Audio Player ── */
+[class*="NDAudioPlayer-audioTitle"] {
+  color: #1a1028 !important;
+}
+
+[class*="NDAudioPlayer-songInfo"] {
+  color: #5a4a68 !important;
+}
+
+/* ── Login Screen ── */
+[class*="NDLogin-systemNameLink"] {
+  color: #8a6520 !important;
+}
+
+[class*="NDLogin-welcome"] {
+  color: #1a1028 !important;
+}
+
+[class*="NDLogin-card"] {
+  background: #f5edd8 !important;
+}
+
+[class*="NDLogin-button"] {
+  box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* ── Mobile Artist ── */
+[class*="NDMobileArtistDetails-bgContainer"] {
+  background: linear-gradient(to bottom, rgba(245 237 216 / 72%), #f5edd8) !important;
+}
+
+/* ── Music Player Panel ── */
+.react-jinke-music-player-main svg:active,
+.react-jinke-music-player-main svg:hover {
+  color: #8a6520;
+}
+
+.react-jinke-music-player-main .music-player-panel .panel-content .rc-slider-handle,
+.react-jinke-music-player-main .music-player-panel .panel-content .rc-slider-track {
+  background-color: #8a6520;
+}
+
+.sound-operation .rc-slider-handle,
+.sound-operation .rc-slider-track {
+  background-color: #287848 !important;
+}
+
+.sound-operation .rc-slider-handle:active {
+  box-shadow: 0 0 2px #287848 !important;
+}
+
+.react-jinke-music-player-main ::-webkit-scrollbar-thumb {
+  background-color: #ddd4c0;
+}
+
+.react-jinke-music-player-main .music-player-panel .panel-content .rc-slider-handle:active {
+  box-shadow: 0 0 2px #8a6520;
+}
+
+.react-jinke-music-player-main .music-player-panel .panel-content .rc-slider-handle {
+  border: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.react-jinke-music-player-main .audio-item.playing svg {
+  color: #1a7868;
+}
+
+.react-jinke-music-player-main .audio-item.playing .player-singer {
+  color: #1a7868 !important;
+}
+
+.react-jinke-music-player-main .loading svg {
+  color: #8a6520 !important;
+}
+
+.react-jinke-music-player-main .music-player-panel {
+  background-color: #f5edd8;
+  color: #1a1028;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.react-jinke-music-player-main .music-player-panel .panel-content .player-content .audio-title {
+  color: #1a1028;
+}
+
+.react-jinke-music-player-main .music-player-panel .panel-content .player-content .duration,
+.react-jinke-music-player-main .music-player-panel .panel-content .player-content .current-time {
+  color: #6a4a10;
+}
+
+.audio-lists-panel {
+  background-color: #f5edd8;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.audio-lists-panel-content .audio-item.playing {
+  background-color: transparent;
+}
+
+.audio-lists-panel-content .audio-item:nth-child(2n+1) {
+  background-color: transparent;
+}
+
+.audio-lists-panel-content .audio-item:active,
+.audio-lists-panel-content .audio-item:hover {
+  background-color: #ece3ce;
+}
+
+.audio-lists-panel-header {
+  border-bottom: 1px solid rgba(138, 101, 32, 0.2);
+  box-shadow: none;
+}
+
+.audio-lists-panel-header-title {
+  color: #8a6520;
+}
+
+.audio-lists-panel-content .audio-item.playing,
+.audio-lists-panel-content .audio-item.playing svg {
+  color: #1a7868;
+}
+
+.audio-lists-panel-content .audio-item:active .group:not(.player-delete) svg,
+.audio-lists-panel-content .audio-item:hover .group:not(.player-delete) svg {
+  color: #8a6520;
+}
+
+.react-jinke-music-player-main .music-player-panel .panel-content .player-content .audio-lists-btn {
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.react-jinke-music-player-main .music-player-panel .panel-content .img-content {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.react-jinke-music-player-main .music-player-lyric {
+  color: #6a4a10;
+  -webkit-text-stroke: 0.5px #f5edd8;
+  font-weight: bolder;
+}
+
+.react-jinke-music-player-main .lyric-btn-active,
+.react-jinke-music-player-main .lyric-btn-active svg {
+  color: #6a4a10 !important;
+}
+
+/* Mobile player */
+.react-jinke-music-player-mobile-cover {
+  border: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.react-jinke-music-player .music-player-controller {
+  border: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  color: #8a6520;
+}
+
+.react-jinke-music-player .music-player-controller .music-player-controller-setting {
+  color: rgba(138, 101, 32, 0.3);
+}
+
+.react-jinke-music-player-mobile-progress .rc-slider-handle,
+.react-jinke-music-player-mobile-progress .rc-slider-track {
+  background-color: #287848;
+}
+
+.react-jinke-music-player-mobile-progress .rc-slider-handle {
+  border: none;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f5edd8;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(138, 101, 32, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(138, 101, 32, 0.35);
+}
+
+/* ── Typography overrides ── */
+.MuiTypography-root {
+  color: #1a1028;
+}
+
+.MuiTypography-colorTextSecondary {
+  color: #5a4a68 !important;
+}
+
+/* ── Dialogs ── */
+.MuiDialog-paper {
+  background-color: #f5edd8 !important;
+}
+
+/* ── Menus & Popups ── */
+.MuiMenu-paper,
+.MuiPopover-paper {
+  background-color: #f5edd8 !important;
+}
+
+.MuiMenuItem-root {
+  color: #2a2038 !important;
+}
+
+.MuiMenuItem-root:hover {
+  background-color: rgba(138, 101, 32, 0.08) !important;
+}
+
+.MuiListItem-root.Mui-selected {
+  background-color: rgba(138, 101, 32, 0.12) !important;
+}
+
+/* ── Switches & Checkboxes ── */
+.MuiSwitch-colorPrimary.Mui-checked {
+  color: #8a6520 !important;
+}
+
+.MuiSwitch-colorPrimary.Mui-checked + .MuiSwitch-track {
+  background-color: #8a6520 !important;
+}
+
+.MuiCheckbox-colorPrimary.Mui-checked {
+  color: #8a6520 !important;
+}
+
+/* ── Tabs ── */
+.MuiTab-root {
+  color: #2a2038 !important;
+}
+
+.MuiTab-root.Mui-selected {
+  color: #8a6520 !important;
+}
+
+.MuiTabs-indicator {
+  background-color: #8a6520 !important;
+}
+
+/* ── Snackbar ── */
+.MuiSnackbarContent-root {
+  background-color: #ece3ce !important;
+  color: #1a1028 !important;
+}
+
+/* ── Tooltips ── */
+.MuiTooltip-tooltip {
+  background-color: #2a2038 !important;
+  color: #f5edd8 !important;
+}
+
+/* ── Selection accent ── */
+::selection {
+  background: rgba(138, 101, 32, 0.25);
+  color: #1a1028;
+}
