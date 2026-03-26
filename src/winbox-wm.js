@@ -46,6 +46,7 @@ const _origParents = new Map();        // panelId → { parent, nextSibling }
 
 // ── Debounced position save (per-panel timers) ──
 const _saveTimers = new Map();   // panelId → timeoutId
+const _rafDirty = new Map();     // panelId → {x,y,w,h} pending save
 let _rafPending = false;         // RAF gate for move/resize
 
 // ── Position persistence ──
@@ -74,13 +75,17 @@ function _debouncedSavePosition(panelId, x, y, w, h) {
   }, 100));
 }
 
-/** RAF-gated wrapper — coalesces rapid move/resize into one save per frame */
+/** RAF-gated wrapper — coalesces rapid move/resize into one save per frame per panel */
 function _rafSavePosition(panelId, x, y, w, h) {
+  _rafDirty.set(panelId, { x, y, w, h });
   if (_rafPending) return;
   _rafPending = true;
   requestAnimationFrame(() => {
     _rafPending = false;
-    _debouncedSavePosition(panelId, x, y, w, h);
+    for (const [id, pos] of _rafDirty) {
+      _debouncedSavePosition(id, pos.x, pos.y, pos.w, pos.h);
+    }
+    _rafDirty.clear();
   });
 }
 
@@ -216,13 +221,10 @@ export function openWinBoxPanel(panelId) {
     minwidth: MIN_WIDTH,
     minheight: MIN_HEIGHT,
 
-    // X button: minimize instead of destroy, dispatch event for panel-manager
+    // X button: minimize instead of destroy — onminimize dispatches the event
     onclose(force) {
       if (force) return; // allow forced destruction (returns undefined → falsy)
       this.minimize();
-      document.dispatchEvent(new CustomEvent('winbox-minimized', {
-        detail: { panelId },
-      }));
       return true; // prevent default close
     },
 
@@ -254,10 +256,8 @@ export function closeWinBoxPanel(panelId) {
   const wb = _instances.get(panelId);
   if (!wb || !wb.dom) return;
 
+  // minimize() triggers onminimize which dispatches winbox-minimized
   wb.minimize();
-  document.dispatchEvent(new CustomEvent('winbox-minimized', {
-    detail: { panelId },
-  }));
 }
 
 /**

@@ -609,7 +609,7 @@ function _onDrag(e) {
       _dragging.style.transition = 'none';
       _dragging.style.position = 'fixed';
       _dragging.style.zIndex = '9999';
-      if (_autoSnap && _showAnchors && !document.body.classList.contains('panel-mode-auto')) _anchorOverlay.classList.add('visible');
+      if (_autoSnap && _showAnchors && _anchorOverlay && !document.body.classList.contains('panel-mode-auto')) _anchorOverlay.classList.add('visible');
       _startParticleTrail(clientX, clientY);
     }
   }
@@ -1025,10 +1025,10 @@ function _createRune(panelId, def) {
   rune.appendChild(aura);
 
   // Click to unseal (dock mode uses this; anchored/conjured use drag handler)
-  const panel = document.getElementById(panelId);
   rune.addEventListener('click', (e) => {
     if (rune._dragManaged) return; // Handled by _makeRuneDraggable
-    _toggleMinimize(panel);
+    const panel = document.getElementById(panelId);
+    if (panel) _toggleMinimize(panel);
   });
 
   return rune;
@@ -1788,19 +1788,18 @@ export function applyFormation(formationId) {
       visible = saved.visible.filter(id => knownIds.has(id));
       anchors = saved.anchors;
       minimized = (saved.minimized || []).filter(id => knownIds.has(id));
-      // Add any new panels not in saved state (default to sealed in dock)
+      // Add any new panels not in saved state
       for (const id of knownIds) {
         if (!visible.includes(id) && !minimized.includes(id)) {
           visible.push(id);
-          minimized.push(id);
         }
       }
     } else {
-      // No saved formation — start all panels sealed in dock
       visible = Object.keys(PANELS);
-      minimized = Object.keys(PANELS);
       anchors = null;
     }
+    // All panels start sealed on page load
+    minimized = [...visible];
   }
 
   // Clear existing runes from ALL locations (dock, anchored, wandering, conjured)
@@ -1848,6 +1847,14 @@ export function applyFormation(formationId) {
       if (!panel) return;
       _restoreSealedToDoc(panel, anchors?.[id] || PANELS[id]?.anchor);
     });
+
+    // Start mode-specific animations after all runes are placed
+    if (_sealMode === 'wander' && _wanderingRunes.length > 0) {
+      _animateWandering();
+    } else if (_sealMode === 'conjure') {
+      _arrangeConjuredRunes();
+      _startConjureOrbit();
+    }
   }
 
   // If WinBox mode, mount visible (non-minimized) panels into WinBox windows
@@ -1868,7 +1875,7 @@ export function applyFormation(formationId) {
   _spawnConjurationCircle();
 }
 
-// Restore a sealed panel to the dock without animation (for page load)
+// Restore a sealed panel without animation (for page load) — respects _sealMode
 function _restoreSealedToDoc(panel, anchorId) {
   const def = PANELS[panel.id];
   if (!def) return;
@@ -1876,46 +1883,57 @@ function _restoreSealedToDoc(panel, anchorId) {
   // Store anchor so _unsealPanel can position correctly
   panel.dataset.originalAnchor = anchorId || def.anchor;
 
-  // Create rune in dock
-  const tray = _sealedDock.querySelector('.dock-tray');
-  const rune = document.createElement('div');
-  rune.className = 'sealed-rune';
-  rune.dataset.panelId = panel.id;
-  rune.title = def.name;
-  if (_RUNE_COLORS[panel.id]) rune.style.setProperty('--rune-color', _RUNE_COLORS[panel.id]);
+  // Use shared _createRune (consistent structure across all code paths)
+  const rune = _createRune(panel.id, def);
 
-  const icon = document.createElement('span');
-  icon.className = 'rune-icon';
-  _setRuneIcon(icon, panel.id, def);
-
-  const glow = document.createElement('span');
-  glow.className = 'rune-glow';
-
-  const ring = _createRuneRing(panel.id);
-  const embers = document.createElement('div');
-  embers.className = 'rune-embers';
-
-  const label = document.createElement('span');
-  label.className = 'rune-label';
-  label.textContent = def.name;
-
-  rune.appendChild(ring);
-  rune.appendChild(embers);
-  rune.appendChild(icon);
-  rune.appendChild(glow);
-  rune.appendChild(label);
-  rune.addEventListener('click', () => {
-    if (rune._dragManaged) return;
-    _toggleMinimize(panel);
-  });
-  tray.appendChild(rune);
+  // Place rune based on current seal mode
+  if (_sealMode === 'dock') {
+    const tray = _sealedDock.querySelector('.dock-tray');
+    if (tray) {
+      tray.appendChild(rune);
+      _sealedDock.classList.add('has-runes');
+    }
+  } else if (_sealMode === 'anchored') {
+    rune.classList.add('anchored-rune');
+    rune.style.position = 'fixed';
+    // Spread runes across viewport since we have no prior position on load
+    const idx = document.querySelectorAll('.sealed-rune.anchored-rune').length;
+    rune.style.left = (80 + idx * 70) + 'px';
+    rune.style.top = '80px';
+    document.body.appendChild(rune);
+    _makeRuneDraggable(rune);
+    _sealedDock.classList.remove('has-runes');
+    _sealedDock.style.bottom = '-80px';
+  } else if (_sealMode === 'wander') {
+    rune.classList.add('wandering-rune');
+    rune.style.position = 'fixed';
+    const startX = 100 + Math.random() * (window.innerWidth - 200);
+    const startY = 100 + Math.random() * (window.innerHeight - 200);
+    rune.style.left = startX + 'px';
+    rune.style.top = startY + 'px';
+    document.body.appendChild(rune);
+    _wanderingRunes.push({
+      el: rune, x: startX, y: startY, vx: 0, vy: 0,
+      ax: 100 + Math.random() * (window.innerWidth - 200),
+      ay: 100 + Math.random() * (window.innerHeight - 200),
+      nextAttractor: Date.now() + 5000 + Math.random() * 5000,
+      frameCount: 0,
+    });
+    _sealedDock.classList.remove('has-runes');
+    _sealedDock.style.bottom = '-80px';
+  } else if (_sealMode === 'conjure') {
+    let conjured = document.getElementById('conjured-runes');
+    if (!conjured) conjured = _createConjuredContainer();
+    rune.style.position = 'fixed';
+    conjured.appendChild(rune);
+    _makeRuneDraggable(rune);
+    _sealedDock.classList.remove('has-runes');
+    _sealedDock.style.bottom = '-80px';
+  }
 
   // Mark panel as sealed
   panel.classList.add('panel-sealed');
   panel.style.display = 'none';
-
-  // Show dock
-  _sealedDock.classList.add('has-runes');
   _updateDockBadge();
 }
 
@@ -2051,8 +2069,6 @@ function _loadFormation() {
       Object.assign(_panelSizes, saved.panelSizes);
     }
     applyFormation('grimoire-binding');
-    // Migrate runes to saved seal mode (applyFormation always loads into dock)
-    if (_sealMode !== 'dock') _migrateSealedRunes(_sealMode);
   }
 }
 

@@ -136,6 +136,8 @@ function _fpsUpdate() {
     _fpsMaxFt = 0;
   }
 }
+
+// Auto-detect counters — declared after _fpsUpdate but before first call
 let _autoDetectSamples = 0;
 let _autoDetectLow = 0;
 

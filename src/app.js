@@ -78,14 +78,16 @@ initSpellbook({ saveSettings, scheduleSave });
 // ── Traffic scale slider ──
 const trafficSlider = document.getElementById('traffic-scale-slider');
 const trafficScaleVal = document.getElementById('traffic-scale-val');
-trafficSlider.addEventListener('input', () => {
-  const v = parseFloat(trafficSlider.value);
-  setTrafficScale(v);
-  trafficScaleVal.textContent = v.toFixed(1) + 'x';
-  if (_sseTrafficMap) updateConnectionTrafficSSE(_sseTrafficMap);
-  else { const _ls = getLastStatus(); if (_ls && _ls.collectd) updateConnectionTraffic(_ls.collectd); }
-  scheduleSave();
-});
+if (trafficSlider) {
+  trafficSlider.addEventListener('input', () => {
+    const v = parseFloat(trafficSlider.value);
+    setTrafficScale(v);
+    if (trafficScaleVal) trafficScaleVal.textContent = v.toFixed(1) + 'x';
+    if (_sseTrafficMap) updateConnectionTrafficSSE(_sseTrafficMap);
+    else { const _ls = getLastStatus(); if (_ls && _ls.collectd) updateConnectionTraffic(_ls.collectd); }
+    scheduleSave();
+  });
+}
 
 initTopoControls({ saveSettings, scheduleSave, applyTopoZ });
 
@@ -406,6 +408,22 @@ export const getSseConnected = () => _sseConnected;
     _connect();
   });
 
+  // Attach plugin SSE listeners to the live connection (called after plugins load)
+  window._attachPluginSSEListeners = function(types) {
+    if (!sse || !types || types.length === 0) return;
+    for (const eventType of types) {
+      sse.addEventListener(eventType, e => {
+        _onMessageReceived();
+        try {
+          const data = JSON.parse(e.data);
+          dispatchPluginSSE(eventType, data);
+        } catch (err) {
+          console.error(`Plugin SSE parse error (${eventType}):`, err);
+        }
+      });
+    }
+  };
+
   // Bootstrap wifi panel immediately (SSE wifi event only fires every 120s)
   fetchWifiAPs();
 
@@ -516,11 +534,11 @@ initRealmAPI({
       }
     }
 
-    // Wire up SSE dispatch for plugin event types
-    // This is done via the existing EventSource — we add listeners for plugin types
-    // The SSE connection is set up above in initSSE(); we need to attach to it.
-    // Store the plugin types for the SSE handler to check.
+    // Wire up SSE dispatch for plugin event types on the live connection
     window._realmPluginSSETypes = pluginSSETypes;
+    if (window._attachPluginSSEListeners) {
+      window._attachPluginSSEListeners(pluginSSETypes);
+    }
 
     if (plugins.length > 0) {
       console.log(`Realm Map: ${plugins.length} plugin(s) loaded`);
