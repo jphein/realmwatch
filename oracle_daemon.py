@@ -144,7 +144,8 @@ def _post_event(event):
             f"{MAP_URL}/event", data=data,
             headers={"Content-Type": "application/json"}, method="POST",
         )
-        urllib.request.urlopen(req, timeout=3)
+        with urllib.request.urlopen(req, timeout=3):
+            pass
         return True
     except Exception as e:
         print(f"  Failed to post event: {e}")

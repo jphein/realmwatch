@@ -149,7 +149,7 @@ def _parse_packet(data):
         if part_type == PART_HOST:
             ctx["host"] = payload.rstrip(b"\x00").decode("utf-8", errors="replace")
         elif part_type == PART_TIME:
-            ctx["time"] = struct.unpack("!q", payload)[0]
+            ctx["time"] = struct.unpack("!Q", payload)[0]
         elif part_type == PART_TIME_HR:
             ctx["time"] = struct.unpack("!Q", payload)[0] / (2**30)
         elif part_type == PART_PLUGIN:
@@ -228,16 +228,21 @@ def _eviction_loop():
 def _listener_loop():
     """Main UDP listener loop."""
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind(("", PORT))
-    print(f"collectd listener: UDP :{PORT}")
+    try:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(("", PORT))
+        print(f"collectd listener: UDP :{PORT}")
 
-    while True:
-        try:
-            data, addr = sock.recvfrom(65535)
-            _parse_packet(data)
-        except Exception:
-            pass
+        while True:
+            try:
+                data, addr = sock.recvfrom(65535)
+                _parse_packet(data)
+            except OSError:
+                break  # Socket closed
+            except Exception:
+                pass
+    finally:
+        sock.close()
 
 
 def start_listener():

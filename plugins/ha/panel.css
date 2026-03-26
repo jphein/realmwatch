@@ -1,0 +1,55 @@
+/* -- Energy Plugin Panel Styles (Solar Sanctum) -- */
+
+.energy-body {
+  padding: 8px 12px 10px;
+}
+.energy-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(80,64,48,0.15);
+}
+.energy-row:last-of-type { border-bottom: none; }
+.energy-icon {
+  font-size: 14px;
+  width: 20px;
+  text-align: center;
+}
+.energy-label {
+  font-size: 10px;
+  color: #908070;
+  flex: 1;
+}
+.energy-val {
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  color: #d4c5a0;
+  text-align: right;
+}
+.energy-solar .energy-icon { color: #f0c040; }
+.energy-battery .energy-icon { color: #60c060; }
+.energy-grid .energy-icon { color: #6080c0; }
+.energy-house .energy-icon { color: #c09060; }
+.energy-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(96,192,96,0.3), transparent);
+  margin: 6px 0;
+}
+.energy-stats {
+  display: flex;
+  justify-content: space-between;
+}
+.energy-stat {
+  text-align: center;
+}
+.energy-stat-label {
+  font-size: 8px;
+  color: #605040;
+  display: block;
+}
+.energy-stat-val {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  color: #a09080;
+}

@@ -17,13 +17,11 @@ EnvironmentFile=%h/Projects/realmwatch/.env
 ExecStart=%h/Projects/realmwatch/venv/bin/python3 map_server.py
 Restart=on-failure
 RestartSec=5
+TimeoutStopSec=10
 
 # Resource limits (main server with background scanners)
 MemoryHigh=1G
 MemoryMax=1536M
-
-# Security hardening (NoNewPrivileges removed — fping needs CAP_NET_RAW escalation)
-ProtectSystem=strict
 
 # Logging
 StandardOutput=journal

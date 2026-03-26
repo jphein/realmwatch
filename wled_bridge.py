@@ -29,8 +29,8 @@ def _fetch_wled(ip):
     """GET /json from WLED device."""
     try:
         req = urllib.request.Request(f"http://{ip}/json", headers={"Accept": "application/json"})
-        resp = urllib.request.urlopen(req, timeout=3)
-        return json.loads(resp.read())
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            return json.loads(resp.read())
     except Exception:
         return None
 
@@ -155,7 +155,7 @@ def set_wled_state(node_id, on=None, brightness=None, effect=None):
             headers={"Content-Type": "application/json"},
             method="POST"
         )
-        resp = urllib.request.urlopen(req, timeout=3)
-        return {"ok": True, "status": resp.status}
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            return {"ok": True, "status": resp.status}
     except Exception as e:
         return {"ok": False, "error": str(e)}

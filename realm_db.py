@@ -202,6 +202,13 @@ def get_setting(namespace, key, default=None):
         return row["value"]
 
 
+def delete_setting(namespace, key):
+    """Delete a single setting by namespace and key."""
+    c = _conn()
+    c.execute("DELETE FROM settings WHERE namespace=? AND key=?", (namespace, key))
+    c.commit()
+
+
 # ── Events ──
 
 _DEDUP_WINDOW = 300  # suppress identical node+type+text within 5 minutes
@@ -658,7 +665,10 @@ def update_node_position(node_id, x, y):
     row = c.execute("SELECT data FROM nodes WHERE node_id=?", (node_id,)).fetchone()
     if row is None:
         return
-    data = json.loads(row["data"])
+    try:
+        data = json.loads(row["data"])
+    except (json.JSONDecodeError, TypeError):
+        data = {}
     data["x"] = x
     data["y"] = y
     c.execute("UPDATE nodes SET x=?, y=?, data=? WHERE node_id=?",

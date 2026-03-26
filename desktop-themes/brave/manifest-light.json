@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "version": "1.0",
+  "name": "Realm — Enchanted Parchment",
+  "description": "Light fantasy browser theme from realm.watch — sunlit parchment, deep gold accents",
+  "theme": {
+    "colors": {
+      "frame":                    [240, 230, 208],
+      "frame_inactive":           [236, 227, 206],
+      "frame_incognito":          [220, 210, 188],
+      "frame_incognito_inactive": [230, 220, 198],
+      "toolbar":                  [245, 237, 216],
+      "tab_text":                 [106, 74, 16],
+      "tab_background_text":      [90, 74, 104],
+      "bookmark_text":            [42, 32, 56],
+      "ntp_background":           [245, 237, 216],
+      "ntp_text":                 [26, 16, 40],
+      "omnibox_background":       [236, 227, 206],
+      "omnibox_text":             [26, 16, 40],
+      "toolbar_button_icon":      [138, 101, 32]
+    },
+    "tints": {
+      "frame_incognito": [0.78, 0.3, 0.6]
+    }
+  }
+}

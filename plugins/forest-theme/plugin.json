@@ -1,0 +1,11 @@
+{
+  "name": "forest-theme",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Enchanted Forest ambient particle system — wisps, butterflies, fireflies, leaves, sparkles, and fog overlaid on the realm map.",
+  "fantasy_name": "Enchanted Canopy",
+  "icon": "\ud83c\udf3f",
+
+  "js": "plugin.js",
+  "css": "plugin.css"
+}

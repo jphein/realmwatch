@@ -2,7 +2,7 @@
 import { scaleLabel, fmtBytes, fmtRate, scalePct } from './utils.js';
 import { tips, _topology, _nodeMap, infraNodes, _tsHostMap, getNodeDOM, updateLinePositions } from './topology.js';
 import { renderTopoLayer, setLastTopoCollectd } from './terrain.js';
-import { DOM, updateGauges, updateFirewallPanel, updateCensusSubLabels, updateLatencyPanel, updateNodeListStatus } from './panels.js';
+import { DOM, updateGauges } from './panels.js';
 import { updateConnectionTraffic } from './traffic.js';
 import { scheduleSave } from './layout.js';
 import { updateBubbleTotalScale } from './map-view.js';
@@ -290,12 +290,7 @@ export function updateUI(d) {
   setLastTopoCollectd(d.collectd);
   renderTopoLayer(d.collectd);
 
-  updateNodeListStatus(d);
-  updateCensusSubLabels(d);
-  updateLatencyPanel();
-  updateFirewallPanel(d);
-
-  // Post-update hook (firePulse, debug refresh, periodic log — registered by app.js)
+  // Post-update hook (firePulse, periodic log — registered by app.js)
   if (_postUpdateHook) _postUpdateHook(d);
 }
 
@@ -391,8 +386,9 @@ export function getBubbleScale() { return bubbleScale; }
 
 // ── Tooltips (delegated — survives topology refresh) ──
 const tooltip = document.getElementById('tooltip');
+const _mapWorldEl = document.getElementById('map-world');
 let _tipNode = null;
-document.getElementById('map-world').addEventListener('mouseover', e => {
+_mapWorldEl.addEventListener('mouseover', e => {
   const node = e.target.closest('.realm-node');
   if (!node || node === _tipNode) return;
   _tipNode = node;
@@ -408,13 +404,13 @@ document.getElementById('map-world').addEventListener('mouseover', e => {
   tooltip.innerHTML = html;  // Trusted data from topology config — not user input
   tooltip.style.display = 'block';
 });
-document.getElementById('map-world').addEventListener('mousemove', e => {
+_mapWorldEl.addEventListener('mousemove', e => {
   if (_tipNode) {
     tooltip.style.left = (e.clientX + 16) + 'px';
     tooltip.style.top = (e.clientY + 16) + 'px';
   }
 });
-document.getElementById('map-world').addEventListener('mouseout', e => {
+_mapWorldEl.addEventListener('mouseout', e => {
   const node = e.target.closest('.realm-node');
   if (!node) return;
   const related = e.relatedTarget?.closest?.('.realm-node');

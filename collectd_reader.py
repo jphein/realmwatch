@@ -37,6 +37,14 @@ _cache = {}
 _CACHE_TTL = 5.0  # seconds
 
 
+def _safe_listdir(path):
+    """os.listdir that returns [] on OSError (directory deleted mid-read)."""
+    try:
+        return os.listdir(path)
+    except OSError:
+        return []
+
+
 def _rrd_last(rrd_path):
     """Get the last value(s) from an RRD file."""
     try:
@@ -134,7 +142,7 @@ def get_host_summary(hostname):
     mem_dir = os.path.join(host_dir, "memory")
     if os.path.isdir(mem_dir):
         mem = {}
-        for f in os.listdir(mem_dir):
+        for f in _safe_listdir(mem_dir):
             if f.startswith("memory-") and f.endswith(".rrd"):
                 key = f.replace("memory-", "").replace(".rrd", "")
                 d = _rrd_last(os.path.join(mem_dir, f))
@@ -162,7 +170,7 @@ def get_host_summary(hostname):
 
     # CPU count
     cpu_count = 0
-    for entry in os.listdir(host_dir):
+    for entry in _safe_listdir(host_dir):
         if entry.startswith("cpu-") and os.path.isdir(os.path.join(host_dir, entry)):
             cpu_count += 1
     if cpu_count > 0:
@@ -171,7 +179,7 @@ def get_host_summary(hostname):
     # Conntrack (gatekeeper)
     conntrack_dir = os.path.join(host_dir, "conntrack")
     if os.path.isdir(conntrack_dir):
-        for f in os.listdir(conntrack_dir):
+        for f in _safe_listdir(conntrack_dir):
             if f.endswith(".rrd"):
                 d = _rrd_last(os.path.join(conntrack_dir, f))
                 if d and d["values"] and d["values"][0] is not None:
@@ -179,7 +187,7 @@ def get_host_summary(hostname):
 
     # Thermal (gatekeeper, katana)
     temps = []
-    for entry in os.listdir(host_dir):
+    for entry in _safe_listdir(host_dir):
         if entry.startswith("thermal-thermal_zone"):
             rrd = os.path.join(host_dir, entry, "temperature.rrd")
             if os.path.exists(rrd):
@@ -192,7 +200,7 @@ def get_host_summary(hostname):
     # DHCP leases (gatekeeper)
     dhcp_dir = os.path.join(host_dir, "dhcpleases")
     if os.path.isdir(dhcp_dir):
-        for f in os.listdir(dhcp_dir):
+        for f in _safe_listdir(dhcp_dir):
             if f.endswith(".rrd"):
                 d = _rrd_last(os.path.join(dhcp_dir, f))
                 if d and d["values"] and d["values"][0] is not None:
@@ -200,7 +208,7 @@ def get_host_summary(hostname):
 
     # Key interfaces — get actual byte rates (not cumulative counters)
     ifaces = {}
-    for entry in os.listdir(host_dir):
+    for entry in _safe_listdir(host_dir):
         if entry.startswith("interface-"):
             iface_name = entry.replace("interface-", "")
             # Skip loopback and uninteresting
@@ -226,7 +234,7 @@ def get_host_summary(hostname):
         pings = {}
         drops = {}
         stddevs = {}
-        for f in os.listdir(ping_dir):
+        for f in _safe_listdir(ping_dir):
             if not f.endswith(".rrd"):
                 continue
             if f.startswith("ping_droprate-"):
@@ -254,7 +262,7 @@ def get_host_summary(hostname):
     # Disk (katana)
     df_root = os.path.join(host_dir, "df-root")
     if os.path.isdir(df_root):
-        for f in os.listdir(df_root):
+        for f in _safe_listdir(df_root):
             if f == "df_complex-used.rrd":
                 d = _rrd_last(os.path.join(df_root, f))
                 if d and d["values"] and d["values"][0] is not None:
@@ -281,7 +289,7 @@ def get_host_summary(hostname):
     # Processes (katana)
     proc_dir = os.path.join(host_dir, "processes")
     if os.path.isdir(proc_dir):
-        for f in os.listdir(proc_dir):
+        for f in _safe_listdir(proc_dir):
             if f == "ps_state-running.rrd":
                 d = _rrd_last(os.path.join(proc_dir, f))
                 if d and d["values"] and d["values"][0] is not None:
@@ -300,7 +308,7 @@ def get_all_summaries():
     if not os.path.isdir(RRD_BASE):
         return {}
     hosts = [
-        h for h in os.listdir(RRD_BASE)
+        h for h in _safe_listdir(RRD_BASE)
         if os.path.isdir(os.path.join(RRD_BASE, h))
     ]
     result = {}

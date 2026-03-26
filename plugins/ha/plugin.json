@@ -1,0 +1,47 @@
+{
+  "name": "ha",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Home Assistant bridge — polls HA REST API for entity states, device enrichment, and solar/battery/grid energy data.",
+  "fantasy_name": "Crystal Bridge",
+  "icon": "\ud83c\udfe0",
+
+  "python": {
+    "module": "plugin",
+    "entry": "setup"
+  },
+
+  "panel": {
+    "id": "energy-panel",
+    "name": "Solar Sanctum",
+    "html": "panel.html",
+    "js": "panel.js",
+    "css": "panel.css",
+    "anchor": "sw",
+    "priority": 15
+  },
+
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/energy",
+      "handler": "handle_energy",
+      "raw_path": true
+    }
+  ],
+
+  "sse_types": ["energy"],
+
+  "config": {
+    "ha_url": {
+      "type": "string",
+      "default": "https://10.0.6.108:8123",
+      "description": "Home Assistant URL"
+    },
+    "poll_interval": {
+      "type": "number",
+      "default": 30,
+      "description": "Poll interval in seconds"
+    }
+  }
+}

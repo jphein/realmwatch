@@ -1,0 +1,78 @@
+/* ══════════════════════════════════════════════════════════════
+ *   REALM GTK3 — Gem Treasury for legacy GTK3 apps
+ *   Dark variant (follows system Yaru-dark)
+ * ══════════════════════════════════════════════════════════════
+ *
+ * GTK3 apps don't support @media(prefers-color-scheme), so this
+ * follows the system theme. Since system is Yaru-dark, we theme
+ * for dark. GTK3 apps in light mode will use Yaru defaults.
+ */
+
+@define-color theme_bg_color #0e0818;
+@define-color theme_fg_color #d4a574;
+@define-color theme_base_color #12081e;
+@define-color theme_text_color #d4a574;
+@define-color theme_selected_bg_color #d4a050;
+@define-color theme_selected_fg_color #0e0818;
+@define-color theme_unfocused_bg_color #0a0510;
+@define-color theme_unfocused_fg_color #c8a888;
+@define-color theme_unfocused_base_color #12081e;
+@define-color theme_unfocused_text_color #c8a888;
+@define-color theme_unfocused_selected_bg_color #a08040;
+@define-color theme_unfocused_selected_fg_color #0e0818;
+@define-color borders rgba(212, 160, 80, 0.15);
+@define-color unfocused_borders rgba(212, 160, 80, 0.08);
+@define-color warning_color #f0d080;
+@define-color error_color #dc5a55;
+@define-color success_color #50b470;
+@define-color link_color #5a8cc0;
+@define-color content_view_bg #12081e;
+
+/* Headerbar: deep void with gold border */
+headerbar, .titlebar {
+  background-color: #0a0510;
+  color: #c8a888;
+  border-bottom: 1px solid rgba(212, 160, 80, 0.2);
+}
+
+headerbar:backdrop, .titlebar:backdrop {
+  background-color: #0a0510;
+  color: #4a3a5a;
+}
+
+/* Selection */
+*:selected {
+  background-color: rgba(212, 160, 80, 0.3);
+  color: #f0e0c8;
+}
+
+/* Tooltips */
+tooltip, tooltip.background {
+  background-color: #12081e;
+  border: 1px solid rgba(212, 160, 80, 0.25);
+  color: #d4a574;
+}
+
+/* Scrollbar */
+scrollbar slider {
+  background-color: rgba(212, 160, 80, 0.3);
+}
+
+scrollbar slider:hover {
+  background-color: rgba(212, 160, 80, 0.5);
+}
+
+/* Button focus/accent */
+button:focus {
+  outline-color: rgba(212, 160, 80, 0.4);
+}
+
+button.suggested-action {
+  background-color: #d4a050;
+  color: #0e0818;
+}
+
+button.destructive-action {
+  background-color: #dc5a55;
+  color: #f0e0c8;
+}

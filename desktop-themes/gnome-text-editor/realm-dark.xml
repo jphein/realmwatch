@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Realm Dark — Gem Treasury
+  Dark grimoire theme for gnome-text-editor.
+  Palette aligned with realm.watch desktop themes.
+-->
+<style-scheme id="realm-dark" name="Realm Dark" version="1.0">
+  <author>JP</author>
+
+  <metadata>
+    <property name="variant">dark</property>
+    <property name="light-variant">realm-light</property>
+  </metadata>
+
+  <!-- Editor chrome -->
+  <style name="text"                        foreground="#d4a574" background="#0e0818"/>
+  <style name="selection"                   background="#3a2050"/>
+  <style name="search-match"                foreground="#0e0818" background="#d4a050"/>
+  <style name="cursor"                      foreground="#f0d080"/>
+  <style name="current-line"                background="#1a102808"/>
+  <style name="current-line-number"         foreground="#d4a050" background="#1a102808"/>
+  <style name="line-numbers"                foreground="#4a3a5a" background="#0e0818"/>
+  <style name="draw-spaces"                 foreground="#1a1028"/>
+  <style name="background-pattern"          background="#12081e"/>
+  <style name="bracket-match"               foreground="#f0d080" background="#3a2050" bold="true"/>
+  <style name="bracket-mismatch"            foreground="#ff9090" underline="error" bold="true"/>
+  <style name="right-margin"                foreground="#1a1028" background="#1a1028"/>
+  <style name="map-overlay"                 background="#1a1028"/>
+
+  <!-- Syntax: gold for strings (coins) -->
+  <style name="def:string"                  foreground="#d4a050"/>
+
+  <!-- Syntax: amethyst for keywords/types (crystal) -->
+  <style name="def:keyword"                 foreground="#b080d0" bold="true"/>
+  <style name="def:type"                    foreground="#d0a0ff" bold="true"/>
+  <style name="def:boolean"                 foreground="#b080d0"/>
+
+  <!-- Syntax: emerald for identifiers/variables (gems) -->
+  <style name="def:identifier"              foreground="#50b470"/>
+  <style name="def:variable"                foreground="#80e8a0"/>
+
+  <!-- Syntax: muted parchment for comments -->
+  <style name="def:comment"                 foreground="#4a3a5a" italic="true"/>
+
+  <!-- Syntax: bright gold for numbers (treasure) -->
+  <style name="def:floating-point"          foreground="#f0d080"/>
+  <style name="def:decimal"                 foreground="#f0d080"/>
+  <style name="def:base-n-integer"          foreground="#f0d080"/>
+  <style name="def:special-constant"        foreground="#d4a050" bold="true"/>
+
+  <!-- Syntax: ruby for errors/warnings -->
+  <style name="def:error"                   foreground="#dc5a55" bold="true"/>
+  <style name="def:warning"                 foreground="#ff9090"/>
+  <style name="def:note"                    foreground="#40b8a8" bold="true"/>
+
+  <!-- Syntax: teal for preprocessor -->
+  <style name="def:preprocessor"            foreground="#40b8a8"/>
+
+  <!-- Headings and structure -->
+  <style name="def:list-marker"             foreground="#d4a050" bold="true"/>
+  <style name="def:heading"                 foreground="#b080d0" bold="true"/>
+  <style name="def:emphasis"                italic="true"/>
+  <style name="def:strong-emphasis"         italic="true" bold="true"/>
+
+  <!-- Links: sapphire -->
+  <style name="def:net-address"             foreground="#5a8cc0"/>
+  <style name="def:link-destination"        foreground="#5a8cc0"/>
+  <style name="def:link-text"               foreground="#90c8ff"/>
+
+  <!-- GTK-doc -->
+  <style name="gtk-doc:function-name"       foreground="#50b470"/>
+  <style name="gtk-doc:function"            foreground="#50b470"/>
+  <style name="gtk-doc:parameter"           foreground="#80e8a0" bold="true"/>
+  <style name="gtk-doc:constant"            foreground="#d4a050" bold="true"/>
+  <style name="gtk-doc:type"                foreground="#d0a0ff" bold="true"/>
+  <style name="gtk-doc:since"               bold="true"/>
+  <style name="gtk-doc:return"              bold="true"/>
+  <style name="gtk-doc:deprecated"          foreground="#dc5a55" bold="true"/>
+  <style name="gtk-doc:signal-name"         foreground="#d4a050" bold="true"/>
+  <style name="gtk-doc:property-name"       foreground="#d4a050" bold="true"/>
+
+</style-scheme>

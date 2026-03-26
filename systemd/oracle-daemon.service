@@ -1,5 +1,6 @@
 # Oracle Daemon — AI-powered query responder for the fantasy homelab monitor
-# Install: cp oracle-daemon.service ~/.config/systemd/user/
+# Install: cp systemd/*.service ~/.config/systemd/user/
+#          systemctl --user daemon-reload
 #          systemctl --user enable oracle-daemon
 #          systemctl --user start oracle-daemon
 #   Logs:  journalctl --user -u oracle-daemon -f
@@ -17,14 +18,11 @@ EnvironmentFile=%h/Projects/realmwatch/.env
 ExecStart=%h/Projects/realmwatch/venv/bin/python3 oracle_daemon.py
 Restart=on-failure
 RestartSec=5
+TimeoutStopSec=10
 
 # Resource limits (AI inference can use more memory)
 MemoryHigh=1G
 MemoryMax=1536M
-
-# Security hardening
-NoNewPrivileges=yes
-ProtectSystem=strict
 
 # Logging
 StandardOutput=journal

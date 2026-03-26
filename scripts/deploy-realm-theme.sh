@@ -8,8 +8,7 @@
 set -uo pipefail
 
 THEME_DIR="$(cd "$(dirname "$0")/../theme" && pwd)"
-SSH_PASS="${OPENWRT_SSH_PASS:-$(bw get password gatekeeper-openwrt 2>/dev/null)}"
-SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=8"
+SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=8 -o BatchMode=yes"
 
 G='\033[1;32m'; R='\033[1;31m'; Y='\033[1;33m'; C='\033[0;36m'; N='\033[0m'
 
@@ -27,6 +26,7 @@ declare -A DEVICES=(
   [ea6350v3]="10.0.6.135"
   [onhub-family]="10.0.6.141"
   [onhub-bed]="10.0.6.246"
+  [gs308t]="10.0.6.110"
 )
 
 # Remote paths
@@ -34,12 +34,12 @@ CSS_DIR="/www/luci-static/realm"
 TPL_DIR="/usr/share/ucode/luci/template/themes/realm"
 
 ssh_cmd() {
-  sshpass -p "$SSH_PASS" ssh $SSH_OPTS "root@$1" "$2" 2>/dev/null
+  ssh $SSH_OPTS "root@$1" "$2" 2>/dev/null
 }
 
 push_file() {
   local ip="$1" local_file="$2" remote_path="$3"
-  cat "$local_file" | sshpass -p "$SSH_PASS" ssh $SSH_OPTS "root@$ip" "cat > $remote_path" 2>/dev/null
+  cat "$local_file" | ssh $SSH_OPTS "root@$ip" "cat > $remote_path" 2>/dev/null
 }
 
 deploy_device() {
@@ -47,7 +47,7 @@ deploy_device() {
   printf "${C}%-22s${N} %s " "$name" "$ip"
 
   # Check reachable
-  if ! sshpass -p "$SSH_PASS" ssh $SSH_OPTS "root@$ip" "echo ok" >/dev/null 2>&1; then
+  if ! ssh $SSH_OPTS "root@$ip" "echo ok" >/dev/null 2>&1; then
     echo -e "${R}UNREACHABLE${N}"
     return 1
   fi

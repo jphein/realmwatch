@@ -1,0 +1,28 @@
+{
+  "name": "notion",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Notion API integration — syncs Today todos as quest events, archives completed quests.",
+  "fantasy_name": "Quest Portals",
+  "icon": "\ud83d\udcdc",
+
+  "python": {
+    "module": "plugin",
+    "entry": "setup"
+  },
+
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/notion-sync",
+      "handler": "handle_notion_sync",
+      "raw_path": true
+    },
+    {
+      "method": "POST",
+      "path": "/notion-complete",
+      "handler": "handle_notion_complete",
+      "raw_path": true
+    }
+  ]
+}

@@ -255,6 +255,8 @@ export function renderTopology(topo) {
   topo.nodes.forEach(n => { _nodeMap.set(n.id, n); });
   const nodeMap = _nodeMap;
 
+  // Use DocumentFragment to batch node DOM insertions (avoids N reflows)
+  const _nodeFragment = document.createDocumentFragment();
   topo.nodes.forEach(n => {
     const div = document.createElement('div');
     const tc = TYPE_TO_CLASS[n.type] || '';
@@ -321,7 +323,7 @@ export function renderTopology(topo) {
       fill.setAttribute('style', fs);
       bar.appendChild(fill); div.appendChild(bar);
     }
-    world.appendChild(div);
+    _nodeFragment.appendChild(div);
 
     if (n.tip) {
       const stats = [...(n.tip.stats || [])];
@@ -338,6 +340,8 @@ export function renderTopology(topo) {
     if (n.ip || n.ssh) infraNodes[n.id] = { name: n.label, ip: n.ip || '', collectdHost: n.collectd || null, sshHost: n.ssh || null, tsHost: n.tsHost || null };
     if (n.tsHost) _tsHostMap[n.tsHost] = n.id;
   });
+  // Flush batched node elements to DOM (single reflow instead of N)
+  world.appendChild(_nodeFragment);
 
   // Compute per-node VLAN assignment (majority vote from connections)
   const _vlanCounts = {};
@@ -362,6 +366,7 @@ export function renderTopology(topo) {
   // Connection paths (routed curves)
   _buildObstacles();
   const fanAngles = _computeFanAngles();
+  const _vlanFragment = document.createDocumentFragment();
   topo.connections.forEach((c, i) => {
     const fn = nodeMap.get(c.from), tn = nodeMap.get(c.to);
     if (!fn || !tn) return;
@@ -397,10 +402,12 @@ export function renderTopology(topo) {
       label.textContent = 'VLAN ' + c.vlan;
       label.style.left = mid.x + 'px';
       label.style.top = (mid.y - 4) + 'px';
-      world.appendChild(label);
+      _vlanFragment.appendChild(label);
       _vlanLabels.push({ label, connIdx: i });
     }
   });
+  // Flush batched VLAN label elements to DOM
+  world.appendChild(_vlanFragment);
 }
 
 // ── Load topology (async) ──

@@ -14,6 +14,17 @@ PORT = 8899
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 MAP_SERVER = os.path.join(PROJECT_DIR, 'map_server.py')
 
+def _launcher_version():
+    """Git short hash at import time — verifies you're running the latest code."""
+    try:
+        r = subprocess.run(['git', 'log', '--oneline', '-1', '--', 'realm_launcher.py'],
+                           capture_output=True, text=True, cwd=PROJECT_DIR)
+        return r.stdout.strip()[:7] if r.stdout.strip() else '???'
+    except Exception:
+        return '???'
+
+LAUNCHER_VERSION = _launcher_version()
+
 _server_proc = None
 _log_lines = []
 _log_lock = threading.Lock()
@@ -114,6 +125,46 @@ def _stop_server():
     _server_proc = None
     # Also kill any orphaned server on :80
     _kill_port(80)
+
+
+def _stop_all_services():
+    """Stop all realm services except the launcher itself."""
+    _stop_server()
+    for svc in ("realm-map-server", "oracle-daemon", "realm-herald"):
+        try:
+            r = subprocess.run(
+                ["systemctl", "--user", "is-active", svc],
+                capture_output=True, text=True, timeout=5
+            )
+            if r.stdout.strip() == "active":
+                _log(f"Stopping {svc}...")
+                subprocess.run(
+                    ["systemctl", "--user", "stop", svc],
+                    capture_output=True, timeout=10
+                )
+                _log(f"  {svc} stopped")
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            _log(f"  Failed to stop {svc}")
+
+
+def _start_all_services():
+    """Start all realm services (map server via subprocess, others via systemd)."""
+    _start_server()
+    for svc in ("oracle-daemon", "realm-herald"):
+        try:
+            r = subprocess.run(
+                ["systemctl", "--user", "is-enabled", svc],
+                capture_output=True, text=True, timeout=5
+            )
+            if r.stdout.strip() == "enabled":
+                _log(f"Starting {svc}...")
+                subprocess.run(
+                    ["systemctl", "--user", "start", svc],
+                    capture_output=True, timeout=10
+                )
+                _log(f"  {svc} started")
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            _log(f"  Failed to start {svc}")
 
 def _start_server():
     global _server_proc
@@ -798,7 +849,7 @@ LAUNCHER_HTML = r"""<!DOCTYPE html>
   <div class="header">
     <div class="header-sigil"></div>
     <h1>Realm Launcher</h1>
-    <div class="subtitle">Choose thy portal &mdash; three paths through the realm</div>
+    <div class="subtitle">Choose thy portal &mdash; four paths through the realm &middot; <span style="opacity:0.4;font-size:10px" id="launcher-ver"></span></div>
     <div class="current-info" id="current-info"></div>
   </div>
 
@@ -872,6 +923,20 @@ const BRANCHES = {
       'Deploy to *.puter.site <span class="tag tag-new">NEW</span>',
       'DOM window manager',
       '10 integrated modules',
+    ],
+    tags: {},
+  },
+  'feat/plugin-system': {
+    icon: '\uD83E\uDDE9',
+    name: 'Plugin Architects',
+    desc: 'Modular plugin system &mdash; drop-in plugins with manifests, SSE sources, panels, and node enrichment.',
+    features: [
+      'Plugin loader with topological sort <span class="tag tag-new">NEW</span>',
+      'RouteTable replaces if/elif chains',
+      'Ansible War Room plugin <span class="tag tag-new">NEW</span>',
+      'Latency prober extracted as plugin',
+      'RealmAPI frontend global for plugins',
+      'Performance: CSS containment, RAF batching',
     ],
     tags: {},
   },
@@ -973,6 +1038,8 @@ async function fetchStatus() {
     const data = await r.json();
     renderPortals(data);
     renderInfo(data);
+    const verEl = document.getElementById('launcher-ver');
+    if (verEl && data.launcher_version) verEl.textContent = data.launcher_version;
     if (data.log && data.log.length) {
       const consoleEl = document.getElementById('console');
       const existing = consoleEl.querySelectorAll('.log-line').length;
@@ -1086,7 +1153,7 @@ class LauncherHandler(http.server.BaseHTTPRequestHandler):
         elif self.path == '/api/status':
             branch = _get_branch()
             ahead = {}
-            for b in ['feature/winbox-wm', 'feature/puter-wm']:
+            for b in ['feature/winbox-wm', 'feature/puter-wm', 'feat/plugin-system']:
                 ahead[b] = _get_ahead_count(b)
             with _log_lock:
                 log_copy = list(_log_lines)
@@ -1096,6 +1163,7 @@ class LauncherHandler(http.server.BaseHTTPRequestHandler):
                 'server': _is_server_running(),
                 'ahead': ahead,
                 'log': log_copy,
+                'launcher_version': LAUNCHER_VERSION,
             })
         else:
             self.send_error(404)
@@ -1116,11 +1184,11 @@ class LauncherHandler(http.server.BaseHTTPRequestHandler):
             self._json({'ok': ok})
 
         elif self.path == '/api/restart':
-            _start_server()
+            _start_all_services()
             self._json({'ok': _is_server_running()})
 
         elif self.path == '/api/stop':
-            _stop_server()
+            _stop_all_services()
             self._json({'ok': True})
 
         else:
@@ -1146,8 +1214,8 @@ def main():
     def _shutdown(sig, frame):
         _log('Shutting down launcher...')
         _stop_server()
-        server.shutdown()
-        sys.exit(0)
+        # shutdown() from a thread to avoid deadlock with serve_forever()
+        threading.Thread(target=server.shutdown, daemon=True).start()
 
     signal.signal(signal.SIGINT, _shutdown)
     signal.signal(signal.SIGTERM, _shutdown)
@@ -1156,6 +1224,9 @@ def main():
         server.serve_forever()
     except KeyboardInterrupt:
         _shutdown(None, None)
+    finally:
+        server.server_close()
+        _log('Launcher stopped.')
 
 
 if __name__ == '__main__':

@@ -1,0 +1,18 @@
+{
+  "name": "scan",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Manual scan runner panel — triggers WiFi AP scans, LLDP topology discovery, collectd reads, firewall parsing, and oracle observations on demand.",
+  "fantasy_name": "Survey Glass",
+  "icon": "\ud83d\udd2d",
+
+  "panel": {
+    "id": "scanner-panel",
+    "name": "Survey Glass",
+    "html": "panel.html",
+    "js": "panel.js",
+    "css": "panel.css",
+    "anchor": "e",
+    "priority": 15
+  }
+}

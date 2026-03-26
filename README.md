@@ -155,6 +155,27 @@ Independent daemons (separate processes):
 | `scripts/realm-health.sh` | Color-coded status: processes, :80, realm.db, env tokens |
 | `scripts/reset-camera.sh` | USB reset for Razer Kiyo Pro when it hangs (UVC -71/-110 errors) |
 
+## Desktop Themes
+
+The Gem Treasury palette extends beyond the web app to theme the full GNOME desktop.
+
+```bash
+./desktop-themes/deploy.sh all    # deploy everything
+./desktop-themes/deploy.sh gnome  # just shell theme
+./desktop-themes/deploy.sh gtk    # just GTK4/GTK3
+```
+
+| Component | Dark | Light |
+|-----------|------|-------|
+| GNOME Shell | Realm (void + gold) | Realm-Light (parchment + gold) |
+| GTK4 / libadwaita | `@define-color` overrides | auto via deploy script |
+| GTK3 | Gem Treasury colors | follows Yaru |
+| Text Editor | realm-dark (GtkSourceView 5) | realm-light (auto-follows) |
+| Kitty | Gem Treasury ANSI palette | — |
+| Ghostty | Gem Treasury + glow shader | — |
+| Ubuntu Dock | translucent purple, gold dots | parchment, dark gold dots |
+| Extensions | Blur my Shell (gold tint), Desktop Cube, Burn My Windows (hexagon), etc. | — |
+
 ## VLAN Registry
 
 | VLAN | Label | fw4 Zone | Status | Description |

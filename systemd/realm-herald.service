@@ -1,5 +1,6 @@
 # Realm Herald — TTS voice announcements for the fantasy homelab monitor
-# Install: cp realm-herald.service ~/.config/systemd/user/
+# Install: cp systemd/*.service ~/.config/systemd/user/
+#          systemctl --user daemon-reload
 #          systemctl --user enable realm-herald
 #          systemctl --user start realm-herald
 #   Logs:  journalctl --user -u realm-herald -f
@@ -17,14 +18,11 @@ EnvironmentFile=%h/Projects/realmwatch/.env
 ExecStart=%h/Projects/realmwatch/venv/bin/python3 realm_herald.py
 Restart=on-failure
 RestartSec=5
+TimeoutStopSec=10
 
 # Resource limits
 MemoryHigh=512M
 MemoryMax=768M
-
-# Security hardening
-NoNewPrivileges=yes
-ProtectSystem=strict
 
 # Logging
 StandardOutput=journal

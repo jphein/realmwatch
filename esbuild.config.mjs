@@ -61,6 +61,15 @@ if (watch) {
 } else {
   const result = await esbuild.build(config);
   console.log(`Built realm-map.js — ${versionName}`);
+  // Update cache bust in realm-map.html so browsers fetch the new bundle
+  try {
+    const html = readFileSync('realm-map.html', 'utf8');
+    const busted = html.replace(/realm-map\.js\?v=[^"']+/, `realm-map.js?v=${Date.now()}`);
+    if (busted !== html) {
+      writeFileSync('realm-map.html', busted);
+      console.log(`Updated realm-map.html cache bust`);
+    }
+  } catch (e) { console.warn('Cache bust update skipped:', e.message); }
   // Inject version into splash page and copy to deploy dir
   try {
     const splash = readFileSync('splash.html', 'utf8');

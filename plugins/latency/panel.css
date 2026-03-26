@@ -1,0 +1,70 @@
+/* ── Latency Plugin Panel Styles ── */
+
+.latency-summary {
+  font-size: 9px;
+  color: rgba(140,180,220,0.6);
+  margin-left: auto;
+  white-space: nowrap;
+}
+.latency-body {
+  padding: 6px 10px 8px;
+  flex: 1 1 0;
+  overflow-y: auto;
+  min-height: 0;
+}
+.latency-group-title {
+  font-size: 8px;
+  color: rgba(100,160,220,0.5);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin: 6px 0 2px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid rgba(100,160,220,0.1);
+}
+.latency-group-title:first-child { margin-top: 0; }
+.latency-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+}
+.latency-icon {
+  font-size: 11px;
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.latency-label {
+  font-size: 9px;
+  color: #7090b0;
+  width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.latency-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(40,60,100,0.3);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.latency-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 3px;
+  transition: width 0.6s ease, background 0.6s ease;
+  box-shadow: 0 0 4px currentColor;
+}
+.latency-val {
+  font-family: 'Cinzel', serif;
+  font-size: 9px;
+  color: #b0c8e0;
+  text-align: right;
+  min-width: 42px;
+  flex-shrink: 0;
+}
+.latency-loss .latency-val {
+  color: #e08060;
+}

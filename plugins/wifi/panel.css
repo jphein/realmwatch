@@ -1,0 +1,84 @@
+/* -- Aether Towers WiFi Plugin Panel Styles -- */
+
+.wifi-body {
+  padding: 6px 10px 8px;
+  flex: 1 1 0;
+  overflow-y: auto;
+  min-height: 0;
+}
+.wifi-loading {
+  text-align: center;
+  color: rgba(100,180,220,0.5);
+  padding: 16px 0;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+.wifi-ap {
+  background: rgba(40,60,120,0.15);
+  border: 1px solid rgba(100,160,220,0.15);
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.wifi-ap:hover {
+  background: rgba(60,100,180,0.2);
+  border-color: rgba(100,180,255,0.3);
+}
+.wifi-ap:last-child { margin-bottom: 0; }
+.wifi-ap-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+.wifi-ap-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 4px rgba(100,180,255,0.4));
+}
+.wifi-ap-name {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  color: #b0d0f0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wifi-ap-clients {
+  font-size: 9px;
+  color: rgba(140,200,255,0.7);
+  white-space: nowrap;
+}
+.wifi-ap-ip {
+  font-size: 8px;
+  color: rgba(120,160,200,0.5);
+  margin-bottom: 3px;
+  font-family: monospace;
+}
+.wifi-ssid {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1px 0;
+  gap: 6px;
+}
+.wifi-ssid-name {
+  font-size: 9px;
+  color: rgba(160,200,240,0.8);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wifi-ssid-vlan {
+  font-size: 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.wifi-ssid-none {
+  color: rgba(140,140,160,0.4);
+  font-size: 8px;
+  font-style: italic;
+}

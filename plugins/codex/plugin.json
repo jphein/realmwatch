@@ -1,0 +1,34 @@
+{
+  "name": "codex",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Codex sync — fetches lore, architecture, and reference entries from Notion and serves the codex wiki.",
+  "fantasy_name": "Lore Archives",
+  "icon": "\ud83d\udcda",
+
+  "python": {
+    "module": "plugin",
+    "entry": "setup"
+  },
+
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/codex-sync",
+      "handler": "handle_codex_sync",
+      "raw_path": true
+    },
+    {
+      "method": "GET",
+      "path": "/codex",
+      "handler": "handle_codex",
+      "raw_path": true
+    },
+    {
+      "method": "GET",
+      "path": "/codex/",
+      "handler": "handle_codex_index",
+      "raw_path": true
+    }
+  ]
+}

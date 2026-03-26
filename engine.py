@@ -176,7 +176,7 @@ class RealmEngine:
                 ).strip().split(",")
                 return {"temp": float(res[0]), "load": float(res[1])}
             except (subprocess.TimeoutExpired, subprocess.CalledProcessError,
-                    FileNotFoundError, (ValueError, IndexError)):
+                    FileNotFoundError, ValueError, IndexError):
                 return None
         return _cached("gpu", _read)
 

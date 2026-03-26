@@ -1,0 +1,15 @@
+# Navidrome with Realm theme injection
+# Requires: caddy built with github.com/caddyserver/replace-response
+# Replace the navidrome.jphe.in block in Caddyfile with this:
+navidrome.jphe.in {
+	handle /realm-theme.css {
+		root * /srv/navidrome
+		file_server
+	}
+	handle {
+		reverse_proxy navidrome:4533 {
+			header_up Accept-Encoding identity
+		}
+		replace </head> "<link rel='stylesheet' href='/realm-theme.css'></head>"
+	}
+}

@@ -1,0 +1,810 @@
+/* ══════════════════════════════════════════════════════════════
+ *   REALM — Fantasy GNOME Shell Theme
+ *   Gem Treasury palette on Yaru-dark foundation
+ *   Inspired by realm.watch
+ * ══════════════════════════════════════════════════════════════
+ *
+ * Palette reference:
+ *   Void:      #0e0818 (bg)      #1a1028 (black)    #4a3a5a (bright black)
+ *   Parchment: #d4a574 (fg)      #c8a888 (white)    #f0e0c8 (bright white)
+ *   Gold:      #d4a050 (accent)   #f0d080 (bright)
+ *   Ruby:      #dc5a55            #ff9090
+ *   Emerald:   #50b470            #80e8a0
+ *   Sapphire:  #5a8cc0            #90c8ff
+ *   Amethyst:  #b080d0            #d0a0ff
+ *   Teal:      #40b8a8            #70e8d8
+ */
+
+/* Import the base Yaru dark theme from GResource bundle */
+@import url("resource:///org/gnome/shell/theme/Yaru/gnome-shell-dark.css");
+
+/* ── Global stage ── */
+stage {
+  color: #d4a574;
+  background-color: #0e0818;
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   TOP PANEL — The Realm Banner
+ * ══════════════════════════════════════════════════════════════ */
+
+#panel {
+  background-color: #0a0510;
+  border-bottom: 1px solid rgba(212, 160, 80, 0.25);
+}
+
+#panel .panel-button {
+  color: #c8a888;
+}
+
+#panel .panel-button:focus,
+#panel .panel-button:hover {
+  color: #f0d080;
+  box-shadow: inset 0 0 0 100px rgba(212, 160, 80, 0.12);
+}
+
+#panel .panel-button:active,
+#panel .panel-button:checked {
+  color: #f0d080;
+  box-shadow: inset 0 0 0 100px rgba(212, 160, 80, 0.22);
+}
+
+#panel .panel-button:active:hover,
+#panel .panel-button:checked:hover {
+  box-shadow: inset 0 0 0 100px rgba(212, 160, 80, 0.28);
+}
+
+#panel .panel-button#panelActivities .workspace-dot {
+  background-color: #d4a050;
+}
+
+#panel .panel-button.clock-display .clock {
+  color: #d4a574;
+}
+
+#panel .panel-button.clock-display:focus .clock,
+#panel .panel-button.clock-display:hover .clock {
+  color: #f0d080;
+  box-shadow: inset 0 0 0 100px rgba(212, 160, 80, 0.12);
+}
+
+#panel .panel-button.clock-display:active .clock,
+#panel .panel-button.clock-display:checked .clock {
+  color: #f0d080;
+  box-shadow: inset 0 0 0 100px rgba(212, 160, 80, 0.22);
+}
+
+/* Overview panel transparency */
+#panel:overview,
+#panel.unlock-screen,
+#panel.login-screen {
+  background-color: transparent;
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   POPUP MENUS — Arcane Scrolls
+ * ══════════════════════════════════════════════════════════════ */
+
+.popup-menu {
+  color: #d4a574;
+}
+
+.popup-menu-content,
+.candidate-popup-content {
+  background-color: #12081e;
+  border: 1px solid rgba(212, 160, 80, 0.2);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+}
+
+.popup-menu-item {
+  color: #c8a888;
+}
+
+.popup-menu-item:focus,
+.popup-menu-item:hover,
+.popup-menu-item.selected {
+  color: #f0d080;
+  background-color: rgba(212, 160, 80, 0.12);
+}
+
+.popup-menu-item:active {
+  color: #f0d080;
+  background-color: rgba(212, 160, 80, 0.22);
+}
+
+.popup-separator-menu-item .popup-separator-menu-item-separator,
+.popup-separator-menu-item .popup-menu-ornament {
+  background-color: rgba(212, 160, 80, 0.15);
+}
+
+.popup-inactive-menu-item {
+  color: #4a3a5a;
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   QUICK SETTINGS / SYSTEM MENU
+ * ══════════════════════════════════════════════════════════════ */
+
+.quick-settings {
+  background-color: #12081e;
+  border: 1px solid rgba(212, 160, 80, 0.15);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+}
+
+.quick-settings-grid .icon-button,
+.quick-settings-grid .button {
+  color: #c8a888;
+  background-color: #1a1028;
+}
+
+.quick-settings-grid .icon-button:hover,
+.quick-settings-grid .button:hover {
+  background-color: rgba(212, 160, 80, 0.12);
+  color: #f0d080;
+}
+
+.quick-settings-grid .icon-button:active,
+.quick-settings-grid .icon-button:checked,
+.quick-settings-grid .button:active,
+.quick-settings-grid .button:checked {
+  background-color: rgba(212, 160, 80, 0.2);
+  color: #f0d080;
+}
+
+.quick-toggle {
+  background-color: #1a1028;
+  color: #c8a888;
+}
+
+.quick-toggle:hover {
+  background-color: rgba(212, 160, 80, 0.12);
+}
+
+.quick-toggle:checked {
+  background-color: rgba(212, 160, 80, 0.2);
+  color: #f0d080;
+}
+
+.quick-toggle-menu {
+  background-color: #12081e;
+}
+
+.quick-slider .slider {
+  color: #d4a050;
+  -barlevel-active-background-color: #d4a050;
+  -barlevel-background-color: #1a1028;
+  -barlevel-overdrive-color: #dc5a55;
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   CALENDAR & NOTIFICATIONS — Enchanted Almanac
+ * ══════════════════════════════════════════════════════════════ */
+
+.calendar {
+  background-color: #12081e;
+  border: 1px solid rgba(212, 160, 80, 0.15);
+}
+
+.calendar .calendar-month-label {
+  color: #f0d080;
+  font-weight: bold;
+}
+
+.calendar .calendar-month-header .pager-button {
+  color: #d4a050;
+  background-color: transparent;
+}
+
+.calendar .calendar-month-header .pager-button:hover {
+  color: #f0d080;
+  background-color: rgba(212, 160, 80, 0.12);
+}
+
+.calendar .calendar-day-heading {
+  color: #4a3a5a;
+}
+
+.calendar .calendar-day {
+  color: #c8a888;
+}
+
+.calendar .calendar-day:hover {
+  background-color: rgba(212, 160, 80, 0.12);
+  color: #f0d080;
+}
+
+.calendar .calendar-day:active {
+  background-color: rgba(212, 160, 80, 0.22);
+  color: #f0d080;
+}
+
+.calendar .calendar-today {
+  color: #0e0818;
+  background-color: #d4a050;
+  font-weight: bold;
+}
+
+.calendar .calendar-today:hover {
+  background-color: #f0d080;
+}
+
+.calendar .calendar-other-month-day {
+  color: #4a3a5a;
+}
+
+/* Notifications */
+.message-list-placeholder {
+  color: #4a3a5a;
+}
+
+.message {
+  background-color: #1a1028;
+  color: #c8a888;
+  border: 1px solid rgba(212, 160, 80, 0.1);
+}
+
+.message:hover {
+  background-color: rgba(212, 160, 80, 0.08);
+}
+
+.message .message-title {
+  color: #d4a574;
+}
+
+.message .message-body {
+  color: #c8a888;
+}
+
+.message .event-time {
+  color: #d4a050;
+}
+
+.message-list-controls {
+  color: #d4a050;
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   OSD — On-Screen Runes (volume, brightness)
+ * ══════════════════════════════════════════════════════════════ */
+
+.osd-window {
+  background-color: #12081e;
+  border: 1px solid rgba(212, 160, 80, 0.2);
+  color: #d4a574;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+}
+
+.osd-window .level {
+  -barlevel-active-background-color: #d4a050;
+  -barlevel-background-color: #1a1028;
+  -barlevel-overdrive-color: #dc5a55;
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   OVERVIEW — The Realm Map
+ * ══════════════════════════════════════════════════════════════ */
+
+.search-entry {
+  background-color: #1a1028;
+  color: #d4a574;
+  border: 1px solid rgba(212, 160, 80, 0.2);
+}
+
+.search-entry:focus {
+  border-color: rgba(212, 160, 80, 0.5);
+  box-shadow: 0 0 4px rgba(212, 160, 80, 0.2);
+}
+
+.search-entry:hover {
+  background-color: rgba(26, 16, 40, 0.9);
+  border-color: rgba(212, 160, 80, 0.35);
+}
+
+.search-entry .search-entry-icon {
+  color: #d4a050;
+}
+
+.search-entry:focus .search-entry-icon {
+  color: #f0d080;
+}
+
+/* Search results */
+.list-search-result,
+.search-provider-icon {
+  background-color: rgba(26, 16, 40, 0.7);
+}
+
+.list-search-result:hover,
+.search-provider-icon:hover {
+  background-color: rgba(212, 160, 80, 0.12);
+}
+
+.list-search-result-title {
+  color: #d4a574;
+}
+
+.list-search-result-description {
+  color: #c8a888;
+}
+
+.search-provider-icon .list-search-provider-content .list-search-provider-details {
+  color: #c8a888;
+}
+
+/* App grid */
+.icon-grid .overview-icon {
+  color: #c8a888;
+}
+
+.app-folder {
+  background-color: rgba(26, 16, 40, 0.7);
+}
+
+.app-folder:hover {
+  background-color: rgba(212, 160, 80, 0.12);
+}
+
+.app-folder-dialog {
+  background-color: #12081e;
+  border: 1px solid rgba(212, 160, 80, 0.2);
+  color: #c8a888;
+}
+
+.app-folder-dialog .folder-name-entry {
+  background-color: #1a1028;
+  color: #d4a574;
+  border-color: rgba(212, 160, 80, 0.3);
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   OVERVIEW — Window Previews & Labels
+ * ══════════════════════════════════════════════════════════════ */
+
+/* Window title labels in overview (Yaru default: #222222 grey) */
+.dash-label,
+.window-caption,
+.screenshot-ui-tooltip {
+  background-color: #12081e;
+  border: 1px solid rgba(212, 160, 80, 0.25);
+  color: #d4a574;
+}
+
+/* Overview tile backgrounds (app icons, search results) */
+.overview-tile,
+.grid-search-result {
+  background-color: transparent;
+}
+
+.overview-tile:hover,
+.grid-search-result:hover,
+.overview-tile:focus,
+.grid-search-result:focus {
+  background-color: rgba(212, 160, 80, 0.1);
+}
+
+.overview-tile:active,
+.grid-search-result:active {
+  background-color: rgba(212, 160, 80, 0.18);
+}
+
+/* Flat buttons in overview (Yaru default: #1d1d1d grey) */
+.icon-button.flat,
+.button.flat {
+  color: #c8a888;
+  background-color: transparent;
+}
+
+.icon-button.flat:hover,
+.button.flat:hover {
+  color: #f0d080;
+  background-color: rgba(212, 160, 80, 0.1);
+}
+
+.icon-button.flat:active,
+.icon-button.flat:checked,
+.button.flat:active,
+.button.flat:checked {
+  color: #f0d080;
+  background-color: rgba(212, 160, 80, 0.18);
+}
+
+/* Popup menu backgrounds (Yaru default: #1d1d1d) */
+.popup-menu-content {
+  background-color: #12081e;
+  border: 1px solid rgba(212, 160, 80, 0.2);
+}
+
+.popup-menu-item {
+  color: #c8a888;
+}
+
+.popup-menu-item:hover,
+.popup-menu-item:focus {
+  color: #f0d080;
+  background-color: rgba(212, 160, 80, 0.12);
+}
+
+.popup-menu-item:active {
+  color: #f0d080;
+  background-color: rgba(212, 160, 80, 0.22);
+}
+
+.popup-separator-menu-item .popup-separator-menu-item-separator {
+  background-color: rgba(212, 160, 80, 0.15);
+}
+
+/* Card/toggle backgrounds (catch remaining #1d1d1d greys) */
+.lg-extension,
+.quick-toggle-menu,
+.message,
+.events-button,
+.world-clocks-button,
+.weather-button,
+.calendar,
+.datemenu-today-button {
+  color: #c8a888;
+  background-color: #1a1028;
+  border-color: rgba(212, 160, 80, 0.12);
+}
+
+.lg-extension:hover,
+.events-button:hover,
+.world-clocks-button:hover,
+.weather-button:hover,
+.datemenu-today-button:hover {
+  background-color: rgba(212, 160, 80, 0.08);
+}
+
+.lg-extension:active,
+.events-button:active,
+.world-clocks-button:active,
+.weather-button:active,
+.datemenu-today-button:active {
+  background-color: rgba(212, 160, 80, 0.15);
+}
+
+/* Background app items (Yaru default: rgba(247,247,247,0.13) on grey) */
+.background-app-item .icon-button,
+.background-apps-quick-toggle {
+  background-color: rgba(212, 160, 80, 0.08);
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   DASH — The Enchanted Dock
+ * ══════════════════════════════════════════════════════════════ */
+
+#dash {
+  background-color: rgba(10, 5, 16, 0.85);
+  border: 1px solid rgba(212, 160, 80, 0.15);
+}
+
+.dash-item-container .show-apps .overview-icon {
+  background-color: rgba(212, 160, 80, 0.1);
+}
+
+.dash-item-container .show-apps:hover .overview-icon {
+  background-color: rgba(212, 160, 80, 0.18);
+}
+
+.dash-item-container .show-apps:checked .overview-icon {
+  background-color: rgba(212, 160, 80, 0.25);
+}
+
+/* Ubuntu Dock */
+#dashtodockContainer #dash {
+  background-color: rgba(10, 5, 16, 0.85);
+}
+
+.running-indicator {
+  background-color: #d4a050;
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   WORKSPACE SWITCHER
+ * ══════════════════════════════════════════════════════════════ */
+
+.workspace-switcher {
+  background-color: #12081e;
+  border: 1px solid rgba(212, 160, 80, 0.15);
+}
+
+.ws-switcher-active-up,
+.ws-switcher-active-down {
+  background-color: rgba(212, 160, 80, 0.2);
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   WINDOW SWITCHER (Alt-Tab)
+ * ══════════════════════════════════════════════════════════════ */
+
+.switcher-list {
+  background-color: #12081e;
+  border: 1px solid rgba(212, 160, 80, 0.2);
+  color: #d4a574;
+}
+
+.switcher-list .item-box:outlined {
+  border: 2px solid #d4a050;
+}
+
+.switcher-list .item-box:selected {
+  background-color: rgba(212, 160, 80, 0.15);
+  border: 2px solid #d4a050;
+}
+
+.switcher-arrow {
+  color: #d4a050;
+}
+
+.input-source-switcher-symbol {
+  color: #d4a574;
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   BUTTONS — Enchanted Gemstones
+ * ══════════════════════════════════════════════════════════════ */
+
+.button,
+.icon-button {
+  color: #c8a888;
+  background-color: #1a1028;
+}
+
+.button:hover,
+.icon-button:hover {
+  color: #f0d080;
+  background-color: rgba(212, 160, 80, 0.15);
+}
+
+.button:active,
+.button:checked,
+.icon-button:active,
+.icon-button:checked {
+  color: #f0d080;
+  background-color: rgba(212, 160, 80, 0.25);
+}
+
+/* Primary / suggested buttons */
+.button:default,
+.modal-dialog .modal-dialog-linked-button:last-child {
+  color: #0e0818;
+  background-color: #d4a050;
+}
+
+.button:default:hover,
+.modal-dialog .modal-dialog-linked-button:last-child:hover {
+  background-color: #f0d080;
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   DIALOGS — Arcane Tomes
+ * ══════════════════════════════════════════════════════════════ */
+
+.modal-dialog {
+  background-color: #12081e;
+  border: 1px solid rgba(212, 160, 80, 0.2);
+  color: #d4a574;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+.modal-dialog .modal-dialog-content-box .headline {
+  color: #f0d080;
+}
+
+.modal-dialog .modal-dialog-content-box .body {
+  color: #c8a888;
+}
+
+.modal-dialog .modal-dialog-linked-button {
+  color: #c8a888;
+  background-color: #1a1028;
+  border-color: rgba(212, 160, 80, 0.15);
+}
+
+.modal-dialog .modal-dialog-linked-button:hover {
+  color: #f0d080;
+  background-color: rgba(212, 160, 80, 0.12);
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   TOOLTIPS — Whispered Secrets
+ * ══════════════════════════════════════════════════════════════ */
+
+.tooltip {
+  background-color: #12081e;
+  border: 1px solid rgba(212, 160, 80, 0.25);
+  color: #d4a574;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   MISC — Realm Flourishes
+ * ══════════════════════════════════════════════════════════════ */
+
+/* Scrollbars */
+StScrollBar StBin#trough {
+  background-color: #1a1028;
+}
+
+StScrollBar StButton#vhandle,
+StScrollBar StButton#hhandle {
+  background-color: rgba(212, 160, 80, 0.3);
+}
+
+StScrollBar StButton#vhandle:hover,
+StScrollBar StButton#hhandle:hover {
+  background-color: rgba(212, 160, 80, 0.5);
+}
+
+/* Slider tracks */
+.slider {
+  color: #d4a050;
+  -barlevel-active-background-color: #d4a050;
+  -barlevel-background-color: #1a1028;
+  -barlevel-overdrive-color: #dc5a55;
+}
+
+/* Resize popup */
+.resize-popup {
+  background-color: #12081e;
+  border: 1px solid rgba(212, 160, 80, 0.2);
+  color: #d4a574;
+}
+
+/* Background apps */
+.background-app-item {
+  color: #c8a888;
+}
+
+.background-app-item .title {
+  color: #d4a574;
+}
+
+.background-app-item .subtitle {
+  color: #4a3a5a;
+}
+
+/* World clocks & weather in calendar */
+.world-clocks-button .world-clocks-header,
+.weather-button .weather-box .weather-header-box .weather-header,
+.events-button .events-box .events-title {
+  color: #d4a050;
+}
+
+.world-clocks-button .world-clocks-grid .world-clocks-time,
+.world-clocks-button .world-clocks-grid .world-clocks-timezone {
+  color: #c8a888;
+}
+
+.weather-button .weather-box .weather-grid .weather-forecast-temp,
+.weather-button .weather-box .weather-grid .weather-forecast-time {
+  color: #c8a888;
+}
+
+/* Looking Glass (dev inspector) */
+#LookingGlassDialog {
+  background-color: #12081e;
+  border: 1px solid rgba(212, 160, 80, 0.2);
+  color: #d4a574;
+}
+
+#LookingGlassDialog .notebook-tab {
+  color: #c8a888;
+  background-color: #1a1028;
+}
+
+#LookingGlassDialog .notebook-tab:selected {
+  color: #f0d080;
+  background-color: rgba(212, 160, 80, 0.2);
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   GREY KILLER — Override all Yaru inherited grey backgrounds
+ *   Yaru uses #1d1d1d, #222222, #2f2f2f, #343434, #454545,
+ *   #464646, #484848 etc. extensively. This section catches
+ *   everything our targeted overrides above might have missed.
+ *   Placed LAST so it wins the cascade.
+ * ══════════════════════════════════════════════════════════════ */
+
+/* Replace Yaru's base grey (#1d1d1d) with void */
+.login-dialog,
+.login-dialog-banner-view,
+.login-dialog-button-box,
+.unlock-dialog,
+.screen-shield-background,
+.popup-menu-content,
+.candidate-popup-content,
+.modal-dialog,
+.end-session-dialog,
+.prompt-dialog {
+  background-color: #12081e;
+  color: #d4a574;
+}
+
+/* Replace mid-grey (#222222, #343434) card/item backgrounds */
+.lg-extension,
+.events-button,
+.world-clocks-button,
+.weather-button,
+.calendar,
+.datemenu-today-button,
+.message,
+.quick-toggle-menu,
+.popup-menu-section .popup-sub-menu {
+  background-color: #1a1028;
+}
+
+/* Replace interactive greys (#464646, #454545, #484848) */
+.lg-extension:hover,
+.events-button:hover,
+.world-clocks-button:hover,
+.weather-button:hover,
+.calendar:hover,
+.datemenu-today-button:hover,
+.message:hover,
+.lg-extension:active,
+.events-button:active,
+.world-clocks-button:active,
+.weather-button:active,
+.calendar:active,
+.datemenu-today-button:active,
+.message:active,
+.lg-extension:focus,
+.events-button:focus,
+.world-clocks-button:focus,
+.weather-button:focus,
+.calendar:focus,
+.datemenu-today-button:focus,
+.message:focus {
+  background-color: rgba(212, 160, 80, 0.1);
+}
+
+.lg-extension:active,
+.events-button:active,
+.world-clocks-button:active,
+.weather-button:active,
+.calendar:active,
+.datemenu-today-button:active,
+.message:active {
+  background-color: rgba(212, 160, 80, 0.18);
+}
+
+/* Replace Yaru grey borders (#464646) with realm gold borders */
+.popup-menu-content,
+.candidate-popup-content,
+.modal-dialog,
+.end-session-dialog,
+.prompt-dialog,
+.osd-window,
+.switcher-list,
+.workspace-switcher,
+.dash-label,
+.window-caption,
+.screenshot-ui-tooltip,
+.tooltip,
+#LookingGlassDialog,
+.quick-settings,
+.calendar,
+.message {
+  border-color: rgba(212, 160, 80, 0.2);
+}
+
+/* Replace Yaru separator grey */
+.popup-separator-menu-item .popup-separator-menu-item-separator,
+.popup-sub-menu .popup-separator-menu-item .popup-separator-menu-item-separator {
+  background-color: rgba(212, 160, 80, 0.12);
+}
+
+/* Replace any remaining #2f2f2f / #343434 sub-menu backgrounds */
+.popup-sub-menu {
+  background-color: #0e0818;
+}
+
+.popup-sub-menu .popup-menu-item:hover,
+.popup-sub-menu .popup-menu-item:focus {
+  background-color: rgba(212, 160, 80, 0.12);
+}
+
+.popup-sub-menu .popup-menu-item:active {
+  background-color: rgba(212, 160, 80, 0.22);
+}

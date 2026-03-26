@@ -1,25 +1,23 @@
 // ── App coordinator — SSE dispatch + module wiring ──
 import { SSE_URL } from './config.js';
 import { refreshTopology, setTopologyRefreshHook } from './topology.js';
-import { initScanner } from './scan.js';
-import { initSkills } from './skills.js';
-import { initForestTheme, toggleForestTheme } from './theme-forest.js';
 import { renderTopoLayer, setLastTopoCollectd, initTopoControls } from './terrain.js';
 import { updateConnectionTraffic, updateConnectionTrafficSSE, trafficToCollectd, setTrafficScale } from './traffic.js';
-import { setLatencyMap, setLatencyFlat, setWifiMap,
-         updateEnergyPanel, updateLatencyPanel, handleFirewallData, renderWifiPanel,
-         rebuildCensusIfNeeded, fetchWifiAPs } from './panels.js';
+import { setLatencyFlat, setWifiMap } from './panels.js';
 import { updateUI, getLastStatus, setPostUpdateHook } from './node-status.js';
 import { renderEvent, updateBubblePositions, firePulse, showOffline,
          setOpenNodeChat } from './quest-log.js';
 import { isZoomActive,
-         setDeferredStatus, setDeferredTraffic, setDeferredEnergy, setDeferredLatency,
+         setDeferredStatus, setDeferredTraffic,
          setGhostDirty, applyTopoZ, setOpenPersonaEditor, invalidateGlobeZCache } from './map-view.js';
 import { openPersonaEditor, setTabRenderers } from './persona-editor.js';
 import { renderControlPane, renderGroupPane, renderShellPane, renderConnectionsPane, focusShellInput, openNodeChat } from './node-controls.js';
 import { initSpellbook, invalidateSearchIndex } from './spellbook.js';
 import { saveSettings, scheduleSave } from './layout.js';
-import { scheduleDebugRefresh } from './debug.js';
+import { initRealmAPI, dispatchPluginSSE } from './plugin-api.js';
+import { registerPluginPanel, openPanel, closePanel } from './panel-manager.js';
+import { initWinBoxWM, toggleWinBoxMode } from './winbox-wm.js';
+import { applyFormation } from './panel-manager.js';
 
 let liveOk = false;
 
@@ -58,10 +56,9 @@ if (_rvEl) _rvEl.textContent = typeof __REALM_VERSION__ !== 'undefined' ? __REAL
   }));
 })();
 
-// Register post-update hook for firePulse + debug refresh + periodic log
+// Register post-update hook for firePulse + periodic log
 setPostUpdateHook(() => {
   firePulse();
-  scheduleDebugRefresh();
 });
 
 // Wire up openNodeChat for quest-log.js (async function declaration — hoisted)
@@ -74,14 +71,16 @@ initSpellbook({ saveSettings, scheduleSave });
 // ── Traffic scale slider ──
 const trafficSlider = document.getElementById('traffic-scale-slider');
 const trafficScaleVal = document.getElementById('traffic-scale-val');
-trafficSlider.addEventListener('input', () => {
-  const v = parseFloat(trafficSlider.value);
-  setTrafficScale(v);
-  trafficScaleVal.textContent = v.toFixed(1) + 'x';
-  if (_sseTrafficMap) updateConnectionTrafficSSE(_sseTrafficMap);
-  else { const _ls = getLastStatus(); if (_ls && _ls.collectd) updateConnectionTraffic(_ls.collectd); }
-  scheduleSave();
-});
+if (trafficSlider) {
+  trafficSlider.addEventListener('input', () => {
+    const v = parseFloat(trafficSlider.value);
+    setTrafficScale(v);
+    if (trafficScaleVal) trafficScaleVal.textContent = v.toFixed(1) + 'x';
+    if (_sseTrafficMap) updateConnectionTrafficSSE(_sseTrafficMap);
+    else { const _ls = getLastStatus(); if (_ls && _ls.collectd) updateConnectionTraffic(_ls.collectd); }
+    scheduleSave();
+  });
+}
 
 initTopoControls({ saveSettings, scheduleSave, applyTopoZ });
 
@@ -119,11 +118,23 @@ export const getSseConnected = () => _sseConnected;
   let _consecutiveFailures = 0;
   let _reconnectTimer = null;
   let _trafficRafPending = false;
+  let _statusRafPending = false;
+  let _pendingStatusData = null;
 
   // ── Stream attunement tracker (lights up loading screen indicators) ──
+  const _attuneCache = {};
+  const _attuneDone = {};
   function _attuneStream(name) {
-    const el = document.querySelector(`.rl-stream[data-stream="${name}"]`);
-    if (el && !el.classList.contains('attuned')) el.classList.add('attuned');
+    if (_attuneDone[name]) return;  // Already attuned — skip DOM access entirely
+    let el = _attuneCache[name];
+    if (!el) {
+      el = document.querySelector(`.rl-stream[data-stream="${name}"]`);
+      _attuneCache[name] = el;
+    }
+    if (el && !el.classList.contains('attuned')) {
+      el.classList.add('attuned');
+      _attuneDone[name] = true;  // One-shot — never query again
+    }
   }
 
   // Reset backoff on any successful message — the connection is healthy
@@ -198,7 +209,6 @@ export const getSseConnected = () => _sseConnected;
       _onMessageReceived();
       _attuneStream('topology');
       refreshTopology();
-      rebuildCensusIfNeeded();
     });
 
     sse.addEventListener('status', e => {
@@ -207,9 +217,10 @@ export const getSseConnected = () => _sseConnected;
       const d = JSON.parse(e.data);
       _sseRestoreMode = false;
       if (isZoomActive() && liveOk) { setDeferredStatus(d); if (d.wifi) setWifiMap(d.wifi); return; }
-      updateUI(d);
-      if (d.wifi) setWifiMap(d.wifi);
+      // First status must apply immediately (loading screen depends on it)
       if (!liveOk) {
+        updateUI(d);
+        if (d.wifi) setWifiMap(d.wifi);
         liveOk = true;
         console.log('Realm Map: SSE live data connected');
         if (window._advanceLoadStage) window._advanceLoadStage(4);
@@ -220,22 +231,30 @@ export const getSseConnected = () => _sseConnected;
             setTimeout(() => { loadEl.style.display = 'none'; }, 1300);
           }, 1200);
         }
+        return;
+      }
+      // Subsequent status updates: batch via RAF to avoid layout thrashing
+      _pendingStatusData = d;
+      if (!_statusRafPending) {
+        _statusRafPending = true;
+        requestAnimationFrame(() => {
+          _statusRafPending = false;
+          if (_pendingStatusData) {
+            if (isZoomActive()) { setDeferredStatus(_pendingStatusData); if (_pendingStatusData.wifi) setWifiMap(_pendingStatusData.wifi); }
+            else { updateUI(_pendingStatusData); if (_pendingStatusData.wifi) setWifiMap(_pendingStatusData.wifi); }
+            _pendingStatusData = null;
+          }
+        });
       }
     });
 
-    sse.addEventListener('energy', e => {
-      _onMessageReceived();
-      _attuneStream('energy');
-      const data = JSON.parse(e.data);
-      if (isZoomActive()) { setDeferredEnergy(data); return; }
-      updateEnergyPanel(data);
-    });
+    // Energy SSE handling moved to plugins/ha/panel.js
 
+    // Latency data model update (rendering handled by plugins/latency/panel.js)
     sse.addEventListener('latency', e => {
       _onMessageReceived();
       _attuneStream('latency');
       const parsed = JSON.parse(e.data);
-      setLatencyMap(parsed);
       if (parsed.groups) {
         const flat = {};
         for (const g of parsed.groups) for (const entry of g.entries) flat[entry.id] = entry.rtt;
@@ -243,23 +262,9 @@ export const getSseConnected = () => _sseConnected;
       } else {
         setLatencyFlat(parsed);
       }
-      if (isZoomActive()) { setDeferredLatency(true); return; }
-      updateLatencyPanel();
     });
 
-    sse.addEventListener('firewall', e => {
-      _onMessageReceived();
-      _attuneStream('firewall');
-      const d = JSON.parse(e.data);
-      handleFirewallData(d);
-    });
-
-    sse.addEventListener('wifi', e => {
-      _onMessageReceived();
-      _attuneStream('wifi');
-      const data = JSON.parse(e.data);
-      if (data && Object.keys(data).length) renderWifiPanel(data);
-    });
+    // Firewall + WiFi panel rendering handled by plugins/firewall/ and plugins/wifi/
 
     // ── Connection lifecycle ──
 
@@ -279,6 +284,22 @@ export const getSseConnected = () => _sseConnected;
       _teardown();
       _scheduleReconnect();
     });
+
+    // ── Plugin SSE dispatch ──
+    // Attach listeners for plugin-declared SSE types (re-attached on each reconnect)
+    if (window._realmPluginSSETypes) {
+      for (const eventType of window._realmPluginSSETypes) {
+        sse.addEventListener(eventType, e => {
+          _onMessageReceived();
+          try {
+            const data = JSON.parse(e.data);
+            dispatchPluginSSE(eventType, data);
+          } catch (err) {
+            console.error(`Plugin SSE parse error (${eventType}):`, err);
+          }
+        });
+      }
+    }
   }
 
   // ── Visibility change: force immediate reconnect if tab becomes visible ──
@@ -305,21 +326,160 @@ export const getSseConnected = () => _sseConnected;
     _connect();
   });
 
-  // Bootstrap wifi panel immediately (SSE wifi event only fires every 120s)
-  fetchWifiAPs();
+  // Attach plugin SSE listeners to the live connection (called after plugins load)
+  window._attachPluginSSEListeners = function(types) {
+    if (!sse || !types || types.length === 0) return;
+    for (const eventType of types) {
+      sse.addEventListener(eventType, e => {
+        _onMessageReceived();
+        try {
+          const data = JSON.parse(e.data);
+          dispatchPluginSSE(eventType, data);
+        } catch (err) {
+          console.error(`Plugin SSE parse error (${eventType}):`, err);
+        }
+      });
+    }
+  };
 
   // Initial connection
   _connect();
 })();
 
-initScanner();
-initSkills();
-initForestTheme();
+// Defer non-critical init to idle time — SSE connection is the priority
+const _deferInit = window.requestIdleCallback || (cb => setTimeout(cb, 50));
+_deferInit(() => { initWinBoxWM(); });
 
-// Spellbook toggle for forest theme
-const _fcb = document.getElementById('forest-theme-cb');
-if (_fcb) {
-  _fcb.checked = localStorage.getItem('realm-forest-theme') === 'true';
-  _fcb.addEventListener('change', () => toggleForestTheme(_fcb.checked));
+// ── Initialize RealmAPI for plugins ──
+initRealmAPI({
+  registerPanelFn: registerPluginPanel,
+  openPanelFn: openPanel,
+  closePanelFn: closePanel,
+});
+
+// ── Plugin loading sequence ──
+// Fetch plugin list, inject CSS/JS, call init() on each
+(async function loadPlugins() {
+  try {
+    const res = await fetch('/plugins');
+    if (!res.ok) return;
+    const allPlugins = await res.json();
+    if (!Array.isArray(allPlugins) || allPlugins.length === 0) return;
+    const plugins = allPlugins.filter(p => p.status !== 'disabled');
+
+    // Hide DOM shells for disabled plugin panels (they exist in HTML but shouldn't show)
+    const disabledPlugins = allPlugins.filter(p => p.status === 'disabled');
+    for (const dp of disabledPlugins) {
+      const pid = dp.panel?.id;
+      if (pid) {
+        const el = document.getElementById(pid);
+        if (el) el.style.display = 'none';
+      }
+    }
+
+    if (plugins.length === 0) return;
+
+    // Track loaded plugin SSE types for dispatch
+    const pluginSSETypes = new Set();
+
+    // Inject all CSS in parallel (non-blocking) — top-level and panel CSS
+    for (const plugin of plugins) {
+      const cssFile = plugin.css || plugin.panel?.css;
+      if (cssFile) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = `/plugins/${plugin.name}/${cssFile}`;
+        document.head.appendChild(link);
+      }
+      if (plugin.sse_types) {
+        for (const t of plugin.sse_types) pluginSSETypes.add(t);
+      }
+    }
+
+    // Create panel DOM for plugins that declare a panel but don't have one in HTML
+    for (const plugin of plugins) {
+      const p = plugin.panel;
+      if (!p || document.getElementById(p.id)) continue;
+      // Fetch panel HTML and register via RealmAPI
+      try {
+        const htmlRes = await fetch(`/plugins/${plugin.name}/${p.html}`);
+        const html = htmlRes.ok ? await htmlRes.text() : '';
+        window.RealmAPI.registerPanel(p.id, {
+          name: p.name || plugin.fantasy_name || plugin.name,
+          icon: plugin.icon || '\u2726',
+          anchor: p.anchor || 'sw',
+          priority: p.priority || 50,
+          html,
+        });
+      } catch (e) {
+        console.error(`Plugin ${plugin.name}: panel creation failed`, e);
+      }
+    }
+
+    // Load all plugin JS in parallel — top-level and panel JS
+    const t0 = performance.now();
+    const jsPlugins = plugins.filter(p => p.js || p.panel?.js);
+    await Promise.all(jsPlugins.map(plugin => {
+      const jsFile = plugin.js || plugin.panel.js;
+      return new Promise(resolve => {
+        const script = document.createElement('script');
+        script.src = `/plugins/${plugin.name}/${jsFile}`;
+        script.onload = resolve;
+        script.onerror = () => {
+          console.error(`Plugin ${plugin.name}: failed to load ${jsFile}`);
+          resolve();
+        };
+        document.head.appendChild(script);
+      });
+    }));
+    console.log(`Realm Map: plugin JS loaded in ${(performance.now() - t0).toFixed(0)}ms`);
+
+    // Init plugins sequentially (order may matter for registration)
+    for (const plugin of plugins) {
+      const pluginObj = window.RealmPlugins?.[plugin.name];
+      if (pluginObj && typeof pluginObj.init === 'function') {
+        try {
+          window.RealmAPI._currentPlugin = plugin.name;
+          pluginObj.init(window.RealmAPI);
+          window.RealmAPI._currentPlugin = null;
+        } catch (e) {
+          console.error(`Plugin ${plugin.name}: init() failed`, e);
+          window.RealmAPI._currentPlugin = null;
+        }
+      }
+    }
+
+    // Wire up SSE dispatch for plugin event types on the live connection
+    window._realmPluginSSETypes = pluginSSETypes;
+    if (window._attachPluginSSEListeners) {
+      window._attachPluginSSEListeners(pluginSSETypes);
+    }
+
+    if (plugins.length > 0) {
+      console.log(`Realm Map: ${plugins.length} plugin(s) loaded`);
+      invalidateSearchIndex();
+    }
+  } catch (e) {
+    // Plugin loading is non-critical — don't break the app
+    console.warn('Realm Map: plugin loading failed', e);
+  }
+})();
+
+// Spellbook toggle for WinBox window manager
+const _wbcb = document.getElementById('winbox-wm-cb');
+if (_wbcb) {
+  _wbcb.checked = localStorage.getItem('realm-winbox-mode') === 'true';
+  _wbcb.addEventListener('change', () => {
+    toggleWinBoxMode(_wbcb.checked);
+    // Suppress transitions during formation re-layout to avoid visual flash
+    document.body.classList.add('no-panel-transitions');
+    requestAnimationFrame(() => {
+      applyFormation('grimoire-binding');
+      // Re-enable transitions after layout settles
+      requestAnimationFrame(() => {
+        document.body.classList.remove('no-panel-transitions');
+      });
+    });
+  });
 }
 

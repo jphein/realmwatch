@@ -1,0 +1,137 @@
+{
+  "_comment": "GNOME Shell extensions for the Realm desktop experience. Deploy installs missing extensions and applies settings.",
+  "extensions": [
+    {
+      "id": "blur-my-shell@aunetx",
+      "name": "Blur my Shell",
+      "version": 70,
+      "required": true,
+      "purpose": "Purple-tinted blur on overview, panel, and dock backgrounds",
+      "settings": {
+        "/": {
+          "color-and-noise": true,
+          "settings-version": 2
+        },
+        "overview/": {
+          "blur": true,
+          "brightness": 0.4,
+          "sigma": 20,
+          "color": "(0.82, 0.63, 0.31, 0.5)"
+        },
+        "panel/": {
+          "brightness": 0.3,
+          "sigma": 20
+        },
+        "dash-to-dock/": {
+          "blur": true,
+          "brightness": 0.6,
+          "sigma": 30,
+          "static-blur": true,
+          "style-dash-to-dock": 0
+        },
+        "appfolder/": {
+          "brightness": 0.6,
+          "sigma": 30
+        },
+        "window-list/": {
+          "brightness": 0.6,
+          "sigma": 30
+        }
+      }
+    },
+    {
+      "id": "user-theme@gnome-shell-extensions.gcampax.github.com",
+      "name": "User Themes",
+      "required": true,
+      "purpose": "Load Realm shell theme from ~/.local/share/themes/"
+    },
+    {
+      "id": "ubuntu-dock@ubuntu.com",
+      "name": "Ubuntu Dock",
+      "required": true,
+      "purpose": "Dock with realm purple background and gold running dots"
+    },
+    {
+      "id": "desktop-cube@schneegans.github.com",
+      "name": "Desktop Cube",
+      "version": 30,
+      "required": false,
+      "purpose": "3D workspace switching",
+      "settings": {
+        "/": {
+          "active-workpace-opacity": 141,
+          "inactive-workpace-opacity": 80,
+          "edge-switch-pressure": 198,
+          "last-first-gap": false
+        }
+      }
+    },
+    {
+      "id": "burn-my-windows@schneegans.github.com",
+      "name": "Burn My Windows",
+      "version": 47,
+      "required": false,
+      "purpose": "Hexagon open/close effects matching wallpaper aesthetic",
+      "settings": {
+        "/": {
+          "fire-close-effect": false,
+          "glide-close-effect": false,
+          "glitch-close-effect": false,
+          "glitch-open-effect": false,
+          "hexagon-close-effect": true,
+          "hexagon-open-effect": true,
+          "hexagon-animation-time": 1058,
+          "hexagon-glow-color": "rgba(255,100,20,0.5)",
+          "hexagon-line-color": "rgba(103,220,253,0.5)",
+          "hexagon-scale": 2.8,
+          "destroy-dialogs": true
+        }
+      }
+    },
+    {
+      "id": "compiz-alike-magic-lamp-effect@hermes83.github.com",
+      "name": "Compiz alike magic lamp effect",
+      "version": 22,
+      "required": false,
+      "purpose": "Magic lamp minimize/restore animation"
+    },
+    {
+      "id": "compiz-windows-effect@hermes83.github.com",
+      "name": "Compiz windows effect",
+      "version": 29,
+      "required": false,
+      "purpose": "Wobbly window dragging"
+    },
+    {
+      "id": "transparent-window@pbxqdown.github.com",
+      "name": "Transparent Window",
+      "version": 17,
+      "required": false,
+      "purpose": "Per-window opacity control (85% default)",
+      "settings": {
+        "/": {
+          "opacity-level": 85
+        }
+      }
+    },
+    {
+      "id": "gnome-speaks@jphein",
+      "name": "GNOME Speaks",
+      "version": 1,
+      "required": false,
+      "purpose": "D-Bus speech service for gnome-speaks project"
+    },
+    {
+      "id": "ubuntu-appindicators@ubuntu.com",
+      "name": "Ubuntu AppIndicators",
+      "required": false,
+      "purpose": "System tray icons"
+    },
+    {
+      "id": "ding@rastersoft.com",
+      "name": "Desktop Icons NG (DING)",
+      "required": false,
+      "purpose": "Desktop icons"
+    }
+  ]
+}

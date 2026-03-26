@@ -148,6 +148,21 @@ Data flow:
 | splash.html | 836 | Splash page — realm.watch landing |
 | wifi-guide.html | 695 | WiFi troubleshooting guide |
 
+### Desktop Themes (`desktop-themes/`)
+
+Unified Gem Treasury theming for the full GNOME desktop. Source of truth lives here; `deploy.sh` copies to system locations.
+
+| Directory | Target | Notes |
+|-----------|--------|-------|
+| `gnome-shell/` | `~/.local/share/themes/Realm{,-Light}/` | Shell theme (dark + light), imports Yaru as base |
+| `gnome-extensions/` | dconf settings | Extension manifest with settings for Blur my Shell, Desktop Cube, Burn My Windows, etc. |
+| `gtk4/` | `~/.config/gtk-4.0/gtk.css` | libadwaita overrides (separate dark/light files, `@define-color`) |
+| `gtk3/` | `~/.config/gtk-3.0/gtk.css` | Legacy GTK3 app overrides |
+| `gnome-text-editor/` | `~/.local/share/gtksourceview-5/styles/` | GtkSourceView 5 color schemes (dark + light) |
+| `kitty/` | `~/.config/kitty/kitty.conf` | Terminal theme |
+| `ghostty/` | `~/.config/ghostty/` | Terminal theme + realm-glow shader |
+| `deploy.sh` | — | `all \| kitty\|ghostty\|gnome\|dock\|extensions\|gtk\|editor` |
+
 ## API Endpoints
 
 ### GET

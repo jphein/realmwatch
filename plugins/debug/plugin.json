@@ -1,0 +1,18 @@
+{
+  "name": "debug",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Arcane Mirror debug panel, Arcane Grimoire API catalogue, and Scrying Terminal command interface.",
+  "fantasy_name": "Arcane Mirror",
+  "icon": "\ud83d\udd2e",
+
+  "panel": {
+    "id": "debug-panel",
+    "name": "Arcane Mirror",
+    "html": "panel.html",
+    "js": "panel.js",
+    "css": "panel.css",
+    "anchor": "se",
+    "priority": 90
+  }
+}

@@ -136,6 +136,8 @@ function _fpsUpdate() {
     _fpsMaxFt = 0;
   }
 }
+
+// Auto-detect counters — declared after _fpsUpdate but before first call
 let _autoDetectSamples = 0;
 let _autoDetectLow = 0;
 
@@ -159,12 +161,28 @@ function resizeMoteCanvas() {
   moteCanvas.height = window.innerHeight;
 }
 resizeMoteCanvas();
-window.addEventListener('resize', resizeMoteCanvas);
+let _moteResizeTimer = 0;
+window.addEventListener('resize', () => {
+  if (_moteResizeTimer) return;
+  _moteResizeTimer = setTimeout(() => { _moteResizeTimer = 0; resizeMoteCanvas(); }, 100);
+});
+
+// Recycle oldest particle when at cap — prevents starvation during heavy activity
+function _recycleMote(props) {
+  if (motes.length < _PERF.moteCap) {
+    motes.push(props);
+  } else {
+    // Overwrite the oldest (index 0) and rotate it to the end
+    // This is O(n) but only fires when at cap, which is already the stressed case
+    motes.shift();
+    motes.push(props);
+  }
+}
 
 export function spawnMote(x, y, color) {
   const angle = Math.random() * Math.PI * 2;
   const speed = 0.3 + Math.random() * 1.2;
-  motes.push({
+  _recycleMote({
     x, y,
     vx: Math.cos(angle) * speed + (Math.random() - 0.5) * 0.5,
     vy: Math.sin(angle) * speed + (Math.random() - 0.5) * 0.5 - 0.3,
@@ -175,6 +193,7 @@ export function spawnMote(x, y, color) {
     wobble: Math.random() * Math.PI * 2,
     wobbleSpeed: 0.05 + Math.random() * 0.1,
   });
+  _ensureMoteLoop();
 }
 
 // Ambient sparkle settings
@@ -198,11 +217,11 @@ let _sparkleRect = null;
 const _sparkleColors = [[240,208,128],[128,232,160],[208,160,255],[255,144,144],[144,200,255]];
 
 function _spawnAmbientSparkles() {
-  if (_sparkleAmbient <= 0 || motes.length >= _PERF.moteCap) return;
+  if (_sparkleAmbient <= 0) return;
   const rate = _sparkleAmbient * 0.15 / _PERF.sparkleDiv;
   if (Math.random() < rate) {
     const c = _sparkleColors[Math.random() * 5 | 0];
-    motes.push({
+    _recycleMote({
       x: Math.random() * moteCanvas.width, y: Math.random() * moteCanvas.height,
       vx: (Math.random() - 0.5) * 0.2, vy: -0.1 - Math.random() * 0.3,
       life: 1.0, decay: 0.004 + Math.random() * 0.008,
@@ -214,7 +233,7 @@ function _spawnAmbientSparkles() {
 }
 
 function _spawnNodeSparkles() {
-  if (_sparkleNodes <= 0 || !_topology || !_topology.nodes || motes.length >= _PERF.moteCap) return;
+  if (_sparkleNodes <= 0 || !_topology || !_topology.nodes) return;
   const rate = _sparkleNodes * 0.02 / _PERF.sparkleDiv;
   if (!_sparkleRect) return;
   const rect = _sparkleRect;
@@ -227,9 +246,8 @@ function _spawnNodeSparkles() {
     const sy = rect.top + (n.y + ih/2) * scale + (Math.random() - 0.5) * ih * scale * 0.6;
     // Skip offscreen nodes
     if (sx < -20 || sx > cw + 20 || sy < -20 || sy > ch + 20) continue;
-    if (motes.length >= _PERF.moteCap) break;
     const isCore = n.type === 'core';
-    motes.push({
+    _recycleMote({
       x: sx, y: sy,
       vx: (Math.random() - 0.5) * 0.4, vy: -0.3 - Math.random() * 0.6,
       life: 1.0, decay: 0.008 + Math.random() * 0.012,
@@ -243,7 +261,7 @@ function _spawnNodeSparkles() {
 
 const _leyColors = { wan: [240,208,128], bridge: [208,160,255], _default: [128,232,160] };
 function _spawnLeyLineSparkles() {
-  if (_sparkleLeyLines <= 0 || !_topology || !_topology.connections || motes.length >= _PERF.moteCap) return;
+  if (_sparkleLeyLines <= 0 || !_topology || !_topology.connections) return;
   const rate = _sparkleLeyLines * 0.015 / _PERF.sparkleDiv;
   if (!_sparkleRect) return;
   const rect = _sparkleRect;
@@ -257,8 +275,7 @@ function _spawnLeyLineSparkles() {
     const sx = rect.left + (fn.x + (tn.x - fn.x) * t) * scale + (Math.random() - 0.5) * 10;
     const sy = rect.top + (fn.y + (tn.y - fn.y) * t) * scale + (Math.random() - 0.5) * 10;
     if (sx < -20 || sx > cw + 20 || sy < -20 || sy > ch + 20) continue;
-    if (motes.length >= _PERF.moteCap) break;
-    motes.push({
+    _recycleMote({
       x: sx, y: sy,
       vx: (tn.x - fn.x) * scale * 0.0004 + (Math.random() - 0.5) * 0.3,
       vy: (tn.y - fn.y) * scale * 0.0004 - 0.15,
@@ -275,17 +292,42 @@ let _sparkleTimer = 0;
 const _PI2 = Math.PI * 2;
 let _moteSkipFrame = false;  // Halve frame rate when idle
 let _motePaused = false;
+
+// Spawn timer — runs independently of RAF so particles can be created even when
+// the animation loop is idle. When new particles appear, it kicks the RAF loop.
+let _spawnInterval = null;
+function _startSpawnTimer() {
+  if (_spawnInterval) return;
+  // ~30fps equivalent spawn checks (every 33ms)
+  _spawnInterval = setInterval(() => {
+    if (_motePaused || isZoomActive()) return;
+    _sparkleTimer++;
+    const spawnDiv = _PERF.sparkleDiv;
+    const before = motes.length;
+    if (_sparkleTimer % (2 * spawnDiv) === 0) _spawnAmbientSparkles();
+    if (_sparkleTimer % (8 * spawnDiv) === 0) _spawnNodeSparkles();
+    if (_sparkleTimer % (6 * spawnDiv) === 0) _spawnLeyLineSparkles();
+    // If particles were added and RAF isn't running, kick it
+    if (motes.length > before) _ensureMoteLoop();
+  }, 33);
+}
+function _stopSpawnTimer() {
+  if (_spawnInterval) { clearInterval(_spawnInterval); _spawnInterval = null; }
+}
+
 document.addEventListener('visibilitychange', () => {
   _motePaused = document.hidden;
   // Disable connection animations when tab hidden (79 SVG repaints per frame)
   document.body.classList.toggle('reduce-motion', document.hidden);
   if (!document.hidden) {
+    _startSpawnTimer();
     _ensureMoteLoop();
     // Resume ping interval when tab becomes visible
     if (!_pingInterval) { _doPing(); _pingInterval = setInterval(_doPing, 5000); }
     // Restart FPS loop if overlay is visible
     if (_fpsEl.style.display !== 'none') _startFpsLoop();
   } else {
+    _stopSpawnTimer();
     // Pause ping interval when tab is hidden
     clearInterval(_pingInterval); _pingInterval = null;
   }
@@ -296,7 +338,11 @@ const _sparkleRectWorld = document.getElementById('map-world');
 function _updateSparkleRect() {
   if (_sparkleRectWorld) _sparkleRect = _sparkleRectWorld.getBoundingClientRect();
 }
-window.addEventListener('resize', _updateSparkleRect);
+let _sparkleResizeTimer = 0;
+window.addEventListener('resize', () => {
+  if (_sparkleResizeTimer) return;
+  _sparkleResizeTimer = setTimeout(() => { _sparkleResizeTimer = 0; _updateSparkleRect(); }, 100);
+});
 _updateSparkleRect();
 
 // Separate FPS tracking loop — only runs while the FPS overlay is visible
@@ -327,25 +373,20 @@ function animateMotes() {
   // Stop loop entirely when tab hidden or zooming — restart via _ensureMoteLoop
   if (_motePaused || isZoomActive()) { _moteLoopRunning = false; return; }
 
-  // 30fps cap — skip entire frame (spawn + physics + render) every other tick.
+  // 30fps cap — skip entire frame (physics + render) every other tick.
   // Must be before ALL work to actually halve CPU/GPU cost.
   _moteSkipFrame = !_moteSkipFrame;
   if (_moteSkipFrame) { requestAnimationFrame(animateMotes); return; }
 
-  const cw = moteCanvas.width, ch = moteCanvas.height;
-
-  // Spawn cycle
-  _sparkleTimer++;
-  const spawnDiv = _PERF.sparkleDiv;
-  if (_sparkleTimer % (2 * spawnDiv) === 0) _spawnAmbientSparkles();
-  if (_sparkleTimer % (8 * spawnDiv) === 0) _spawnNodeSparkles();
-  if (_sparkleTimer % (6 * spawnDiv) === 0) _spawnLeyLineSparkles();
-
+  // If no particles, stop the RAF loop — spawn timer will restart it when needed
   if (motes.length === 0) {
-    requestAnimationFrame(animateMotes);
+    moteCtx.clearRect(0, 0, moteCanvas.width, moteCanvas.height);
+    _fpsMotes = 0;
+    _moteLoopRunning = false;
     return;
   }
 
+  const cw = moteCanvas.width, ch = moteCanvas.height;
   moteCtx.clearRect(0, 0, cw, ch);
   const doGlow = _PERF.moteGlow;
   const doStar = _PERF.moteStarCross;
@@ -419,13 +460,14 @@ function animateMotes() {
   _fpsMotes = writeIdx;
   requestAnimationFrame(animateMotes);
 }
+// Start spawn timer and initial mote loop
+_startSpawnTimer();
 _ensureMoteLoop();
 
 // ── Will-o-Wisp Trail ──
 export function spawnWispTrail(x, y, r, g, b) {
   if (_PERF.wispTrail === false) return;
-  if (motes.length >= _PERF.moteCap) return;
-  motes.push({
+  _recycleMote({
     x, y,
     vx: 0, vy: 0,
     life: 1.0,
@@ -443,10 +485,9 @@ export function spawnUnsealBurst(x, y, r, g, b) {
   if (!_PERF.transitionParticles) return;
   const count = 15 + Math.floor(Math.random() * 6); // 15-20
   for (let i = 0; i < count; i++) {
-    if (motes.length >= _PERF.moteCap) break;
     const angle = Math.random() * Math.PI * 2;
     const speed = 2 + Math.random() * 2; // 2-4 px/frame
-    motes.push({
+    _recycleMote({
       x, y,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
