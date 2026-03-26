@@ -16,6 +16,10 @@ gsettings monitor org.gnome.desktop.interface color-scheme | while read -r _key 
   # Small delay to let GNOME Shell finish its own transition
   sleep 1
   "$DEPLOY" all
+  # Reload Ghostty config via D-Bus (no restart, preserves sessions)
+  if gdbus call --session --dest com.mitchellh.ghostty --object-path /com/mitchellh/ghostty --method org.gtk.Actions.Activate 'reload-config' '[]' '{}' &>/dev/null; then
+    echo "Ghostty config reloaded"
+  fi
   # Restart Brave to reload theme extension (preserves all tabs)
   sleep 2
   if pgrep -x brave >/dev/null 2>&1; then
