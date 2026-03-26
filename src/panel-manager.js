@@ -795,9 +795,9 @@ function _toggleMinimize(panel) {
     _saveFormation();
   } else {
     if (isWinBoxMode()) {
-      // In WinBox mode, "seal" means minimize the WinBox window + create dock rune
-      closeWinBoxPanel(panel.id);  // minimizes WinBox
-      _sealPanel(panel);  // creates rune in dock
+      // In WinBox mode, close the WinBox window — the 'winbox-minimized' event
+      // will fire and _quickSeal handles rune creation (seal-mode-aware)
+      closeWinBoxPanel(panel.id);
     } else {
       _sealPanel(panel);
     }
@@ -805,7 +805,8 @@ function _toggleMinimize(panel) {
   }
 }
 
-// Quick-seal for WinBox minimize events — creates dock rune without native shrink animation
+// Quick-seal for WinBox minimize events — creates rune without native shrink animation.
+// Respects _sealMode so runes go to the correct location (dock/anchored/wander/conjure).
 function _quickSeal(panel) {
   const def = PANELS[panel.id];
   if (!def) return;
@@ -821,13 +822,58 @@ function _quickSeal(panel) {
   panel.dataset.originalWidth = rect.width;
   panel.dataset.originalHeight = rect.height;
 
-  // Create rune in dock
+  // Create rune
   const rune = _createRune(panel.id, def);
-  const tray = _sealedDock?.querySelector('.dock-tray');
-  if (tray) {
-    _insertRuneInOrder(tray, rune);
-    _sealedDock.classList.add('has-runes');
-    if (_sealedDock.style.bottom === '-80px') _sealedDock.style.bottom = '0';
+
+  // Place rune based on current seal mode (no animation — WinBox already minimized)
+  if (_sealMode === 'dock') {
+    const tray = _sealedDock?.querySelector('.dock-tray');
+    if (tray) {
+      _insertRuneInOrder(tray, rune);
+      _sealedDock.classList.add('has-runes');
+      if (_sealedDock.style.bottom === '-80px') _sealedDock.style.bottom = '0';
+    }
+  } else if (_sealMode === 'anchored') {
+    rune.classList.add('anchored-rune');
+    rune.style.position = 'fixed';
+    rune.style.left = (rect.left + rect.width / 2 - 25) + 'px';
+    rune.style.top = (rect.top + rect.height / 2 - 25) + 'px';
+    document.body.appendChild(rune);
+    _makeRuneDraggable(rune);
+    _sealedDock.classList.remove('has-runes');
+    _sealedDock.style.bottom = '-80px';
+  } else if (_sealMode === 'wander') {
+    rune.classList.add('wandering-rune');
+    rune.style.position = 'fixed';
+    const startX = rect.left + rect.width / 2 - 16;
+    const startY = rect.top + rect.height / 2 - 16;
+    rune.style.left = startX + 'px';
+    rune.style.top = startY + 'px';
+    document.body.appendChild(rune);
+    _wanderingRunes.push({
+      el: rune,
+      x: startX,
+      y: startY,
+      vx: 0,
+      vy: 0,
+      ax: 100 + Math.random() * (window.innerWidth - 200),
+      ay: 100 + Math.random() * (window.innerHeight - 200),
+      nextAttractor: Date.now() + 5000 + Math.random() * 5000,
+      frameCount: 0,
+    });
+    if (_wanderingRunes.length === 1) _animateWandering();
+    _sealedDock.classList.remove('has-runes');
+    _sealedDock.style.bottom = '-80px';
+  } else if (_sealMode === 'conjure') {
+    let conjured = document.getElementById('conjured-runes');
+    if (!conjured) conjured = _createConjuredContainer();
+    rune.style.position = 'fixed';
+    conjured.appendChild(rune);
+    _makeRuneDraggable(rune);
+    _arrangeConjuredRunes();
+    _startConjureOrbit();
+    _sealedDock.classList.remove('has-runes');
+    _sealedDock.style.bottom = '-80px';
   }
 
   // Mark as sealed

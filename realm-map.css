@@ -7391,10 +7391,12 @@
 
   .sealed-rune.entering {
     animation: rune-enter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    will-change: transform, opacity;
   }
 
   .sealed-rune.exiting {
     animation: rune-exit 0.3s ease-out forwards;
+    will-change: transform, opacity;
   }
 
   @keyframes rune-float {
@@ -7498,6 +7500,7 @@
     width: 56px !important;
     height: 56px !important;
     animation: anchored-breathe 4s ease-in-out infinite;
+    will-change: transform;
   }
 
   .wandering-rune {
@@ -7508,6 +7511,8 @@
     box-shadow:
       0 0 20px var(--accent-glow),
       0 0 40px var(--accent-glow);
+    /* Brownian motion via JS — promote to compositor layer */
+    will-change: transform;
   }
   .wandering-rune .rune-icon { font-size: 14px; }
   .wandering-rune .rune-icon-img { opacity: 0.6; filter: saturate(0.5) brightness(0.7); }
@@ -7555,6 +7560,8 @@
     width: 48px;
     height: 48px;
     animation: conjured-glow 3s ease-in-out infinite;
+    /* Orbital positioning via JS + glow animation — keep on compositor */
+    will-change: transform, filter;
   }
 
   .conjured-runes .sealed-rune:nth-child(3n+1) { animation-duration: 2.8s; }
@@ -7582,6 +7589,7 @@
     pointer-events: none;
     animation: sigil-rotate 60s linear infinite;
     opacity: 0.8;
+    will-change: transform;
   }
 
   .conjure-sigil svg {
@@ -7802,6 +7810,8 @@ body.perf-low .conjure-orbit-ring { animation: none; }
 .panel-sealing {
   animation: panelSeal 300ms ease-in forwards;
   will-change: transform, opacity;
+  /* Skip child layout during shrink-to-seal animation */
+  contain: strict;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -8505,6 +8515,8 @@ body.perf-low .conjure-orbit-ring { animation: none; }
     0 4px 24px rgba(0,0,0,0.6),
     0 0 1px rgba(200,168,76,0.3);
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  /* Contain layout/style so internal DOM changes don't trigger document-wide reflow */
+  contain: layout style;
 }
 
 /* ── Corner Decorations ── */
@@ -8648,6 +8660,8 @@ body.perf-low .conjure-orbit-ring { animation: none; }
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* Contain content so WinBox resizing doesn't reflow panel internals on every pixel */
+  contain: content;
 }
 
 /* ── Resize Handles ── */
@@ -8849,4 +8863,11 @@ body.perf-low .conjure-orbit-ring { animation: none; }
     opacity: 1;
     transition: none !important;
   }
+}
+
+/* ── Transition Suppression — WinBox toggle re-layout ── */
+.no-panel-transitions .panel,
+.no-panel-transitions .realm-window,
+.no-panel-transitions .sealed-rune {
+  transition: none !important;
 }

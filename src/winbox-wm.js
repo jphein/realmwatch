@@ -44,8 +44,9 @@ let _active = false;
 const _instances = new Map();          // panelId → WinBox instance
 const _origParents = new Map();        // panelId → { parent, nextSibling }
 
-// ── Debounced position save ──
-let _saveTimer = null;
+// ── Debounced position save (per-panel timers) ──
+const _saveTimers = new Map();   // panelId → timeoutId
+let _rafPending = false;         // RAF gate for move/resize
 
 // ── Position persistence ──
 
@@ -63,13 +64,24 @@ function _savePositions(positions) {
 }
 
 function _debouncedSavePosition(panelId, x, y, w, h) {
-  if (_saveTimer) clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(() => {
+  const prev = _saveTimers.get(panelId);
+  if (prev) clearTimeout(prev);
+  _saveTimers.set(panelId, setTimeout(() => {
+    _saveTimers.delete(panelId);
     const positions = _loadPositions();
     positions[panelId] = { x, y, w, h };
     _savePositions(positions);
-    _saveTimer = null;
-  }, 100);
+  }, 100));
+}
+
+/** RAF-gated wrapper — coalesces rapid move/resize into one save per frame */
+function _rafSavePosition(panelId, x, y, w, h) {
+  if (_rafPending) return;
+  _rafPending = true;
+  requestAnimationFrame(() => {
+    _rafPending = false;
+    _debouncedSavePosition(panelId, x, y, w, h);
+  });
 }
 
 // ── Cascade position for new windows ──
@@ -148,9 +160,11 @@ export function openWinBoxPanel(panelId) {
       existing.focus();
       return;
     }
-    // Dead instance — clean up and fall through to recreate
+    // Dead instance — clean up orphaned WinBox wrapper DOM if still present
     _instances.delete(panelId);
     _origParents.delete(panelId);
+    const orphan = document.querySelector(`.winbox[data-panel="${panelId}"]`);
+    if (orphan) orphan.remove();
   }
 
   // Save original DOM position for later restoration
@@ -181,7 +195,14 @@ export function openWinBoxPanel(panelId) {
     h = DEFAULT_HEIGHT;
   }
 
-  const title = PANELS[panelId] || panelId;
+  // Dynamic title: registry → panel header text → dataset → cleaned ID
+  let title = PANELS[panelId];
+  if (!title) {
+    const hdr = panel.querySelector('.panel-header');
+    title = (hdr && hdr.textContent.trim())
+         || panel.dataset.panelName
+         || panelId.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
 
   const wb = new WinBox({
     title,
@@ -206,11 +227,11 @@ export function openWinBoxPanel(panelId) {
     },
 
     onmove(mx, my) {
-      _debouncedSavePosition(panelId, mx, my, this.width, this.height);
+      _rafSavePosition(panelId, mx, my, this.width, this.height);
     },
 
     onresize(rw, rh) {
-      _debouncedSavePosition(panelId, this.x, this.y, rw, rh);
+      _rafSavePosition(panelId, this.x, this.y, rw, rh);
     },
 
     onminimize() {
@@ -220,6 +241,8 @@ export function openWinBoxPanel(panelId) {
     },
   });
 
+  // Tag wrapper for orphan cleanup
+  if (wb.dom) wb.dom.dataset.panel = panelId;
   _instances.set(panelId, wb);
 }
 
@@ -257,6 +280,10 @@ export function toggleWinBoxMode(enabled) {
     }
     _instances.clear();
     _origParents.clear();
+    // Clear all pending per-panel save timers
+    for (const timer of _saveTimers.values()) clearTimeout(timer);
+    _saveTimers.clear();
+    _rafPending = false;
     _cascadeIndex = 0;
     _active = false;
     localStorage.setItem(STORAGE_MODE_KEY, 'false');

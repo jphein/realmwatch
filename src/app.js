@@ -125,6 +125,14 @@ export const getSseConnected = () => _sseConnected;
   let _trafficRafPending = false;
   let _statusRafPending = false;
   let _pendingStatusData = null;
+  let _energyRafPending = false;
+  let _pendingEnergyData = null;
+  let _latencyRafPending = false;
+  let _pendingLatencyParsed = null;
+  let _firewallRafPending = false;
+  let _pendingFirewallData = null;
+  let _wifiRafPending = false;
+  let _pendingWifiData = null;
 
   // ── Stream attunement tracker (lights up loading screen indicators) ──
   const _attuneCache = {};
@@ -259,13 +267,25 @@ export const getSseConnected = () => _sseConnected;
       _attuneStream('energy');
       const data = JSON.parse(e.data);
       if (isZoomActive()) { setDeferredEnergy(data); return; }
-      updateEnergyPanel(data);
+      _pendingEnergyData = data;
+      if (!_energyRafPending) {
+        _energyRafPending = true;
+        requestAnimationFrame(() => {
+          _energyRafPending = false;
+          if (_pendingEnergyData) {
+            if (isZoomActive()) setDeferredEnergy(_pendingEnergyData);
+            else updateEnergyPanel(_pendingEnergyData);
+            _pendingEnergyData = null;
+          }
+        });
+      }
     });
 
     sse.addEventListener('latency', e => {
       _onMessageReceived();
       _attuneStream('latency');
       const parsed = JSON.parse(e.data);
+      // Data model updates are cheap — do immediately so other code sees fresh values
       setLatencyMap(parsed);
       if (parsed.groups) {
         const flat = {};
@@ -275,21 +295,55 @@ export const getSseConnected = () => _sseConnected;
         setLatencyFlat(parsed);
       }
       if (isZoomActive()) { setDeferredLatency(true); return; }
-      updateLatencyPanel();
+      // Batch DOM update via RAF
+      _pendingLatencyParsed = parsed;
+      if (!_latencyRafPending) {
+        _latencyRafPending = true;
+        requestAnimationFrame(() => {
+          _latencyRafPending = false;
+          if (_pendingLatencyParsed) {
+            if (isZoomActive()) setDeferredLatency(true);
+            else updateLatencyPanel();
+            _pendingLatencyParsed = null;
+          }
+        });
+      }
     });
 
     sse.addEventListener('firewall', e => {
       _onMessageReceived();
       _attuneStream('firewall');
       const d = JSON.parse(e.data);
-      handleFirewallData(d);
+      _pendingFirewallData = d;
+      if (!_firewallRafPending) {
+        _firewallRafPending = true;
+        requestAnimationFrame(() => {
+          _firewallRafPending = false;
+          if (_pendingFirewallData) {
+            handleFirewallData(_pendingFirewallData);
+            _pendingFirewallData = null;
+          }
+        });
+      }
     });
 
     sse.addEventListener('wifi', e => {
       _onMessageReceived();
       _attuneStream('wifi');
       const data = JSON.parse(e.data);
-      if (data && Object.keys(data).length) renderWifiPanel(data);
+      if (data && Object.keys(data).length) {
+        _pendingWifiData = data;
+        if (!_wifiRafPending) {
+          _wifiRafPending = true;
+          requestAnimationFrame(() => {
+            _wifiRafPending = false;
+            if (_pendingWifiData) {
+              renderWifiPanel(_pendingWifiData);
+              _pendingWifiData = null;
+            }
+          });
+        }
+      }
     });
 
     // ── Connection lifecycle ──
@@ -361,8 +415,7 @@ export const getSseConnected = () => _sseConnected;
 
 // Defer non-critical init to idle time — SSE connection is the priority
 const _deferInit = window.requestIdleCallback || (cb => setTimeout(cb, 50));
-_deferInit(() => { initScanner(); initSkills(); });
-_deferInit(() => { initForestTheme(); initWinBoxWM(); });
+_deferInit(() => { initScanner(); initSkills(); initForestTheme(); initWinBoxWM(); });
 
 // ── Initialize RealmAPI for plugins ──
 initRealmAPI({
@@ -481,8 +534,15 @@ if (_wbcb) {
   _wbcb.checked = localStorage.getItem('realm-winbox-mode') === 'true';
   _wbcb.addEventListener('change', () => {
     toggleWinBoxMode(_wbcb.checked);
-    // Re-apply current formation to mount/unmount panels in WinBox
-    applyFormation('grimoire-binding');
+    // Suppress transitions during formation re-layout to avoid visual flash
+    document.body.classList.add('no-panel-transitions');
+    requestAnimationFrame(() => {
+      applyFormation('grimoire-binding');
+      // Re-enable transitions after layout settles
+      requestAnimationFrame(() => {
+        document.body.classList.remove('no-panel-transitions');
+      });
+    });
   });
 }
 

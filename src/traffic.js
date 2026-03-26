@@ -1,8 +1,28 @@
 'use strict';
-import { _connPaths, _nodeDOM } from './topology.js';
+import { _connPaths, _nodeDOM, _nodeMap } from './topology.js';
+import { scale, panX, panY } from './map-view.js';
 
 let trafficScale = 1.0;
 export function setTrafficScale(v) { trafficScale = v; }
+
+// Viewport culling — check if a connection's endpoint nodes are both off-screen.
+// Uses the map transform (panX, panY, scale) to project world coords to screen.
+// Returns true if the line is likely visible (conservative — includes a margin).
+const _CULL_MARGIN = 200;  // px margin to avoid popping
+function _isLineVisible(line) {
+  // Fast path: if no data-fx/fy attributes, assume visible
+  const fx = line._fx, fy = line._fy, tx = line._tx, ty = line._ty;
+  if (fx === undefined) return true;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const sx1 = panX + fx * scale, sy1 = panY + fy * scale;
+  const sx2 = panX + tx * scale, sy2 = panY + ty * scale;
+  // If both endpoints are off the same edge, line is off-screen
+  if (sx1 < -_CULL_MARGIN && sx2 < -_CULL_MARGIN) return false;
+  if (sy1 < -_CULL_MARGIN && sy2 < -_CULL_MARGIN) return false;
+  if (sx1 > vw + _CULL_MARGIN && sx2 > vw + _CULL_MARGIN) return false;
+  if (sy1 > vh + _CULL_MARGIN && sy2 > vh + _CULL_MARGIN) return false;
+  return true;
+}
 
 // ── Connection traffic animation ──
 // Color bases for each connection type (r,g,b)
@@ -69,6 +89,13 @@ function _ensureCache(path) {
     const connType = Array.from(path.classList).find(c => connColors[c]) || null;
     cache = { connType, sw: 0, speed: 0, dir: '', tier: '', stroke: '', animated: false, glow: false };
     _connCache.set(path, cache);
+    // Cache endpoint world coords for viewport culling
+    const fn = _nodeMap.get(path.dataset.fromNode);
+    const tn = _nodeMap.get(path.dataset.toNode);
+    if (fn && tn) {
+      path._fx = fn.x; path._fy = fn.y;
+      path._tx = tn.x; path._ty = tn.y;
+    }
   }
   return cache;
 }
@@ -105,8 +132,11 @@ export function updateConnectionTraffic(collectd) {
       }
       continue;
     }
-    // Enable animation only when there's traffic
-    if (!cache.animated) { line.classList.add('conn-animated'); cache.animated = true; }
+    // Enable animation only when there's traffic AND line is on-screen
+    // Off-screen lines still get stroke/width updates (cheap) but skip CSS animation (expensive)
+    const visible = _isLineVisible(line);
+    if (visible && !cache.animated) { line.classList.add('conn-animated'); cache.animated = true; }
+    else if (!visible && cache.animated) { line.classList.remove('conn-animated'); cache.animated = false; }
     // Realistic bandwidth scale: 0→1 mapped over 1 KB/s → 10 MB/s (log scale)
     const rawIntensity = Math.max(0, Math.min(1, (Math.log10(traffic.total + 1) - 3) / 4));
     const intensity = Math.min(1, rawIntensity * trafficScale);
@@ -237,15 +267,17 @@ export function updateConnectionTrafficSSE(trafficMap) {
   }
 
   // Use server-provided animate/glow flags if available; fall back to client-side sort
+  // Viewport culling: skip expensive CSS animations for off-screen lines
   const hasServerFlags = trafficData.length > 0 && trafficData[0].traffic?.animate !== undefined;
   if (hasServerFlags) {
     for (const { line, cache, traffic } of trafficData) {
-      const shouldAnimate = !!traffic.animate;
+      const visible = _isLineVisible(line);
+      const shouldAnimate = visible && !!traffic.animate;
       if (shouldAnimate !== cache.animated) {
         if (shouldAnimate) line.classList.add('conn-animated'); else line.classList.remove('conn-animated');
         cache.animated = shouldAnimate;
       }
-      const shouldGlow = !!traffic.glow;
+      const shouldGlow = visible && !!traffic.glow;
       if (shouldGlow !== cache.glow) {
         if (shouldGlow) line.classList.add('conn-glow'); else line.classList.remove('conn-glow');
         cache.glow = shouldGlow;
@@ -255,13 +287,15 @@ export function updateConnectionTrafficSSE(trafficMap) {
     trafficData.sort((a, b) => b.intensity - a.intensity);
     const topAnimated = new Set(trafficData.slice(0, MAX_ANIMATED_CONNS).map(d => d.line));
     for (const { line, cache } of trafficData) {
-      const shouldAnimate = topAnimated.has(line);
+      const visible = _isLineVisible(line);
+      const shouldAnimate = visible && topAnimated.has(line);
       if (shouldAnimate && !cache.animated) { line.classList.add('conn-animated'); cache.animated = true; }
       else if (!shouldAnimate && cache.animated) { line.classList.remove('conn-animated'); cache.animated = false; }
     }
     const topLines = new Set(trafficData.filter(d => d.intensity > 0.3).slice(0, TOP_GLOW_COUNT).map(d => d.line));
     trafficData.forEach(({ line, cache }) => {
-      const shouldGlow = topLines.has(line);
+      const visible = _isLineVisible(line);
+      const shouldGlow = visible && topLines.has(line);
       if (shouldGlow !== cache.glow) {
         if (shouldGlow) line.classList.add('conn-glow'); else line.classList.remove('conn-glow');
         cache.glow = shouldGlow;
