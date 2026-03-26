@@ -122,14 +122,16 @@ deploy_dock() {
   local scheme
   scheme=$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null || echo "'default'")
   if [[ "$scheme" != "'prefer-dark'" ]]; then
-    gsettings set org.gnome.shell.extensions.dash-to-dock custom-background-color true
-    gsettings set org.gnome.shell.extensions.dash-to-dock background-color '#f0e6d0'
-    gsettings set org.gnome.shell.extensions.dash-to-dock background-opacity 0.88
+    gsettings set org.gnome.shell.extensions.dash-to-dock custom-background-color false
+    gsettings set org.gnome.shell.extensions.dash-to-dock transparency-mode 'FIXED'
+    gsettings set org.gnome.shell.extensions.dash-to-dock customize-alphas true
+    gsettings set org.gnome.shell.extensions.dash-to-dock max-alpha 0.55
+    gsettings set org.gnome.shell.extensions.dash-to-dock min-alpha 0.35
     gsettings set org.gnome.shell.extensions.dash-to-dock custom-theme-customize-running-dots true
     gsettings set org.gnome.shell.extensions.dash-to-dock custom-theme-running-dots-color '#8a6520'
     gsettings set org.gnome.shell.extensions.dash-to-dock custom-theme-running-dots-border-color '#6a3a90'
     gsettings set org.gnome.shell.extensions.dash-to-dock custom-theme-running-dots-border-width 0
-    echo -e "  ${G}OK${N} (light — parchment dock, dark gold dots)"
+    echo -e "  ${G}OK${N} (light — translucent dock, dark gold dots)"
   else
     gsettings set org.gnome.shell.extensions.dash-to-dock custom-background-color true
     gsettings set org.gnome.shell.extensions.dash-to-dock background-color '#2a1a40'
