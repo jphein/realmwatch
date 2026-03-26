@@ -31,6 +31,9 @@ gsettings monitor org.gnome.desktop.interface color-scheme | while read -r _key 
       pgrep -x brave >/dev/null 2>&1 || break
       sleep 0.5
     done
+    # Mark exit as clean so Brave doesn't show "restore session?" dialog
+    sed -i 's/"exit_type":"Crashed"/"exit_type":"Normal"/' \
+      ~/.config/BraveSoftware/Brave-Browser/Default/Preferences 2>/dev/null || true
     sleep 1
     setsid brave-browser-stable &>/dev/null &
     echo "Brave restart triggered"
