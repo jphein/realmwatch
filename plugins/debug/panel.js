@@ -449,6 +449,16 @@
       else document.body.appendChild(_agPanel);
     }
 
+    // Register with panel manager for seal/drag/formation behavior
+    if (API.registerExistingPanel) {
+      API.registerExistingPanel(_agPanel, {
+        name: 'Arcane Grimoire',
+        icon: '\ud83d\udcd6',
+        anchor: 'nw',
+        priority: 91,
+      });
+    }
+
     var _acEndpoints = [
       { method:'GET', path:'/status', desc:'Full realm status', params:[] },
       { method:'GET', path:'/topology', desc:'Nodes, connections, regions', params:[] },
@@ -691,6 +701,16 @@
       var dock = document.getElementById('sealed-dock');
       if (dock) dock.parentNode.insertBefore(panel, dock);
       else document.body.appendChild(panel);
+    }
+
+    // Register with panel manager for seal/drag/formation behavior
+    if (API.registerExistingPanel) {
+      API.registerExistingPanel(panel, {
+        name: 'Scrying Terminal',
+        icon: '\ud83d\udd2e',
+        anchor: 'sw',
+        priority: 92,
+      });
     }
 
     var _stOutput = document.getElementById('st-output');

@@ -37,20 +37,8 @@ const SIGILS = {
   'quest-log': _SIGIL('<path d="M18 3a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2" stroke="#70b870"/><path d="M8 9h8M8 13h5" stroke="#88d088"/><path d="M16 2l3 3-8 8-3 1 1-3z" stroke="#60c060" fill="rgba(80,180,80,0.1)"/>'),
   // Cartographer — drafting compass (sky blue)
   'cartographer': _SIGIL('<circle cx="12" cy="6" r="2" stroke="#70a8d8" fill="rgba(100,160,220,0.15)"/><path d="M12 8l-5 13M12 8l5 13" stroke="#70a8d8"/><path d="M8.5 16h7" stroke="#88c0e8"/>'),
-  // Energy — arcane crystal (electric cyan/teal)
-  'energy-panel': _SIGIL('<path d="M12 2l6 7-6 13-6-13z" stroke="#50c8c8" fill="rgba(60,200,200,0.12)"/><path d="M6 9h12" stroke="#60d8d8"/><path d="M9 9l3 13 3-13" stroke="#40b0b0" opacity="0.4"/>'),
-  // Census — people/nodes roster (warm tan)
-  'node-list': _SIGIL('<circle cx="9" cy="7" r="3" stroke="#c8a870"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2" stroke="#c8a870"/><circle cx="18" cy="9" r="2" stroke="#ddb870"/><path d="M18 14a3 3 0 013 3v1" stroke="#ddb870"/>'),
-  // Arcane Pulse — ripple rings (electric blue)
-  'latency-panel': _SIGIL('<circle cx="12" cy="12" r="2" fill="#60a0ff" stroke="none"/><circle cx="12" cy="12" r="5" stroke="#6090e0"/><circle cx="12" cy="12" r="8" stroke="#6090e0" opacity="0.5"/><circle cx="12" cy="12" r="11" stroke="#6090e0" opacity="0.25"/>'),
-  // Realm Wards — shield with rune (fire orange/red)
-  'firewall-panel': _SIGIL('<path d="M12 2l8 4v5c0 5.5-3.8 10.2-8 12-4.2-1.8-8-6.5-8-12V6z" stroke="#d88040" fill="rgba(220,120,50,0.1)"/><path d="M12 8v4m0 2v1" stroke="#ff9050" stroke-width="2"/>'),
-  // Aether Towers — tower with signal (electric indigo)
-  'wifi-panel': _SIGIL('<path d="M10 21h4V10h-4z" stroke="#7080d0"/><path d="M6 21h2V14H6z" stroke="#7080d0"/><path d="M16 21h2V14h-2z" stroke="#7080d0"/><path d="M12 7a5 5 0 00-5 5" fill="none" stroke="#90a0ff"/><path d="M12 4a8 8 0 00-8 8" fill="none" stroke="#90a0ff" opacity="0.5"/><circle cx="12" cy="7" r="1.5" fill="#a0b0ff" stroke="none"/>'),
   // Oracle Commune — speech crystal (ethereal mint)
   'node-chat-dialog': _SIGIL('<path d="M21 12a9 9 0 01-9 9l-4-2H5a2 2 0 01-2-2v-3a9 9 0 0118-2z" stroke="#60c0a0" fill="rgba(80,200,160,0.08)"/><path d="M9 12h.01M12 12h.01M15 12h.01" stroke="#80e0c0" stroke-width="2.5"/>'),
-  // Inscription Codex — quill over rune tablet (arcane silver/indigo)
-  'skills-panel': _SIGIL('<rect x="4" y="3" width="16" height="18" rx="2" stroke="#9090c0" fill="rgba(140,140,200,0.08)"/><path d="M8 8h8M8 12h5" stroke="#a0a0d0" opacity="0.6"/><path d="M17 2l-4 4-1 3 3-1 4-4a1.5 1.5 0 00-2-2z" stroke="#c0a0ff" fill="rgba(180,140,255,0.15)"/>'),
 };
 
 // Panel definitions with default anchors and priority
@@ -63,10 +51,7 @@ const PANELS = {
   'realm-codex':    { name: 'Codex', anchor: 'nw', priority: 4, icon: '\u2630' },
   'quest-log':      { name: 'Quest Log', anchor: 'se', priority: 6, icon: '\u2619' },
   'cartographer':   { name: 'Cartographer', anchor: 'e', priority: 7, icon: '\uD83E\uDDED' },
-  'node-list':      { name: 'Census', anchor: 'w', priority: 9, icon: '\uD83D\uDCDC' },
-  'scanner-panel':  { name: 'Survey Glass', anchor: 'e', priority: 17, icon: '\uD83D\uDD2D' },
   'node-chat-dialog': { name: 'Oracle Commune', anchor: 'se', priority: 14, icon: '\uD83D\uDCAC' },
-  'skills-panel':     { name: 'Inscription Codex', anchor: 'nw', priority: 18, icon: '\u270E' },
 };
 
 // Arcane Formations (presets)

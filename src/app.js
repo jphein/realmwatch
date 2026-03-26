@@ -3,14 +3,12 @@ import { SSE_URL } from './config.js';
 import { refreshTopology, setTopologyRefreshHook } from './topology.js';
 import { renderTopoLayer, setLastTopoCollectd, initTopoControls } from './terrain.js';
 import { updateConnectionTraffic, updateConnectionTrafficSSE, trafficToCollectd, setTrafficScale } from './traffic.js';
-import { setLatencyMap, setLatencyFlat, setWifiMap,
-         updateLatencyPanel, handleFirewallData, renderWifiPanel,
-         fetchWifiAPs } from './panels.js';
+import { setLatencyFlat, setWifiMap } from './panels.js';
 import { updateUI, getLastStatus, setPostUpdateHook } from './node-status.js';
 import { renderEvent, updateBubblePositions, firePulse, showOffline,
          setOpenNodeChat } from './quest-log.js';
 import { isZoomActive,
-         setDeferredStatus, setDeferredTraffic, setDeferredLatency,
+         setDeferredStatus, setDeferredTraffic,
          setGhostDirty, applyTopoZ, setOpenPersonaEditor, invalidateGlobeZCache } from './map-view.js';
 import { openPersonaEditor, setTabRenderers } from './persona-editor.js';
 import { renderControlPane, renderGroupPane, renderShellPane, renderConnectionsPane, focusShellInput, openNodeChat } from './node-controls.js';
@@ -122,12 +120,6 @@ export const getSseConnected = () => _sseConnected;
   let _trafficRafPending = false;
   let _statusRafPending = false;
   let _pendingStatusData = null;
-  let _latencyRafPending = false;
-  let _pendingLatencyParsed = null;
-  let _firewallRafPending = false;
-  let _pendingFirewallData = null;
-  let _wifiRafPending = false;
-  let _pendingWifiData = null;
 
   // ── Stream attunement tracker (lights up loading screen indicators) ──
   const _attuneCache = {};
@@ -258,12 +250,11 @@ export const getSseConnected = () => _sseConnected;
 
     // Energy SSE handling moved to plugins/ha/panel.js
 
+    // Latency data model update (rendering handled by plugins/latency/panel.js)
     sse.addEventListener('latency', e => {
       _onMessageReceived();
       _attuneStream('latency');
       const parsed = JSON.parse(e.data);
-      // Data model updates are cheap — do immediately so other code sees fresh values
-      setLatencyMap(parsed);
       if (parsed.groups) {
         const flat = {};
         for (const g of parsed.groups) for (const entry of g.entries) flat[entry.id] = entry.rtt;
@@ -271,57 +262,9 @@ export const getSseConnected = () => _sseConnected;
       } else {
         setLatencyFlat(parsed);
       }
-      if (isZoomActive()) { setDeferredLatency(true); return; }
-      // Batch DOM update via RAF
-      _pendingLatencyParsed = parsed;
-      if (!_latencyRafPending) {
-        _latencyRafPending = true;
-        requestAnimationFrame(() => {
-          _latencyRafPending = false;
-          if (_pendingLatencyParsed) {
-            if (isZoomActive()) setDeferredLatency(true);
-            else updateLatencyPanel();
-            _pendingLatencyParsed = null;
-          }
-        });
-      }
     });
 
-    sse.addEventListener('firewall', e => {
-      _onMessageReceived();
-      _attuneStream('firewall');
-      const d = JSON.parse(e.data);
-      _pendingFirewallData = d;
-      if (!_firewallRafPending) {
-        _firewallRafPending = true;
-        requestAnimationFrame(() => {
-          _firewallRafPending = false;
-          if (_pendingFirewallData) {
-            handleFirewallData(_pendingFirewallData);
-            _pendingFirewallData = null;
-          }
-        });
-      }
-    });
-
-    sse.addEventListener('wifi', e => {
-      _onMessageReceived();
-      _attuneStream('wifi');
-      const data = JSON.parse(e.data);
-      if (data && Object.keys(data).length) {
-        _pendingWifiData = data;
-        if (!_wifiRafPending) {
-          _wifiRafPending = true;
-          requestAnimationFrame(() => {
-            _wifiRafPending = false;
-            if (_pendingWifiData) {
-              renderWifiPanel(_pendingWifiData);
-              _pendingWifiData = null;
-            }
-          });
-        }
-      }
-    });
+    // Firewall + WiFi panel rendering handled by plugins/firewall/ and plugins/wifi/
 
     // ── Connection lifecycle ──
 
@@ -398,9 +341,6 @@ export const getSseConnected = () => _sseConnected;
       });
     }
   };
-
-  // Bootstrap wifi panel immediately (SSE wifi event only fires every 120s)
-  fetchWifiAPs();
 
   // Initial connection
   _connect();

@@ -880,13 +880,6 @@ makeResizable(document.getElementById('spellbook'), [192,160,255]);
 makeResizable(document.getElementById('quest-log'), [160,255,96]);
 makeResizable(document.getElementById('realm-codex'), [144,96,192]);
 makeResizable(document.getElementById('cartographer'), [192,144,96]);
-makeResizable(document.getElementById('energy-panel'), [96,192,96]);
-makeResizable(document.getElementById('node-list'), [192,144,96]);
-makeResizable(document.getElementById('latency-panel'), [100,180,255]);
-makeResizable(document.getElementById('firewall-panel'), [220,160,80]);
-makeResizable(document.getElementById('wifi-panel'), [100,200,255]);
-makeResizable(document.getElementById('scanner-panel'), [220,180,80]);
-makeResizable(document.getElementById('debug-panel'), [120,80,200]);
 makeResizable(document.getElementById('persona-editor'), [240,200,100]);
 
 // Restore saved layout on load (panel seal state managed by panel-manager.js)

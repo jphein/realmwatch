@@ -99,6 +99,12 @@ export function initRealmAPI({ registerPanelFn, openPanelFn, closePanelFn }) {
       return panel;
     },
 
+    // Register an existing DOM element as a panel (for plugins that build custom chrome)
+    registerExistingPanel(panelEl, { name, icon, anchor, priority }) {
+      if (!panelEl || !panelEl.id) return;
+      registerPanelFn(panelEl, { name, icon, anchor, priority });
+    },
+
     removePanel(id) {
       const panel = document.getElementById(id);
       if (panel) panel.remove();
