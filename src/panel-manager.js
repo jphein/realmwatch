@@ -1805,12 +1805,21 @@ export function applyFormation(formationId) {
     }
   }
 
-  // Clear existing dock runes
+  // Clear existing runes from ALL locations (dock, anchored, wandering, conjured)
   const tray = _sealedDock?.querySelector('.dock-tray');
-  if (tray) tray.innerHTML = '';
+  if (tray) while (tray.firstChild) tray.removeChild(tray.firstChild);
   _sealedDock?.classList.remove('has-runes');
+  document.querySelectorAll('.sealed-rune.anchored-rune, .sealed-rune.wandering-rune').forEach(r => r.remove());
+  _wanderingRunes = [];
+  const conjured = document.getElementById('conjured-runes');
+  if (conjured) conjured.remove();
 
-  // Hide all panels first
+  // Destroy all WinBox instances before re-laying out
+  if (isWinBoxMode()) {
+    Object.keys(PANELS).forEach(id => destroyWinBoxPanel(id));
+  }
+
+  // Hide all panels first — skip panels whose DOM doesn't exist (disabled plugins)
   Object.keys(PANELS).forEach(id => {
     const panel = document.getElementById(id);
     if (panel) {
@@ -1818,6 +1827,10 @@ export function applyFormation(formationId) {
       panel.classList.remove('panel-sealed');
     }
   });
+
+  // Filter visible/minimized to only panels with actual DOM elements
+  if (visible) visible = visible.filter(id => document.getElementById(id));
+  minimized = minimized.filter(id => document.getElementById(id));
 
   // Show and position visible panels (non-minimized first)
   if (visible) {
