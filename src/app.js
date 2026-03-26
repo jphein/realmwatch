@@ -1,8 +1,6 @@
 // ── App coordinator — SSE dispatch + module wiring ──
 import { SSE_URL } from './config.js';
 import { refreshTopology, setTopologyRefreshHook } from './topology.js';
-import { initScanner } from './scan.js';
-import { initSkills } from './skills.js';
 import { initForestTheme, toggleForestTheme } from './theme-forest.js';
 import { renderTopoLayer, setLastTopoCollectd, initTopoControls } from './terrain.js';
 import { updateConnectionTraffic, updateConnectionTrafficSSE, trafficToCollectd, setTrafficScale } from './traffic.js';
@@ -433,7 +431,7 @@ export const getSseConnected = () => _sseConnected;
 
 // Defer non-critical init to idle time — SSE connection is the priority
 const _deferInit = window.requestIdleCallback || (cb => setTimeout(cb, 50));
-_deferInit(() => { initScanner(); initSkills(); initForestTheme(); initWinBoxWM(); });
+_deferInit(() => { initForestTheme(); initWinBoxWM(); });
 
 // ── Initialize RealmAPI for plugins ──
 initRealmAPI({
