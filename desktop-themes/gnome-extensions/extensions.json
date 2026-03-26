@@ -6,7 +6,7 @@
       "name": "Blur my Shell",
       "version": 70,
       "required": true,
-      "purpose": "Purple-tinted blur on overview, panel, and dock backgrounds",
+      "purpose": "Blur on overview and dock backgrounds (panel blur disabled — conflicts with gold bar)",
       "settings": {
         "/": {
           "color-and-noise": true,
@@ -19,8 +19,7 @@
           "color": "(0.82, 0.63, 0.31, 0.5)"
         },
         "panel/": {
-          "brightness": 0.3,
-          "sigma": 20
+          "blur": false
         },
         "dash-to-dock/": {
           "blur": true,
