@@ -1,0 +1,117 @@
+# ══════════════════════════════════════════════════════════════
+#   REALM GHOSTTY — Fantasy Terminal of the Realm
+#   Ported from Kitty config, inspired by realm.watch
+# ══════════════════════════════════════════════════════════════
+
+# ── Font ──
+font-family = Ubuntu Sans Mono
+font-size = 13
+font-feature = -liga
+
+# ── Window ──
+background-opacity = 0.88
+background-blur = 20
+window-padding-x = 14
+window-padding-y = 10
+window-padding-balance = true
+window-padding-color = extend
+confirm-close-surface = false
+gtk-titlebar = true
+window-decoration = server
+window-theme = ghostty
+window-titlebar-background = #0a0510
+window-titlebar-foreground = #d4a050
+
+# ── Colors: The Gem Treasury ──
+foreground = #d4a574
+background = #0e0818
+minimum-contrast = 1.2
+
+# Cursor: molten gold
+cursor-color = #f0d080
+cursor-text = #0e0818
+cursor-style = bar
+cursor-style-blink = true
+cursor-opacity = 0.9
+
+# Selection: deep amber
+selection-foreground = #f0e0c8
+selection-background = #4a3020
+
+# Search: enchanted highlight
+search-foreground = #0e0818
+search-background = #d4a050
+search-selected-foreground = #0e0818
+search-selected-background = #f0d080
+
+# ── ANSI: Gem Palette ──
+# Black (void)
+palette = 0=#1a1028
+palette = 8=#4a3a5a
+
+# Red (ruby)
+palette = 1=#dc5a55
+palette = 9=#ff9090
+
+# Green (emerald)
+palette = 2=#50b470
+palette = 10=#80e8a0
+
+# Yellow (gold)
+palette = 3=#d4a050
+palette = 11=#f0d080
+
+# Blue (sapphire)
+palette = 4=#5a8cc0
+palette = 12=#90c8ff
+
+# Magenta (amethyst)
+palette = 5=#b080d0
+palette = 13=#d0a0ff
+
+# Cyan (teal)
+palette = 6=#40b8a8
+palette = 14=#70e8d8
+
+# White (parchment)
+palette = 7=#c8a888
+palette = 15=#f0e0c8
+
+# ── Splits: arcane dividers ──
+split-divider-color = #d4a050
+unfocused-split-opacity = 0.7
+unfocused-split-fill = #08040f
+
+# ── Scrollback ──
+scrollback-limit = 100000
+
+# ── Bell — completely disabled ──
+bell-features = no-audio
+bell-features = no-attention
+bell-features = no-title
+
+# ── Custom shader: realm glow ──
+custom-shader = shaders/realm-glow.glsl
+custom-shader-animation = false
+
+# ── Performance (optimized for Claude Code) ──
+copy-on-select = clipboard
+mouse-scroll-multiplier = 3
+window-inherit-font-size = false
+resize-overlay = never
+
+# ── Keybindings ──
+# Scrollback pager
+keybind = ctrl+shift+h=write_screen_file:open,plain
+
+keybind = ctrl+shift+t=new_tab
+keybind = ctrl+shift+enter=new_split:right
+
+# Font size
+keybind = ctrl+equal=increase_font_size:1
+keybind = ctrl+minus=decrease_font_size:1
+keybind = ctrl+zero=reset_font_size
+
+# ── Shell Integration ──
+shell-integration = detect
+
