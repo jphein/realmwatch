@@ -24,53 +24,55 @@ stage {
 }
 
 /* ══════════════════════════════════════════════════════════════
- *   TOP PANEL — The Sunlit Banner
+ *   TOP PANEL — The Golden Banner
+ *   Same gold bar as dark theme — works in both modes.
+ *   Blur my Shell adds frosted glass beneath this tint.
  * ══════════════════════════════════════════════════════════════ */
 
 #panel {
-  background-color: #f0e6d0;
-  border-bottom: 1px solid rgba(138, 101, 32, 0.3);
+  background-color: rgba(160, 110, 30, 0.82);
+  border-bottom: 1px solid rgba(120, 80, 10, 0.4);
 }
 
 #panel .panel-button {
-  color: #2a2038;
+  color: #1a1028;
 }
 
 #panel .panel-button:focus,
 #panel .panel-button:hover {
-  color: #6a4a10;
-  box-shadow: inset 0 0 0 100px rgba(138, 101, 32, 0.1);
+  color: #0e0818;
+  box-shadow: inset 0 0 0 100px rgba(255, 255, 255, 0.12);
 }
 
 #panel .panel-button:active,
 #panel .panel-button:checked {
-  color: #6a4a10;
-  box-shadow: inset 0 0 0 100px rgba(138, 101, 32, 0.18);
+  color: #0e0818;
+  box-shadow: inset 0 0 0 100px rgba(255, 255, 255, 0.2);
 }
 
 #panel .panel-button:active:hover,
 #panel .panel-button:checked:hover {
-  box-shadow: inset 0 0 0 100px rgba(138, 101, 32, 0.24);
+  box-shadow: inset 0 0 0 100px rgba(255, 255, 255, 0.26);
 }
 
 #panel .panel-button#panelActivities .workspace-dot {
-  background-color: #8a6520;
+  background-color: #1a1028;
 }
 
 #panel .panel-button.clock-display .clock {
-  color: #2a2038;
+  color: #1a1028;
 }
 
 #panel .panel-button.clock-display:focus .clock,
 #panel .panel-button.clock-display:hover .clock {
-  color: #6a4a10;
-  box-shadow: inset 0 0 0 100px rgba(138, 101, 32, 0.1);
+  color: #0e0818;
+  box-shadow: inset 0 0 0 100px rgba(255, 255, 255, 0.12);
 }
 
 #panel .panel-button.clock-display:active .clock,
 #panel .panel-button.clock-display:checked .clock {
-  color: #6a4a10;
-  box-shadow: inset 0 0 0 100px rgba(138, 101, 32, 0.18);
+  color: #0e0818;
+  box-shadow: inset 0 0 0 100px rgba(255, 255, 255, 0.2);
 }
 
 /* Overview panel transparency */
