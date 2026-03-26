@@ -433,6 +433,17 @@ initRealmAPI({
     const allPlugins = await res.json();
     if (!Array.isArray(allPlugins) || allPlugins.length === 0) return;
     const plugins = allPlugins.filter(p => p.status !== 'disabled');
+
+    // Hide DOM shells for disabled plugin panels (they exist in HTML but shouldn't show)
+    const disabledPlugins = allPlugins.filter(p => p.status === 'disabled');
+    for (const dp of disabledPlugins) {
+      const pid = dp.panel?.id;
+      if (pid) {
+        const el = document.getElementById(pid);
+        if (el) el.style.display = 'none';
+      }
+    }
+
     if (plugins.length === 0) return;
 
     // Track loaded plugin SSE types for dispatch

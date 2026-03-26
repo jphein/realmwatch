@@ -60,6 +60,8 @@ const SIGILS = {
 };
 
 // Panel definitions with default anchors and priority
+// Panels extracted to plugins are registered dynamically via registerPluginPanel —
+// they are NOT listed here so they only appear when the plugin is enabled.
 const PANELS = {
   'realm-panel':    { name: 'Realm Vitals', anchor: 'ne', priority: 1, icon: '\u2694' },
   'legend':         { name: 'Legend', anchor: 'sw', priority: 5, icon: '\uD83D\uDDFA' },
@@ -67,12 +69,8 @@ const PANELS = {
   'realm-codex':    { name: 'Codex', anchor: 'nw', priority: 4, icon: '\u2630' },
   'quest-log':      { name: 'Quest Log', anchor: 'se', priority: 6, icon: '\u2619' },
   'cartographer':   { name: 'Cartographer', anchor: 'e', priority: 7, icon: '\uD83E\uDDED' },
-  'energy-panel':   { name: 'Energy', anchor: 'w', priority: 8, icon: '\u26A1' },
   'node-list':      { name: 'Census', anchor: 'w', priority: 9, icon: '\uD83D\uDCDC' },
   'debug-panel':    { name: 'Arcane Mirror', anchor: 's', priority: 10, icon: '\uD83D\uDD2E' },
-  'latency-panel':  { name: 'Arcane Pulse', anchor: 'e', priority: 11, icon: '\uD83C\uDFD3' },
-  'firewall-panel': { name: 'Realm Wards', anchor: 'w', priority: 12, icon: '\uD83D\uDEE1' },
-  'wifi-panel':     { name: 'Aether Towers', anchor: 'w', priority: 13, icon: '\uD83D\uDCE1' },
   'scanner-panel':  { name: 'Survey Glass', anchor: 'e', priority: 17, icon: '\uD83D\uDD2D' },
   'node-chat-dialog': { name: 'Oracle Commune', anchor: 'se', priority: 14, icon: '\uD83D\uDCAC' },
   'arcane-grimoire':  { name: 'Grimoire', anchor: 'nw', priority: 15, icon: '\uD83D\uDCD6' },
