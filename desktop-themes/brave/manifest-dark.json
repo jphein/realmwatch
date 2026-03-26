@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "version": "1.0",
+  "name": "Realm — Gem Treasury",
+  "description": "Dark fantasy browser theme from realm.watch — void backgrounds, gold accents, parchment text",
+  "theme": {
+    "colors": {
+      "frame":                    [10, 5, 16],
+      "frame_inactive":           [10, 5, 16],
+      "frame_incognito":          [42, 24, 56],
+      "frame_incognito_inactive": [26, 16, 40],
+      "toolbar":                  [18, 8, 30],
+      "tab_text":                 [240, 208, 128],
+      "tab_background_text":      [168, 136, 112],
+      "bookmark_text":            [200, 168, 136],
+      "ntp_background":           [14, 8, 24],
+      "ntp_text":                 [212, 165, 116],
+      "omnibox_background":       [26, 16, 40],
+      "omnibox_text":             [212, 165, 116],
+      "toolbar_button_icon":      [212, 160, 80]
+    },
+    "tints": {
+      "frame_incognito": [0.78, 0.4, 0.15]
+    }
+  }
+}

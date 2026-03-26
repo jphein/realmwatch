@@ -5,6 +5,7 @@
 #   ./desktop-themes/deploy.sh          # deploy all
 #   ./desktop-themes/deploy.sh kitty    # deploy one
 #   ./desktop-themes/deploy.sh ghostty
+#   ./desktop-themes/deploy.sh brave
 #   ./desktop-themes/deploy.sh gnome
 #   ./desktop-themes/deploy.sh gtk
 #   ./desktop-themes/deploy.sh dock
@@ -28,6 +29,29 @@ deploy_ghostty() {
   cp "$DIR/ghostty/config" ~/.config/ghostty/config
   cp "$DIR/ghostty/realm-glow.glsl" ~/.config/ghostty/shaders/realm-glow.glsl
   echo -e "  ${G}OK${N}"
+}
+
+deploy_brave() {
+  local theme_dir="$DIR/brave"
+  # Check if Brave is installed
+  if ! command -v brave-browser &>/dev/null; then
+    echo -e "  ${Y}Skip${N} — brave-browser not found"
+    return
+  fi
+  # Pick dark or light based on system color scheme
+  local scheme
+  scheme=$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null || echo "'default'")
+  if [[ "$scheme" == "'prefer-light'" ]]; then
+    echo -e "${C}Brave (light)${N} → $theme_dir/manifest.json"
+    cp "$theme_dir/manifest-light.json" "$theme_dir/manifest.json"
+  else
+    echo -e "${C}Brave (dark)${N} → $theme_dir/manifest.json"
+    cp "$theme_dir/manifest-dark.json" "$theme_dir/manifest.json"
+  fi
+  echo -e "  ${G}OK${N}"
+  # Brave requires manual load of unpacked extensions the first time.
+  # After that, reload the extension or restart Brave to pick up changes.
+  echo -e "  First time: brave://extensions → Developer mode → Load unpacked → select $theme_dir"
 }
 
 deploy_gnome() {
@@ -200,6 +224,7 @@ echo ""
 case "${1:-all}" in
   kitty)   deploy_kitty ;;
   ghostty) deploy_ghostty ;;
+  brave)   deploy_brave ;;
   gnome)   deploy_gnome ;;
   dock)       deploy_dock ;;
   extensions) deploy_extensions ;;
@@ -208,6 +233,7 @@ case "${1:-all}" in
   all)
     deploy_kitty
     deploy_ghostty
+    deploy_brave
     deploy_gnome
     deploy_dock
     deploy_extensions
@@ -215,7 +241,7 @@ case "${1:-all}" in
     deploy_editor
     ;;
   *)
-    echo "Usage: $0 [kitty|ghostty|gnome|dock|extensions|gtk|editor|all]"
+    echo "Usage: $0 [kitty|ghostty|brave|gnome|dock|extensions|gtk|editor|all]"
     exit 1
     ;;
 esac
