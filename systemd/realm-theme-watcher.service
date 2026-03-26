@@ -1,0 +1,12 @@
+[Unit]
+Description=Realm Desktop Theme Watcher — auto-deploy on dark/light switch
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/Projects/realmwatch/desktop-themes/realm-theme-watcher.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target
