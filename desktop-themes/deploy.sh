@@ -63,6 +63,8 @@ deploy_brave() {
     echo -e "${C}Brave (dark)${N} → $theme_dir/manifest.json"
     cp "$theme_dir/manifest-dark.json" "$theme_dir/manifest.json"
   fi
+  # Delete cached theme so Brave reads fresh manifest on next launch
+  rm -f "$theme_dir/Cached Theme.pak"
   echo -e "  ${G}OK${N}"
   # Brave requires manual load of unpacked extensions the first time.
   # After that, reload the extension or restart Brave to pick up changes.
