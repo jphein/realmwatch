@@ -8,6 +8,7 @@
 #   ./desktop-themes/deploy.sh gnome
 #   ./desktop-themes/deploy.sh gtk
 #   ./desktop-themes/deploy.sh dock
+#   ./desktop-themes/deploy.sh extensions
 #   ./desktop-themes/deploy.sh editor
 set -euo pipefail
 
@@ -85,6 +86,81 @@ deploy_dock() {
   fi
 }
 
+deploy_extensions() {
+  echo -e "${C}GNOME Extensions${N} — checking from extensions.json"
+  local json="$DIR/gnome-extensions/extensions.json"
+  if [[ ! -f "$json" ]]; then
+    echo -e "  ${Y}Skip${N} — extensions.json not found"
+    return
+  fi
+
+  # Process each extension with settings
+  local ids
+  ids=$(python3 -c "
+import json
+with open('$json') as f:
+    data = json.load(f)
+for ext in data['extensions']:
+    if 'settings' in ext:
+        print(ext['id'])
+  " 2>/dev/null)
+
+  for ext_id in $ids; do
+    local name
+    name=$(python3 -c "
+import json
+with open('$json') as f:
+    data = json.load(f)
+for ext in data['extensions']:
+    if ext['id'] == '$ext_id':
+        print(ext['name'])
+        break
+" 2>/dev/null)
+
+    # Check if installed
+    if ! gnome-extensions info "$ext_id" &>/dev/null; then
+      echo -e "  ${Y}$name${N} — not installed, skipping settings"
+      continue
+    fi
+
+    # Check if enabled
+    if ! gnome-extensions info "$ext_id" 2>/dev/null | grep -qE "ENABLED|ACTIVE|Enabled: Yes"; then
+      echo -e "  ${Y}$name${N} — installed but not enabled, skipping settings"
+      continue
+    fi
+
+    # Apply dconf settings from JSON
+    python3 -c "
+import json, subprocess
+with open('$json') as f:
+    data = json.load(f)
+for ext in data['extensions']:
+    if ext['id'] != '$ext_id':
+        continue
+    base = '/org/gnome/shell/extensions/' + ext['id'].split('@')[0] + '/'
+    for subpath, settings in ext.get('settings', {}).items():
+        path = base + subpath
+        for key, val in settings.items():
+            dconf_key = path + key
+            if isinstance(val, bool):
+                dconf_val = 'true' if val else 'false'
+            elif isinstance(val, int):
+                dconf_val = str(val)
+            elif isinstance(val, float):
+                dconf_val = str(val)
+            elif isinstance(val, str) and val.startswith('('):
+                dconf_val = val  # tuple like (0.82, 0.63, 0.31, 0.5)
+            elif isinstance(val, str):
+                dconf_val = \"'\" + val + \"'\"
+            else:
+                continue
+            subprocess.run(['dconf', 'write', dconf_key, dconf_val],
+                         capture_output=True)
+" 2>/dev/null
+    echo -e "  ${G}$name${N} — settings applied"
+  done
+}
+
 deploy_gtk() {
   mkdir -p ~/.config/gtk-4.0 ~/.config/gtk-3.0
 
@@ -125,19 +201,21 @@ case "${1:-all}" in
   kitty)   deploy_kitty ;;
   ghostty) deploy_ghostty ;;
   gnome)   deploy_gnome ;;
-  dock)    deploy_dock ;;
-  gtk)     deploy_gtk ;;
-  editor)  deploy_editor ;;
+  dock)       deploy_dock ;;
+  extensions) deploy_extensions ;;
+  gtk)        deploy_gtk ;;
+  editor)     deploy_editor ;;
   all)
     deploy_kitty
     deploy_ghostty
     deploy_gnome
     deploy_dock
+    deploy_extensions
     deploy_gtk
     deploy_editor
     ;;
   *)
-    echo "Usage: $0 [kitty|ghostty|gnome|dock|gtk|editor|all]"
+    echo "Usage: $0 [kitty|ghostty|gnome|dock|extensions|gtk|editor|all]"
     exit 1
     ;;
 esac
