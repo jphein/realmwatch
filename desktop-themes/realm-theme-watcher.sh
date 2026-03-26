@@ -19,8 +19,16 @@ gsettings monitor org.gnome.desktop.interface color-scheme | while read -r _key 
   # Restart Brave to reload theme extension (preserves all tabs)
   sleep 2
   if pgrep -x brave >/dev/null 2>&1; then
-    brave-browser-stable --new-window 'brave://restart' &>/dev/null &
-    disown
+    # Kill Brave gracefully (SIGTERM saves session), delete theme cache,
+    # relaunch — Brave's "Continue where you left off" restores all tabs
+    killall -TERM brave 2>/dev/null || true
+    for i in $(seq 1 20); do
+      pgrep -x brave >/dev/null 2>&1 || break
+      sleep 0.5
+    done
+    rm -f "$(dirname "$DEPLOY")/brave/Cached Theme.pak"
+    sleep 1
+    setsid brave-browser-stable &>/dev/null &
     echo "Brave restart triggered"
   fi
 done
