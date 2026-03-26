@@ -7,6 +7,7 @@
 #   ./desktop-themes/deploy.sh ghostty
 #   ./desktop-themes/deploy.sh gnome
 #   ./desktop-themes/deploy.sh gtk
+#   ./desktop-themes/deploy.sh dock
 #   ./desktop-themes/deploy.sh editor
 set -euo pipefail
 
@@ -55,6 +56,35 @@ deploy_gnome() {
   fi
 }
 
+deploy_dock() {
+  echo -e "${C}Ubuntu Dock${N} → gsettings"
+  # Ubuntu Dock ignores shell theme CSS — must use gsettings directly
+  local scheme
+  scheme=$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null || echo "'default'")
+  if [[ "$scheme" == "'prefer-light'" ]]; then
+    gsettings set org.gnome.shell.extensions.dash-to-dock custom-background-color true
+    gsettings set org.gnome.shell.extensions.dash-to-dock background-color '#f0e6d0'
+    gsettings set org.gnome.shell.extensions.dash-to-dock background-opacity 0.88
+    gsettings set org.gnome.shell.extensions.dash-to-dock custom-theme-customize-running-dots true
+    gsettings set org.gnome.shell.extensions.dash-to-dock custom-theme-running-dots-color '#8a6520'
+    gsettings set org.gnome.shell.extensions.dash-to-dock custom-theme-running-dots-border-color '#6a3a90'
+    gsettings set org.gnome.shell.extensions.dash-to-dock custom-theme-running-dots-border-width 0
+    echo -e "  ${G}OK${N} (light — parchment dock, dark gold dots)"
+  else
+    gsettings set org.gnome.shell.extensions.dash-to-dock custom-background-color true
+    gsettings set org.gnome.shell.extensions.dash-to-dock background-color '#2a1a40'
+    gsettings set org.gnome.shell.extensions.dash-to-dock transparency-mode 'FIXED'
+    gsettings set org.gnome.shell.extensions.dash-to-dock customize-alphas true
+    gsettings set org.gnome.shell.extensions.dash-to-dock max-alpha 0.45
+    gsettings set org.gnome.shell.extensions.dash-to-dock min-alpha 0.25
+    gsettings set org.gnome.shell.extensions.dash-to-dock custom-theme-customize-running-dots true
+    gsettings set org.gnome.shell.extensions.dash-to-dock custom-theme-running-dots-color '#d4a050'
+    gsettings set org.gnome.shell.extensions.dash-to-dock custom-theme-running-dots-border-color '#b080d0'
+    gsettings set org.gnome.shell.extensions.dash-to-dock custom-theme-running-dots-border-width 0
+    echo -e "  ${G}OK${N} (dark — void dock, gold dots)"
+  fi
+}
+
 deploy_gtk() {
   mkdir -p ~/.config/gtk-4.0 ~/.config/gtk-3.0
 
@@ -95,17 +125,19 @@ case "${1:-all}" in
   kitty)   deploy_kitty ;;
   ghostty) deploy_ghostty ;;
   gnome)   deploy_gnome ;;
+  dock)    deploy_dock ;;
   gtk)     deploy_gtk ;;
   editor)  deploy_editor ;;
   all)
     deploy_kitty
     deploy_ghostty
     deploy_gnome
+    deploy_dock
     deploy_gtk
     deploy_editor
     ;;
   *)
-    echo "Usage: $0 [kitty|ghostty|gnome|gtk|editor|all]"
+    echo "Usage: $0 [kitty|ghostty|gnome|dock|gtk|editor|all]"
     exit 1
     ;;
 esac

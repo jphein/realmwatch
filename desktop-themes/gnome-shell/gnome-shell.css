@@ -21,6 +21,7 @@
 /* ── Global stage ── */
 stage {
   color: #d4a574;
+  background-color: #0e0818;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -356,6 +357,119 @@ stage {
 }
 
 /* ══════════════════════════════════════════════════════════════
+ *   OVERVIEW — Window Previews & Labels
+ * ══════════════════════════════════════════════════════════════ */
+
+/* Window title labels in overview (Yaru default: #222222 grey) */
+.dash-label,
+.window-caption,
+.screenshot-ui-tooltip {
+  background-color: #12081e;
+  border: 1px solid rgba(212, 160, 80, 0.25);
+  color: #d4a574;
+}
+
+/* Overview tile backgrounds (app icons, search results) */
+.overview-tile,
+.grid-search-result {
+  background-color: transparent;
+}
+
+.overview-tile:hover,
+.grid-search-result:hover,
+.overview-tile:focus,
+.grid-search-result:focus {
+  background-color: rgba(212, 160, 80, 0.1);
+}
+
+.overview-tile:active,
+.grid-search-result:active {
+  background-color: rgba(212, 160, 80, 0.18);
+}
+
+/* Flat buttons in overview (Yaru default: #1d1d1d grey) */
+.icon-button.flat,
+.button.flat {
+  color: #c8a888;
+  background-color: transparent;
+}
+
+.icon-button.flat:hover,
+.button.flat:hover {
+  color: #f0d080;
+  background-color: rgba(212, 160, 80, 0.1);
+}
+
+.icon-button.flat:active,
+.icon-button.flat:checked,
+.button.flat:active,
+.button.flat:checked {
+  color: #f0d080;
+  background-color: rgba(212, 160, 80, 0.18);
+}
+
+/* Popup menu backgrounds (Yaru default: #1d1d1d) */
+.popup-menu-content {
+  background-color: #12081e;
+  border: 1px solid rgba(212, 160, 80, 0.2);
+}
+
+.popup-menu-item {
+  color: #c8a888;
+}
+
+.popup-menu-item:hover,
+.popup-menu-item:focus {
+  color: #f0d080;
+  background-color: rgba(212, 160, 80, 0.12);
+}
+
+.popup-menu-item:active {
+  color: #f0d080;
+  background-color: rgba(212, 160, 80, 0.22);
+}
+
+.popup-separator-menu-item .popup-separator-menu-item-separator {
+  background-color: rgba(212, 160, 80, 0.15);
+}
+
+/* Card/toggle backgrounds (catch remaining #1d1d1d greys) */
+.lg-extension,
+.quick-toggle-menu,
+.message,
+.events-button,
+.world-clocks-button,
+.weather-button,
+.calendar,
+.datemenu-today-button {
+  color: #c8a888;
+  background-color: #1a1028;
+  border-color: rgba(212, 160, 80, 0.12);
+}
+
+.lg-extension:hover,
+.events-button:hover,
+.world-clocks-button:hover,
+.weather-button:hover,
+.datemenu-today-button:hover {
+  background-color: rgba(212, 160, 80, 0.08);
+}
+
+.lg-extension:active,
+.events-button:active,
+.world-clocks-button:active,
+.weather-button:active,
+.datemenu-today-button:active {
+  background-color: rgba(212, 160, 80, 0.15);
+}
+
+/* Background app items (Yaru default: rgba(247,247,247,0.13) on grey) */
+.background-app-item .icon-button,
+.background-apps-quick-toggle {
+  background-color: rgba(212, 160, 80, 0.08);
+}
+
+/* ══════════════════════════════════════════════════════════════
  *   DASH — The Enchanted Dock
  * ══════════════════════════════════════════════════════════════ */
 
@@ -582,4 +696,115 @@ StScrollBar StButton#hhandle:hover {
 #LookingGlassDialog .notebook-tab:selected {
   color: #f0d080;
   background-color: rgba(212, 160, 80, 0.2);
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   GREY KILLER — Override all Yaru inherited grey backgrounds
+ *   Yaru uses #1d1d1d, #222222, #2f2f2f, #343434, #454545,
+ *   #464646, #484848 etc. extensively. This section catches
+ *   everything our targeted overrides above might have missed.
+ *   Placed LAST so it wins the cascade.
+ * ══════════════════════════════════════════════════════════════ */
+
+/* Replace Yaru's base grey (#1d1d1d) with void */
+.login-dialog,
+.login-dialog-banner-view,
+.login-dialog-button-box,
+.unlock-dialog,
+.screen-shield-background,
+.popup-menu-content,
+.candidate-popup-content,
+.modal-dialog,
+.end-session-dialog,
+.prompt-dialog {
+  background-color: #12081e;
+  color: #d4a574;
+}
+
+/* Replace mid-grey (#222222, #343434) card/item backgrounds */
+.lg-extension,
+.events-button,
+.world-clocks-button,
+.weather-button,
+.calendar,
+.datemenu-today-button,
+.message,
+.quick-toggle-menu,
+.popup-menu-section .popup-sub-menu {
+  background-color: #1a1028;
+}
+
+/* Replace interactive greys (#464646, #454545, #484848) */
+.lg-extension:hover,
+.events-button:hover,
+.world-clocks-button:hover,
+.weather-button:hover,
+.calendar:hover,
+.datemenu-today-button:hover,
+.message:hover,
+.lg-extension:active,
+.events-button:active,
+.world-clocks-button:active,
+.weather-button:active,
+.calendar:active,
+.datemenu-today-button:active,
+.message:active,
+.lg-extension:focus,
+.events-button:focus,
+.world-clocks-button:focus,
+.weather-button:focus,
+.calendar:focus,
+.datemenu-today-button:focus,
+.message:focus {
+  background-color: rgba(212, 160, 80, 0.1);
+}
+
+.lg-extension:active,
+.events-button:active,
+.world-clocks-button:active,
+.weather-button:active,
+.calendar:active,
+.datemenu-today-button:active,
+.message:active {
+  background-color: rgba(212, 160, 80, 0.18);
+}
+
+/* Replace Yaru grey borders (#464646) with realm gold borders */
+.popup-menu-content,
+.candidate-popup-content,
+.modal-dialog,
+.end-session-dialog,
+.prompt-dialog,
+.osd-window,
+.switcher-list,
+.workspace-switcher,
+.dash-label,
+.window-caption,
+.screenshot-ui-tooltip,
+.tooltip,
+#LookingGlassDialog,
+.quick-settings,
+.calendar,
+.message {
+  border-color: rgba(212, 160, 80, 0.2);
+}
+
+/* Replace Yaru separator grey */
+.popup-separator-menu-item .popup-separator-menu-item-separator,
+.popup-sub-menu .popup-separator-menu-item .popup-separator-menu-item-separator {
+  background-color: rgba(212, 160, 80, 0.12);
+}
+
+/* Replace any remaining #2f2f2f / #343434 sub-menu backgrounds */
+.popup-sub-menu {
+  background-color: #0e0818;
+}
+
+.popup-sub-menu .popup-menu-item:hover,
+.popup-sub-menu .popup-menu-item:focus {
+  background-color: rgba(212, 160, 80, 0.12);
+}
+
+.popup-sub-menu .popup-menu-item:active {
+  background-color: rgba(212, 160, 80, 0.22);
 }
