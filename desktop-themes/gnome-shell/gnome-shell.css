@@ -15,8 +15,8 @@
  *   Teal:      #40b8a8            #70e8d8
  */
 
-/* Import the base Yaru-dark theme */
-@import url("resource:///org/gnome/shell/theme/Yaru-dark/gnome-shell.css");
+/* Import the base Yaru dark theme from GResource bundle */
+@import url("resource:///org/gnome/shell/theme/Yaru/gnome-shell-dark.css");
 
 /* ── Global stage ── */
 stage {
@@ -287,7 +287,6 @@ stage {
   background-color: #1a1028;
   color: #d4a574;
   border: 1px solid rgba(212, 160, 80, 0.2);
-  caret-color: #f0d080;
 }
 
 .search-entry:focus {
