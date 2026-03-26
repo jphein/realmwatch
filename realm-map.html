@@ -893,53 +893,7 @@
   </div>
 </div>
 
-<!-- ═══ Arcane Grimoire — spell catalogue of endpoints, tools, scripts ═══ -->
-<div id="arcane-grimoire" class="panel" style="--panel-accent:rgba(240,200,100,0.5)">
-  <div class="panel-header ag-header">
-    <span class="panel-hdr-icon">&#128214;</span>
-    <span class="panel-hdr-title">Arcane Grimoire</span>
-    <span class="panel-hdr-badge ag-status"></span>
-  </div>
-  <div class="ag-body" id="ag-body">
-    <div class="ag-section">
-      <div class="ag-section-toggle" data-target="ac-api">
-        <span class="ag-sigil">&#9880;</span>
-        <span class="ag-section-title">Ley-Line Endpoints</span>
-        <span class="ag-count" id="ac-api-count"></span>
-        <span class="ag-chevron"></span>
-      </div>
-      <div id="ac-api" class="ag-section-body"></div>
-    </div>
-    <div class="ag-section">
-      <div class="ag-section-toggle" data-target="ac-scripts">
-        <span class="ag-sigil">&#9876;</span>
-        <span class="ag-section-title">Forge Scripts</span>
-        <span class="ag-count" id="ac-script-count"></span>
-        <span class="ag-chevron"></span>
-      </div>
-      <div id="ac-scripts" class="ag-section-body"></div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ Scrying Terminal — magical command crystal ═══ -->
-<div id="scrying-terminal" class="panel" style="--panel-accent:rgba(140,180,255,0.5)">
-  <div class="panel-header st-header">
-    <span class="panel-hdr-icon">&#128302;</span>
-    <span class="panel-hdr-title">Scrying Terminal</span>
-  </div>
-  <div class="st-body">
-    <div class="st-crystal">
-      <div class="st-scanline"></div>
-      <div id="st-output" class="st-output"></div>
-    </div>
-    <div class="st-input-row">
-      <div class="st-rune-prompt">&#10217;</div>
-      <input type="text" id="st-input" class="st-input" placeholder="Speak thy command..." autocomplete="off" spellcheck="false">
-      <button id="st-cast" class="st-cast-btn" title="Cast">&#9889;</button>
-    </div>
-  </div>
-</div>
+<!-- Arcane Grimoire + Scrying Terminal: moved to plugins/debug/ -->
 
 <div id="quest-log" class="panel" style="--panel-accent:rgba(160,255,96,0.5)">
   <div id="quest-log-header" class="panel-header">
@@ -959,29 +913,7 @@
   <div id="quest-log-body" class="panel-body"></div>
 </div>
 
-<div id="debug-panel" class="panel" style="display:none;--panel-accent:rgba(160,112,208,0.5)">
-  <div id="debug-header" class="panel-header">
-    <span class="panel-hdr-icon">&#128302;</span>
-    <span class="panel-hdr-title">Arcane Mirror</span>
-    <span id="debug-poll-count" class="debug-stat"></span>
-    <button id="debug-close" class="panel-close">&times;</button>
-  </div>
-  <div id="debug-tabs" class="panel-tab-bar">
-    <div class="debug-tab active" data-dtab="all">All</div>
-    <div class="debug-tab" data-dtab="status">Status</div>
-    <div class="debug-tab" data-dtab="collectd">Collectd</div>
-    <div class="debug-tab" data-dtab="wifi">WiFi</div>
-    <div class="debug-tab" data-dtab="ha">HA</div>
-    <div class="debug-tab" data-dtab="tailscale">Tailscale</div>
-    <div class="debug-tab" data-dtab="topology">Topology</div>
-    <div class="debug-tab" data-dtab="events">Events</div>
-    <div class="debug-tab" data-dtab="db">DB</div>
-  </div>
-  <div id="debug-filter">
-    <input type="text" id="debug-search" placeholder="Filter..." autocomplete="off" spellcheck="false">
-  </div>
-  <div id="debug-body" class="panel-body"></div>
-</div>
+<!-- Debug panel (Arcane Mirror): moved to plugins/debug/ -->
 
 <!-- Persona Editor Modal -->
 <div class="pe-overlay" id="pe-overlay"></div>
@@ -1148,14 +1080,7 @@
   </div>
 </div>
 
-<div id="node-list" class="panel" style="--panel-accent:rgba(192,144,96,0.5)">
-  <div id="node-list-header" class="panel-header">
-    <span class="panel-hdr-icon">&#9873;</span>
-    <span class="panel-hdr-title">Realm Census</span>
-    <span class="panel-hdr-badge nl-count" id="nl-count">-- nodes</span>
-  </div>
-  <div id="node-list-body" class="panel-body"></div>
-</div>
+<!-- Census panel moved to plugins/census/ -->
 
 
 <div id="cartographer" class="panel" style="--panel-accent:rgba(192,144,96,0.5)">
@@ -1260,45 +1185,7 @@
   </div>
 </div>
 
-<div id="energy-panel" class="panel" style="--panel-accent:rgba(96,192,96,0.5)">
-  <div class="panel-header">
-    <span class="panel-hdr-icon">&#9889;</span>
-    <span class="panel-hdr-title">Realm Energy</span>
-  </div>
-  <div class="energy-body panel-body">
-    <div class="energy-row energy-solar">
-      <span class="energy-icon">&#9728;</span>
-      <span class="energy-label">Solar</span>
-      <span class="energy-val" id="energy-solar">--</span>
-    </div>
-    <div class="energy-row energy-battery">
-      <span class="energy-icon">&#128267;</span>
-      <span class="energy-label">Battery</span>
-      <span class="energy-val" id="energy-battery">--</span>
-    </div>
-    <div class="energy-row energy-grid">
-      <span class="energy-icon">&#9863;</span>
-      <span class="energy-label">Grid</span>
-      <span class="energy-val" id="energy-grid">--</span>
-    </div>
-    <div class="energy-row energy-house">
-      <span class="energy-icon">&#127968;</span>
-      <span class="energy-label">House</span>
-      <span class="energy-val" id="energy-house">--</span>
-    </div>
-    <div class="energy-divider"></div>
-    <div class="energy-stats">
-      <div class="energy-stat">
-        <span class="energy-stat-label">Today</span>
-        <span class="energy-stat-val" id="energy-today">--</span>
-      </div>
-      <div class="energy-stat">
-        <span class="energy-stat-label">Exported</span>
-        <span class="energy-stat-val" id="energy-export">--</span>
-      </div>
-    </div>
-  </div>
-</div>
+<!-- Energy panel moved to plugins/ha/ -->
 
 <div id="latency-panel" class="panel" style="--panel-accent:rgba(100,180,255,0.5)">
   <div class="panel-header">
@@ -1816,6 +1703,6 @@
 <div class="tooltip" id="tooltip"></div>
 
 <div id="forest-overlay"></div>
-<script src="realm-map.js?v=1774489022142"></script>
+<script src="realm-map.js?v=1774489815082"></script>
 </body>
 </html>

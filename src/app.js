@@ -1,23 +1,21 @@
 // ── App coordinator — SSE dispatch + module wiring ──
 import { SSE_URL } from './config.js';
 import { refreshTopology, setTopologyRefreshHook } from './topology.js';
-import { initForestTheme, toggleForestTheme } from './theme-forest.js';
 import { renderTopoLayer, setLastTopoCollectd, initTopoControls } from './terrain.js';
 import { updateConnectionTraffic, updateConnectionTrafficSSE, trafficToCollectd, setTrafficScale } from './traffic.js';
 import { setLatencyMap, setLatencyFlat, setWifiMap,
-         updateEnergyPanel, updateLatencyPanel, handleFirewallData, renderWifiPanel,
-         rebuildCensusIfNeeded, fetchWifiAPs } from './panels.js';
+         updateLatencyPanel, handleFirewallData, renderWifiPanel,
+         fetchWifiAPs } from './panels.js';
 import { updateUI, getLastStatus, setPostUpdateHook } from './node-status.js';
 import { renderEvent, updateBubblePositions, firePulse, showOffline,
          setOpenNodeChat } from './quest-log.js';
 import { isZoomActive,
-         setDeferredStatus, setDeferredTraffic, setDeferredEnergy, setDeferredLatency,
+         setDeferredStatus, setDeferredTraffic, setDeferredLatency,
          setGhostDirty, applyTopoZ, setOpenPersonaEditor, invalidateGlobeZCache } from './map-view.js';
 import { openPersonaEditor, setTabRenderers } from './persona-editor.js';
 import { renderControlPane, renderGroupPane, renderShellPane, renderConnectionsPane, focusShellInput, openNodeChat } from './node-controls.js';
 import { initSpellbook, invalidateSearchIndex } from './spellbook.js';
 import { saveSettings, scheduleSave } from './layout.js';
-import { scheduleDebugRefresh } from './debug.js';
 import { initRealmAPI, dispatchPluginSSE } from './plugin-api.js';
 import { registerPluginPanel, openPanel, closePanel } from './panel-manager.js';
 import { initWinBoxWM, toggleWinBoxMode } from './winbox-wm.js';
@@ -60,10 +58,9 @@ if (_rvEl) _rvEl.textContent = typeof __REALM_VERSION__ !== 'undefined' ? __REAL
   }));
 })();
 
-// Register post-update hook for firePulse + debug refresh + periodic log
+// Register post-update hook for firePulse + periodic log
 setPostUpdateHook(() => {
   firePulse();
-  scheduleDebugRefresh();
 });
 
 // Wire up openNodeChat for quest-log.js (async function declaration — hoisted)
@@ -125,8 +122,6 @@ export const getSseConnected = () => _sseConnected;
   let _trafficRafPending = false;
   let _statusRafPending = false;
   let _pendingStatusData = null;
-  let _energyRafPending = false;
-  let _pendingEnergyData = null;
   let _latencyRafPending = false;
   let _pendingLatencyParsed = null;
   let _firewallRafPending = false;
@@ -222,7 +217,6 @@ export const getSseConnected = () => _sseConnected;
       _onMessageReceived();
       _attuneStream('topology');
       refreshTopology();
-      rebuildCensusIfNeeded();
     });
 
     sse.addEventListener('status', e => {
@@ -262,24 +256,7 @@ export const getSseConnected = () => _sseConnected;
       }
     });
 
-    sse.addEventListener('energy', e => {
-      _onMessageReceived();
-      _attuneStream('energy');
-      const data = JSON.parse(e.data);
-      if (isZoomActive()) { setDeferredEnergy(data); return; }
-      _pendingEnergyData = data;
-      if (!_energyRafPending) {
-        _energyRafPending = true;
-        requestAnimationFrame(() => {
-          _energyRafPending = false;
-          if (_pendingEnergyData) {
-            if (isZoomActive()) setDeferredEnergy(_pendingEnergyData);
-            else updateEnergyPanel(_pendingEnergyData);
-            _pendingEnergyData = null;
-          }
-        });
-      }
-    });
+    // Energy SSE handling moved to plugins/ha/panel.js
 
     sse.addEventListener('latency', e => {
       _onMessageReceived();
@@ -431,7 +408,7 @@ export const getSseConnected = () => _sseConnected;
 
 // Defer non-critical init to idle time — SSE connection is the priority
 const _deferInit = window.requestIdleCallback || (cb => setTimeout(cb, 50));
-_deferInit(() => { initForestTheme(); initWinBoxWM(); });
+_deferInit(() => { initWinBoxWM(); });
 
 // ── Initialize RealmAPI for plugins ──
 initRealmAPI({
@@ -547,13 +524,6 @@ initRealmAPI({
     console.warn('Realm Map: plugin loading failed', e);
   }
 })();
-
-// Spellbook toggle for forest theme
-const _fcb = document.getElementById('forest-theme-cb');
-if (_fcb) {
-  _fcb.checked = localStorage.getItem('realm-forest-theme') === 'true';
-  _fcb.addEventListener('change', () => toggleForestTheme(_fcb.checked));
-}
 
 // Spellbook toggle for WinBox window manager
 const _wbcb = document.getElementById('winbox-wm-cb');

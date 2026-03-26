@@ -6,7 +6,7 @@ import { renderTopoLayer, setLastTopoCollectd, invalidateTopoNodeMap, forceTopoR
 import { spawnMote, clearMoteCanvas, updateSparkleRect, ensureMoteLoop } from './effects.js';
 import { updateUI } from './node-status.js';
 import { getBubbleScale, getBubbleFixedSize } from './node-status.js';
-import { updateEnergyPanel, updateLatencyPanel } from './panels.js';
+import { updateLatencyPanel } from './panels.js';
 import { updateConnectionTrafficSSE, trafficToCollectd } from './traffic.js';
 import { updateBubblePositions } from './quest-log.js';
 import { saveSettings, scheduleSave, setPanelMode, isRestoring } from './layout.js';
@@ -202,12 +202,10 @@ function _enterZoomMode() {
 // Deferred SSE updates — queued during zoom, flushed on exit
 let _deferredStatus = null;
 let _deferredTrafficMap = null;
-let _deferredEnergy = null;
 let _deferredLatency = false;
 
 export function setDeferredStatus(d) { _deferredStatus = d; }
 export function setDeferredTraffic(map) { _deferredTrafficMap = map; }
-export function setDeferredEnergy(d) { _deferredEnergy = d; }
 export function setDeferredLatency(v) { _deferredLatency = v; }
 
 function _exitZoomMode() {
@@ -230,7 +228,6 @@ function _flushDeferredUpdates() {
     renderTopoLayer(fakeCollectd);
     _deferredTrafficMap = null;
   }
-  if (_deferredEnergy)  { updateEnergyPanel(_deferredEnergy); _deferredEnergy = null; }
   if (_deferredLatency) { updateLatencyPanel(); _deferredLatency = false; }
 }
 

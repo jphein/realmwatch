@@ -41,8 +41,6 @@ const SIGILS = {
   'energy-panel': _SIGIL('<path d="M12 2l6 7-6 13-6-13z" stroke="#50c8c8" fill="rgba(60,200,200,0.12)"/><path d="M6 9h12" stroke="#60d8d8"/><path d="M9 9l3 13 3-13" stroke="#40b0b0" opacity="0.4"/>'),
   // Census — people/nodes roster (warm tan)
   'node-list': _SIGIL('<circle cx="9" cy="7" r="3" stroke="#c8a870"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2" stroke="#c8a870"/><circle cx="18" cy="9" r="2" stroke="#ddb870"/><path d="M18 14a3 3 0 013 3v1" stroke="#ddb870"/>'),
-  // Arcane Mirror — eye of seeing (mystic purple)
-  'debug-panel': _SIGIL('<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" stroke="#a070c0"/><circle cx="12" cy="12" r="3" stroke="#c090e0" fill="rgba(180,120,220,0.1)"/><circle cx="12" cy="12" r="1" fill="#d0a0ff" stroke="none"/>'),
   // Arcane Pulse — ripple rings (electric blue)
   'latency-panel': _SIGIL('<circle cx="12" cy="12" r="2" fill="#60a0ff" stroke="none"/><circle cx="12" cy="12" r="5" stroke="#6090e0"/><circle cx="12" cy="12" r="8" stroke="#6090e0" opacity="0.5"/><circle cx="12" cy="12" r="11" stroke="#6090e0" opacity="0.25"/>'),
   // Realm Wards — shield with rune (fire orange/red)
@@ -51,10 +49,6 @@ const SIGILS = {
   'wifi-panel': _SIGIL('<path d="M10 21h4V10h-4z" stroke="#7080d0"/><path d="M6 21h2V14H6z" stroke="#7080d0"/><path d="M16 21h2V14h-2z" stroke="#7080d0"/><path d="M12 7a5 5 0 00-5 5" fill="none" stroke="#90a0ff"/><path d="M12 4a8 8 0 00-8 8" fill="none" stroke="#90a0ff" opacity="0.5"/><circle cx="12" cy="7" r="1.5" fill="#a0b0ff" stroke="none"/>'),
   // Oracle Commune — speech crystal (ethereal mint)
   'node-chat-dialog': _SIGIL('<path d="M21 12a9 9 0 01-9 9l-4-2H5a2 2 0 01-2-2v-3a9 9 0 0118-2z" stroke="#60c0a0" fill="rgba(80,200,160,0.08)"/><path d="M9 12h.01M12 12h.01M15 12h.01" stroke="#80e0c0" stroke-width="2.5"/>'),
-  // Grimoire — tome with arcane star (deep gold/amber)
-  'arcane-grimoire': _SIGIL('<path d="M4 19V5a2 2 0 012-2h12a2 2 0 012 2v14" stroke="#b89040"/><path d="M4 19a2 2 0 012-2h12a2 2 0 012 2" stroke="#b89040"/><path d="M12 7l1.5 3 3 .5-2.2 2 .7 3L12 14.5 8.8 16l.7-3.5-2-1.5 3-.5z" fill="#e0b848" stroke="none"/>'),
-  // Scrying Terminal — crystal ball with inner light (frost blue)
-  'scrying-terminal': _SIGIL('<circle cx="12" cy="11" r="7" stroke="#70b0d8" fill="rgba(100,170,220,0.08)"/><path d="M9 20h6" stroke="#88c0e0"/><path d="M10 18h4" stroke="#88c0e0"/><path d="M10 9a3 3 0 013-3" stroke="#a0d0f0" opacity="0.5"/><circle cx="12" cy="11" r="2" fill="#90c8f0" stroke="none" opacity="0.5"/>'),
   // Inscription Codex — quill over rune tablet (arcane silver/indigo)
   'skills-panel': _SIGIL('<rect x="4" y="3" width="16" height="18" rx="2" stroke="#9090c0" fill="rgba(140,140,200,0.08)"/><path d="M8 8h8M8 12h5" stroke="#a0a0d0" opacity="0.6"/><path d="M17 2l-4 4-1 3 3-1 4-4a1.5 1.5 0 00-2-2z" stroke="#c0a0ff" fill="rgba(180,140,255,0.15)"/>'),
 };
@@ -70,11 +64,8 @@ const PANELS = {
   'quest-log':      { name: 'Quest Log', anchor: 'se', priority: 6, icon: '\u2619' },
   'cartographer':   { name: 'Cartographer', anchor: 'e', priority: 7, icon: '\uD83E\uDDED' },
   'node-list':      { name: 'Census', anchor: 'w', priority: 9, icon: '\uD83D\uDCDC' },
-  'debug-panel':    { name: 'Arcane Mirror', anchor: 's', priority: 10, icon: '\uD83D\uDD2E' },
   'scanner-panel':  { name: 'Survey Glass', anchor: 'e', priority: 17, icon: '\uD83D\uDD2D' },
   'node-chat-dialog': { name: 'Oracle Commune', anchor: 'se', priority: 14, icon: '\uD83D\uDCAC' },
-  'arcane-grimoire':  { name: 'Grimoire', anchor: 'nw', priority: 15, icon: '\uD83D\uDCD6' },
-  'scrying-terminal': { name: 'Scrying Terminal', anchor: 'sw', priority: 16, icon: '\uD83D\uDD2E' },
   'skills-panel':     { name: 'Inscription Codex', anchor: 'nw', priority: 18, icon: '\u270E' },
 };
 
@@ -946,13 +937,10 @@ const _RUNE_COLORS = {
   'cartographer':     '100,160,220',  // sky blue
   'energy-panel':     '60,200,200',   // cyan
   'node-list':        '200,168,112',  // tan
-  'debug-panel':      '160,112,192',  // purple
   'latency-panel':    '96,144,224',   // electric blue
   'firewall-panel':   '216,128,64',   // fire orange
   'wifi-panel':       '112,128,208',  // indigo
   'node-chat-dialog': '96,192,160',   // mint
-  'arcane-grimoire':  '184,144,64',   // deep gold
-  'scrying-terminal': '112,176,216',  // frost blue
 };
 
 const _RUNE_ACCENTS = {
@@ -964,13 +952,10 @@ const _RUNE_ACCENTS = {
   'cartographer':   { accent: '#80b0e8', glow: 'rgba(100,160,230,0.25)' },
   'energy-panel':   { accent: '#60c8b8', glow: 'rgba(60,200,180,0.25)' },
   'node-list':      { accent: '#dcc060', glow: 'rgba(220,190,80,0.25)' },
-  'debug-panel':    { accent: '#b888e0', glow: 'rgba(160,100,220,0.25)' },
   'latency-panel':  { accent: '#80b0e8', glow: 'rgba(100,160,230,0.25)' },
   'firewall-panel': { accent: '#e07070', glow: 'rgba(220,80,80,0.25)' },
   'wifi-panel':     { accent: '#8890d0', glow: 'rgba(100,100,200,0.25)' },
   'node-chat-dialog':{ accent: '#70c8a8', glow: 'rgba(80,200,160,0.25)' },
-  'arcane-grimoire': { accent: '#d8b060', glow: 'rgba(210,170,80,0.25)' },
-  'scrying-terminal':{ accent: '#80b8d8', glow: 'rgba(100,170,210,0.25)' },
   'scanner-panel':   { accent: '#dcc060', glow: 'rgba(220,190,80,0.25)' },
 };
 

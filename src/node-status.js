@@ -2,7 +2,7 @@
 import { scaleLabel, fmtBytes, fmtRate, scalePct } from './utils.js';
 import { tips, _topology, _nodeMap, infraNodes, _tsHostMap, getNodeDOM, updateLinePositions } from './topology.js';
 import { renderTopoLayer, setLastTopoCollectd } from './terrain.js';
-import { DOM, updateGauges, updateFirewallPanel, updateCensusSubLabels, updateLatencyPanel, updateNodeListStatus } from './panels.js';
+import { DOM, updateGauges, updateFirewallPanel, updateLatencyPanel } from './panels.js';
 import { updateConnectionTraffic } from './traffic.js';
 import { scheduleSave } from './layout.js';
 import { updateBubbleTotalScale } from './map-view.js';
@@ -290,8 +290,6 @@ export function updateUI(d) {
   setLastTopoCollectd(d.collectd);
   renderTopoLayer(d.collectd);
 
-  updateNodeListStatus(d);
-  updateCensusSubLabels(d);
   updateLatencyPanel();
   updateFirewallPanel(d);
 

@@ -1,0 +1,20 @@
+{
+  "name": "census",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Realm Census panel — grouped node list with live online/offline status and sublabels from SSE.",
+  "fantasy_name": "Realm Census",
+  "icon": "\u2691",
+
+  "panel": {
+    "id": "node-list",
+    "name": "Realm Census",
+    "html": "panel.html",
+    "js": "panel.js",
+    "css": "panel.css",
+    "anchor": "w",
+    "priority": 20
+  },
+
+  "sse_types": ["status", "topology"]
+}
