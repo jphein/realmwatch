@@ -208,11 +208,11 @@ _register(UpdateSource(
     fantasy_name="Deb Grimoire",
     icon="\U0001f4d5",  # 📕
     lock_group="dpkg",
-    check_cmd="deb-get update && deb-get show-upgradable",
-    update_cmd="deb-get upgrade",
+    check_cmd="sudo deb-get update",
+    update_cmd="sudo deb-get upgrade",
     check_shell=True,
     update_shell=True,
-    parse_check_fn="deb_get",
+    parse_check_fn="version_only",  # deb-get has no "list outdated" command
 ))
 
 _register(UpdateSource(
@@ -225,6 +225,7 @@ _register(UpdateSource(
     check_shell=True,
     update_shell=True,
     parse_check_fn="firmware",
+    check_ok_codes=[2],  # fwupdmgr returns 2 for "no updatable devices"
 ))
 
 _register(UpdateSource(
