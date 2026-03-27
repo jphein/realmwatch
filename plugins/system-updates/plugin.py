@@ -1,5 +1,13 @@
 """System Updates plugin — Scroll of Patch Runes."""
 
+import os
+import sys
+
+# Add plugin directory to sys.path so runner.py and sources.py are importable
+_plugin_dir = os.path.dirname(os.path.abspath(__file__))
+if _plugin_dir not in sys.path:
+    sys.path.insert(0, _plugin_dir)
+
 _ctx = None
 
 

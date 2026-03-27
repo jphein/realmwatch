@@ -19,6 +19,7 @@ class UpdateSource:
     update_shell: bool = False # if True, update_cmd is run via shell
     timeout: int = 300       # seconds
     parse_check_fn: str = "default"  # name of parser function
+    check_ok_codes: list = None  # extra exit codes that are OK for check (e.g., npm returns 1 for "outdated found")
 
 
 @dataclass
@@ -189,6 +190,7 @@ _register(UpdateSource(
     check_cmd=["snap", "refresh", "--list"],
     update_cmd=["sudo", "snap", "refresh"],
     parse_check_fn="snap",
+    check_ok_codes=[1],  # snap returns 1 when no updates available
 ))
 
 _register(UpdateSource(
@@ -274,6 +276,7 @@ _register(UpdateSource(
     check_cmd=["npm", "-g", "outdated"],
     update_cmd=["npm", "-g", "update"],
     parse_check_fn="npm",
+    check_ok_codes=[1],  # npm returns 1 when outdated packages exist
 ))
 
 _register(UpdateSource(

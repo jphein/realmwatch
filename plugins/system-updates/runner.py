@@ -36,7 +36,7 @@ def _notify():
 
 # ── Core execution ───────────────────────────────────────────────
 
-def _run_cmd(source_id: str, cmd, shell: bool, timeout: int, mode: str):
+def _run_cmd(source_id: str, cmd, shell: bool, timeout: int, mode: str, ok_codes=None):
     """Execute a command for a source, capturing output line-by-line.
 
     Args:
@@ -45,6 +45,7 @@ def _run_cmd(source_id: str, cmd, shell: bool, timeout: int, mode: str):
         shell: Whether to run via shell.
         timeout: Max seconds.
         mode: "checking" or "updating" — sets the status during execution.
+        ok_codes: Extra exit codes to treat as success (e.g., [1] for npm outdated).
 
     Returns:
         stdout text on success, None on failure (state already updated).
@@ -113,7 +114,10 @@ def _run_cmd(source_id: str, cmd, shell: bool, timeout: int, mode: str):
 
         stdout_text = "\n".join(full_output)
 
-        if proc.returncode != 0:
+        allowed = {0}
+        if ok_codes:
+            allowed.update(ok_codes)
+        if proc.returncode not in allowed:
             error_lines = full_output[-3:] if full_output else ["Unknown error"]
             error_msg = "\n".join(error_lines)
             update_state(source_id, status="failed", error=error_msg)
@@ -131,7 +135,8 @@ def _run_cmd(source_id: str, cmd, shell: bool, timeout: int, mode: str):
 def _do_check(source_id: str):
     """Run the check command for a source and parse results."""
     src = SOURCES[source_id]
-    stdout = _run_cmd(source_id, src.check_cmd, src.check_shell, src.timeout, "checking")
+    stdout = _run_cmd(source_id, src.check_cmd, src.check_shell, src.timeout, "checking",
+                      ok_codes=src.check_ok_codes)
 
     if stdout is None:
         return  # already set to failed
