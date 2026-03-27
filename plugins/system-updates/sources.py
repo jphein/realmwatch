@@ -53,12 +53,12 @@ def _register(src: UpdateSource):
 
 def parse_apt(stdout: str) -> tuple[int, list[str]]:
     """Parse 'apt list --upgradable' output."""
-    lines = [l for l in stdout.strip().splitlines()
-             if l and not l.startswith("Listing")]
     packages = []
-    for line in lines:
-        name = line.split("/")[0] if "/" in line else line.split()[0]
-        packages.append(name)
+    for line in stdout.strip().splitlines():
+        # Only parse lines with the "pkg/suite version" format
+        if "/" in line and "[upgradable" in line:
+            name = line.split("/")[0]
+            packages.append(name)
     return len(packages), packages
 
 
