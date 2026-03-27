@@ -20,6 +20,7 @@ class UpdateSource:
     timeout: int = 300       # seconds
     parse_check_fn: str = "default"  # name of parser function
     check_ok_codes: list = None  # extra exit codes that are OK for check (e.g., npm returns 1 for "outdated found")
+    update_ok_codes: list = None  # extra exit codes that are OK for update
 
 
 @dataclass
@@ -226,6 +227,7 @@ _register(UpdateSource(
     update_shell=True,
     parse_check_fn="firmware",
     check_ok_codes=[2],  # fwupdmgr returns 2 for "no updatable devices"
+    update_ok_codes=[2],  # same for update
 ))
 
 _register(UpdateSource(
@@ -286,7 +288,7 @@ _register(UpdateSource(
     icon="\U0001f9ea",  # 🧪
     lock_group="pip-user",
     check_cmd=["pip", "list", "--user", "--outdated", "--format=json"],
-    update_cmd="pip list --user --outdated --format=json 2>/dev/null | python3 -c \"import sys,json; [print(p['name']) for p in json.load(sys.stdin)]\" | xargs -r pip install --user --upgrade",
+    update_cmd="pip list --user --outdated --format=json 2>/dev/null | python3 -c \"import sys,json; [print(p['name']) for p in json.load(sys.stdin)]\" | xargs -r pip install --user --break-system-packages --upgrade",
     update_shell=True,
     parse_check_fn="pip_user",
 ))

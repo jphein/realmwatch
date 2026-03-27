@@ -185,7 +185,8 @@ def check_all():
 def _do_update(source_id: str, push_event_fn=None):
     """Run the update command for a source."""
     src = SOURCES[source_id]
-    stdout = _run_cmd(source_id, src.update_cmd, src.update_shell, src.timeout, "updating")
+    stdout = _run_cmd(source_id, src.update_cmd, src.update_shell, src.timeout, "updating",
+                      ok_codes=src.update_ok_codes)
 
     if stdout is None:
         from sources import _state
