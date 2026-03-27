@@ -78,15 +78,22 @@ def _run_cmd(source_id: str, cmd, shell: bool, timeout: int, mode: str, ok_codes
                        os.path.expanduser("~/.npm-global/bin") + ":" + \
                        env.get("PATH", "")
 
-        proc = subprocess.Popen(
-            cmd,
-            shell=shell,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            env=env,
-            bufsize=1,
-        )
+        try:
+            proc = subprocess.Popen(
+                cmd,
+                shell=shell,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                env=env,
+                bufsize=1,
+            )
+        except FileNotFoundError:
+            cmd_name = cmd[0] if isinstance(cmd, list) else cmd.split()[0]
+            append_log(source_id, f"{cmd_name}: command not found")
+            update_state(source_id, status="failed", error=f"{cmd_name} not installed")
+            _notify()
+            return None
         _running_procs[source_id] = proc
 
         deadline = time.monotonic() + timeout
