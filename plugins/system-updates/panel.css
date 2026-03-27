@@ -1,0 +1,252 @@
+/* ── System Updates Panel — Scroll of Patch Runes ── */
+
+/* Header */
+.updates-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--gold-rim-dim);
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.updates-summary {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.updates-badge {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.updates-badge--warded {
+  background: rgba(128, 232, 160, 0.15);
+  color: var(--gem-emerald);
+}
+
+.updates-badge--pending {
+  background: rgba(240, 208, 128, 0.15);
+  color: var(--gem-gold);
+}
+
+.updates-badge--failed {
+  background: rgba(255, 144, 144, 0.15);
+  color: var(--gem-ruby);
+}
+
+.updates-badge--running {
+  background: rgba(208, 160, 255, 0.15);
+  color: var(--gem-amethyst);
+}
+
+/* Action buttons */
+.updates-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.updates-btn {
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--gold-rim-dim);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: all 0.2s;
+}
+
+.updates-btn:hover {
+  border-color: var(--gold-rim-bright);
+  color: var(--text-gold);
+}
+
+.updates-btn--run {
+  color: var(--gem-amethyst);
+  border-color: rgba(208, 160, 255, 0.25);
+}
+
+.updates-btn--run:hover {
+  background: rgba(208, 160, 255, 0.1);
+  border-color: var(--gem-amethyst);
+}
+
+.updates-btn--cancel {
+  color: var(--gem-ruby);
+  border-color: rgba(255, 144, 144, 0.25);
+}
+
+.updates-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* Body */
+.updates-body {
+  padding: 4px 0;
+  overflow-y: auto;
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.updates-loading {
+  text-align: center;
+  padding: 20px;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-style: italic;
+}
+
+/* Source row */
+.updates-row {
+  border-left: 3px solid var(--gold-rim-dim);
+  margin: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.updates-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.updates-row--warded    { border-left-color: var(--gem-emerald); }
+.updates-row--pending   { border-left-color: var(--gem-gold); }
+.updates-row--running   { border-left-color: var(--gem-amethyst); }
+.updates-row--failed    { border-left-color: var(--gem-ruby); }
+.updates-row--idle      { border-left-color: var(--gold-rim-dim); }
+.updates-row--queued    { border-left-color: rgba(208, 160, 255, 0.4); }
+
+/* Row header (always visible) */
+.updates-row-header {
+  display: flex;
+  align-items: center;
+  padding: 5px 8px;
+  cursor: pointer;
+  gap: 6px;
+  user-select: none;
+}
+
+.updates-row-icon {
+  width: 18px;
+  text-align: center;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.updates-row-name {
+  flex: 1;
+  font-size: 11px;
+  color: var(--text-gold);
+}
+
+.updates-row-status {
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.updates-row-status--warded    { color: var(--gem-emerald); }
+.updates-row-status--pending   { color: var(--gem-gold); }
+.updates-row-status--running   { color: var(--gem-amethyst); }
+.updates-row-status--failed    { color: var(--gem-ruby); }
+.updates-row-status--idle      { color: var(--text-dim); }
+.updates-row-status--queued    { color: rgba(208, 160, 255, 0.6); }
+
+.updates-row-time {
+  font-size: 9px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+/* Expanded detail */
+.updates-row-detail {
+  display: none;
+  padding: 0 8px 8px;
+}
+
+.updates-row.expanded .updates-row-detail {
+  display: block;
+}
+
+/* Package list */
+.updates-pkg-list {
+  padding: 4px 8px;
+  font-size: 10px;
+  color: var(--text-leather);
+  max-height: 60px;
+  overflow-y: auto;
+  margin-bottom: 4px;
+}
+
+.updates-pkg-list span {
+  display: inline-block;
+  background: rgba(200, 170, 110, 0.08);
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin: 1px 2px;
+}
+
+/* Log terminal */
+.updates-log {
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-family: 'Ubuntu Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  line-height: 1.5;
+  max-height: 150px;
+  overflow-y: auto;
+  color: rgba(200, 180, 150, 0.7);
+  margin-bottom: 6px;
+}
+
+.updates-log-line--cmd {
+  color: var(--gem-sapphire);
+}
+
+.updates-log-line--error {
+  color: var(--gem-ruby);
+}
+
+.updates-log-line--success {
+  color: var(--gem-emerald);
+}
+
+.updates-log-cursor {
+  display: inline-block;
+  width: 6px;
+  height: 12px;
+  background: var(--gem-amethyst);
+  animation: updates-blink 1s step-end infinite;
+  vertical-align: middle;
+}
+
+@keyframes updates-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Row action buttons */
+.updates-row-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+/* Running animation on row icon */
+.updates-row--running .updates-row-icon {
+  animation: updates-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes updates-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
