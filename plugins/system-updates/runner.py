@@ -76,6 +76,7 @@ def _run_cmd(source_id: str, cmd, shell: bool, timeout: int, mode: str, ok_codes
         env = os.environ.copy()
         env["PATH"] = os.path.expanduser("~/.local/bin") + ":" + \
                        os.path.expanduser("~/.npm-global/bin") + ":" + \
+                       "/home/linuxbrew/.linuxbrew/bin" + ":" + \
                        env.get("PATH", "")
 
         try:
