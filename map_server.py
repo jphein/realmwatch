@@ -55,7 +55,7 @@ def _generate_ulid():
 
 def _game_db_rw():
     """Open game.db for read-write access."""
-    conn = _sql.connect(_GAME_DB)
+    conn = _sql.connect(_GAME_DB, timeout=10)
     conn.row_factory = _sql.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
@@ -419,7 +419,7 @@ def _h_get_hud(req, params):
             "realm": {"entities": 0, "events_24h": 0, "quests_active": 0},
         }
 
-    conn = _sql.connect(f"file:{db_path}?mode=ro", uri=True)
+    conn = _sql.connect(f"file:{db_path}?mode=ro", uri=True, timeout=5)
     conn.row_factory = _sql.Row
 
     # Player
@@ -478,7 +478,7 @@ def _h_get_api_quests(req, params):
     if not os.path.exists(db_path):
         return []
 
-    conn = _sql.connect(f"file:{db_path}?mode=ro", uri=True)
+    conn = _sql.connect(f"file:{db_path}?mode=ro", uri=True, timeout=5)
     conn.row_factory = _sql.Row
 
     try:
