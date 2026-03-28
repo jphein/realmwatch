@@ -36,6 +36,46 @@ TOPOLOGY_FILE = os.path.join(MAP_DIR, "topology.json")
 _CHAT_CONFIG = os.path.expanduser("~/.config/azure-chat-assistant/config.json")
 _SPEECH_CONFIG = os.path.expanduser("~/.config/speech-to-cli/config.json")
 
+# ── game.db write-back helpers ──
+import sqlite3 as _sql
+_GAME_DB = os.path.expanduser("~/.realmwatch/game.db")
+
+def _generate_ulid():
+    """Generate a ULID (26 chars, Crockford base32). Matches os.realm.watch format."""
+    _ENC = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+    t = int(time.time() * 1000)
+    ts = ""
+    for _ in range(10):
+        ts = _ENC[t & 0x1F] + ts
+        t >>= 5
+    rand = ""
+    for b in os.urandom(10):
+        rand += _ENC[b & 0x1F] + _ENC[(b >> 5) & 0x1F]
+    return ts + rand[:16]
+
+def _game_db_rw():
+    """Open game.db for read-write access."""
+    conn = _sql.connect(_GAME_DB)
+    conn.row_factory = _sql.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA foreign_keys=ON")
+    return conn
+
+def _game_level_info(total_xp, level):
+    """Derive level stats matching the frontend's updateDockHUD expectations.
+    Uses game.db formula: level N requires sum(100*i for i in range(1, N)) total XP."""
+    xp_level_start = sum(100 * i for i in range(1, level))
+    xp_next_total = sum(100 * i for i in range(1, level + 1))
+    xp_next = xp_next_total - xp_level_start  # XP needed for this level span
+    xp_in_level = total_xp - xp_level_start
+    return {
+        "level": level, "xp": total_xp,
+        "xp_next": xp_next, "xp_in_level": xp_in_level,
+        "xp_level_start": xp_level_start,
+        "gold": 0, "gems": 0,
+    }
+
+
 def _validate_ip(ip):
     """Validate dotted-quad IPv4 address."""
     parts = ip.split(".")
@@ -431,6 +471,76 @@ def _h_get_hud(req, params):
         "realm": {"entities": entities, "events_24h": events_24h, "quests_active": quests_active},
     }
 
+def _h_get_api_quests(req, params):
+    """Return quests from game.db (quest-forge) shaped for the quest-log UI."""
+    import sqlite3 as _sql
+    db_path = os.path.expanduser("~/.realmwatch/game.db")
+    if not os.path.exists(db_path):
+        return []
+
+    conn = _sql.connect(f"file:{db_path}?mode=ro", uri=True)
+    conn.row_factory = _sql.Row
+
+    try:
+        rows = conn.execute(
+            "SELECT quest_id, title, description, parent_quest_id, node, status, "
+            "actions_json, sort_order, xp_reward, created_ts, resolved_ts "
+            "FROM quests ORDER BY sort_order, created_ts"
+        ).fetchall()
+    except _sql.OperationalError:
+        conn.close()
+        return []
+
+    # Map quest-forge status to UI status
+    _ACTIVE = frozenset(("detected", "correlated", "created", "active"))
+    _COMPLETED = frozenset(("resolved", "debriefed", "rewarded"))
+
+    quests = []
+    by_id = {}
+    for r in rows:
+        status = r["status"]
+        if status == "archived":
+            continue
+        ui_status = "active" if status in _ACTIVE else "completed"
+
+        actions = []
+        if r["actions_json"]:
+            try:
+                actions = json.loads(r["actions_json"])
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        q = {
+            "id": r["quest_id"],
+            "title": r["title"],
+            "description": r["description"],
+            "parent_id": r["parent_quest_id"],
+            "node": r["node"],
+            "status": ui_status,
+            "actions": actions,
+            "sort_order": r["sort_order"] or 0,
+            "created_at": r["created_ts"] / 1000 if r["created_ts"] else None,
+            "completed_at": r["resolved_ts"] / 1000 if r["resolved_ts"] else None,
+            "rewards": {"xp": r["xp_reward"]} if r["xp_reward"] else None,
+            "children": [],
+        }
+        by_id[q["id"]] = q
+        if q["parent_id"] and q["parent_id"] in by_id:
+            by_id[q["parent_id"]]["children"].append(q)
+        else:
+            quests.append(q)
+
+    # Re-parent orphans whose parent appeared before them
+    orphans = [q for q in quests if q["parent_id"]]
+    for o in orphans:
+        if o["parent_id"] in by_id:
+            quests.remove(o)
+            by_id[o["parent_id"]]["children"].append(o)
+
+    conn.close()
+    return quests
+
+
 def _h_get_ping(req, params):
     return {"t": time.time()}
 
@@ -716,23 +826,47 @@ def _h_post_personas(req, params):
         return None
 
 def _h_post_quest_delete(req, params):
+    """Archive a quest in game.db (forward-only lifecycle)."""
     try:
         data = req.json()
         quest_id = data.get("id", "")
         text = data.get("text", "")
-        if quest_id:
-            deleted = realm_db.delete_quest(quest_id)
-        elif text:
-            deleted = realm_db.delete_quest_by_text(text)
-        else:
+        if not quest_id and not text:
             req.respond({"error": "missing id or text"}, 400)
             return None
-        return {"deleted": deleted}
+        conn = _game_db_rw()
+        if quest_id:
+            # Archive this quest and all children
+            now_ms = int(time.time() * 1000)
+            ids = [r[0] for r in conn.execute(
+                """WITH RECURSIVE tree(qid) AS (
+                       SELECT quest_id FROM quests WHERE quest_id = ?
+                       UNION ALL
+                       SELECT q.quest_id FROM quests q JOIN tree t ON q.parent_quest_id = t.qid
+                   ) SELECT qid FROM tree""", (quest_id,)).fetchall()]
+            for qid in ids:
+                row = conn.execute("SELECT status FROM quests WHERE quest_id=?", (qid,)).fetchone()
+                if row and row["status"] != "archived":
+                    prev = row["status"]
+                    conn.execute("UPDATE quests SET status='archived', archived_ts=? WHERE quest_id=?",
+                                 (now_ms, qid))
+                    conn.execute(
+                        "INSERT INTO quest_state_log (quest_id, previous_state, new_state, transition_ts, actor) VALUES (?,?,?,?,?)",
+                        (qid, prev, "archived", now_ms, "map_ui"))
+            conn.commit()
+            conn.close()
+            return {"deleted": len(ids)}
+        elif text:
+            # Legacy: delete by text — fall back to realm_db
+            conn.close()
+            deleted = realm_db.delete_quest_by_text(text)
+            return {"deleted": deleted}
     except Exception as e:
         req.respond({"error": str(e)}, 500)
         return None
 
 def _h_post_quest_update(req, params):
+    """Update quest status in game.db. Maps frontend statuses to game lifecycle."""
     try:
         data = req.json()
         quest_id = data.get("id", "")
@@ -740,16 +874,46 @@ def _h_post_quest_update(req, params):
         if not quest_id or not status:
             req.respond({"error": "missing id or status"}, 400)
             return None
-        ok = realm_db.update_quest_status(quest_id, status)
-        if ok:
+
+        # Map frontend status → game.db lifecycle state
+        _STATUS_MAP = {"completed": "resolved", "active": "active"}
+        game_status = _STATUS_MAP.get(status, status)
+
+        conn = _game_db_rw()
+        row = conn.execute("SELECT quest_id, status FROM quests WHERE quest_id=?", (quest_id,)).fetchone()
+        if not row:
+            conn.close()
+            req.respond({"error": "quest not found"}, 404)
+            return None
+
+        _QUEST_STATES = ["detected", "correlated", "created", "active", "resolved", "debriefed", "rewarded", "archived"]
+        current_idx = _QUEST_STATES.index(row["status"]) if row["status"] in _QUEST_STATES else 0
+        new_idx = _QUEST_STATES.index(game_status) if game_status in _QUEST_STATES else -1
+
+        if new_idx <= current_idx:
+            # Can't go backwards — return success silently (frontend handles visual toggle)
+            conn.close()
             return {"ok": True, "id": quest_id, "status": status}
-        req.respond({"error": "quest not found"}, 404)
-        return None
+
+        now_ms = int(time.time() * 1000)
+        conn.execute("UPDATE quests SET status=? WHERE quest_id=?", (game_status, quest_id))
+        # Set timestamp field if it exists
+        ts_col = f"{game_status}_ts"
+        cols = [c[1] for c in conn.execute("PRAGMA table_info(quests)").fetchall()]
+        if ts_col in cols:
+            conn.execute(f"UPDATE quests SET {ts_col}=? WHERE quest_id=?", (now_ms, quest_id))
+        conn.execute(
+            "INSERT INTO quest_state_log (quest_id, previous_state, new_state, transition_ts, actor) VALUES (?,?,?,?,?)",
+            (quest_id, row["status"], game_status, now_ms, "map_ui"))
+        conn.commit()
+        conn.close()
+        return {"ok": True, "id": quest_id, "status": status}
     except Exception as e:
         req.respond({"error": str(e)}, 500)
         return None
 
 def _h_post_player_reward(req, params):
+    """Grant XP reward in game.db. Deduplicates by source:id."""
     try:
         data = req.json()
         source = data.get("source", "")
@@ -757,9 +921,100 @@ def _h_post_player_reward(req, params):
         if source not in ("quest", "sub", "event") or not source_id:
             req.respond({"error": "missing or invalid source/id"}, 400)
             return None
-        result = realm_db.grant_reward(source, str(source_id))
-        result["ok"] = True
-        return result
+
+        conn = _game_db_rw()
+
+        # Determine XP amount from quest's xp_reward or defaults
+        xp_amount = 0
+        if source in ("quest", "sub"):
+            qrow = conn.execute("SELECT xp_reward, parent_quest_id FROM quests WHERE quest_id=?",
+                                (source_id,)).fetchone()
+            if qrow:
+                if source == "sub" or qrow["parent_quest_id"]:
+                    # Sub-quest: fraction of reward (25%)
+                    xp_amount = max(1, (qrow["xp_reward"] or 100) // 4)
+                else:
+                    xp_amount = qrow["xp_reward"] or 100
+            else:
+                xp_amount = 50 if source == "sub" else 200
+        else:
+            # Event rewards — small fixed amount
+            xp_amount = 15
+
+        # Dedup key: source:source_id
+        dedup_key = f"reward:{source}:{source_id}"
+        player_id = "default"
+        now_ms = int(time.time() * 1000)
+
+        # Check idempotency via xp_events
+        existing = conn.execute(
+            "SELECT xp_event_id FROM xp_events WHERE player_id=? AND source_type=? AND quest_id=?",
+            (player_id, f"reward_{source}", source_id)).fetchone()
+
+        if existing:
+            # Already granted — return current stats without granting
+            player = conn.execute("SELECT * FROM players WHERE player_id=?", (player_id,)).fetchone()
+            conn.close()
+            if not player:
+                return {"granted": False, "reward": {"xp": 0, "gold": 0, "gems": 0},
+                        "level": 1, "level_up": False, "xp": 0, "gold": 0, "gems": 0,
+                        "xp_next": 100, "xp_in_level": 0}
+            lvl = _game_level_info(player["total_xp"], player["level"])
+            return {"granted": False, **lvl}
+
+        # Ensure player exists
+        player = conn.execute("SELECT * FROM players WHERE player_id=?", (player_id,)).fetchone()
+        if not player:
+            conn.execute(
+                "INSERT OR IGNORE INTO players (player_id, player_name, player_class, total_xp, level, created_ts, last_active_ts, schema_version) "
+                "VALUES (?,?,?,0,1,?,?,1)", (player_id, "Warden", "watcher", now_ms, now_ms))
+            conn.commit()
+            player = conn.execute("SELECT * FROM players WHERE player_id=?", (player_id,)).fetchone()
+
+        old_xp = player["total_xp"]
+        old_level = player["level"]
+
+        # Insert XP event (inline ULID generation — no cross-project import)
+        xp_eid = _generate_ulid()
+        conn.execute(
+            "INSERT INTO xp_events (xp_event_id, player_id, quest_id, source_type, xp_amount, granted_ts, replay_flag) "
+            "VALUES (?,?,?,?,?,?,0)",
+            (xp_eid, player_id, source_id, f"reward_{source}", xp_amount, now_ms))
+
+        # Update player XP
+        new_xp = old_xp + xp_amount
+        conn.execute("UPDATE players SET total_xp=?, last_active_ts=? WHERE player_id=?",
+                     (new_xp, now_ms, player_id))
+
+        # Recalculate level: level N requires sum(100*i for i in range(1, N)) total XP
+        new_level = 1
+        while sum(100 * i for i in range(1, new_level + 1)) <= new_xp:
+            new_level += 1
+        if new_level != old_level:
+            conn.execute("UPDATE players SET level=? WHERE player_id=?", (new_level, player_id))
+
+        # If source is quest, transition to "rewarded"
+        if source == "quest":
+            qrow = conn.execute("SELECT status FROM quests WHERE quest_id=?", (source_id,)).fetchone()
+            if qrow and qrow["status"] not in ("rewarded", "archived"):
+                prev = qrow["status"]
+                conn.execute("UPDATE quests SET status='rewarded', rewarded_ts=? WHERE quest_id=?",
+                             (now_ms, source_id))
+                conn.execute(
+                    "INSERT INTO quest_state_log (quest_id, previous_state, new_state, transition_ts, actor) VALUES (?,?,?,?,?)",
+                    (source_id, prev, "rewarded", now_ms, "map_ui"))
+
+        conn.commit()
+        conn.close()
+
+        level_up = new_level > old_level
+        lvl = _game_level_info(new_xp, new_level)
+        return {
+            "ok": True, "granted": True,
+            "reward": {"xp": xp_amount, "gold": 0, "gems": 0},
+            "level_up": level_up, "old_level": old_level, "new_level": new_level,
+            **lvl,
+        }
     except Exception as e:
         req.respond({"error": str(e)}, 500)
         return None
@@ -967,7 +1222,8 @@ def _h_delete_settings(req, params):
 # ── Register All Core Routes ──
 
 _route_table.add("GET", "/status", _h_get_status)
-_route_table.add("GET", "/quests", _h_get_quests)
+_route_table.add("GET", "/quests", _h_get_api_quests)
+_route_table.add("GET", "/api/quests", _h_get_api_quests)
 _route_table.add("GET", "/events", _h_get_events)
 _route_table.add("GET", "/personas", _h_get_personas)
 _route_table.add("GET", "/topology", _h_get_topology)
