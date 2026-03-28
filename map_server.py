@@ -440,15 +440,26 @@ def _h_get_hud(req, params):
             "xp_progress": round(min(1.0, max(0.0, progress)), 2),
         }
 
-    # Active quest (highest severity)
+    # Active quest (highest severity parent quest, with progress)
     quest = None
     qrow = conn.execute(
-        "SELECT title, technical_label, status, severity FROM quests "
-        "WHERE status IN ('created','active') ORDER BY severity DESC, created_ts DESC LIMIT 1"
+        "SELECT quest_id, title, technical_label, status, severity FROM quests "
+        "WHERE status IN ('created','active') AND parent_quest_id IS NULL "
+        "ORDER BY severity DESC, created_ts DESC LIMIT 1"
     ).fetchone()
     if qrow:
+        # Count sub-quest progress
+        subs = conn.execute(
+            "SELECT COUNT(*) as total FROM quests WHERE parent_quest_id=?",
+            (qrow["quest_id"],)).fetchone()["total"]
+        done = 0
+        if subs > 0:
+            done = conn.execute(
+                "SELECT COUNT(*) FROM quests WHERE parent_quest_id=? AND status='resolved'",
+                (qrow["quest_id"],)).fetchone()[0]
         quest = {"title": qrow["title"], "technical_label": qrow["technical_label"],
-                 "status": qrow["status"], "severity": qrow["severity"]}
+                 "status": qrow["status"], "severity": qrow["severity"],
+                 "steps_done": done, "steps_total": subs}
 
     # Threats (last 24h, severity >= 3)
     day_ago = int((time.time() - 86400) * 1000)
@@ -463,7 +474,7 @@ def _h_get_hud(req, params):
     # Realm summary
     entities = conn.execute("SELECT COUNT(*) FROM entities WHERE status='active'").fetchone()[0]
     events_24h = conn.execute("SELECT COUNT(*) FROM events WHERE timestamp_observed > ?", (day_ago,)).fetchone()[0]
-    quests_active = conn.execute("SELECT COUNT(*) FROM quests WHERE status IN ('created','active')").fetchone()[0]
+    quests_active = conn.execute("SELECT COUNT(*) FROM quests WHERE status IN ('created','active') AND parent_quest_id IS NULL").fetchone()[0]
 
     conn.close()
     return {
