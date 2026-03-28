@@ -368,6 +368,69 @@ def _h_get_observation(req, params):
 def _h_get_player(req, params):
     return realm_db.get_player_stats()
 
+def _h_get_hud(req, params):
+    """Return game HUD data for the GNOME Shell extension."""
+    import sqlite3 as _sql
+    db_path = os.path.expanduser("~/.realmwatch/game.db")
+    if not os.path.exists(db_path):
+        return {
+            "player": None, "quest": None,
+            "threats": {"count": 0, "max_severity": 0},
+            "realm": {"entities": 0, "events_24h": 0, "quests_active": 0},
+        }
+
+    conn = _sql.connect(f"file:{db_path}?mode=ro", uri=True)
+    conn.row_factory = _sql.Row
+
+    # Player
+    player = None
+    row = conn.execute("SELECT * FROM players LIMIT 1").fetchone()
+    if row:
+        level = row["level"]
+        xp = row["total_xp"]
+        xp_current = sum(100 * i for i in range(1, level))
+        xp_next = sum(100 * i for i in range(1, level + 1))
+        span = xp_next - xp_current
+        progress = (xp - xp_current) / span if span > 0 else 0.0
+        player = {
+            "name": row["player_name"] or "Warden",
+            "class": row["player_class"] or "watcher",
+            "level": level, "xp": xp,
+            "xp_next_level": xp_next,
+            "xp_progress": round(min(1.0, max(0.0, progress)), 2),
+        }
+
+    # Active quest (highest severity)
+    quest = None
+    qrow = conn.execute(
+        "SELECT title, technical_label, status, severity FROM quests "
+        "WHERE status IN ('created','active') ORDER BY severity DESC, created_ts DESC LIMIT 1"
+    ).fetchone()
+    if qrow:
+        quest = {"title": qrow["title"], "technical_label": qrow["technical_label"],
+                 "status": qrow["status"], "severity": qrow["severity"]}
+
+    # Threats (last 24h, severity >= 3)
+    day_ago = int((time.time() - 86400) * 1000)
+    threat_types = ('port_scan','brute_force','dns_poisoning','firewall_block','ddos','unknown_device')
+    ph = ','.join('?' for _ in threat_types)
+    trow = conn.execute(
+        f"SELECT COUNT(*) as cnt, MAX(severity) as max_sev FROM events "
+        f"WHERE severity >= 3 AND timestamp_observed > ? AND event_type IN ({ph})",
+        (day_ago, *threat_types)).fetchone()
+    threats = {"count": trow["cnt"] or 0, "max_severity": trow["max_sev"] or 0}
+
+    # Realm summary
+    entities = conn.execute("SELECT COUNT(*) FROM entities WHERE status='active'").fetchone()[0]
+    events_24h = conn.execute("SELECT COUNT(*) FROM events WHERE timestamp_observed > ?", (day_ago,)).fetchone()[0]
+    quests_active = conn.execute("SELECT COUNT(*) FROM quests WHERE status IN ('created','active')").fetchone()[0]
+
+    conn.close()
+    return {
+        "player": player, "quest": quest, "threats": threats,
+        "realm": {"entities": entities, "events_24h": events_24h, "quests_active": quests_active},
+    }
+
 def _h_get_ping(req, params):
     return {"t": time.time()}
 
@@ -914,6 +977,7 @@ _route_table.add("GET", "/config", _h_get_config)
 _route_table.add("GET", "/settings", _h_get_settings)
 _route_table.add("GET", "/observation", _h_get_observation)
 _route_table.add("GET", "/player", _h_get_player)
+_route_table.add("GET", "/api/hud", _h_get_hud)
 _route_table.add("GET", "/ping", _h_get_ping)
 _route_table.add("GET", "/resolve-url", _h_get_resolve_url)
 _route_table.add("GET", "/debug", _h_get_debug)
