@@ -28,11 +28,16 @@ stage {
  *   TOP PANEL — The Golden Banner
  *   Warm gold bar works in both dark and light mode.
  *   Blur my Shell adds frosted glass beneath this tint.
+ *   Subtle gradient adds depth; accent underline marks the
+ *   boundary between panel and realm below.
  * ══════════════════════════════════════════════════════════════ */
 
 #panel {
-  background-color: rgba(160, 110, 30, 0.82);
-  border-bottom: 1px solid rgba(120, 80, 10, 0.4);
+  background-gradient-direction: vertical;
+  background-gradient-start: rgba(175, 120, 35, 0.88);
+  background-gradient-end: rgba(140, 95, 20, 0.82);
+  border-bottom: 2px solid rgba(212, 160, 80, 0.55);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 #panel .panel-button {
@@ -180,11 +185,24 @@ stage {
 
 /* ══════════════════════════════════════════════════════════════
  *   CALENDAR & NOTIFICATIONS — Enchanted Almanac
+ *   Realm-themed calendar with gold accents and warm borders.
  * ══════════════════════════════════════════════════════════════ */
+
+/* Message tray container */
+.message-list-section {
+  margin: 4px 0;
+}
+
+.message-list-section-title {
+  color: #d4a050;
+  font-weight: bold;
+}
 
 .calendar {
   background-color: #12081e;
-  border: 1px solid rgba(212, 160, 80, 0.15);
+  border: 1px solid rgba(212, 160, 80, 0.2);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
 .calendar .calendar-month-label {
@@ -234,7 +252,7 @@ stage {
   color: #4a3a5a;
 }
 
-/* Notifications */
+/* Notifications — Realm Event Toasts */
 .message-list-placeholder {
   color: #4a3a5a;
 }
@@ -242,15 +260,25 @@ stage {
 .message {
   background-color: #1a1028;
   color: #c8a888;
-  border: 1px solid rgba(212, 160, 80, 0.1);
+  border: 1px solid rgba(212, 168, 67, 0.25);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  margin: 2px 0;
 }
 
 .message:hover {
-  background-color: rgba(212, 160, 80, 0.08);
+  background-color: rgba(212, 160, 80, 0.1);
+  border-color: rgba(212, 168, 67, 0.4);
+  box-shadow: 0 2px 12px rgba(212, 168, 67, 0.12);
+}
+
+.message:active {
+  background-color: rgba(212, 160, 80, 0.18);
 }
 
 .message .message-title {
-  color: #d4a574;
+  color: #f0d080;
+  font-weight: bold;
 }
 
 .message .message-body {
@@ -259,47 +287,132 @@ stage {
 
 .message .event-time {
   color: #d4a050;
+  font-weight: bold;
 }
 
 .message-list-controls {
   color: #d4a050;
 }
 
+.message-list-controls .button {
+  color: #d4a050;
+}
+
+.message-list-controls .button:hover {
+  color: #f0d080;
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   NOTIFICATION BANNERS — Realm Heralds
+ *   Top-of-screen event toasts with gold trim and glow.
+ * ══════════════════════════════════════════════════════════════ */
+
+.notification-banner {
+  background-color: #12081e;
+  border: 1px solid rgba(212, 168, 67, 0.35);
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 12px rgba(212, 168, 67, 0.08);
+  color: #d4a574;
+  margin: 4px;
+}
+
+.notification-banner:hover {
+  background-color: rgba(26, 16, 40, 0.95);
+  border-color: rgba(212, 168, 67, 0.5);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), 0 0 16px rgba(212, 168, 67, 0.12);
+}
+
+.notification-banner .notification-icon {
+  padding: 8px;
+}
+
+.notification-banner .notification-content .notification-title {
+  color: #f0d080;
+  font-weight: bold;
+}
+
+.notification-banner .notification-content .notification-body {
+  color: #c8a888;
+}
+
+.notification-banner .notification-button {
+  color: #d4a050;
+  background-color: rgba(212, 160, 80, 0.08);
+  border-color: rgba(212, 160, 80, 0.2);
+}
+
+.notification-banner .notification-button:hover {
+  color: #f0d080;
+  background-color: rgba(212, 160, 80, 0.15);
+}
+
+.notification-banner .notification-button:active {
+  background-color: rgba(212, 160, 80, 0.25);
+}
+
+/* Urgent / critical notifications */
+.notification-banner.critical {
+  border-color: rgba(220, 90, 85, 0.45);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 12px rgba(220, 90, 85, 0.1);
+}
+
 /* ══════════════════════════════════════════════════════════════
  *   OSD — On-Screen Runes (volume, brightness)
+ *   Rounded, gold-bordered indicators with realm glow.
  * ══════════════════════════════════════════════════════════════ */
 
 .osd-window {
   background-color: #12081e;
-  border: 1px solid rgba(212, 160, 80, 0.2);
+  border: 2px solid rgba(212, 168, 67, 0.3);
+  border-radius: 12px;
   color: #d4a574;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), 0 0 10px rgba(212, 168, 67, 0.06);
+  padding: 12px;
+}
+
+.osd-window .osd-monitor-label {
+  color: #f0d080;
+  font-size: 28px;
 }
 
 .osd-window .level {
+  -barlevel-height: 8px;
+  -barlevel-border-width: 0;
   -barlevel-active-background-color: #d4a050;
+  -barlevel-active-border-color: transparent;
   -barlevel-background-color: #1a1028;
   -barlevel-overdrive-color: #dc5a55;
+  border-radius: 4px;
 }
 
 /* ══════════════════════════════════════════════════════════════
  *   OVERVIEW — The Realm Map
+ *   Realm-tinted background wash, enhanced search bar,
+ *   and gold-trimmed app grid.
  * ══════════════════════════════════════════════════════════════ */
 
+/* Overview background tint */
+.workspace-background {
+  background-color: rgba(14, 8, 24, 0.65);
+}
+
 .search-entry {
-  background-color: #1a1028;
+  background-color: rgba(26, 16, 40, 0.85);
   color: #d4a574;
-  border: 1px solid rgba(212, 160, 80, 0.2);
+  border: 1px solid rgba(212, 160, 80, 0.25);
+  border-radius: 20px;
+  padding: 6px 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .search-entry:focus {
-  border-color: rgba(212, 160, 80, 0.5);
-  box-shadow: 0 0 4px rgba(212, 160, 80, 0.2);
+  border-color: rgba(212, 160, 80, 0.55);
+  box-shadow: 0 0 8px rgba(212, 160, 80, 0.15), 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .search-entry:hover {
-  background-color: rgba(26, 16, 40, 0.9);
-  border-color: rgba(212, 160, 80, 0.35);
+  background-color: rgba(26, 16, 40, 0.92);
+  border-color: rgba(212, 160, 80, 0.4);
 }
 
 .search-entry .search-entry-icon {
@@ -502,17 +615,38 @@ stage {
 }
 
 /* ══════════════════════════════════════════════════════════════
- *   WORKSPACE SWITCHER
+ *   WORKSPACE SWITCHER — Realm Chambers
  * ══════════════════════════════════════════════════════════════ */
 
 .workspace-switcher {
   background-color: #12081e;
-  border: 1px solid rgba(212, 160, 80, 0.15);
+  border: 1px solid rgba(212, 160, 80, 0.2);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  spacing: 8px;
+  padding: 8px;
+}
+
+.ws-switcher-box {
+  spacing: 8px;
 }
 
 .ws-switcher-active-up,
 .ws-switcher-active-down {
-  background-color: rgba(212, 160, 80, 0.2);
+  background-color: rgba(212, 160, 80, 0.22);
+  border: 1px solid rgba(212, 168, 67, 0.35);
+  border-radius: 6px;
+}
+
+.ws-switcher-box .ws-switcher-active-up:hover,
+.ws-switcher-box .ws-switcher-active-down:hover {
+  background-color: rgba(212, 160, 80, 0.3);
+}
+
+/* Workspace thumbnails in overview */
+.workspace-thumbnail-indicator {
+  border: 2px solid rgba(212, 168, 67, 0.4);
+  border-radius: 6px;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -698,6 +832,161 @@ StScrollBar StButton#hhandle:hover {
 #LookingGlassDialog .notebook-tab:selected {
   color: #f0d080;
   background-color: rgba(212, 160, 80, 0.2);
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   SCREEN SHIELD & LOCK — The Realm Seal
+ * ══════════════════════════════════════════════════════════════ */
+
+.screen-shield-clock-time {
+  color: #f0d080;
+  font-weight: bold;
+}
+
+.screen-shield-clock-date {
+  color: #c8a888;
+}
+
+.screen-shield-notifications-container {
+  background-color: rgba(14, 8, 24, 0.85);
+  border: 1px solid rgba(212, 160, 80, 0.2);
+  border-radius: 10px;
+}
+
+.screen-shield-notifications-container .screen-shield-notification-source {
+  color: #d4a050;
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   PAD OSD — Tablet Controls
+ * ══════════════════════════════════════════════════════════════ */
+
+.pad-osd-window {
+  background-color: #12081e;
+  border: 1px solid rgba(212, 160, 80, 0.2);
+  border-radius: 10px;
+  color: #d4a574;
+}
+
+.pad-osd-window .pad-osd-title-label {
+  color: #f0d080;
+  font-weight: bold;
+}
+
+.pad-osd-window .pad-osd-action-button-container .button {
+  background-color: #1a1028;
+  color: #c8a888;
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   KEYBOARD — On-Screen Keyboard
+ * ══════════════════════════════════════════════════════════════ */
+
+.keyboard-key {
+  background-color: #1a1028;
+  color: #c8a888;
+  border: 1px solid rgba(212, 160, 80, 0.12);
+  border-radius: 6px;
+}
+
+.keyboard-key:hover {
+  background-color: rgba(212, 160, 80, 0.12);
+  color: #f0d080;
+}
+
+.keyboard-key:active,
+.keyboard-key:checked,
+.keyboard-key:grayed {
+  background-color: rgba(212, 160, 80, 0.22);
+  color: #f0d080;
+}
+
+.keyboard-layout {
+  background-color: rgba(14, 8, 24, 0.92);
+  border-top: 1px solid rgba(212, 160, 80, 0.2);
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   SCREENSHOT UI — Realm Capture
+ * ══════════════════════════════════════════════════════════════ */
+
+.screenshot-ui-panel {
+  background-color: #12081e;
+  border: 1px solid rgba(212, 160, 80, 0.25);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.screenshot-ui-panel .screenshot-ui-type-button {
+  color: #c8a888;
+  background-color: #1a1028;
+  border-radius: 8px;
+}
+
+.screenshot-ui-panel .screenshot-ui-type-button:hover {
+  background-color: rgba(212, 160, 80, 0.12);
+  color: #f0d080;
+}
+
+.screenshot-ui-panel .screenshot-ui-type-button:active,
+.screenshot-ui-panel .screenshot-ui-type-button:checked {
+  background-color: rgba(212, 160, 80, 0.22);
+  color: #f0d080;
+}
+
+.screenshot-ui-shot-cast-button {
+  color: #c8a888;
+}
+
+.screenshot-ui-shot-cast-button:checked {
+  color: #f0d080;
+}
+
+.screenshot-ui-show-pointer-button {
+  color: #c8a888;
+}
+
+.screenshot-ui-show-pointer-button:checked {
+  color: #f0d080;
+}
+
+/* Screenshot selection area */
+.screenshot-ui-area-indicator-shade {
+  background-color: rgba(14, 8, 24, 0.6);
+}
+
+.screenshot-ui-area-selector .screenshot-ui-area-indicator-selection {
+  border: 2px solid #d4a050;
+}
+
+/* ══════════════════════════════════════════════════════════════
+ *   DATE MENU / MESSAGE TRAY — Realm Chronicle Panel
+ * ══════════════════════════════════════════════════════════════ */
+
+.datemenu-today-button .day-label {
+  color: #f0d080;
+  font-weight: bold;
+}
+
+.datemenu-today-button .date-label {
+  color: #c8a888;
+}
+
+.datemenu-calendar-column {
+  spacing: 6px;
+}
+
+.datemenu-calendar-column .datemenu-displays-section {
+  padding: 4px;
+}
+
+/* Events list section */
+.events-button .events-box .events-list {
+  spacing: 4px;
+}
+
+.events-button .events-box .events-list .event-time {
+  color: #d4a050;
 }
 
 /* ══════════════════════════════════════════════════════════════
