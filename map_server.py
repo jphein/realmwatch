@@ -478,16 +478,15 @@ def _h_get_hud(req, params):
 
     conn.close()
 
-    # Online node count from realmwatch status (not game.db entities)
+    # Online node count from astral ping status
     status_data = build_status()
     nodes_online = 0
     nodes_total = 0
+    astral_nodes = {}
     if isinstance(status_data, dict):
-        for v in status_data.values():
-            if isinstance(v, dict):
-                nodes_total += 1
-                if v.get("online"):
-                    nodes_online += 1
+        astral_nodes = status_data.get("astral", {}).get("nodes", {})
+    nodes_total = len(astral_nodes)
+    nodes_online = sum(1 for v in astral_nodes.values() if v)
 
     return {
         "player": player, "quest": quest, "threats": threats,
