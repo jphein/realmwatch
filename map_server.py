@@ -509,6 +509,35 @@ def _h_get_hud(req, params):
             seen_hosts.add(base)
             services_up += 1
 
+    # Resource nodes
+    resources = {}
+    for rkey in ("forge", "mana", "essence"):
+        rv = status_data.get(rkey, {}) if isinstance(status_data, dict) else {}
+        if isinstance(rv, dict) and rv.get("usage") is not None:
+            resources[rkey] = {"usage": rv["usage"]}
+            if rkey == "forge":
+                resources[rkey]["temp"] = rv.get("temp")
+                gpu = rv.get("gpu", {})
+                if isinstance(gpu, dict):
+                    resources[rkey]["gpu_temp"] = gpu.get("temp")
+                    resources[rkey]["gpu_load"] = gpu.get("load")
+
+    # Storage from collectd (deduplicated)
+    storage = []
+    seen_storage = set()
+    for host, cdata in sorted(collectd_hosts.items()):
+        if not isinstance(cdata, dict) or cdata.get("disk_pct") is None:
+            continue
+        base = host.split(".")[0].lower()
+        if base in seen_storage:
+            continue
+        seen_storage.add(base)
+        storage.append({
+            "host": base, "pct": cdata["disk_pct"],
+            "total_gb": round(cdata.get("disk_total_gb", 0), 0),
+        })
+    resources["storage"] = storage
+
     return {
         "player": player, "quest": quest, "threats": threats,
         "realm": {
@@ -517,6 +546,7 @@ def _h_get_hud(req, params):
             "wifi_online": wifi_online,
             "wired_online": wired_online,
             "services_up": services_up,
+            "resources": resources,
         },
     }
 
