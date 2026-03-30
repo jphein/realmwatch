@@ -1,6 +1,0 @@
-[      18ms] [WARNING] Realm Map: SSE disconnected, reconnecting... @ http://localhost:8777/realm-map.js?v=1773597100:88
-[   69960ms] [WARNING] Realm Map: SSE disconnected, reconnecting... @ http://localhost:8777/realm-map.js?v=1773597100:88
-[   78026ms] [WARNING] Realm Map: loading screen failsafe — dismissing after timeout @ http://localhost:8777/realm-map.js?v=1773597100:88
-[  262435ms] SyntaxError: Unexpected token 'N', ..."10.0.6.1":NaN},"ping"... is not valid JSON
-    at JSON.parse (<anonymous>)
-    at EventSource.<anonymous> (http://localhost:8777/realm-map.js?v=1773597100:89:17306)

@@ -1,2 +1,0 @@
-[      -1ms] [ERROR] Failed to load resource: the server responded with a status of 400 () @ https://vixdnb.csb.app/:0
-[    3011ms] [WARNING] Manifest: property 'scope' ignored. Start url should be within scope of scope URL. @ https://vixdnb.csb.app/manifest.json:0
