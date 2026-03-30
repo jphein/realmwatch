@@ -53,11 +53,13 @@ DS_DERIVE   = 2
 DS_ABSOLUTE = 3
 
 PORT = 25826
+FORWARD_PORT = 25827  # forward raw packets to local collectd for RRD writing
 STALE_THRESHOLD = 300   # seconds (5 minutes)
 EVICT_INTERVAL  = 60    # seconds between sweeps
 
 _lock = threading.Lock()
 _metrics = {}  # {hostname: {plugin/type: {values, ts}}}
+_prev_iface = {}  # {hostname: {iface: {rx, tx, ts}}} for rate calculation
 
 
 def get_metrics():
@@ -105,8 +107,20 @@ def get_host_summary(hostname):
         elif key.startswith("interface/") and vals:
             iface = key.split("/")[1]
             if "if_octets" in key and len(vals) >= 2:
-                summary.setdefault("interfaces", {})[iface] = {
-                    "rx": vals[0], "tx": vals[1]
+                rx_raw, tx_raw = vals[0], vals[1]
+                # Compute rate from previous sample
+                prev = _prev_iface.get(hostname, {}).get(iface)
+                if prev and ts > prev["ts"]:
+                    dt = ts - prev["ts"]
+                    if dt > 0 and dt < 120:  # sanity: max 2 min gap
+                        rx_bps = max(0, (rx_raw - prev["rx"]) / dt)
+                        tx_bps = max(0, (tx_raw - prev["tx"]) / dt)
+                        summary.setdefault("interfaces", {})[iface] = {
+                            "rx_bps": round(rx_bps), "tx_bps": round(tx_bps)
+                        }
+                # Store current for next rate calc
+                _prev_iface.setdefault(hostname, {})[iface] = {
+                    "rx": rx_raw, "tx": tx_raw, "ts": ts
                 }
         elif key == "uptime//uptime" and vals:
             summary["uptime"] = vals[0]
@@ -226,23 +240,30 @@ def _eviction_loop():
 
 
 def _listener_loop():
-    """Main UDP listener loop."""
+    """Main UDP listener loop — receives collectd packets and forwards to local collectd."""
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    fwd_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(("", PORT))
-        print(f"collectd listener: UDP :{PORT}")
+        print(f"collectd listener: UDP :{PORT} (forwarding to :{FORWARD_PORT})")
 
         while True:
             try:
                 data, addr = sock.recvfrom(65535)
                 _parse_packet(data)
+                # Forward raw packet to local collectd for RRD writing
+                try:
+                    fwd_sock.sendto(data, ("127.0.0.1", FORWARD_PORT))
+                except OSError:
+                    pass
             except OSError:
                 break  # Socket closed
             except Exception:
                 pass
     finally:
         sock.close()
+        fwd_sock.close()
 
 
 def start_listener():
