@@ -589,15 +589,24 @@ def _h_get_hud(req, params):
         gatekeeper["wan_tx_mbps"] = round(wan.get("tx_bps", 0) * 8 / 1000000, 2)
     # VLAN traffic
     vlans = {}
-    vlan_names = {"br-lan": "LAN", "br-lan.3": "Guest", "br-lan.4": "Quarantine",
-                  "br-lan.6": "Admin", "br-lan.7": "Cameras", "br-lan.8": "Kids",
-                  "br-lan.9": "Gaming", "br-lan.10": "IoT", "br-lan.11": "Family",
-                  "br-lan.20": "Servers", "br-lan.38": "WireGuard"}
-    for iface, name in vlan_names.items():
+    vlan_defs = [
+        ("br-lan",    0,  "LAN"),
+        ("br-lan.3",  3,  "Guest"),
+        ("br-lan.4",  4,  "Quarantine"),
+        ("br-lan.6",  6,  "Admin"),
+        ("br-lan.7",  7,  "Cameras"),
+        ("br-lan.8",  8,  "Kids"),
+        ("br-lan.9",  9,  "Gaming"),
+        ("br-lan.10", 10, "IoT"),
+        ("br-lan.11", 11, "Family"),
+        ("br-lan.20", 20, "Servers"),
+        ("br-lan.38", 38, "WireGuard"),
+    ]
+    for iface, vid, name in vlan_defs:
         data = gk_ifaces.get(iface, {})
         rx = round(data.get("rx_bps", 0) * 8 / 1000000, 2) if data else 0
         tx = round(data.get("tx_bps", 0) * 8 / 1000000, 2) if data else 0
-        vlans[name] = {"rx_mbps": rx, "tx_mbps": tx}
+        vlans[name] = {"id": vid, "rx_mbps": rx, "tx_mbps": tx}
     gatekeeper["vlans"] = vlans
     # VPN
     vpn = gk_ifaces.get("wireguardgig", {})
