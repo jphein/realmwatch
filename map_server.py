@@ -478,12 +478,27 @@ def _h_get_hud(req, params):
 
     conn.close()
 
-    # Online node count: all devices responding to pings right now
+    # Node counts by category
     status_data = build_status()
     astral_nodes = {}
+    collectd_hosts = {}
+    wifi_clients = {}
     if isinstance(status_data, dict):
         astral_nodes = status_data.get("astral", {}).get("nodes", {})
+        collectd_hosts = status_data.get("collectd", {})
+        wifi_clients = status_data.get("wifi", {})
     nodes_online = sum(1 for v in astral_nodes.values() if v)
+    # Deduplicate collectd hosts (katana, katana.lan, katana.ts.net are same host)
+    seen_hosts = set()
+    services_up = 0
+    for k, v in collectd_hosts.items():
+        if not isinstance(v, dict) or v.get("load_1") is None:
+            continue
+        base = k.split(".")[0].lower()
+        if base not in seen_hosts:
+            seen_hosts.add(base)
+            services_up += 1
+    wifi_count = len(wifi_clients)
 
     return {
         "player": player, "quest": quest, "threats": threats,
@@ -491,6 +506,8 @@ def _h_get_hud(req, params):
             "entities": entities, "events_24h": events_24h,
             "quests_active": quests_active,
             "nodes_online": nodes_online,
+            "services_up": services_up,
+            "wifi_clients": wifi_count,
         },
     }
 
