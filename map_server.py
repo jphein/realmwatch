@@ -487,7 +487,17 @@ def _h_get_hud(req, params):
         astral_nodes = status_data.get("astral", {}).get("nodes", {})
         collectd_hosts = status_data.get("collectd", {})
         wifi_clients = status_data.get("wifi", {})
-    nodes_online = sum(1 for v in astral_nodes.values() if v)
+    # Split online into wifi vs wired
+    online_keys = {k for k, v in astral_nodes.items() if v}
+    wifi_lower = {k.lower().replace("-", "") for k in wifi_clients}
+    wifi_online = 0
+    wired_online = 0
+    for k in online_keys:
+        if k.lower().replace("-", "") in wifi_lower or k.startswith("_unknown"):
+            wifi_online += 1
+        else:
+            wired_online += 1
+
     # Deduplicate collectd hosts (katana, katana.lan, katana.ts.net are same host)
     seen_hosts = set()
     services_up = 0
@@ -498,16 +508,15 @@ def _h_get_hud(req, params):
         if base not in seen_hosts:
             seen_hosts.add(base)
             services_up += 1
-    wifi_count = len(wifi_clients)
 
     return {
         "player": player, "quest": quest, "threats": threats,
         "realm": {
             "entities": entities, "events_24h": events_24h,
             "quests_active": quests_active,
-            "nodes_online": nodes_online,
+            "wifi_online": wifi_online,
+            "wired_online": wired_online,
             "services_up": services_up,
-            "wifi_clients": wifi_count,
         },
     }
 
