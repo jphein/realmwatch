@@ -477,9 +477,25 @@ def _h_get_hud(req, params):
     quests_active = conn.execute("SELECT COUNT(*) FROM quests WHERE status IN ('created','active') AND parent_quest_id IS NULL").fetchone()[0]
 
     conn.close()
+
+    # Online node count from realmwatch status (not game.db entities)
+    status_data = build_status()
+    nodes_online = 0
+    nodes_total = 0
+    if isinstance(status_data, dict):
+        for v in status_data.values():
+            if isinstance(v, dict):
+                nodes_total += 1
+                if v.get("online"):
+                    nodes_online += 1
+
     return {
         "player": player, "quest": quest, "threats": threats,
-        "realm": {"entities": entities, "events_24h": events_24h, "quests_active": quests_active},
+        "realm": {
+            "entities": entities, "events_24h": events_24h,
+            "quests_active": quests_active,
+            "nodes_online": nodes_online, "nodes_total": nodes_total,
+        },
     }
 
 def _h_get_api_quests(req, params):
