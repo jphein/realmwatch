@@ -522,9 +522,10 @@ def _h_get_hud(req, params):
                     resources[rkey]["gpu_temp"] = gpu.get("temp")
                     resources[rkey]["gpu_load"] = gpu.get("load")
 
-    # Storage from collectd — all mount points per host (deduplicated hosts)
+    # Storage from collectd — all mount points, deduplicated by size across hosts
     storage = []
     seen_hosts = set()
+    seen_sizes = set()  # (total_gb rounded) to dedupe NFS mounts seen from multiple hosts
     for host, cdata in sorted(collectd_hosts.items()):
         if not isinstance(cdata, dict):
             continue
@@ -535,18 +536,40 @@ def _h_get_hud(req, params):
         host_disks = cdata.get("disks", [])
         if host_disks:
             for disk in host_disks:
-                if disk.get("total_gb", 0) < 1:
+                tgb = round(disk.get("total_gb", 0), 0)
+                if tgb < 1:
                     continue
+                size_key = int(tgb)
+                if size_key in seen_sizes and disk["mount"] != "/":
+                    continue  # skip NFS duplicate
+                seen_sizes.add(size_key)
                 storage.append({
                     "host": base, "mount": disk["mount"],
-                    "pct": disk["pct"], "total_gb": round(disk["total_gb"], 0),
+                    "pct": disk["pct"], "total_gb": tgb,
                 })
         elif cdata.get("disk_pct") is not None:
+            tgb = round(cdata.get("disk_total_gb", 0), 0)
             storage.append({
                 "host": base, "mount": "/",
-                "pct": cdata["disk_pct"], "total_gb": round(cdata.get("disk_total_gb", 0), 0),
+                "pct": cdata["disk_pct"], "total_gb": tgb,
             })
+            seen_sizes.add(int(tgb))
     resources["storage"] = storage
+
+    # Network throughput (katana main interface)
+    katana_cd = collectd_hosts.get("katana", {})
+    ifaces = katana_cd.get("interfaces", {}) if isinstance(katana_cd, dict) else {}
+    eth = ifaces.get("enp5s0", {})
+    if eth:
+        resources["network"] = {
+            "eth_rx_mbps": round(eth.get("rx_bps", 0) * 8 / 1000000, 2),
+            "eth_tx_mbps": round(eth.get("tx_bps", 0) * 8 / 1000000, 2),
+        }
+    # WAN from astral
+    astral_data = status_data.get("astral", {}) if isinstance(status_data, dict) else {}
+    wan_bps = astral_data.get("traffic", 0)
+    if wan_bps and "network" in resources:
+        resources["network"]["wan_mbps"] = round(wan_bps * 8 / 1000000, 2)
 
     return {
         "player": player, "quest": quest, "threats": threats,
