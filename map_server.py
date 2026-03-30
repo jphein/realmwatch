@@ -571,8 +571,49 @@ def _h_get_hud(req, params):
     if wan_bps and "network" in resources:
         resources["network"]["wan_mbps"] = round(wan_bps * 8 / 1000000, 2)
 
+    # Gatekeeper data
+    gk_cd = collectd_hosts.get("gatekeeper", {}) if isinstance(collectd_hosts, dict) else {}
+    gk_ifaces = gk_cd.get("interfaces", {}) if isinstance(gk_cd, dict) else {}
+    gatekeeper = {
+        "uptime_days": round(gk_cd.get("uptime", 0) / 86400, 1) if isinstance(gk_cd, dict) else 0,
+        "load": gk_cd.get("load_1", 0) if isinstance(gk_cd, dict) else 0,
+        "dhcp_leases": gk_cd.get("dhcp_leases", 0) if isinstance(gk_cd, dict) else 0,
+        "conntrack": gk_cd.get("conntrack", 0) if isinstance(gk_cd, dict) else 0,
+        "temp": gk_cd.get("temp", 0) if isinstance(gk_cd, dict) else 0,
+        "ping_wan": gk_cd.get("ping", {}).get("8.8.8.8", 0) if isinstance(gk_cd, dict) else 0,
+    }
+    # WAN interface (fiber)
+    wan = gk_ifaces.get("fiber", {})
+    if wan:
+        gatekeeper["wan_rx_mbps"] = round(wan.get("rx_bps", 0) * 8 / 1000000, 2)
+        gatekeeper["wan_tx_mbps"] = round(wan.get("tx_bps", 0) * 8 / 1000000, 2)
+    # VLAN traffic
+    vlans = {}
+    vlan_names = {"br-lan": "LAN", "br-lan.3": "Guest", "br-lan.4": "Quarantine",
+                  "br-lan.6": "Admin", "br-lan.7": "Cameras", "br-lan.8": "Kids",
+                  "br-lan.9": "Gaming", "br-lan.10": "IoT", "br-lan.11": "Family",
+                  "br-lan.20": "Servers", "br-lan.38": "WireGuard"}
+    for iface, data in gk_ifaces.items():
+        if iface in vlan_names:
+            rx = round(data.get("rx_bps", 0) * 8 / 1000000, 2)
+            tx = round(data.get("tx_bps", 0) * 8 / 1000000, 2)
+            if rx > 0 or tx > 0:
+                vlans[vlan_names[iface]] = {"rx_mbps": rx, "tx_mbps": tx}
+    if vlans:
+        gatekeeper["vlans"] = vlans
+    # VPN
+    vpn = gk_ifaces.get("wireguardgig", {})
+    if vpn:
+        gatekeeper["vpn_rx_mbps"] = round(vpn.get("rx_bps", 0) * 8 / 1000000, 2)
+        gatekeeper["vpn_tx_mbps"] = round(vpn.get("tx_bps", 0) * 8 / 1000000, 2)
+    # NFT counters from astral
+    nft = astral_data.get("nft", {}) if isinstance(astral_data, dict) else {}
+    if nft:
+        gatekeeper["nft"] = {k: round(v / 1000000, 1) for k, v in nft.items()}  # MB
+
     return {
         "player": player, "quest": quest, "threats": threats,
+        "gatekeeper": gatekeeper,
         "realm": {
             "entities": entities, "events_24h": events_24h,
             "quests_active": quests_active,
