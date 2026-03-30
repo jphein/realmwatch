@@ -478,14 +478,11 @@ def _h_get_hud(req, params):
 
     conn.close()
 
-    # Online node count from astral ping status
+    # Online node count: all devices responding to pings right now
     status_data = build_status()
-    nodes_online = 0
-    nodes_total = 0
     astral_nodes = {}
     if isinstance(status_data, dict):
         astral_nodes = status_data.get("astral", {}).get("nodes", {})
-    nodes_total = len(astral_nodes)
     nodes_online = sum(1 for v in astral_nodes.values() if v)
 
     return {
@@ -493,7 +490,7 @@ def _h_get_hud(req, params):
         "realm": {
             "entities": entities, "events_24h": events_24h,
             "quests_active": quests_active,
-            "nodes_online": nodes_online, "nodes_total": nodes_total,
+            "nodes_online": nodes_online,
         },
     }
 
