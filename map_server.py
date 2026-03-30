@@ -593,14 +593,12 @@ def _h_get_hud(req, params):
                   "br-lan.6": "Admin", "br-lan.7": "Cameras", "br-lan.8": "Kids",
                   "br-lan.9": "Gaming", "br-lan.10": "IoT", "br-lan.11": "Family",
                   "br-lan.20": "Servers", "br-lan.38": "WireGuard"}
-    for iface, data in gk_ifaces.items():
-        if iface in vlan_names:
-            rx = round(data.get("rx_bps", 0) * 8 / 1000000, 2)
-            tx = round(data.get("tx_bps", 0) * 8 / 1000000, 2)
-            if rx > 0 or tx > 0:
-                vlans[vlan_names[iface]] = {"rx_mbps": rx, "tx_mbps": tx}
-    if vlans:
-        gatekeeper["vlans"] = vlans
+    for iface, name in vlan_names.items():
+        data = gk_ifaces.get(iface, {})
+        rx = round(data.get("rx_bps", 0) * 8 / 1000000, 2) if data else 0
+        tx = round(data.get("tx_bps", 0) * 8 / 1000000, 2) if data else 0
+        vlans[name] = {"rx_mbps": rx, "tx_mbps": tx}
+    gatekeeper["vlans"] = vlans
     # VPN
     vpn = gk_ifaces.get("wireguardgig", {})
     if vpn:
