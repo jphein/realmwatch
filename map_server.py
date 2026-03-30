@@ -522,20 +522,30 @@ def _h_get_hud(req, params):
                     resources[rkey]["gpu_temp"] = gpu.get("temp")
                     resources[rkey]["gpu_load"] = gpu.get("load")
 
-    # Storage from collectd (deduplicated)
+    # Storage from collectd — all mount points per host (deduplicated hosts)
     storage = []
-    seen_storage = set()
+    seen_hosts = set()
     for host, cdata in sorted(collectd_hosts.items()):
-        if not isinstance(cdata, dict) or cdata.get("disk_pct") is None:
+        if not isinstance(cdata, dict):
             continue
         base = host.split(".")[0].lower()
-        if base in seen_storage:
+        if base in seen_hosts:
             continue
-        seen_storage.add(base)
-        storage.append({
-            "host": base, "pct": cdata["disk_pct"],
-            "total_gb": round(cdata.get("disk_total_gb", 0), 0),
-        })
+        seen_hosts.add(base)
+        host_disks = cdata.get("disks", [])
+        if host_disks:
+            for disk in host_disks:
+                if disk.get("total_gb", 0) < 1:
+                    continue
+                storage.append({
+                    "host": base, "mount": disk["mount"],
+                    "pct": disk["pct"], "total_gb": round(disk["total_gb"], 0),
+                })
+        elif cdata.get("disk_pct") is not None:
+            storage.append({
+                "host": base, "mount": "/",
+                "pct": cdata["disk_pct"], "total_gb": round(cdata.get("disk_total_gb", 0), 0),
+            })
     resources["storage"] = storage
 
     return {

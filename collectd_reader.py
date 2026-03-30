@@ -259,23 +259,47 @@ def get_host_summary(hostname):
         if stddevs:
             summary["ping_stddev"] = stddevs
 
-    # Disk (katana)
-    df_root = os.path.join(host_dir, "df-root")
-    if os.path.isdir(df_root):
-        for f in _safe_listdir(df_root):
+    # Disk — meaningful df-* mount points (skip docker overlays, snaps, media)
+    _skip_prefixes = ("var/lib/docker", "var/lib/containers", "var/snap", "snap/", "media/")
+    disks = []
+    for entry in _safe_listdir(host_dir):
+        if not entry.startswith("df-"):
+            continue
+        df_dir = os.path.join(host_dir, entry)
+        if not os.path.isdir(df_dir):
+            continue
+        mount = entry[3:].replace("-", "/")
+        if mount == "root":
+            mount = "/"
+        if any(mount.startswith(p) for p in _skip_prefixes):
+            continue
+        used_val = free_val = None
+        for f in _safe_listdir(df_dir):
             if f == "df_complex-used.rrd":
-                d = _rrd_last(os.path.join(df_root, f))
+                d = _rrd_last(os.path.join(df_dir, f))
                 if d and d["values"] and d["values"][0] is not None:
-                    summary["disk_used"] = d["values"][0]
+                    used_val = d["values"][0]
             elif f == "df_complex-free.rrd":
-                d = _rrd_last(os.path.join(df_root, f))
+                d = _rrd_last(os.path.join(df_dir, f))
                 if d and d["values"] and d["values"][0] is not None:
-                    summary["disk_free"] = d["values"][0]
-        if "disk_used" in summary and "disk_free" in summary:
-            total = summary["disk_used"] + summary["disk_free"]
+                    free_val = d["values"][0]
+        if used_val is not None and free_val is not None:
+            total = used_val + free_val
             if total > 0:
-                summary["disk_pct"] = round(summary["disk_used"] / total * 100, 1)
-                summary["disk_total_gb"] = round(total / (1024**3), 1)
+                disks.append({
+                    "mount": mount, "pct": round(used_val / total * 100, 1),
+                    "total_gb": round(total / (1024**3), 1),
+                    "used": used_val, "free": free_val,
+                })
+    if disks:
+        summary["disks"] = disks
+        # Keep backward compat: disk_pct/disk_total_gb from root or largest
+        root = next((d for d in disks if d["mount"] == "/"), None)
+        primary = root or max(disks, key=lambda d: d["total_gb"])
+        summary["disk_pct"] = primary["pct"]
+        summary["disk_total_gb"] = primary["total_gb"]
+        summary["disk_used"] = primary["used"]
+        summary["disk_free"] = primary["free"]
 
     # Swap (katana)
     swap_dir = os.path.join(host_dir, "swap")
