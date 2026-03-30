@@ -461,6 +461,20 @@ def _h_get_hud(req, params):
                  "status": qrow["status"], "severity": qrow["severity"],
                  "steps_done": done, "steps_total": subs}
 
+    # Top quests for HUD quest list (up to 5, parent quests only)
+    quests = []
+    for qr in conn.execute(
+        "SELECT quest_id, title, technical_label, status, severity, xp_reward FROM quests "
+        "WHERE status IN ('created','active') AND parent_quest_id IS NULL "
+        "ORDER BY severity DESC, created_ts DESC LIMIT 5"
+    ).fetchall():
+        quests.append({
+            "id": qr["quest_id"], "title": qr["title"],
+            "technical_label": qr["technical_label"],
+            "status": qr["status"], "severity": qr["severity"],
+            "xp": qr["xp_reward"],
+        })
+
     # Threats (last 24h, severity >= 3)
     day_ago = int((time.time() - 86400) * 1000)
     threat_types = ('port_scan','brute_force','dns_poisoning','firewall_block','ddos','unknown_device')
@@ -619,7 +633,7 @@ def _h_get_hud(req, params):
         gatekeeper["nft"] = {k: round(v / 1000000, 1) for k, v in nft.items()}  # MB
 
     return {
-        "player": player, "quest": quest, "threats": threats,
+        "player": player, "quest": quest, "quests": quests, "threats": threats,
         "gatekeeper": gatekeeper,
         "realm": {
             "entities": entities, "events_24h": events_24h,
