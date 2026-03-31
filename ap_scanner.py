@@ -39,7 +39,9 @@ Unknown node auto-creation:
   Every MAC seen on WiFi (or in DHCP leases) that doesn't resolve to a topology
   node gets a _unknown_<mac> node created automatically. node_roles.enrich_unknown_node()
   runs the 6-signal pipeline to assign icon, label, role, and persona.
-  Nodes persist until manually deleted; offline ones are kept with _last_seen.
+  MAC-rotation merge: if a new MAC shares hostname + VLAN with an existing auto-node,
+  the existing node is updated instead of creating a duplicate (handles Android/iOS
+  random MACs). Stale auto-nodes are pruned after AUTO_NODE_TTL (default 7 days).
   Denied MACs (realm.db scanner.denied_macs) and cluster member MACs are skipped.
 
 LLDP ethernet topology detection (detect_ethernet_topology):
@@ -97,6 +99,16 @@ OFFLINE_THRESHOLD = 300  # 5 minutes without seeing = offline
 # Roam debounce: suppress repeat speech events for the same device/AP pair
 _last_roam = {}  # node_id → {"from_ap": str, "to_ap": str, "ts": float}
 ROAM_DEBOUNCE = 300  # 5 minutes — silence re-announcements for flip-flopping devices
+
+# Stale auto-node cleanup: prune _unknown_ nodes not seen within this TTL
+AUTO_NODE_TTL = 7 * 86400  # 7 days
+
+# Generic hostnames that shouldn't trigger hostname-based auto-node merging
+# (too ambiguous — many different devices share these names)
+_GENERIC_HOSTNAMES = {
+    "iphone", "ipad", "android", "localhost", "galaxy", "*",
+    "samsung", "huawei", "xiaomi", "oppo", "oneplus", "pixel",
+}
 
 # Evict stale entries from _last_roam and _node_online_state after this long
 _DICT_EVICTION_AGE = 86400  # 24 hours
@@ -490,14 +502,49 @@ def scan_and_update():
     UNKNOWN_BASE_X, UNKNOWN_BASE_Y = 2300, 750  # right side of map
     UNKNOWN_COLS = 6
     existing_auto = {n["id"]: n for n in topo["nodes"] if n.get("_auto")}
+    # Index auto-nodes by (hostname, vlan) for MAC-rotation merging.
+    # Same hostname on the same VLAN is likely the same device with a rotated MAC.
+    # Different VLANs could be different physical devices sharing a model name.
+    _auto_by_hn_vlan = {}  # (hostname_lower, vlan_prefix) → node dict
+    for n in existing_auto.values():
+        hn = (n.get("_hostname") or "").lower().strip()
+        if hn and hn != "*" and hn not in _GENERIC_HOSTNAMES:
+            nip = n.get("ip") or ""
+            vlan = nip.rsplit(".", 1)[0] if "." in nip else ""  # e.g. "10.0.11"
+            _auto_by_hn_vlan[(hn, vlan)] = n
     seen_auto = set()
     auto_added = 0
+    auto_merged = 0
     for i, u in enumerate(unknown):
         hostname = u.get("hostname") or "*"
         mac = u["mac"]
         mac_clean = mac.replace(":", "").lower()
         if mac_clean in _skip_macs:
             continue  # absorbed into a cluster's members
+        # --- MAC-rotation merge: same hostname + VLAN, different MAC → update existing ---
+        hn_lower = (hostname or "").lower().strip()
+        u_ip = u.get("ip") or ""
+        u_vlan = u_ip.rsplit(".", 1)[0] if "." in u_ip else ""
+        if hn_lower and hn_lower != "*" and hn_lower not in _GENERIC_HOSTNAMES and u_vlan:
+            merge_target = _auto_by_hn_vlan.get((hn_lower, u_vlan))
+            if merge_target and merge_target.get("mac", "").lower() != mac:
+                old_id = merge_target["id"]
+                seen_auto.add(old_id)
+                merge_target["mac"] = mac
+                merge_target["ip"] = u.get("ip") or merge_target.get("ip", "")
+                merge_target["_last_seen"] = time.time()
+                realm_db.set_node(old_id, merge_target)
+                # Update connection to current AP
+                topo["connections"] = [
+                    c for c in topo["connections"]
+                    if not (c.get("type") in WIFI_CONN_TYPES and
+                            (c["from"] == old_id or c["to"] == old_id))
+                ]
+                topo["connections"].append({"from": old_id, "to": u["ap"], "type": "active"})
+                mac_to_node[mac] = old_id
+                auto_merged += 1
+                print(f"[AP Scanner] MAC rotation merge: {old_id} → new MAC {mac} (hostname: {hostname})")
+                continue
         node_id = f"_unknown_{mac_clean}"
         seen_auto.add(node_id)
         if node_id not in existing_auto:
@@ -539,8 +586,8 @@ def scan_and_update():
                 existing["ip"] = u["ip"]
             realm_db.set_node(node_id, existing)
 
-    if auto_added:
-        print(f"[AP Scanner] Added {auto_added} new auto-nodes")
+    if auto_added or auto_merged:
+        print(f"[AP Scanner] Added {auto_added} new auto-nodes, merged {auto_merged} (MAC rotation)")
 
     # --- Auto-create nodes for wired DHCP devices not yet in topology ---
     # Covers cameras, wired switches, servers, etc. that never appear in iwinfo.
@@ -556,6 +603,22 @@ def scan_and_update():
         mac_clean = mac.replace(":", "").lower()
         if mac_clean in _skip_macs:
             continue
+        # --- MAC-rotation merge for wired devices ---
+        hn_lower = (hostname or "").lower().strip()
+        w_vlan = ip.rsplit(".", 1)[0] if "." in ip else ""
+        if hn_lower and hn_lower != "*" and hn_lower not in _GENERIC_HOSTNAMES and w_vlan:
+            merge_target = _auto_by_hn_vlan.get((hn_lower, w_vlan))
+            if merge_target and merge_target.get("mac", "").lower() != mac:
+                old_id = merge_target["id"]
+                seen_auto.add(old_id)
+                merge_target["mac"] = mac
+                merge_target["ip"] = ip
+                merge_target["_last_seen"] = time.time()
+                realm_db.set_node(old_id, merge_target)
+                mac_to_node[mac] = old_id
+                auto_merged += 1
+                print(f"[AP Scanner] MAC rotation merge (wired): {old_id} → new MAC {mac} (hostname: {hostname})")
+                continue
         node_id = f"_unknown_{mac_clean}"
         seen_auto.add(node_id)
         if node_id in existing_auto:
@@ -683,7 +746,7 @@ def scan_and_update():
             _node_online_state[node_id]["online"] = False
             offline_events.append(node_id)
 
-    if changes or ip_updates or auto_added or wired_added or enriched_count:
+    if changes or ip_updates or auto_added or wired_added or enriched_count or auto_merged:
         _save_topo(topo)
         # Push topology immediately so browser has new nodes before alert events arrive
         if _topo_callback:
@@ -839,6 +902,10 @@ def detect_ethernet_topology():
         # Index by hostname patterns for matching LLDP SysName
         nid = n["id"].lower()
         node_by_name[nid] = n["id"]
+        # Also index by _hostname (handles renamed APs where ID != current hostname)
+        hn = (n.get("_hostname") or "").lower().strip()
+        if hn and hn != nid:
+            node_by_name[hn] = n["id"]
         # Also index without suffixes (e.g., "ap-path" → "wrt1900ac")
         for sep in ("-", "_"):
             if sep in nid:
@@ -1105,6 +1172,32 @@ def detect_ethernet_topology():
     return detected
 
 
+def _prune_stale_auto_nodes():
+    """Remove _unknown_ auto-nodes not seen within AUTO_NODE_TTL."""
+    ttl = realm_db.get_setting("scanner", "auto_node_ttl")
+    ttl = int(ttl) if ttl else AUTO_NODE_TTL
+    cutoff = time.time() - ttl
+    topo = _load_topo()
+    stale_ids = set()
+    for n in topo["nodes"]:
+        if (n.get("_auto") and
+            n["id"].startswith("_unknown_") and
+            n.get("_last_seen", 0) < cutoff):
+            stale_ids.add(n["id"])
+    if not stale_ids:
+        return 0
+    topo["nodes"] = [n for n in topo["nodes"] if n["id"] not in stale_ids]
+    topo["connections"] = [
+        c for c in topo["connections"]
+        if c["from"] not in stale_ids and c["to"] not in stale_ids
+    ]
+    for nid in stale_ids:
+        realm_db.delete_node(nid)
+    _save_topo(topo)
+    print(f"[AP Scanner] Pruned {len(stale_ids)} stale auto-nodes (>{ttl // 86400}d old)")
+    return len(stale_ids)
+
+
 def _scanner_loop():
     """Background loop — runs scan_and_update every SCAN_INTERVAL seconds."""
     global _ethernet_tick
@@ -1126,6 +1219,13 @@ def _scanner_loop():
                     detect_ethernet_topology()
                 except Exception as e:
                     print(f"[AP Scanner] LLDP error: {e}")
+                # Prune stale auto-nodes alongside LLDP (every ~10 min)
+                try:
+                    pruned = _prune_stale_auto_nodes()
+                    if pruned and _topo_callback:
+                        _topo_callback()
+                except Exception as e:
+                    print(f"[AP Scanner] Prune error: {e}")
 
         except Exception as e:
             import traceback
