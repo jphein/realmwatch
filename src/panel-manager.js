@@ -138,8 +138,11 @@ export function initPanelManager() {
   _createAnchorOverlay();
   _createParticleCanvas();
   _createSealedDock();
-  // Hide dock in WinBox mode — WinBox handles minimize natively
-  if (isWinBoxMode() && _sealedDock) _sealedDock.style.display = 'none';
+  if (isWinBoxMode()) {
+    // WinBox mode: hide dock, add body class for CSS overrides
+    if (_sealedDock) _sealedDock.style.display = 'none';
+    document.body.classList.add('winbox-active');
+  }
   _attachDragHandlers();
   _loadFormation();
   _injectFormationUI();
@@ -254,6 +257,8 @@ function _createSealedDock() {
   _sealedDock.appendChild(leyline);
 
   document.body.appendChild(_sealedDock);
+  // Hide dock immediately in WinBox mode
+  if (isWinBoxMode()) _sealedDock.style.display = 'none';
   _attachDockDragHandlers(tray);
   _attachDrawerGesture(_sealedDock, handle);
 }
@@ -941,6 +946,7 @@ const _RUNE_ACCENTS = {
 };
 
 function _createRune(panelId, def) {
+  if (isWinBoxMode()) return null; // No runes in WinBox mode
   const rune = document.createElement('div');
   rune.className = 'sealed-rune';
   rune.dataset.panelId = panelId;
@@ -1764,8 +1770,9 @@ export function applyFormation(formationId) {
       visible = Object.keys(PANELS);
       anchors = null;
     }
-    // All panels start sealed on page load
-    minimized = [...visible];
+    // In WinBox mode, no panels start sealed — WinBox manages them
+    // In normal mode, all panels start sealed (runes in dock)
+    minimized = isWinBoxMode() ? [] : [...visible];
   }
 
   // Clear existing runes from ALL locations (dock, anchored, wandering, conjured)
@@ -1807,24 +1814,27 @@ export function applyFormation(formationId) {
         if (anchor) _snapToAnchor(panel, anchor);
       }
     });
-    // Restore sealed panels in saved dock order
-    minimized.forEach(id => {
-      const panel = document.getElementById(id);
-      if (!panel) return;
-      _restoreSealedToDoc(panel, anchors?.[id] || PANELS[id]?.anchor);
-    });
+    // Restore sealed panels in saved dock order (skip in WinBox mode)
+    if (!isWinBoxMode()) {
+      minimized.forEach(id => {
+        const panel = document.getElementById(id);
+        if (!panel) return;
+        _restoreSealedToDoc(panel, anchors?.[id] || PANELS[id]?.anchor);
+      });
 
-    // Start mode-specific animations after all runes are placed
-    if (_sealMode === 'wander' && _wanderingRunes.length > 0) {
-      _animateWandering();
-    } else if (_sealMode === 'conjure') {
-      _arrangeConjuredRunes();
-      _startConjureOrbit();
+      // Start mode-specific animations after all runes are placed
+      if (_sealMode === 'wander' && _wanderingRunes.length > 0) {
+        _animateWandering();
+      } else if (_sealMode === 'conjure') {
+        _arrangeConjuredRunes();
+        _startConjureOrbit();
+      }
     }
   }
 
-  // If WinBox mode, mount visible (non-minimized) panels into WinBox windows
+  // If WinBox mode, hide dock and mount all visible panels into WinBox windows
   if (isWinBoxMode()) {
+    if (_sealedDock) _sealedDock.style.display = 'none';
     visible.forEach(id => {
       if (minimized.includes(id)) return;
       const panel = document.getElementById(id);
@@ -1843,6 +1853,7 @@ export function applyFormation(formationId) {
 
 // Restore a sealed panel without animation (for page load) — respects _sealMode
 function _restoreSealedToDoc(panel, anchorId) {
+  if (isWinBoxMode()) return; // WinBox manages panels natively — no runes
   const def = PANELS[panel.id];
   if (!def) return;
 
@@ -2030,10 +2041,19 @@ function _loadFormation() {
     if (saved.hudScale != null) _hudScale = saved.hudScale;
     if (saved.hudDraggable != null) _hudDraggable = saved.hudDraggable;
     if (saved.hudCustomPos) _hudCustomPos = saved.hudCustomPos;
-    // Restore panel sizes
     if (saved.panelSizes) {
       Object.assign(_panelSizes, saved.panelSizes);
     }
+    // In WinBox mode, clear saved minimized state so panels open in WinBox
+    if (isWinBoxMode() && saved.minimized) {
+      saved.minimized = [];
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+      } catch { /* ignore */ }
+    }
+    applyFormation('grimoire-binding');
+  } else if (isWinBoxMode()) {
+    // No saved formation + WinBox mode: open all panels in WinBox
     applyFormation('grimoire-binding');
   }
 }

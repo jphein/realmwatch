@@ -474,6 +474,7 @@ if (_wbcb) {
 
     if (_wbcb.checked) {
       // Entering WinBox mode: unseal all sealed panels, hide dock, open panels in WinBox
+      document.body.classList.add('winbox-active');
       const dock = document.getElementById('sealed-dock');
       if (dock) dock.style.display = 'none';
       // Unseal all currently sealed panels
@@ -488,6 +489,7 @@ if (_wbcb) {
       });
     } else {
       // Leaving WinBox mode: show dock, apply formation
+      document.body.classList.remove('winbox-active');
       const dock = document.getElementById('sealed-dock');
       if (dock) dock.style.display = '';
       document.body.classList.add('no-panel-transitions');

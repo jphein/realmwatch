@@ -7203,3 +7203,19 @@ body.perf-low .conjure-orbit-ring { animation: none; }
 .no-panel-transitions .sealed-rune {
   transition: none !important;
 }
+
+/* ── WinBox mode: disable entire seal/dock/rune system ── */
+body.winbox-active .sealed-dock,
+body.winbox-active .sealed-rune,
+body.winbox-active .anchored-rune,
+body.winbox-active .wandering-rune,
+body.winbox-active #conjured-runes,
+body.winbox-active #ley-anchor-overlay,
+body.winbox-active .dock-leyline,
+body.winbox-active .dock-ornament,
+body.winbox-active .conjure-circle {
+  display: none !important;
+}
+body.winbox-active .panel-sealed {
+  display: none !important;
+}
