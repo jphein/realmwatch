@@ -138,6 +138,8 @@ export function initPanelManager() {
   _createAnchorOverlay();
   _createParticleCanvas();
   _createSealedDock();
+  // Hide dock in WinBox mode — WinBox handles minimize natively
+  if (isWinBoxMode() && _sealedDock) _sealedDock.style.display = 'none';
   _attachDragHandlers();
   _loadFormation();
   _injectFormationUI();
@@ -756,32 +758,25 @@ function _snapToAnchor(panel, anchor) {
 
 // ── Minimize/Restore ──
 function _toggleMinimize(panel) {
-  const isMinimized = panel.classList.contains('panel-sealed');
+  if (isWinBoxMode()) {
+    // WinBox mode: delegate entirely to WinBox native minimize/restore
+    closeWinBoxPanel(panel.id);
+    return;
+  }
 
+  const isMinimized = panel.classList.contains('panel-sealed');
   if (isMinimized) {
-    if (isWinBoxMode()) {
-      // Unseal: remove rune, then open in WinBox
-      _unsealPanel(panel);  // handles rune removal + display restoration
-      openWinBoxPanel(panel.id);  // mount into WinBox window
-    } else {
-      _unsealPanel(panel);
-    }
+    _unsealPanel(panel);
     _saveFormation();
   } else {
-    if (isWinBoxMode()) {
-      // In WinBox mode, close the WinBox window — the 'winbox-minimized' event
-      // will fire and _quickSeal handles rune creation (seal-mode-aware)
-      closeWinBoxPanel(panel.id);
-    } else {
-      _sealPanel(panel);
-    }
+    _sealPanel(panel);
     // _saveFormation is called from _finalizeSeal after animation completes
   }
 }
 
-// Quick-seal for WinBox minimize events — creates rune without native shrink animation.
-// Respects _sealMode so runes go to the correct location (dock/anchored/wander/conjure).
+// Quick-seal for WinBox minimize events — in WinBox mode, no-op (WinBox handles it natively).
 function _quickSeal(panel) {
+  if (isWinBoxMode()) return;  // WinBox native minimize — no rune creation
   const def = PANELS[panel.id];
   if (!def) return;
 
@@ -859,6 +854,7 @@ function _quickSeal(panel) {
 }
 
 function _sealPanel(panel) {
+  if (isWinBoxMode()) return; // WinBox handles minimize natively
   const def = PANELS[panel.id];
   if (!def) return;
 

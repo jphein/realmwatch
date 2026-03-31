@@ -135,9 +135,8 @@ function _restorePanel(panelId, wb) {
  */
 export function initWinBoxWM() {
   const stored = localStorage.getItem(STORAGE_MODE_KEY);
-  if (stored === 'true') {
-    _active = true;
-  }
+  // Default to WinBox mode ON (only off if explicitly set to 'false')
+  _active = stored !== 'false';
 }
 
 /**

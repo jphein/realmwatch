@@ -15,8 +15,8 @@ import { renderControlPane, renderGroupPane, renderShellPane, renderConnectionsP
 import { initSpellbook, invalidateSearchIndex } from './spellbook.js';
 import { saveSettings, scheduleSave } from './layout.js';
 import { initRealmAPI, dispatchPluginSSE } from './plugin-api.js';
-import { registerPluginPanel, openPanel, closePanel } from './panel-manager.js';
-import { initWinBoxWM, toggleWinBoxMode } from './winbox-wm.js';
+import { registerPluginPanel, openPanel, closePanel, unsealPanel } from './panel-manager.js';
+import { initWinBoxWM, toggleWinBoxMode, openWinBoxPanel } from './winbox-wm.js';
 import { applyFormation } from './panel-manager.js';
 
 let liveOk = false;
@@ -468,18 +468,36 @@ initRealmAPI({
 // Spellbook toggle for WinBox window manager
 const _wbcb = document.getElementById('winbox-wm-cb');
 if (_wbcb) {
-  _wbcb.checked = localStorage.getItem('realm-winbox-mode') === 'true';
+  _wbcb.checked = localStorage.getItem('realm-winbox-mode') !== 'false';
   _wbcb.addEventListener('change', () => {
     toggleWinBoxMode(_wbcb.checked);
-    // Suppress transitions during formation re-layout to avoid visual flash
-    document.body.classList.add('no-panel-transitions');
-    requestAnimationFrame(() => {
-      applyFormation('grimoire-binding');
-      // Re-enable transitions after layout settles
+
+    if (_wbcb.checked) {
+      // Entering WinBox mode: unseal all sealed panels, hide dock, open panels in WinBox
+      const dock = document.getElementById('sealed-dock');
+      if (dock) dock.style.display = 'none';
+      // Unseal all currently sealed panels
+      document.querySelectorAll('.panel-sealed').forEach(p => unsealPanel(p));
+      // Remove all runes
+      document.querySelectorAll('.sealed-rune').forEach(r => r.remove());
+      // Open visible panels in WinBox windows
       requestAnimationFrame(() => {
-        document.body.classList.remove('no-panel-transitions');
+        document.querySelectorAll('.panel').forEach(p => {
+          if (p.style.display !== 'none' && p.id) openWinBoxPanel(p.id);
+        });
       });
-    });
+    } else {
+      // Leaving WinBox mode: show dock, apply formation
+      const dock = document.getElementById('sealed-dock');
+      if (dock) dock.style.display = '';
+      document.body.classList.add('no-panel-transitions');
+      requestAnimationFrame(() => {
+        applyFormation('grimoire-binding');
+        requestAnimationFrame(() => {
+          document.body.classList.remove('no-panel-transitions');
+        });
+      });
+    }
   });
 }
 
