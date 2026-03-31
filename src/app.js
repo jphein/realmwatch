@@ -346,9 +346,11 @@ export const getSseConnected = () => _sseConnected;
   _connect();
 })();
 
+// WinBox init must run synchronously BEFORE panel manager — not deferred
+initWinBoxWM();
+
 // Defer non-critical init to idle time — SSE connection is the priority
 const _deferInit = window.requestIdleCallback || (cb => setTimeout(cb, 50));
-_deferInit(() => { initWinBoxWM(); });
 
 // ── Initialize RealmAPI for plugins ──
 initRealmAPI({

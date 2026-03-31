@@ -2335,11 +2335,14 @@ export function registerPluginPanel(panel, { name, icon, anchor, priority }) {
   };
   _attachPanelHandlers(panel);
 
-  // Always seal immediately (no animation). Plugin panels are created dynamically
-  // after initPanelManager, so saved formation state is unreliable — the async
-  // seal animation creates a race window where _saveFormation can capture a
-  // partially-sealed state (visible but no rune), which persists across reloads.
-  _restoreSealedToDoc(panel, anchor || 'sw');
+  if (isWinBoxMode()) {
+    // WinBox mode: open in WinBox window, no sealing
+    panel.style.display = '';
+    openWinBoxPanel(panel.id);
+  } else {
+    // Normal mode: seal immediately (no animation)
+    _restoreSealedToDoc(panel, anchor || 'sw');
+  }
   _saveFormation();
 }
 
@@ -2352,6 +2355,11 @@ export function unregisterPanel(panelId) {
 export function openPanel(panelId) {
   const panel = document.getElementById(panelId);
   if (!panel || !PANELS[panelId]) return;
+  if (isWinBoxMode()) {
+    panel.style.display = '';
+    openWinBoxPanel(panelId);
+    return;
+  }
   if (panel.classList.contains('panel-sealed')) {
     _unsealPanel(panel);
     _saveFormation();
