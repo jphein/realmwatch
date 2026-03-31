@@ -14,18 +14,22 @@ CERT_DAYS=825 # ~2.25 years (Chrome max)
 # OpenWrt devices with LuCI web interface (uhttpd)
 declare -A ROUTERS=(
   [gatekeeper]="10.0.6.1"
-  [mr8300-host]="10.0.6.100"
-  [onhub-office]="10.0.6.101"
-  [onhub-closet]="10.0.6.102"
-  [woodshed]="10.0.6.105"
-  [wndr4300sw-shed]="10.0.6.109"
-  [onhub-pumphouse]="10.0.6.111"
-  [wrt1900ac-family]="10.0.6.114"
-  [ea6350-cl]="10.0.6.116"
-  [eap225-outdoor]="10.0.6.119"
-  [ea6350v3-family]="10.0.6.135"
-  [onhub-family]="10.0.6.141"
-  [onhub-bed]="10.0.6.246"
+  # North — Yurt Palace
+  [center]="10.0.6.101"
+  [ap-closet]="10.0.6.102"
+  [ap-north-1]="10.0.6.246"
+  [ap-pump]="10.0.6.111"
+  [ap-deck]="10.0.6.119"
+  [ap-path]="10.0.6.114"
+  [ap-woodshed]="10.0.6.105"
+  [ap-shed]="10.0.6.109"
+  # South — Dad's House
+  [ap-south-1]="10.0.6.135"
+  # East — Mom's House
+  [ap-east-1]="10.0.6.100"
+  [ap-cabin]="10.0.6.116"
+  [ap-east-2]="10.0.6.141"
+  # Infrastructure
   [gs308t]="10.0.6.110"
 )
 
