@@ -25,7 +25,6 @@ def _launcher_version():
 
 LAUNCHER_VERSION = _launcher_version()
 
-_server_proc = None
 _log_lines = []
 _log_lock = threading.Lock()
 MAX_LOG = 200
@@ -100,11 +99,21 @@ def _kill_port(port=80):
     except Exception as e:
         _log(f'Port cleanup note: {e}')
 
+def _is_systemd_active(svc):
+    """Check if a systemd user service is active."""
+    try:
+        r = subprocess.run(
+            ["systemctl", "--user", "is-active", svc],
+            capture_output=True, text=True, timeout=5
+        )
+        return r.stdout.strip() == "active"
+    except Exception:
+        return False
+
 def _is_server_running():
-    global _server_proc
-    if _server_proc and _server_proc.poll() is None:
+    if _is_systemd_active("realm-map-server"):
         return True
-    # Also check if anything is listening on :80 (e.g. server started outside launcher)
+    # Fallback: check if anything is listening on :80
     try:
         r = subprocess.run(['fuser', '80/tcp'], capture_output=True, text=True)
         return bool(r.stdout.strip())
@@ -112,31 +121,24 @@ def _is_server_running():
         return False
 
 def _stop_server():
-    global _server_proc
-    if _server_proc and _server_proc.poll() is None:
-        _log('Stopping map_server.py...')
-        _server_proc.terminate()
-        try:
-            _server_proc.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            _server_proc.kill()
-            _server_proc.wait()
+    _log('Stopping realm-map-server...')
+    try:
+        subprocess.run(
+            ["systemctl", "--user", "stop", "realm-map-server"],
+            capture_output=True, timeout=10
+        )
         _log('Server stopped')
-    _server_proc = None
-    # Also kill any orphaned server on :80
+    except Exception as e:
+        _log(f'systemctl stop failed: {e}')
+    # Also kill any orphaned server on :80 (non-systemd)
     _kill_port(80)
 
 
 def _stop_all_services():
     """Stop all realm services except the launcher itself."""
-    _stop_server()
     for svc in ("realm-map-server", "oracle-daemon", "realm-herald"):
         try:
-            r = subprocess.run(
-                ["systemctl", "--user", "is-active", svc],
-                capture_output=True, text=True, timeout=5
-            )
-            if r.stdout.strip() == "active":
+            if _is_systemd_active(svc):
                 _log(f"Stopping {svc}...")
                 subprocess.run(
                     ["systemctl", "--user", "stop", svc],
@@ -145,12 +147,13 @@ def _stop_all_services():
                 _log(f"  {svc} stopped")
         except (subprocess.TimeoutExpired, FileNotFoundError):
             _log(f"  Failed to stop {svc}")
+    # Kill any orphaned process on :80
+    _kill_port(80)
 
 
 def _start_all_services():
-    """Start all realm services (map server via subprocess, others via systemd)."""
-    _start_server()
-    for svc in ("oracle-daemon", "realm-herald"):
+    """Start all realm services via systemd."""
+    for svc in ("realm-map-server", "oracle-daemon", "realm-herald"):
         try:
             r = subprocess.run(
                 ["systemctl", "--user", "is-enabled", svc],
@@ -167,37 +170,23 @@ def _start_all_services():
             _log(f"  Failed to start {svc}")
 
 def _start_server():
-    global _server_proc
     _stop_server()
-    _log('Starting map_server.py...')
-    _server_proc = subprocess.Popen(
-        [sys.executable, MAP_SERVER],
-        cwd=PROJECT_DIR,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-    )
-    # Background thread to capture server output
-    def _reader():
-        for line in _server_proc.stdout:
-            _log('[server] ' + line.decode(errors='replace').rstrip())
-    threading.Thread(target=_reader, daemon=True).start()
-    # Wait for server to bind — check for port availability
+    _log('Starting realm-map-server via systemd...')
+    try:
+        subprocess.run(
+            ["systemctl", "--user", "start", "realm-map-server"],
+            capture_output=True, timeout=10
+        )
+    except Exception as e:
+        _log(f'systemctl start failed: {e}')
+        return
+    # Wait for server to bind
     for i in range(10):
         time.sleep(0.5)
-        if _server_proc.poll() is not None:
-            _log('Server failed to start (exited)')
+        if _is_systemd_active("realm-map-server"):
+            _log('Server started on :80')
             return
-        try:
-            r = subprocess.run(['fuser', '80/tcp'], capture_output=True, text=True)
-            if r.stdout.strip():
-                _log('Server started on :80')
-                return
-        except Exception:
-            pass
-    if _server_proc.poll() is None:
-        _log('Server started (port check inconclusive)')
-    else:
-        _log('Server failed to start')
+    _log('Server start check inconclusive')
 
 def _build():
     _log('Building realm-map.js...')
@@ -1152,13 +1141,16 @@ class LauncherHandler(http.server.BaseHTTPRequestHandler):
             self._html(LAUNCHER_HTML)
         elif self.path == '/api/status':
             branch = _get_branch()
+            branches = _get_branches()
             ahead = {}
-            for b in ['feature/winbox-wm', 'feature/puter-wm', 'feat/plugin-system']:
-                ahead[b] = _get_ahead_count(b)
+            for b in branches:
+                if b != 'master':
+                    ahead[b] = _get_ahead_count(b)
             with _log_lock:
                 log_copy = list(_log_lines)
             self._json({
                 'branch': branch,
+                'branches': branches,
                 'commit': _get_commit(),
                 'server': _is_server_running(),
                 'ahead': ahead,
