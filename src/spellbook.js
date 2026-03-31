@@ -24,7 +24,10 @@ const _spellTabs = document.querySelectorAll('.spell-tab');
 let _spellPage = 0;
 function _showSpellPage(idx) {
   _spellPage = Math.max(0, Math.min(idx, _spellPages.length - 1));
-  _spellPages.forEach((p, i) => { p.style.display = i === _spellPage ? '' : 'none'; });
+  _spellPages.forEach((p, i) => {
+    p.style.display = i === _spellPage ? 'block' : 'none';
+    p.classList.toggle('active', i === _spellPage);
+  });
   _spellTabs.forEach((t, i) => t.classList.toggle('active', i === _spellPage));
   _saveSettings();
 }

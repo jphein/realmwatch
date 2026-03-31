@@ -3,7 +3,7 @@ import { WORLD_W, WORLD_H, setMapTilt } from './config.js';
 import { _topology, _nodeMap, updateLinePositions } from './topology.js';
 import { generateTerrain, updateRegionLabels, invalidateTopoNodeMap, forceTopoRender, initBiomeSliders } from './terrain.js';
 import { getLatencyFlat, getWifiMap } from './panels.js';
-import { scale, panX, panY, applyTransform, setViewport, fitToNodes } from './map-view.js';
+import { scale, panX, panY, applyTransform, setViewport, fitToNodes, setGhostDirty } from './map-view.js';
 import { getActiveTab, updateBubblePositions } from './quest-log.js';
 import { getSpellPage, showSpellPage } from './spellbook.js';
 import { openPersonaEditor, getCurrentEditNode, switchToTab } from './persona-editor.js';
@@ -58,7 +58,16 @@ let _layoutEdgeLen = 80;    // base ideal edge length
 let _layoutSpacing = 8;     // same-depth peer spacing (x1000)
 
 export function autoArrangeLayout(mode) {
-  if (!_topology || _layoutRunning) return;
+  console.log('[Cartographer] Layout requested:', mode || _layoutMode, '_topology:', !!_topology, '_layoutRunning:', _layoutRunning);
+  if (!_topology) return;
+  // Force-clear stale running state (worker may have died without callback)
+  if (_layoutRunning && _layoutWorker) {
+    _layoutWorker.terminate();
+    _layoutWorker = null;
+    _layoutRunning = false;
+    console.warn('[Cartographer] Cleared stale layout worker');
+  }
+  if (_layoutRunning) return;
   if (mode) _layoutMode = mode;
   _layoutRunning = true;
 
@@ -105,9 +114,28 @@ export function autoArrangeLayout(mode) {
     return (n.tailscale || n.type === 'tailscale') ? 0 : 6;
   });
 
-  _layoutWorker = new Worker('layout-worker.js?v=2');
+  // Fetch worker source and create via blob URL — bypasses Brave's aggressive caching
+  const _workerUrl = 'layout-worker.js?v=' + Date.now();
+  try {
+    _layoutWorker = new Worker(_workerUrl);
+  } catch (err) {
+    console.error('[Cartographer] Worker creation failed:', err);
+    _layoutRunning = false;
+    if (activeBtn) activeBtn.classList.remove('running');
+    if (castBtn) { castBtn.classList.remove('running'); castBtn.textContent = '\u2728 Cast Arrangement'; }
+    return;
+  }
   _layoutWorker.onmessage = function(e) {
     const msg = e.data;
+    if (msg.type === 'error') {
+      console.error('[Cartographer] Worker error:', msg.message, msg.stack);
+      _layoutRunning = false;
+      if (activeBtn) activeBtn.classList.remove('running');
+      if (castBtn) { castBtn.classList.remove('running'); castBtn.textContent = '\u2728 Cast Arrangement'; }
+      _layoutWorker.terminate();
+      _layoutWorker = null;
+      return;
+    }
     if (msg.type === 'progress') {
       if (castBtn) castBtn.textContent = `\u2728 ${Math.round(msg.step / msg.total * 100)}%`;
       return;
@@ -122,6 +150,7 @@ export function autoArrangeLayout(mode) {
         _layoutRunning = false;
         generateTerrain();
         updateRegionLabels();
+        setGhostDirty();
         fitToNodes();
         if (activeBtn) activeBtn.classList.remove('running');
         if (castBtn) { castBtn.classList.remove('running'); castBtn.textContent = '\u2728 Cast Arrangement'; }

@@ -49,15 +49,15 @@
       "_role": "router"
     },
     {
-      "id": "mr8300-host",
+      "id": "ap-east-1",
       "type": "tower",
       "x": 1150,
       "y": 280,
       "icon": "&#127984;",
       "label": "<REDACTED>",
-      "sublabel": "mr8300-host \u2022 10.0.6.100",
+      "sublabel": "ap-east-1 \u2022 10.0.6.100",
       "ip": "10.0.6.100",
-      "collectd": "mr8300-host",
+      "collectd": "ap-east-1",
       "ssh": "glenn",
       "iconStyle": {
         "background": "radial-gradient(circle,#2a1f10,#1a1408)"
@@ -85,15 +85,15 @@
       "_hostname": "ap-east-1"
     },
     {
-      "id": "wrt1900ac-family",
+      "id": "ap-path",
       "type": "tower",
       "x": 650,
       "y": 1000,
       "icon": "&#127984;",
       "label": "The Great Hall",
-      "sublabel": "wrt1900ac-family \u2022 10.0.6.114",
+      "sublabel": "ap-path \u2022 10.0.6.114",
       "ip": "10.0.6.114",
-      "collectd": "wrt1900ac-family",
+      "collectd": "ap-path",
       "ssh": "julia",
       "iconStyle": {
         "background": "radial-gradient(circle,#2a1f10,#1a1408)"
@@ -121,15 +121,15 @@
       "_hostname": "ap-path"
     },
     {
-      "id": "ea6350v3-family",
+      "id": "ap-south-1",
       "type": "tower",
       "x": 500,
       "y": 900,
       "icon": "&#127984;",
       "label": "The Inner Ward",
-      "sublabel": "ea6350v3-family \u2022 10.0.6.135",
+      "sublabel": "ap-south-1 \u2022 10.0.6.135",
       "ip": "10.0.6.135",
-      "collectd": "ea6350v3-family",
+      "collectd": "ap-south-1",
       "iconStyle": {
         "background": "radial-gradient(circle,#2a1f10,#1a1408)"
       },
@@ -156,7 +156,7 @@
       "_hostname": "ap-south-1"
     },
     {
-      "id": "ea6350-cl",
+      "id": "ap-cabin",
       "type": "tower",
       "x": 1000,
       "y": 280,
@@ -192,15 +192,15 @@
       "_hostname": "ap-cabin"
     },
     {
-      "id": "wndr4300sw-shed",
+      "id": "ap-shed",
       "type": "tower",
       "x": 350,
       "y": 500,
       "icon": "&#127984;",
       "label": "The Woodshed Watch",
-      "sublabel": "wndr4300sw-shed \u2022 10.0.6.109",
+      "sublabel": "ap-shed \u2022 10.0.6.109",
       "ip": "10.0.6.109",
-      "collectd": "wndr4300sw-shed",
+      "collectd": "ap-shed",
       "ssh": "willow",
       "iconStyle": {
         "background": "radial-gradient(circle,#2a1f10,#1a1408)"
@@ -228,15 +228,15 @@
       "_hostname": "ap-shed"
     },
     {
-      "id": "onhub-closet",
+      "id": "ap-closet",
       "type": "tower",
       "x": 750,
       "y": 300,
       "icon": "&#127984;",
       "label": "The Hidden Chamber",
-      "sublabel": "onhub-closet \u2022 10.0.6.102",
+      "sublabel": "ap-closet \u2022 10.0.6.102",
       "ip": "10.0.6.102",
-      "collectd": "onhub-closet",
+      "collectd": "ap-closet",
       "ssh": "cl",
       "iconStyle": {
         "background": "radial-gradient(circle,#2a1f10,#1a1408)"
@@ -264,15 +264,15 @@
       "_hostname": "ap-closet"
     },
     {
-      "id": "onhub-bed",
+      "id": "ap-north-1",
       "type": "tower",
       "x": 1200,
       "y": 850,
       "icon": "&#127984;",
       "label": "The Dreamer's Rest",
-      "sublabel": "onhub-bed \u2022 10.0.6.246",
+      "sublabel": "ap-north-1 \u2022 10.0.6.246",
       "ip": "10.0.6.246",
-      "collectd": "onhub-bed",
+      "collectd": "ap-north-1",
       "iconStyle": {
         "background": "radial-gradient(circle,#2a1f10,#1a1408)"
       },
@@ -299,15 +299,15 @@
       "_hostname": "ap-north-1"
     },
     {
-      "id": "onhub-office",
+      "id": "center",
       "type": "tower",
       "x": 1350,
       "y": 450,
       "icon": "&#127984;",
       "label": "The Scribe's Alcove",
-      "sublabel": "onhub-office \u2022 10.0.6.101",
+      "sublabel": "center \u2022 10.0.6.101",
       "ip": "10.0.6.101",
-      "collectd": "onhub-office",
+      "collectd": "center",
       "iconStyle": {
         "background": "radial-gradient(circle,#2a1f10,#1a1408)"
       },
@@ -334,15 +334,15 @@
       "_hostname": "center"
     },
     {
-      "id": "onhub-pumphouse",
+      "id": "ap-pump",
       "type": "tower",
       "x": 380,
       "y": 680,
       "icon": "&#127984;",
       "label": "The Pumphouse Keep",
-      "sublabel": "onhub-pumphouse \u2022 10.0.6.111",
+      "sublabel": "ap-pump \u2022 10.0.6.111",
       "ip": "10.0.6.111",
-      "collectd": "onhub-pumphouse",
+      "collectd": "ap-pump",
       "iconStyle": {
         "background": "radial-gradient(circle,#2a1f10,#1a1408)"
       },
@@ -369,15 +369,15 @@
       "_hostname": "ap-pump"
     },
     {
-      "id": "onhub-family",
+      "id": "ap-east-2",
       "type": "tower",
       "x": 780,
       "y": 950,
       "icon": "&#127984;",
       "label": "The Family Hearth",
-      "sublabel": "onhub-family \u2022 10.0.6.141",
+      "sublabel": "ap-east-2 \u2022 10.0.6.141",
       "ip": "10.0.6.141",
-      "collectd": "onhub-family",
+      "collectd": "ap-east-2",
       "iconStyle": {
         "background": "radial-gradient(circle,#2a1f10,#1a1408)"
       },
@@ -404,15 +404,15 @@
       "_hostname": "ap-east-2"
     },
     {
-      "id": "eap225-outdoor",
+      "id": "ap-deck",
       "type": "tower",
       "x": 500,
       "y": 350,
       "icon": "&#127984;",
       "label": "The Sentinel",
-      "sublabel": "eap225-outdoor \u2022 10.0.6.119",
+      "sublabel": "ap-deck \u2022 10.0.6.119",
       "ip": "10.0.6.119",
-      "collectd": "eap225-outdoor",
+      "collectd": "ap-deck",
       "ssh": "kristen",
       "iconStyle": {
         "background": "radial-gradient(circle,#2a1f10,#1a1408)"
@@ -2797,7 +2797,7 @@
         ]
       },
       "_role": "sensor",
-      "_hostname": "esp32-A90C10"
+      "_hostname": "Pixel-7"
     },
     {
       "id": "wolf-creek",
@@ -2996,7 +2996,7 @@
       "_auto": true,
       "x": 2370,
       "y": 750,
-      "ip": "10.0.11.150",
+      "ip": "10.0.11.101",
       "mac": "3e:75:92:ac:0b:69",
       "_last_seen": 1774735566.2282064,
       "label": "Flip3",
@@ -3021,7 +3021,7 @@
           ],
           [
             "IP",
-            "10.0.11.150"
+            "10.0.11.101"
           ],
           [
             "MAC",
@@ -3753,7 +3753,7 @@
       "_auto": true,
       "x": 2940,
       "y": 750,
-      "ip": "10.0.11.126",
+      "ip": "10.0.11.103",
       "mac": "f2:a2:d3:68:02:4e",
       "_last_seen": 1774565541.2808383,
       "_wired": true,
@@ -3776,7 +3776,7 @@
           ],
           [
             "IP",
-            "10.0.11.126"
+            "10.0.11.103"
           ],
           [
             "MAC",
@@ -4022,13 +4022,13 @@
       "_auto": true,
       "x": 2870,
       "y": 800,
-      "ip": "10.0.11.109",
+      "ip": "10.0.11.104",
       "mac": "8a:3a:b0:49:ab:7e",
       "_last_seen": 1773967387.2491047,
       "_wired": true,
       "label": "Guest Device ab7e",
       "icon": "&#128241;",
-      "sublabel": "10.0.11.109 \u2022 Randomized MAC",
+      "sublabel": "10.0.11.104 \u2022 Randomized MAC",
       "iconStyle": {
         "background": "radial-gradient(circle,#a080c020,#0a0510)",
         "borderColor": "#a080c080",
@@ -4045,7 +4045,7 @@
           ],
           [
             "IP",
-            "10.0.11.109"
+            "10.0.11.104"
           ],
           [
             "MAC",
@@ -4703,7 +4703,7 @@
       "_vendor": null,
       "_os": "Windows",
       "_model": null,
-      "_hostname": "LG_Smart_Dryer2_open",
+      "_hostname": "Flip3",
       "_ha_entity": null,
       "_ha_battery": null
     },
@@ -5193,7 +5193,7 @@
       "_auto": true,
       "x": 2800,
       "y": 750,
-      "ip": "10.0.10.119",
+      "ip": "10.0.10.84",
       "mac": "ae:34:f7:75:c1:27",
       "_last_seen": 1774195269.759509,
       "_wired": true,
@@ -5224,7 +5224,7 @@
           ],
           [
             "IP",
-            "10.0.10.119"
+            "10.0.10.84"
           ],
           [
             "MAC",
@@ -5244,7 +5244,7 @@
       "_vendor": null,
       "_os": "Android",
       "_model": "Google Pixel",
-      "_hostname": "Nest-Thermostat-333F",
+      "_hostname": "Pixel-7a",
       "_ha_entity": null,
       "_ha_battery": null
     },
@@ -5902,7 +5902,7 @@
       "_vendor": null,
       "_os": null,
       "_model": null,
-      "_hostname": "Nest-Thermostat-16B5",
+      "_hostname": "Nest-Thermostat-333F",
       "_ha_entity": null,
       "_ha_battery": null
     },
@@ -6800,7 +6800,7 @@
       "_vendor": null,
       "_os": null,
       "_model": null,
-      "_hostname": "yoto-mini",
+      "_hostname": "lwip0",
       "_ha_entity": null,
       "_ha_battery": null
     },
@@ -6883,31 +6883,31 @@
     },
     {
       "from": "hp-switch",
-      "to": "onhub-office",
+      "to": "center",
       "type": "ap",
       "vlan": 6
     },
     {
       "from": "hp-switch",
-      "to": "onhub-closet",
+      "to": "ap-closet",
       "type": "ap",
       "vlan": 6
     },
     {
       "from": "hp-switch",
-      "to": "onhub-pumphouse",
+      "to": "ap-pump",
       "type": "ap",
       "vlan": 6
     },
     {
       "from": "hp-switch",
-      "to": "eap225-outdoor",
+      "to": "ap-deck",
       "type": "ap",
       "vlan": 6
     },
     {
       "from": "hp-switch",
-      "to": "onhub-bed",
+      "to": "ap-north-1",
       "type": "ap",
       "vlan": 6
     },
@@ -6931,14 +6931,14 @@
     },
     {
       "from": "game",
-      "to": "onhub-closet",
+      "to": "ap-closet",
       "type": "active",
       "collectd": "game",
       "vlan": 6
     },
     {
       "from": "tab-s5e",
-      "to": "onhub-family",
+      "to": "ap-east-2",
       "type": "active",
       "vlan": 6
     },
@@ -7055,67 +7055,67 @@
     },
     {
       "from": "flip3",
-      "to": "mr8300-host",
+      "to": "ap-east-1",
       "type": "active",
       "vlan": 6
     },
     {
       "from": "flip3-5g",
-      "to": "onhub-office",
+      "to": "center",
       "type": "active",
       "vlan": 6
     },
     {
       "from": "pixel-7",
-      "to": "onhub-family",
+      "to": "ap-east-2",
       "type": "active",
       "vlan": 6
     },
     {
       "from": "users-air",
-      "to": "onhub-family",
+      "to": "ap-east-2",
       "type": "active",
       "vlan": 6
     },
     {
       "from": "roku",
-      "to": "mr8300-host",
+      "to": "ap-east-1",
       "type": "active",
       "vlan": 6
     },
     {
       "from": "echo",
-      "to": "onhub-closet",
+      "to": "ap-closet",
       "type": "active",
       "vlan": 6
     },
     {
       "from": "wled-main",
-      "to": "onhub-closet",
+      "to": "ap-closet",
       "type": "active",
       "vlan": 6
     },
     {
       "from": "wled-aqi",
-      "to": "onhub-closet",
+      "to": "ap-closet",
       "type": "active",
       "vlan": 6
     },
     {
       "from": "esp32-bed1",
-      "to": "onhub-bed",
+      "to": "ap-north-1",
       "type": "active",
       "vlan": 6
     },
     {
       "from": "esp32-bed2",
-      "to": "onhub-bed",
+      "to": "ap-north-1",
       "type": "active",
       "vlan": 6
     },
     {
       "from": "esp32-bed3",
-      "to": "onhub-bed",
+      "to": "ap-north-1",
       "type": "active",
       "vlan": 6
     },
@@ -7127,85 +7127,85 @@
     },
     {
       "from": "smart-hubs",
-      "to": "eap225-outdoor",
+      "to": "ap-deck",
       "type": "active",
       "vlan": 10
     },
     {
       "from": "iot-pumphouse",
-      "to": "onhub-pumphouse",
+      "to": "ap-pump",
       "type": "active",
       "vlan": 10
     },
     {
       "from": "bed-air",
-      "to": "onhub-closet",
+      "to": "ap-closet",
       "type": "active",
       "vlan": 10
     },
     {
       "from": "ipad",
-      "to": "onhub-office",
+      "to": "center",
       "type": "active",
       "vlan": 10
     },
     {
       "from": "shed-ble",
-      "to": "wndr4300sw-shed",
+      "to": "ap-shed",
       "type": "active",
       "vlan": 10
     },
     {
       "from": "latitude-5490",
-      "to": "mr8300-host",
+      "to": "ap-east-1",
       "type": "active",
       "vlan": 11
     },
     {
       "from": "pixel-4",
-      "to": "mr8300-host",
+      "to": "ap-east-1",
       "type": "active",
       "vlan": 11
     },
     {
       "from": "iphone",
-      "to": "onhub-family",
+      "to": "ap-east-2",
       "type": "active",
       "vlan": 6
     },
     {
       "from": "kindle",
-      "to": "ea6350v3-family",
+      "to": "ap-south-1",
       "type": "active",
       "vlan": 6
     },
     {
       "from": "latitude-7390",
-      "to": "wndr4300sw-shed",
+      "to": "ap-shed",
       "type": "active",
       "vlan": 6
     },
     {
       "from": "s24-ultra",
-      "to": "onhub-office",
+      "to": "center",
       "type": "active",
       "vlan": 6
     },
     {
       "from": "wolf-creek",
-      "to": "ea6350v3-family",
+      "to": "ap-south-1",
       "type": "active",
       "vlan": 11
     },
     {
       "from": "neocharge",
-      "to": "wndr4300sw-shed",
+      "to": "ap-shed",
       "type": "active",
       "vlan": 10
     },
     {
       "from": "esp32-a90c10",
-      "to": "wndr4300sw-shed",
+      "to": "ap-shed",
       "type": "active",
       "vlan": 6
     },
@@ -7223,13 +7223,13 @@
     },
     {
       "from": "shed-switch",
-      "to": "wndr4300sw-shed",
+      "to": "ap-shed",
       "type": "ap",
       "vlan": 6
     },
     {
       "from": "shed-switch",
-      "to": "wrt1900ac-family",
+      "to": "ap-path",
       "type": "ap",
       "vlan": 6
     },
@@ -7246,36 +7246,36 @@
     },
     {
       "from": "_unknown_3e7592ac0b69",
-      "to": "onhub-office",
+      "to": "ap-path",
       "type": "active"
     },
     {
       "from": "_unknown_60f6775f363d",
-      "to": "onhub-closet",
+      "to": "ap-closet",
       "type": "active"
     },
     {
       "from": "_unknown_be68f45be203",
-      "to": "wndr4300sw-shed",
+      "to": "ap-shed",
       "type": "active"
     },
     {
       "from": "_unknown_483fda5750e1",
-      "to": "onhub-closet",
+      "to": "ap-closet",
       "type": "active"
     },
     {
       "from": "_unknown_cca7c15e89f9",
-      "to": "onhub-office",
+      "to": "center",
       "type": "active"
     },
     {
       "from": "_unknown_40a3cc943680",
-      "to": "onhub-closet",
+      "to": "ap-closet",
       "type": "active"
     },
     {
-      "from": "ea6350v3-family",
+      "from": "ap-south-1",
       "to": "cpe710-client",
       "type": "ap",
       "vlan": 6
@@ -7287,7 +7287,7 @@
     },
     {
       "from": "gs308t",
-      "to": "onhub-family",
+      "to": "ap-east-2",
       "type": "ap"
     },
     {
@@ -7307,17 +7307,17 @@
     },
     {
       "from": "_unknown_583277d4170e",
-      "to": "wrt1900ac-family",
+      "to": "ap-path",
       "type": "active"
     },
     {
       "from": "_unknown_3ea44f764772",
-      "to": "wndr4300sw-shed",
+      "to": "ap-shed",
       "type": "active"
     },
     {
       "from": "_unknown_e6d4c5bc89b3",
-      "to": "onhub-closet",
+      "to": "ap-closet",
       "type": "active"
     },
     {
@@ -7341,144 +7341,144 @@
       "type": "service"
     },
     {
-      "from": "wrt1900ac-family",
+      "from": "ap-path",
       "to": "_unknown_3cd92b6f7229",
       "type": "wired"
     },
     {
       "from": "_unknown_70cf4901c24b",
-      "to": "onhub-office",
+      "to": "center",
       "type": "active"
     },
     {
       "from": "_unknown_301b97215b32",
-      "to": "wndr4300sw-shed",
+      "to": "ap-shed",
       "type": "active"
     },
     {
       "from": "_unknown_2ab069e8c7a5",
-      "to": "ea6350-cl",
+      "to": "ap-cabin",
       "type": "active"
     },
     {
       "from": "_unknown_7a42dafd1a3a",
-      "to": "onhub-closet",
+      "to": "ap-closet",
       "type": "active"
     },
     {
       "from": "_unknown_c8f31948cfd7",
-      "to": "onhub-office",
+      "to": "center",
       "type": "active"
     },
     {
       "from": "_unknown_b61a6b81083b",
-      "to": "onhub-closet",
+      "to": "ap-closet",
       "type": "active"
     },
     {
       "from": "_unknown_104a7d5c2dd0",
-      "to": "mr8300-host",
+      "to": "ap-east-1",
       "type": "active"
     },
     {
       "from": "_unknown_526e93f7bcca",
-      "to": "wndr4300sw-shed",
+      "to": "ap-shed",
       "type": "active"
     },
     {
       "from": "_unknown_a4cf12c63fb2",
-      "to": "onhub-closet",
+      "to": "ap-closet",
       "type": "active"
     },
     {
       "from": "_unknown_d81f12d36df6",
-      "to": "onhub-office",
+      "to": "center",
       "type": "active"
     },
     {
       "from": "_unknown_60f6776074b7",
-      "to": "onhub-bed",
+      "to": "ap-north-1",
       "type": "active"
     },
     {
       "from": "_unknown_6cc374eb9364",
-      "to": "wndr4300sw-shed",
+      "to": "ap-shed",
       "type": "active"
     },
     {
       "from": "_unknown_ea5545c551a4",
-      "to": "ea6350v3-family",
+      "to": "ap-south-1",
       "type": "active"
     },
     {
       "from": "_unknown_0e0f986dea5f",
-      "to": "onhub-office",
+      "to": "center",
       "type": "active"
     },
     {
       "from": "_unknown_d6c15e6a6f33",
-      "to": "onhub-closet",
+      "to": "ap-closet",
       "type": "active"
     },
     {
       "from": "_unknown_381f8d9ba8d1",
-      "to": "onhub-closet",
+      "to": "ap-closet",
       "type": "active"
     },
     {
       "from": "_unknown_3c9c0f44a8ae",
-      "to": "mr8300-host",
+      "to": "ap-east-1",
       "type": "active"
     },
     {
       "from": "_unknown_1c4d70da8248",
-      "to": "onhub-office",
+      "to": "center",
       "type": "active"
     },
     {
       "from": "_unknown_4cb19949ad66",
-      "to": "onhub-office",
+      "to": "center",
       "type": "active"
     },
     {
       "from": "_unknown_3c9c0f447ba9",
-      "to": "onhub-closet",
+      "to": "ap-closet",
       "type": "active"
     },
     {
       "from": "_unknown_7cf666a9f7f0",
-      "to": "onhub-closet",
+      "to": "ap-closet",
       "type": "active"
     },
     {
       "from": "_unknown_f6a8f8841230",
-      "to": "onhub-closet",
+      "to": "ap-closet",
       "type": "active"
     },
     {
       "from": "_unknown_b4e62d59c259",
-      "to": "onhub-office",
+      "to": "center",
       "type": "active"
     },
     {
       "from": "_unknown_d0ef7612fbbc",
-      "to": "onhub-closet",
+      "to": "ap-closet",
       "type": "active"
     },
     {
       "from": "_unknown_606720d17748",
-      "to": "wndr4300sw-shed",
+      "to": "center",
       "type": "active"
     },
     {
-      "from": "woodshed",
-      "to": "wrt1900ac-family",
+      "from": "ap-path",
+      "to": "woodshed",
       "type": "trunk",
-      "label": "eth0\u2194lan3",
+      "label": "lan3\u2194eth0",
       "_lldp": true
     },
     {
-      "from": "wrt1900ac-family",
+      "from": "ap-path",
       "to": "cpe710-client",
       "type": "trunk",
       "label": "lan2\u2194br0",
@@ -7486,14 +7486,14 @@
     },
     {
       "from": "gs308t",
-      "to": "ea6350-cl",
+      "to": "ap-cabin",
       "type": "trunk",
       "label": "lan5\u2194wan",
       "_lldp": true
     },
     {
       "from": "gs308t",
-      "to": "mr8300-host",
+      "to": "ap-east-1",
       "type": "trunk",
       "label": "lan6\u2194wan",
       "_lldp": true

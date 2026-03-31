@@ -778,7 +778,7 @@ def _get_lldp_neighbors(ap_ip):
             port = entry.get("port", {})
             via = entry.get("via", "LLDP")
 
-            # Chassis dict key is the remote hostname (e.g., "woodshed", "CPE710")
+            # Chassis dict key is the remote hostname (e.g., "ap-woodshed", "CPE710")
             remote_name = ""
             remote_mac = ""
             remote_ip = ""
@@ -839,7 +839,7 @@ def detect_ethernet_topology():
         # Index by hostname patterns for matching LLDP SysName
         nid = n["id"].lower()
         node_by_name[nid] = n["id"]
-        # Also index without suffixes (e.g., "wrt1900ac-family" → "wrt1900ac")
+        # Also index without suffixes (e.g., "ap-path" → "wrt1900ac")
         for sep in ("-", "_"):
             if sep in nid:
                 node_by_name[nid.split(sep)[0]] = n["id"]

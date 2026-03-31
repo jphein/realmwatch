@@ -698,9 +698,7 @@
   #map-world.zooming #arcane-grid,
   #map-world.zooming #enchanted-vines,
   #map-world.zooming #compass-rose { display: none !important; }
-  /* Labels use visibility:hidden (not display:none) to preserve .realm-node
-     container width — prevents icon horizontal shift during zoom */
-  #map-world.zooming .node-label,
+  /* Sublabels hidden during zoom for performance, but main labels stay visible */
   #map-world.zooming .node-sublabel { visibility: hidden !important; }
   #map-world.zooming .region-label,
   #map-world.zooming .vlan-label { display: none !important; }

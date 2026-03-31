@@ -36,7 +36,7 @@ NODE_TEMPLATES = {
             "The outer darkness probes, but {conntrack} connections are accounted for. All orderly.",
         ],
     },
-    "mr8300-host": {
+    "ap-east-1": {
         "name": "<REDACTED>",
         "color": "rgba(192,144,96,0.5)",
         "templates": [
@@ -45,7 +45,7 @@ NODE_TEMPLATES = {
             "Standing watch at {temp}\u00B0C. {iface_summary}",
         ],
     },
-    "onhub-office": {
+    "center": {
         "name": "The Scribe's Alcove",
         "color": "rgba(192,144,96,0.5)",
         "templates": [
@@ -53,7 +53,7 @@ NODE_TEMPLATES = {
             "Uptime: {uptime}. My signal guides the scribes. {iface_summary}",
         ],
     },
-    "onhub-closet": {
+    "ap-closet": {
         "name": "The Hidden Chamber",
         "color": "rgba(192,144,96,0.5)",
         "templates": [
@@ -61,7 +61,7 @@ NODE_TEMPLATES = {
             "The hidden currents flow — {iface_summary}. Memory: {mem_pct}%.",
         ],
     },
-    "wndr4300sw-shed": {
+    "ap-shed": {
         "name": "The Woodshed Watch",
         "color": "rgba(192,144,96,0.5)",
         "templates": [
@@ -69,7 +69,7 @@ NODE_TEMPLATES = {
             "The shed stands. Uptime: {uptime}. {iface_summary}",
         ],
     },
-    "onhub-pumphouse": {
+    "ap-pump": {
         "name": "The Pumphouse Keep",
         "color": "rgba(192,144,96,0.5)",
         "templates": [
@@ -77,7 +77,7 @@ NODE_TEMPLATES = {
             "The deep keep holds. Uptime: {uptime}. My reach extends outward.",
         ],
     },
-    "wrt1900ac-family": {
+    "ap-path": {
         "name": "The Great Hall",
         "color": "rgba(192,144,96,0.5)",
         "templates": [
@@ -85,7 +85,7 @@ NODE_TEMPLATES = {
             "Many souls gather here. Memory: {mem_pct}%. Temperature: {temp}\u00B0C.",
         ],
     },
-    "ea6350-cl": {
+    "ap-cabin": {
         "name": "The Citadel Beacon",
         "color": "rgba(192,144,96,0.5)",
         "templates": [
@@ -93,7 +93,7 @@ NODE_TEMPLATES = {
             "From here I see all approaches. Memory: {mem_pct}%. {iface_summary}",
         ],
     },
-    "eap225-outdoor": {
+    "ap-deck": {
         "name": "The Sentinel",
         "color": "rgba(192,144,96,0.5)",
         "templates": [
@@ -101,7 +101,7 @@ NODE_TEMPLATES = {
             "The outdoor watch continues. Uptime: {uptime}. Memory: {mem_pct}%.",
         ],
     },
-    "ea6350v3-family": {
+    "ap-south-1": {
         "name": "The Inner Ward",
         "color": "rgba(192,144,96,0.5)",
         "templates": [
@@ -109,7 +109,7 @@ NODE_TEMPLATES = {
             "Memory: {mem_pct}%. I guard the family's corridors.",
         ],
     },
-    "onhub-family": {
+    "ap-east-2": {
         "name": "The Family Hearth",
         "color": "rgba(192,144,96,0.5)",
         "templates": [
@@ -117,7 +117,7 @@ NODE_TEMPLATES = {
             "Uptime: {uptime}. All gather 'round my signal.",
         ],
     },
-    "onhub-bed": {
+    "ap-north-1": {
         "name": "The Dreamer's Rest",
         "color": "rgba(192,144,96,0.5)",
         "templates": [

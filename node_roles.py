@@ -158,19 +158,19 @@ _SEED_OUI = {
 # After migrate_to_db(), roles stored as _role field on each node in DB.
 _SEED_NODE_ROLES = {
     # Routers
-    "gatekeeper": "router", "mr8300-host": "router",
-    "wrt1900ac-family": "router", "ea6350v3-family": "router",
-    "ea6350-cl": "router", "wndr4300sw-shed": "router",
+    "gatekeeper": "router", "ap-east-1": "router",
+    "ap-path": "router", "ap-south-1": "router",
+    "ap-cabin": "router", "ap-shed": "router",
     # Access Points
-    "onhub-closet": "ap", "onhub-bed": "ap", "onhub-office": "ap",
-    "onhub-pumphouse": "ap", "onhub-family": "ap", "eap225-outdoor": "ap",
+    "ap-closet": "ap", "ap-north-1": "ap", "center": "ap",
+    "ap-pump": "ap", "ap-east-2": "ap", "ap-deck": "ap",
     # Switches
     "hp-switch": "switch", "gs308t": "switch",
     # Bridges
     "gigabeam0": "bridge", "gigabeam1": "bridge",
     "cpe710-ap": "bridge", "cpe710-client": "bridge",
     # Servers
-    "woodshed": "ap",
+    "ap-woodshed": "ap",
     "katana": "server", "oracle": "server", "ha": "server",
     "nodered": "server", "family-vm": "vm",
     # WLED
@@ -519,7 +519,7 @@ def get_role(node_id, node_data=None):
     nid = node_id.lower()
     if nid.startswith("wled"):
         return "wled"
-    if nid.startswith("onhub") or nid.startswith("eap") or nid.startswith("woodshed"):
+    if nid.startswith("onhub") or nid.startswith("eap") or nid.startswith("ap-woodshed"):
         return "ap"
     if nid.startswith("ts-"):
         return "tailscale"

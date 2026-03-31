@@ -1,7 +1,10 @@
 // ── Layout Web Worker — Multiple Arrangement Modes ──
 // Pure computation — no DOM access. Receives topology + mode, returns positions.
+// Build: 2026-03-31T19 — physical-realm layout added
+console.log('[LayoutWorker] v2026-03-31 loaded');
 
 self.onmessage = function(e) {
+  try {
   const { nodes, connIdx, params, worldW, worldH, mode, nodeVlans, latencyMap, wifiMap } = e.data;
   const { attract, repulse, edgeLen, spacing } = params;
   const N = nodes.length;
@@ -138,6 +141,7 @@ self.onmessage = function(e) {
     case 'spectral-sigil': layoutSpectralSigil(); break;
     case 'arcane-mandala': layoutArcaneMandala(); break;
     case 'stress-atlas': layoutStressAtlas(); break;
+    case 'physical-realm': layoutPhysicalRealm(); break;
     default: layoutWorldTree();
   }
 
@@ -1101,6 +1105,222 @@ self.onmessage = function(e) {
     }
   }
 
+  // ── Physical Realm: Building-clustered layout using latency + WiFi intelligence ──
+  function layoutPhysicalRealm() {
+    // ── 1. Classify nodes into physical buildings ──
+    // Uses hostname patterns (north-*, south-*, east-*) and known device mappings
+    const BUILDING_RULES = [
+      // New hostnames (north-*/south-*/east-*)
+      { match: id => /^north-/.test(id), building: 'center' },
+      { match: id => /^south-/.test(id), building: 'south' },
+      { match: id => /^east-/.test(id), building: 'east' },
+      // Known infrastructure → building mapping
+      { match: id => ['gatekeeper','hp-switch','katana','oracle','ha','game','gpu','poe-switch','nodered'].includes(id), building: 'center' },
+      { match: id => ['forge','mana','essence','void','wan'].includes(id), building: 'center' }, // katana resources
+      { match: id => ['shed-switch','disks'].includes(id), building: 'ap-shed' },
+      { match: id => ['cpe710-ap','gigabeam0'].includes(id), building: 'north-outdoor' },
+      { match: id => ['cpe710-client'].includes(id), building: 'south' },
+      { match: id => ['gigabeam1','gs308t'].includes(id), building: 'east' },
+    ];
+
+    const buildingOf = {};
+    for (let i = 0; i < N; i++) {
+      const id = nodes[i].id;
+      let assigned = null;
+      for (const rule of BUILDING_RULES) {
+        if (rule.match(id)) { assigned = rule.building; break; }
+      }
+      // WiFi clients inherit their AP's building
+      if (!assigned && _isWifi(i) && wifiMap) {
+        const w = wifiMap[id];
+        if (w && w.ap) {
+          const apIdx = nodes.findIndex(n => n.id === w.ap);
+          if (apIdx >= 0) {
+            for (const rule of BUILDING_RULES) {
+              if (rule.match(nodes[apIdx].id)) { assigned = rule.building; break; }
+            }
+          }
+        }
+      }
+      // Fallback: infer from connections — node inherits majority building of neighbors
+      if (!assigned) {
+        const neighborBuildings = {};
+        for (const nb of neighbors[i]) {
+          const nbId = nodes[nb].id;
+          for (const rule of BUILDING_RULES) {
+            if (rule.match(nbId)) {
+              const b = rule.building.replace(/-.*/, ''); // coarse: north/south/east
+              neighborBuildings[b] = (neighborBuildings[b] || 0) + 1;
+              break;
+            }
+          }
+        }
+        let bestB = 'center', bestC = 0;
+        for (const [b, c] of Object.entries(neighborBuildings)) {
+          if (c > bestC) { bestC = c; bestB = b + '-office'; }
+        }
+        assigned = bestB;
+      }
+      buildingOf[i] = assigned || 'center';
+    }
+
+    // ── 2. Position building cluster centers ──
+    // Triangle layout: North at top, South bottom-left, East bottom-right
+    // Use latency between bridge endpoints to scale distances
+    // Property layout based on real distances:
+    // Office = center, Shed = ~100ft SE, East (Mom's) = ~800ft E, South (Dad's) = via CPE710
+    // Scale: 800ft span → use proportional spacing
+    const buildingCenters = {
+      'center':  { x: CX * 0.5,      y: CY * 0.55 },
+      'ap-shed':    { x: CX * 0.6,      y: CY * 0.7 },   // ~100ft SE of office
+      'north-outdoor': { x: CX * 0.55,     y: CY * 0.8 },   // around office/shed area
+      'south':         { x: CX * 0.45,     y: CY * 1.1 },   // ~200ft south of office
+      'east':          { x: CX * 1.65,     y: CY * 0.6 },   // ~800ft east via Gigabeam
+    };
+
+    // Adjust inter-building distances using PTP bridge latency if available
+    const bridgePairs = [
+      ['cpe710-ap', 'cpe710-client', 'north-outdoor', 'south'],
+      ['gigabeam0', 'gigabeam1', 'north-outdoor', 'east'],
+    ];
+    for (const [idA, idB, bA, bB] of bridgePairs) {
+      const iA = nodes.findIndex(n => n.id === idA);
+      const iB = nodes.findIndex(n => n.id === idB);
+      if (iA >= 0 && iB >= 0) {
+        const lat = _estimateLatency(iA, iB);
+        if (lat != null && lat > 0) {
+          // Scale building distance by latency (higher latency = farther)
+          const scale = Math.max(0.7, Math.min(1.5, lat / 5));
+          const cA = buildingCenters[bA], cB = buildingCenters[bB];
+          if (cA && cB) {
+            const dx = cB.x - cA.x, dy = cB.y - cA.y;
+            const midX = (cA.x + cB.x) / 2, midY = (cA.y + cB.y) / 2;
+            cB.x = midX + dx * scale / 2;
+            cB.y = midY + dy * scale / 2;
+            cA.x = midX - dx * scale / 2;
+            cA.y = midY - dy * scale / 2;
+          }
+        }
+      }
+    }
+
+    // ── 3. Position nodes within each building cluster ──
+    const buildingGroups = {};
+    for (let i = 0; i < N; i++) {
+      const b = buildingOf[i];
+      if (!buildingGroups[b]) buildingGroups[b] = [];
+      buildingGroups[b].push(i);
+    }
+
+    for (const [building, group] of Object.entries(buildingGroups)) {
+      const center = buildingCenters[building] || { x: CX, y: CY };
+
+      // Separate infrastructure (wired) from WiFi clients
+      const infra = group.filter(i => !_isWifi(i));
+      const wifiClients = group.filter(i => _isWifi(i));
+
+      // Sort infra by importance: type rank * 2 + degree (most important = center)
+      infra.sort((a, b) => {
+        const sa = (typeRank[nodes[a].type] || 1) * 2 + degree[a];
+        const sb = (typeRank[nodes[b].type] || 1) * 2 + degree[b];
+        return sb - sa;
+      });
+
+      // Place infra nodes using latency-aware radial layout within cluster
+      if (infra.length === 0) continue;
+
+      // Most important node at center
+      pos[infra[0]] = { x: center.x, y: center.y };
+
+      if (infra.length > 1) {
+        // Use mini stress-minimization for intra-cluster layout
+        // Initialize: concentric rings by importance
+        const clusterR = edgeLen * Math.max(1.5, Math.sqrt(infra.length) * 0.8);
+        for (let j = 1; j < infra.length; j++) {
+          const angle = (j / (infra.length - 1)) * Math.PI * 2 - Math.PI / 2;
+          const r = clusterR * (0.4 + 0.6 * (j / infra.length));
+          pos[infra[j]] = {
+            x: center.x + Math.cos(angle) * r,
+            y: center.y + Math.sin(angle) * r * 0.82,
+          };
+        }
+
+        // Mini force simulation: attract connected nodes, repel overlaps
+        // Use latency to weight edge lengths — lower latency = closer
+        const MINI_STEPS = 30;
+        const miniVel = {};
+        for (const i of infra) miniVel[i] = { x: 0, y: 0 };
+
+        for (let step = 0; step < MINI_STEPS; step++) {
+          const temp = 1 - step / MINI_STEPS;
+
+          // Repulsion between all cluster members
+          for (let a = 0; a < infra.length; a++) {
+            for (let b = a + 1; b < infra.length; b++) {
+              const iA = infra[a], iB = infra[b];
+              const dx = pos[iA].x - pos[iB].x;
+              const dy = pos[iA].y - pos[iB].y;
+              const d2 = dx * dx + dy * dy + 100;
+              if (d2 > 40000) continue;
+              const f = repulse * 200 * temp / d2;
+              miniVel[iA].x += dx * f; miniVel[iA].y += dy * f;
+              miniVel[iB].x -= dx * f; miniVel[iB].y -= dy * f;
+            }
+          }
+
+          // Attraction along edges — weighted by latency
+          for (const [iA, iB] of connIdx) {
+            if (buildingOf[iA] !== building || buildingOf[iB] !== building) continue;
+            if (_isWifi(iA) || _isWifi(iB)) continue;
+            const dx = pos[iB].x - pos[iA].x;
+            const dy = pos[iB].y - pos[iA].y;
+            const d = Math.sqrt(dx * dx + dy * dy) + 0.1;
+            // Latency-aware ideal length
+            const lat = _estimateLatency(iA, iB);
+            const idealLen = lat != null
+              ? edgeLen * Math.max(0.4, Math.min(2, Math.log2(lat + 1) * 0.6))
+              : edgeLen * 0.8;
+            if (d <= idealLen) continue;
+            const f = attract * 0.0008 * (d - idealLen) * temp;
+            if (miniVel[iA]) { miniVel[iA].x += (dx / d) * f; miniVel[iA].y += (dy / d) * f; }
+            if (miniVel[iB]) { miniVel[iB].x -= (dx / d) * f; miniVel[iB].y -= (dy / d) * f; }
+          }
+
+          // Pull toward cluster center (prevents drift)
+          for (const i of infra) {
+            const dx = center.x - pos[i].x;
+            const dy = center.y - pos[i].y;
+            const d = Math.sqrt(dx * dx + dy * dy) + 0.1;
+            const f = 0.02 * temp;
+            miniVel[i].x += dx * f; miniVel[i].y += dy * f;
+          }
+
+          // Apply velocities
+          for (const i of infra) {
+            miniVel[i].x *= 0.6; miniVel[i].y *= 0.6;
+            const vLen = Math.sqrt(miniVel[i].x ** 2 + miniVel[i].y ** 2);
+            if (vLen > 4) { miniVel[i].x *= 4 / vLen; miniVel[i].y *= 4 / vLen; }
+            pos[i].x += miniVel[i].x; pos[i].y += miniVel[i].y;
+          }
+        }
+      }
+
+      // Place WiFi clients around their APs using golden spiral
+      const wifiSpacing = edgeLen * 0.3;
+      for (const [apIdxStr, clients] of Object.entries(_apGroups)) {
+        const apIdx = parseInt(apIdxStr);
+        if (buildingOf[apIdx] !== building) continue;
+        const apPos = pos[apIdx];
+        if (!apPos) continue;
+        // Filter to clients in this building
+        const bClients = clients.filter(c => buildingOf[c] === building);
+        if (bClients.length > 0) {
+          _goldenArrange(apPos.x, apPos.y, bClients, wifiSpacing);
+        }
+      }
+    }
+  }
+
   // ══════════════════════════════════════════════
   // ── SHARED: Overlap-removal force simulation ──
   // ══════════════════════════════════════════════
@@ -1127,7 +1347,7 @@ self.onmessage = function(e) {
   }
 
   // Latency Forge runs its own extended force sim — skip the shared one
-  const skipSharedSim = (mode === 'latency-forge' || mode === 'stress-atlas');
+  const skipSharedSim = (mode === 'latency-forge' || mode === 'stress-atlas' || mode === 'physical-realm');
 
   if (!skipSharedSim) {
     const vel = new Array(N);
@@ -1236,4 +1456,7 @@ self.onmessage = function(e) {
     { type: 'done', x: xArr.buffer, y: yArr.buffer, count: N },
     [xArr.buffer, yArr.buffer]
   );
+  } catch (err) {
+    self.postMessage({ type: 'error', message: err.message, stack: err.stack });
+  }
 };
