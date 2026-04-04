@@ -644,8 +644,8 @@
       "y": 520,
       "icon": "&#127752;",
       "label": "The Prismatic",
-      "sublabel": "WLED \u2022 10.0.11.133",
-      "ip": "10.0.11.133",
+      "sublabel": "WLED \u2022 10.0.10.107",
+      "ip": "10.0.10.107",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a0a1a,#10050f)",
         "borderColor": "rgba(200,100,255,0.4)",
@@ -671,7 +671,7 @@
           ],
           [
             "IP",
-            "10.0.11.133"
+            "10.0.10.107"
           ]
         ]
       },
@@ -685,8 +685,8 @@
       "y": 420,
       "icon": "&#127752;",
       "label": "The AQI Crystal",
-      "sublabel": "wled-AQI-Crystal \u2022 10.0.11.160",
-      "ip": "10.0.11.160",
+      "sublabel": "wled-AQI-Crystal \u2022 10.0.10.108",
+      "ip": "10.0.10.108",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a0a1a,#10050f)",
         "borderColor": "rgba(200,100,255,0.4)",
@@ -712,7 +712,7 @@
           ],
           [
             "IP",
-            "10.0.11.160"
+            "10.0.10.108"
           ]
         ]
       },
@@ -837,8 +837,8 @@
       "y": 1030,
       "icon": "&#128308;",
       "label": "Bed Rune III",
-      "sublabel": "wled-mamacloset \u2022 10.0.11.124",
-      "ip": "10.0.11.124",
+      "sublabel": "wled-mamacloset \u2022 10.0.10.111",
+      "ip": "10.0.10.111",
       "iconStyle": {
         "background": "radial-gradient(circle,#151510,#0a0a08)",
         "borderColor": "rgba(140,160,80,0.3)",
@@ -860,7 +860,7 @@
           ],
           [
             "IP",
-            "10.0.11.124"
+            "10.0.10.111"
           ]
         ]
       },
@@ -1088,9 +1088,9 @@
       "y": 240,
       "icon": "&#128241;",
       "label": "The Messenger",
-      "sublabel": "Galaxy-Z-Flip3-5G \u2022 10.0.11.120",
-      "ip": "10.0.11.120",
-      "mac": "5a:d3:d7:46:bc:87",
+      "sublabel": "Galaxy-Z-Flip3-5G \u2022 10.0.6.249",
+      "ip": "10.0.6.249",
+      "mac": "ac:6c:90:f2:81:c7",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1520,#0f0a15)",
         "borderColor": "rgba(120,160,200,0.4)",
@@ -1115,12 +1115,12 @@
           ],
           [
             "IP",
-            "10.0.11.120"
+            "10.0.6.249"
           ]
         ]
       },
       "_role": "phone",
-      "_hostname": "DESKTOP-JOO34G7"
+      "_hostname": "Galaxy-Z-Flip3-5G"
     },
     {
       "id": "flip3-5g",
@@ -1129,8 +1129,8 @@
       "y": 280,
       "icon": "&#128241;",
       "label": "The Wanderer",
-      "sublabel": "Z Flip3 5G \u2022 10.0.11.200",
-      "ip": "10.0.11.200",
+      "sublabel": "Z Flip3 5G \u2022 10.0.11.107",
+      "ip": "10.0.11.107",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1520,#0f0a15)",
         "borderColor": "rgba(120,160,200,0.4)",
@@ -1152,7 +1152,7 @@
           ],
           [
             "IP",
-            "10.0.6.138"
+            "10.0.11.107"
           ]
         ]
       },
@@ -1166,8 +1166,8 @@
       "y": 1020,
       "icon": "&#128241;",
       "label": "<REDACTED>",
-      "sublabel": "S24 Ultra \u2022 10.0.11.240",
-      "ip": "10.0.11.240",
+      "sublabel": "S24 Ultra \u2022 10.0.11.104",
+      "ip": "10.0.11.104",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1520,#0f0a15)",
         "borderColor": "rgba(140,120,200,0.4)",
@@ -1193,7 +1193,7 @@
           ],
           [
             "IP",
-            "10.0.11.240"
+            "10.0.11.104"
           ]
         ]
       },
@@ -1216,7 +1216,7 @@
         "height": "40px",
         "fontSize": "18px"
       },
-      "mac": "c6:c8:21:a7:b1:9a",
+      "mac": "1e:15:a9:6e:aa:c7",
       "tip": {
         "title": "Pixel 7",
         "stats": [
@@ -1244,8 +1244,8 @@
       "y": 340,
       "icon": "&#128241;",
       "label": "The Old Herald",
-      "sublabel": "Pixel-4 \u2022 10.0.11.112",
-      "ip": "10.0.11.112",
+      "sublabel": "Pixel-4 \u2022 10.0.11.111",
+      "ip": "10.0.11.111",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1520,#0f0a15)",
         "borderColor": "rgba(100,180,100,0.3)",
@@ -1253,7 +1253,7 @@
         "height": "38px",
         "fontSize": "16px"
       },
-      "mac": "ee:ec:6f:b3:06:7f",
+      "mac": "da:22:5c:dc:bc:80",
       "tip": {
         "title": "Pixel 4",
         "stats": [
@@ -1267,7 +1267,7 @@
           ],
           [
             "IP",
-            "10.0.11.112"
+            "10.0.11.111"
           ]
         ]
       },
@@ -1281,8 +1281,8 @@
       "y": 1080,
       "icon": "&#128241;",
       "label": "The Apple Shard",
-      "sublabel": "iPhone \u2022 10.0.11.125",
-      "ip": "10.0.11.125",
+      "sublabel": "iPhone \u2022 10.0.11.105",
+      "ip": "10.0.11.105",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1520,#0f0a15)",
         "borderColor": "rgba(160,160,160,0.4)",
@@ -1290,7 +1290,7 @@
         "height": "40px",
         "fontSize": "18px"
       },
-      "mac": "fe:95:48:b6:11:4c",
+      "mac": "ce:72:01:f8:60:a8",
       "tip": {
         "title": "iPhone",
         "stats": [
@@ -1308,7 +1308,7 @@
           ],
           [
             "IP",
-            "10.0.11.125"
+            "10.0.11.105"
           ]
         ]
       },
@@ -1352,7 +1352,7 @@
           ]
         ]
       },
-      "mac": "aa:36:98:2b:b3:e3",
+      "mac": "0e:0f:98:6d:ea:5f",
       "_role": "tablet",
       "_hostname": "Galaxy-Tab-S5e"
     },
@@ -1363,8 +1363,8 @@
       "y": 580,
       "icon": "&#128195;",
       "label": "The Ancient Slate",
-      "sublabel": "iPad-3rd-gen \u2022 10.0.10.140",
-      "ip": "10.0.10.140",
+      "sublabel": "iPad-3rd-gen \u2022 10.0.10.118",
+      "ip": "10.0.10.118",
       "iconStyle": {
         "background": "radial-gradient(circle,#151520,#0a0a15)",
         "borderColor": "rgba(160,160,180,0.3)",
@@ -1372,7 +1372,7 @@
         "height": "38px",
         "fontSize": "16px"
       },
-      "mac": "26:6e:81:d7:f7:c9",
+      "mac": "4c:b1:99:49:ad:66",
       "tip": {
         "title": "iPad",
         "stats": [
@@ -1386,7 +1386,7 @@
           ],
           [
             "IP",
-            "10.0.10.140"
+            "10.0.10.118"
           ]
         ]
       },
@@ -1400,8 +1400,8 @@
       "y": 920,
       "icon": "&#128214;",
       "label": "The Reading Stone",
-      "sublabel": "Kindle \u2022 10.0.11.125",
-      "ip": "10.0.11.125",
+      "sublabel": "Kindle \u2022 10.0.11.108",
+      "ip": "10.0.11.108",
       "iconStyle": {
         "background": "radial-gradient(circle,#1a1510,#0f0a08)",
         "borderColor": "rgba(160,140,100,0.4)",
@@ -1423,7 +1423,7 @@
           ],
           [
             "IP",
-            "10.0.11.125"
+            "10.0.11.108"
           ]
         ]
       },
@@ -1511,8 +1511,8 @@
       "y": 1080,
       "icon": "&#128187;",
       "label": "The Windborne Tome",
-      "sublabel": "users-Air \u2022 10.0.11.105",
-      "ip": "10.0.11.105",
+      "sublabel": "users-Air \u2022 10.0.11.101",
+      "ip": "10.0.11.101",
       "iconStyle": {
         "background": "radial-gradient(circle,#151520,#0a0a15)",
         "borderColor": "rgba(160,160,180,0.4)",
@@ -1534,7 +1534,7 @@
           ],
           [
             "IP",
-            "10.0.11.105"
+            "10.0.11.101"
           ]
         ]
       },
@@ -2769,8 +2769,8 @@
       "y": 480,
       "icon": "&#128308;",
       "label": "The Hearthstone Rune",
-      "sublabel": "esp32-A90C10 \u2022 10.0.11.100",
-      "ip": "10.0.11.100",
+      "sublabel": "esp32-A90C10 \u2022 10.0.10.100",
+      "ip": "10.0.10.100",
       "iconStyle": {
         "background": "radial-gradient(circle,#151510,#0a0a08)",
         "borderColor": "rgba(140,160,80,0.3)",
@@ -2792,12 +2792,12 @@
           ],
           [
             "IP",
-            "10.0.11.100"
+            "10.0.10.100"
           ]
         ]
       },
       "_role": "sensor",
-      "_hostname": "Pixel-7"
+      "_hostname": "esp32-A90C10"
     },
     {
       "id": "wolf-creek",
@@ -2996,7 +2996,7 @@
       "_auto": true,
       "x": 2370,
       "y": 750,
-      "ip": "10.0.11.101",
+      "ip": "10.0.11.118",
       "mac": "3e:75:92:ac:0b:69",
       "_last_seen": 1774735566.2282064,
       "label": "Flip3",
@@ -3021,7 +3021,7 @@
           ],
           [
             "IP",
-            "10.0.11.101"
+            "10.0.11.118"
           ],
           [
             "MAC",
@@ -3041,156 +3041,6 @@
       "_model": null
     },
     {
-      "id": "_unknown_60f6775f363d",
-      "type": "device",
-      "_auto": true,
-      "x": 2510,
-      "y": 800,
-      "ip": "10.0.6.249",
-      "mac": "60:f6:77:5f:36:3d",
-      "_last_seen": 1773534894.9827955,
-      "label": "Device 363d",
-      "icon": "&#128123;",
-      "sublabel": "10.0.6.249",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "IP",
-            "10.0.6.249"
-          ],
-          [
-            "MAC",
-            "60:f6:77:5f:36:3d"
-          ],
-          [
-            "Network",
-            "Admin"
-          ]
-        ]
-      },
-      "_os": null,
-      "_model": null,
-      "_hostname": "Device 363d"
-    },
-    {
-      "id": "_unknown_be68f45be203",
-      "type": "device",
-      "_auto": true,
-      "x": 2300,
-      "y": 850,
-      "ip": "10.0.11.156",
-      "mac": "be:68:f4:5b:e2:03",
-      "_last_seen": 1773545811.8251338,
-      "label": "Galaxy-Z-Flip3-5G",
-      "icon": "&#128241;",
-      "sublabel": "10.0.11.156 \u2022 Samsung Z Flip Android",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#a080c020,#0a0510)",
-        "borderColor": "#a080c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "phone",
-      "_vendor": null,
-      "_hostname": "Galaxy-Z-Flip3-5G",
-      "tip": {
-        "title": "Samsung Z Flip",
-        "stats": [
-          [
-            "Model",
-            "Samsung Z Flip"
-          ],
-          [
-            "Role",
-            "Phone"
-          ],
-          [
-            "OS",
-            "Android"
-          ],
-          [
-            "IP",
-            "10.0.11.156"
-          ],
-          [
-            "MAC",
-            "be:68:f4:5b:e2:03"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "Guest"
-          ]
-        ]
-      },
-      "_os": "Android",
-      "_model": "Samsung Z Flip"
-    },
-    {
-      "id": "_unknown_40a3cc943680",
-      "type": "device",
-      "_auto": true,
-      "x": 2650,
-      "y": 850,
-      "ip": "10.0.6.113",
-      "mac": "40:a3:cc:94:36:80",
-      "_last_seen": 1773596474.446333,
-      "label": "tablet",
-      "icon": "&#128123;",
-      "sublabel": "10.0.6.113",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_hostname": "Flip3",
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "IP",
-            "10.0.6.113"
-          ],
-          [
-            "MAC",
-            "40:a3:cc:94:36:80"
-          ],
-          [
-            "Network",
-            "Admin"
-          ]
-        ]
-      },
-      "_os": null,
-      "_model": null
-    },
-    {
       "id": "cam3",
       "label": "The Third Eye",
       "type": "device",
@@ -3200,165 +3050,6 @@
       "_role": "camera",
       "x": 380,
       "y": 760
-    },
-    {
-      "id": "_unknown_c213db2fcd3e",
-      "type": "device",
-      "_auto": true,
-      "x": 2800,
-      "y": 750,
-      "ip": "10.0.6.125",
-      "mac": "c2:13:db:2f:cd:3e",
-      "_last_seen": 1773631840.9300303,
-      "_wired": true,
-      "label": "Admin Device cd3e",
-      "icon": "&#128123;",
-      "sublabel": "10.0.6.125 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "IP",
-            "10.0.6.125"
-          ],
-          [
-            "MAC",
-            "c2:13:db:2f:cd:3e"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "Admin"
-          ]
-        ]
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "Galaxy-Z-Flip3-5G",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_6a4705865fe3",
-      "type": "device",
-      "_auto": true,
-      "x": 2800,
-      "y": 750,
-      "ip": "10.0.6.122",
-      "mac": "6a:47:05:86:5f:e3",
-      "_last_seen": 1773632039.9050047,
-      "_wired": true,
-      "label": "Jeffrey-s-Z-Flip3",
-      "icon": "&#128123;",
-      "sublabel": "10.0.6.122 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "IP",
-            "10.0.6.122"
-          ],
-          [
-            "MAC",
-            "6a:47:05:86:5f:e3"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "Admin"
-          ]
-        ]
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "Jeffrey-s-Z-Flip3",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_b27432636ef3",
-      "type": "device",
-      "_auto": true,
-      "x": 2800,
-      "y": 750,
-      "ip": "10.0.6.115",
-      "mac": "b2:74:32:63:6e:f3",
-      "_last_seen": 1773634629.8569794,
-      "_wired": true,
-      "label": "Admin Device 6ef3",
-      "icon": "&#128123;",
-      "sublabel": "10.0.6.115 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "IP",
-            "10.0.6.115"
-          ],
-          [
-            "MAC",
-            "b2:74:32:63:6e:f3"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "Admin"
-          ]
-        ]
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "Galaxy-Z-Flip3-5G",
-      "_ha_entity": null,
-      "_ha_battery": null
     },
     {
       "id": "art-cards",
@@ -3427,916 +3118,6 @@
       "_role": "server",
       "ip": "",
       "url": "http://katana:8778"
-    },
-    {
-      "id": "_unknown_5a670ca1bd70",
-      "type": "device",
-      "_auto": true,
-      "x": 2870,
-      "y": 750,
-      "ip": "10.0.11.119",
-      "mac": "5a:67:0c:a1:bd:70",
-      "_last_seen": 1774491513.6347857,
-      "_wired": true,
-      "label": "Guest Device bd70",
-      "icon": "&#128241;",
-      "sublabel": "10.0.11.230 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#a080c020,#0a0510)",
-        "borderColor": "#a080c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Phone",
-        "stats": [
-          [
-            "Role",
-            "Phone"
-          ],
-          [
-            "IP",
-            "10.0.11.119"
-          ],
-          [
-            "MAC",
-            "5a:67:0c:a1:bd:70"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "Guest"
-          ]
-        ]
-      },
-      "_role": "phone",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": null,
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_583277d4170e",
-      "type": "device",
-      "_auto": true,
-      "x": 2510,
-      "y": 750,
-      "ip": "10.0.11.131",
-      "mac": "58:32:77:d4:17:0e",
-      "_last_seen": 1773967355.1862288,
-      "label": "Device 170e",
-      "icon": "&#128123;",
-      "sublabel": "10.0.11.131",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "IP",
-            "10.0.11.131"
-          ],
-          [
-            "MAC",
-            "58:32:77:d4:17:0e"
-          ],
-          [
-            "Network",
-            "Guest"
-          ]
-        ]
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": null,
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_3ea44f764772",
-      "type": "device",
-      "_auto": true,
-      "x": 2650,
-      "y": 800,
-      "ip": "10.0.10.246",
-      "mac": "3e:a4:4f:76:47:72",
-      "_last_seen": 1774568069.9594736,
-      "label": "Galaxy-A54-5G",
-      "icon": "&#128241;",
-      "sublabel": "10.0.10.112 \u2022 Samsung Galaxy Android",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#a080c020,#0a0510)",
-        "borderColor": "#a080c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Samsung Galaxy",
-        "stats": [
-          [
-            "Model",
-            "Samsung Galaxy"
-          ],
-          [
-            "Role",
-            "Phone"
-          ],
-          [
-            "OS",
-            "Android"
-          ],
-          [
-            "IP",
-            "10.0.10.112"
-          ],
-          [
-            "MAC",
-            "3e:a4:4f:76:47:72"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "IoT"
-          ]
-        ]
-      },
-      "_role": "phone",
-      "_vendor": null,
-      "_os": "Android",
-      "_model": "Samsung Galaxy",
-      "_hostname": "Nest-Thermostat-16B5",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_e6d4c5bc89b3",
-      "type": "device",
-      "_auto": true,
-      "x": 2510,
-      "y": 850,
-      "ip": "10.0.11.102",
-      "mac": "e6:d4:c5:bc:89:b3",
-      "_last_seen": 1773967355.1953273,
-      "label": "Guest Device 89b3",
-      "icon": "&#128241;",
-      "sublabel": "10.0.11.102 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#a080c020,#0a0510)",
-        "borderColor": "#a080c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Phone",
-        "stats": [
-          [
-            "Role",
-            "Phone"
-          ],
-          [
-            "IP",
-            "10.0.11.102"
-          ],
-          [
-            "MAC",
-            "e6:d4:c5:bc:89:b3"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "Guest"
-          ]
-        ]
-      },
-      "_role": "phone",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": null,
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_1626add5ab1c",
-      "type": "device",
-      "_auto": true,
-      "x": 2800,
-      "y": 750,
-      "ip": "10.0.11.130",
-      "mac": "16:26:ad:d5:ab:1c",
-      "_last_seen": 1774568438.4312036,
-      "_wired": true,
-      "label": "IoT Device ab1c",
-      "icon": "&#128123;",
-      "sublabel": "10.0.10.118 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "IP",
-            "10.0.10.118"
-          ],
-          [
-            "MAC",
-            "16:26:ad:d5:ab:1c"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "IoT"
-          ]
-        ]
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "Pixel-7",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_b67387887145",
-      "type": "device",
-      "_auto": true,
-      "x": 2870,
-      "y": 750,
-      "ip": "10.0.11.129",
-      "mac": "b6:73:87:88:71:45",
-      "_last_seen": 1774125365.007553,
-      "_wired": true,
-      "label": "Guest Device 7145",
-      "icon": "&#128241;",
-      "sublabel": "10.0.11.105 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#a080c020,#0a0510)",
-        "borderColor": "#a080c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Phone",
-        "stats": [
-          [
-            "Role",
-            "Phone"
-          ],
-          [
-            "IP",
-            "10.0.11.129"
-          ],
-          [
-            "MAC",
-            "b6:73:87:88:71:45"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "Guest"
-          ]
-        ]
-      },
-      "_role": "phone",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "iPad",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_f2a2d368024e",
-      "type": "device",
-      "_auto": true,
-      "x": 2940,
-      "y": 750,
-      "ip": "10.0.11.103",
-      "mac": "f2:a2:d3:68:02:4e",
-      "_last_seen": 1774565541.2808383,
-      "_wired": true,
-      "label": "Guest Device 024e",
-      "icon": "&#128241;",
-      "sublabel": "10.0.11.254 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#a080c020,#0a0510)",
-        "borderColor": "#a080c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Phone",
-        "stats": [
-          [
-            "Role",
-            "Phone"
-          ],
-          [
-            "IP",
-            "10.0.11.103"
-          ],
-          [
-            "MAC",
-            "f2:a2:d3:68:02:4e"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "Guest"
-          ]
-        ]
-      },
-      "_role": "phone",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "Pixel-7a",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_68a86d17999a",
-      "type": "device",
-      "_auto": true,
-      "x": 3010,
-      "y": 750,
-      "ip": "10.0.11.107",
-      "mac": "68:a8:6d:17:99:9a",
-      "_last_seen": 1773967387.2296238,
-      "_wired": true,
-      "label": "Juiias-Air",
-      "icon": "&#128187;",
-      "sublabel": "10.0.11.107 \u2022 MacBook Air macOS",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#8080c020,#0a0510)",
-        "borderColor": "#8080c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "MacBook Air",
-        "stats": [
-          [
-            "Model",
-            "MacBook Air"
-          ],
-          [
-            "Role",
-            "Laptop"
-          ],
-          [
-            "OS",
-            "macOS"
-          ],
-          [
-            "IP",
-            "10.0.11.107"
-          ],
-          [
-            "MAC",
-            "68:a8:6d:17:99:9a"
-          ],
-          [
-            "Network",
-            "Guest"
-          ]
-        ]
-      },
-      "_role": "laptop",
-      "_vendor": null,
-      "_os": "macOS",
-      "_model": "MacBook Air",
-      "_hostname": "Pixel-4",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_da225cdcbc80",
-      "type": "device",
-      "_auto": true,
-      "x": 3080,
-      "y": 750,
-      "ip": "10.0.11.151",
-      "mac": "da:22:5c:dc:bc:80",
-      "_last_seen": 1774491513.6379144,
-      "_wired": true,
-      "label": "Guest Device bc80",
-      "icon": "&#128241;",
-      "sublabel": "10.0.11.104 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#a080c020,#0a0510)",
-        "borderColor": "#a080c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Phone",
-        "stats": [
-          [
-            "Role",
-            "Phone"
-          ],
-          [
-            "IP",
-            "10.0.11.151"
-          ],
-          [
-            "MAC",
-            "da:22:5c:dc:bc:80"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "Guest"
-          ]
-        ]
-      },
-      "_role": "phone",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "Pixel-4",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_0abb37e9b9be",
-      "type": "device",
-      "_auto": true,
-      "x": 3150,
-      "y": 750,
-      "ip": "10.0.11.106",
-      "mac": "0a:bb:37:e9:b9:be",
-      "_last_seen": 1773967387.2385702,
-      "_wired": true,
-      "label": "Guest Device b9be",
-      "icon": "&#128241;",
-      "sublabel": "10.0.11.106 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#a080c020,#0a0510)",
-        "borderColor": "#a080c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Phone",
-        "stats": [
-          [
-            "Role",
-            "Phone"
-          ],
-          [
-            "IP",
-            "10.0.11.106"
-          ],
-          [
-            "MAC",
-            "0a:bb:37:e9:b9:be"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "Guest"
-          ]
-        ]
-      },
-      "_role": "phone",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "iPhone",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_b63b87b7bfde",
-      "type": "device",
-      "_auto": true,
-      "x": 2800,
-      "y": 800,
-      "ip": "10.0.11.110",
-      "mac": "b6:3b:87:b7:bf:de",
-      "_last_seen": 1773967387.2446299,
-      "_wired": true,
-      "label": "<Owner>-s-S24-Ultra",
-      "icon": "&#128241;",
-      "sublabel": "10.0.11.110 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#a080c020,#0a0510)",
-        "borderColor": "#a080c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Phone",
-        "stats": [
-          [
-            "Role",
-            "Phone"
-          ],
-          [
-            "IP",
-            "10.0.11.110"
-          ],
-          [
-            "MAC",
-            "b6:3b:87:b7:bf:de"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "Guest"
-          ]
-        ]
-      },
-      "_role": "phone",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "iPhone",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_8a3ab049ab7e",
-      "type": "device",
-      "_auto": true,
-      "x": 2870,
-      "y": 800,
-      "ip": "10.0.11.104",
-      "mac": "8a:3a:b0:49:ab:7e",
-      "_last_seen": 1773967387.2491047,
-      "_wired": true,
-      "label": "Guest Device ab7e",
-      "icon": "&#128241;",
-      "sublabel": "10.0.11.104 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#a080c020,#0a0510)",
-        "borderColor": "#a080c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Phone",
-        "stats": [
-          [
-            "Role",
-            "Phone"
-          ],
-          [
-            "IP",
-            "10.0.11.104"
-          ],
-          [
-            "MAC",
-            "8a:3a:b0:49:ab:7e"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "Guest"
-          ]
-        ]
-      },
-      "_role": "phone",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "Flip3",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_0e6458820f63",
-      "type": "device",
-      "_auto": true,
-      "x": 2940,
-      "y": 800,
-      "ip": "10.0.10.120",
-      "mac": "0e:64:58:82:0f:63",
-      "_last_seen": 1773967403.0846267,
-      "_wired": true,
-      "label": "IoT Device 0f63",
-      "icon": "&#128123;",
-      "sublabel": "10.0.10.120 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "IP",
-            "10.0.10.120"
-          ],
-          [
-            "MAC",
-            "0e:64:58:82:0f:63"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "IoT"
-          ]
-        ]
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "Nest-Thermostat-276C",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_6ac003ccdc23",
-      "type": "device",
-      "_auto": true,
-      "x": 3010,
-      "y": 800,
-      "ip": "10.0.11.104",
-      "mac": "6a:c0:03:cc:dc:23",
-      "_last_seen": 1773967403.0889618,
-      "_wired": true,
-      "label": "Guest Device dc23",
-      "icon": "&#128241;",
-      "sublabel": "10.0.11.104 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#a080c020,#0a0510)",
-        "borderColor": "#a080c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Phone",
-        "stats": [
-          [
-            "Role",
-            "Phone"
-          ],
-          [
-            "IP",
-            "10.0.11.104"
-          ],
-          [
-            "MAC",
-            "6a:c0:03:cc:dc:23"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "Guest"
-          ]
-        ]
-      },
-      "_role": "phone",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "Roku3",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_fe97fbf3005a",
-      "type": "device",
-      "_auto": true,
-      "x": 2870,
-      "y": 750,
-      "ip": "10.0.6.123",
-      "mac": "fe:97:fb:f3:00:5a",
-      "_last_seen": 1774195086.1317635,
-      "_wired": true,
-      "label": "Admin Device 005a",
-      "icon": "&#128123;",
-      "sublabel": "10.0.6.249 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "IP",
-            "10.0.6.123"
-          ],
-          [
-            "MAC",
-            "fe:97:fb:f3:00:5a"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "Admin"
-          ]
-        ]
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "SonyImagingDevice",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_302303825ec0",
-      "type": "device",
-      "_auto": true,
-      "x": 2800,
-      "y": 750,
-      "ip": "10.0.11.112",
-      "mac": "30:23:03:82:5e:c0",
-      "_last_seen": 1773968530.9213228,
-      "_wired": true,
-      "label": "mr8300-host",
-      "icon": "&#128123;",
-      "sublabel": "10.0.11.112",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "IP",
-            "10.0.11.112"
-          ],
-          [
-            "MAC",
-            "30:23:03:82:5e:c0"
-          ],
-          [
-            "Network",
-            "Guest"
-          ],
-          [
-            "Ethernet Port",
-            "wan (via gs308t)"
-          ],
-          [
-            "Discovery",
-            "CDPv1"
-          ]
-        ]
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "<Owner>-s-S24-Ultra",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_784859a82597",
-      "type": "device",
-      "_auto": true,
-      "x": 2800,
-      "y": 750,
-      "ip": "10.0.10.106",
-      "mac": "78:48:59:a8:25:97",
-      "_last_seen": 1774505633.8394747,
-      "_wired": true,
-      "label": "Device 2597",
-      "icon": "&#128123;",
-      "sublabel": "10.0.10.141 \u2022 HTTP",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "IP",
-            "10.0.10.141"
-          ],
-          [
-            "MAC",
-            "78:48:59:a8:25:97"
-          ],
-          [
-            "Services",
-            "HTTP"
-          ],
-          [
-            "Network",
-            "IoT"
-          ]
-        ]
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "Nest-Thermostat-276C",
-      "_ha_entity": null,
-      "_ha_battery": null
     },
     {
       "id": "jellyfin",
@@ -4533,285 +3314,6 @@
       "url": ""
     },
     {
-      "id": "_unknown_aa36982bb3e3",
-      "type": "device",
-      "_auto": true,
-      "x": 2800,
-      "y": 750,
-      "ip": "10.0.6.106",
-      "mac": "aa:36:98:2b:b3:e3",
-      "_last_seen": 1774018740.0400364,
-      "_wired": true,
-      "label": "Galaxy-Tab-S5e",
-      "icon": "&#128223;",
-      "sublabel": "10.0.6.106 \u2022 Samsung Galaxy Tab Android",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80a0c020,#0a0510)",
-        "borderColor": "#80a0c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Samsung Galaxy Tab",
-        "stats": [
-          [
-            "Model",
-            "Samsung Galaxy Tab"
-          ],
-          [
-            "Role",
-            "Tablet"
-          ],
-          [
-            "OS",
-            "Android"
-          ],
-          [
-            "IP",
-            "10.0.6.106"
-          ],
-          [
-            "MAC",
-            "aa:36:98:2b:b3:e3"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "Admin"
-          ]
-        ]
-      },
-      "_role": "tablet",
-      "_vendor": null,
-      "_os": "Android",
-      "_model": "Samsung Galaxy Tab",
-      "_hostname": "Galaxy-Tab-S5e",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_3cd92b6f7229",
-      "type": "device",
-      "_auto": true,
-      "x": 2800,
-      "y": 750,
-      "ip": "10.0.11.116",
-      "mac": "3c:d9:2b:6f:72:29",
-      "_last_seen": 1774491513.6544962,
-      "_wired": true,
-      "label": "disks",
-      "icon": "&#128187;",
-      "sublabel": "10.0.6.120 \u2022 HP Linux \u2022 SSH",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#8080c020,#0a0510)",
-        "borderColor": "#8080c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "HP Laptop",
-        "stats": [
-          [
-            "Vendor",
-            "HP"
-          ],
-          [
-            "Role",
-            "Laptop"
-          ],
-          [
-            "OS",
-            "Linux"
-          ],
-          [
-            "IP",
-            "10.0.6.120"
-          ],
-          [
-            "MAC",
-            "3c:d9:2b:6f:72:29"
-          ],
-          [
-            "Services",
-            "SSH"
-          ],
-          [
-            "Network",
-            "Admin"
-          ]
-        ]
-      },
-      "_role": "laptop",
-      "_vendor": "HP",
-      "_os": "Linux",
-      "_model": null,
-      "_hostname": "disks",
-      "_ha_entity": null,
-      "_ha_battery": null,
-      "url": ""
-    },
-    {
-      "id": "_unknown_70cf4901c24b",
-      "type": "device",
-      "_auto": true,
-      "x": 2650,
-      "y": 1050,
-      "ip": "10.0.11.101",
-      "mac": "70:cf:49:01:c2:4b",
-      "_last_seen": 1774027649.0710733,
-      "label": "DESKTOP-JOO34G7",
-      "icon": "&#128421;",
-      "sublabel": "10.0.11.101 \u2022 Windows",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#6060c020,#0a0510)",
-        "borderColor": "#6060c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Desktop",
-        "stats": [
-          [
-            "Role",
-            "Desktop"
-          ],
-          [
-            "OS",
-            "Windows"
-          ],
-          [
-            "IP",
-            "10.0.11.101"
-          ],
-          [
-            "MAC",
-            "70:cf:49:01:c2:4b"
-          ],
-          [
-            "Network",
-            "Guest"
-          ]
-        ]
-      },
-      "_role": "desktop",
-      "_vendor": null,
-      "_os": "Windows",
-      "_model": null,
-      "_hostname": "Flip3",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_301b97215b32",
-      "type": "device",
-      "_auto": true,
-      "x": 2650,
-      "y": 1250,
-      "ip": "10.0.10.7",
-      "mac": "30:1b:97:21:5b:32",
-      "_last_seen": 1774035415.6350074,
-      "label": "mppt",
-      "icon": "&#128123;",
-      "sublabel": "10.0.10.7 \u2022 HTTP",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "IP",
-            "10.0.10.7"
-          ],
-          [
-            "MAC",
-            "30:1b:97:21:5b:32"
-          ],
-          [
-            "Services",
-            "HTTP"
-          ],
-          [
-            "Network",
-            "IoT"
-          ]
-        ]
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "mppt",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_2ab069e8c7a5",
-      "type": "device",
-      "_auto": true,
-      "x": 2580,
-      "y": 1050,
-      "ip": "10.0.11.143",
-      "mac": "2a:b0:69:e8:c7:a5",
-      "_last_seen": 1774038538.8424976,
-      "label": "Guest Device c7a5",
-      "icon": "&#128241;",
-      "sublabel": "10.0.11.143 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#a080c020,#0a0510)",
-        "borderColor": "#a080c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Phone",
-        "stats": [
-          [
-            "Role",
-            "Phone"
-          ],
-          [
-            "IP",
-            "10.0.11.143"
-          ],
-          [
-            "MAC",
-            "2a:b0:69:e8:c7:a5"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "Guest"
-          ]
-        ]
-      },
-      "_role": "phone",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "esp32c3-F8EF64",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
       "id": "ts-instance",
       "type": "tailscale",
       "tsHost": "instance-1",
@@ -4848,1426 +3350,14 @@
       "url": "https://jphein.com"
     },
     {
-      "id": "_unknown_7a42dafd1a3a",
-      "type": "device",
-      "_auto": true,
-      "x": 2440,
-      "y": 850,
-      "ip": "10.0.6.117",
-      "mac": "7a:42:da:fd:1a:3a",
-      "_last_seen": 1774106799.4930437,
-      "label": "Device 1a3a",
-      "icon": "&#128123;",
-      "sublabel": "Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "MAC",
-            "7a:42:da:fd:1a:3a"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ]
-        ]
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "tablet",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_2ccf677d9978",
-      "type": "device",
-      "_auto": true,
-      "x": 2800,
-      "y": 750,
-      "ip": "10.0.11.108",
-      "mac": "2c:cf:67:7d:99:78",
-      "_last_seen": 1774110596.3131773,
-      "_wired": true,
-      "label": "pikvm",
-      "icon": "&#128123;",
-      "sublabel": "10.0.11.108",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "IP",
-            "10.0.11.108"
-          ],
-          [
-            "MAC",
-            "2c:cf:67:7d:99:78"
-          ],
-          [
-            "Network",
-            "Guest"
-          ]
-        ]
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "Pixel-4",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_c8f31948cfd7",
-      "type": "device",
-      "_auto": true,
-      "x": 2370,
-      "y": 1050,
-      "ip": "10.0.6.137",
-      "mac": "c8:f3:19:48:cf:d7",
-      "_last_seen": 1774125456.8926644,
-      "label": "V60-ThinQ-5G",
-      "icon": "&#128123;",
-      "sublabel": "10.0.6.137",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "IP",
-            "10.0.6.137"
-          ],
-          [
-            "MAC",
-            "c8:f3:19:48:cf:d7"
-          ],
-          [
-            "Network",
-            "Guest"
-          ]
-        ]
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "V60-ThinQ-5G",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_b61a6b81083b",
-      "type": "device",
-      "_auto": true,
-      "x": 2580,
-      "y": 750,
-      "ip": "10.0.6.125",
-      "mac": "b6:1a:6b:81:08:3b",
-      "_last_seen": 1774197290.639145,
-      "label": "Device 083b",
-      "icon": "&#128123;",
-      "sublabel": "Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "MAC",
-            "b6:1a:6b:81:08:3b"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ]
-        ]
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "Clays-ipad",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_00d861bb9f8e",
-      "type": "device",
-      "_auto": true,
-      "x": 2800,
-      "y": 750,
-      "ip": "10.0.9.101",
-      "mac": "00:d8:61:bb:9f:8e",
-      "_last_seen": 1774157153.2320724,
-      "_wired": true,
-      "label": "katana",
-      "icon": "&#128421;",
-      "sublabel": "10.0.9.101 \u2022 Linux \u2022 SSH HTTP",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0606020,#0a0510)",
-        "borderColor": "#c0606080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Server",
-        "stats": [
-          [
-            "Role",
-            "Server"
-          ],
-          [
-            "OS",
-            "Linux"
-          ],
-          [
-            "IP",
-            "10.0.9.101"
-          ],
-          [
-            "MAC",
-            "00:d8:61:bb:9f:8e"
-          ],
-          [
-            "Services",
-            "SSH, HTTP"
-          ]
-        ]
-      },
-      "_role": "server",
-      "_vendor": null,
-      "_os": "Linux",
-      "_model": null,
-      "_hostname": "katana",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_2acdf4cb568c",
-      "type": "device",
-      "_auto": true,
-      "x": 2800,
-      "y": 750,
-      "ip": "10.0.6.247",
-      "mac": "2a:cd:f4:cb:56:8c",
-      "_last_seen": 1774192409.7113016,
-      "_wired": true,
-      "label": "Admin Device 568c",
-      "icon": "&#128123;",
-      "sublabel": "10.0.6.247 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "IP",
-            "10.0.6.247"
-          ],
-          [
-            "MAC",
-            "2a:cd:f4:cb:56:8c"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "Admin"
-          ]
-        ]
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "Flip3",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_4a15bfc336c2",
-      "type": "device",
-      "_auto": true,
-      "x": 2800,
-      "y": 750,
-      "ip": "10.0.9.100",
-      "mac": "4a:15:bf:c3:36:c2",
-      "_last_seen": 1774192514.0945804,
-      "_wired": true,
-      "label": "Device 36c2",
-      "icon": "&#128123;",
-      "sublabel": "10.0.9.100 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "IP",
-            "10.0.9.100"
-          ],
-          [
-            "MAC",
-            "4a:15:bf:c3:36:c2"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ]
-        ]
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "Flip3",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_ae34f775c127",
-      "type": "device",
-      "_auto": true,
-      "x": 2800,
-      "y": 750,
-      "ip": "10.0.10.84",
-      "mac": "ae:34:f7:75:c1:27",
-      "_last_seen": 1774195269.759509,
-      "_wired": true,
-      "label": "Pixel-7a",
-      "icon": "&#128241;",
-      "sublabel": "10.0.10.249 \u2022 Google Pixel Android",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#a080c020,#0a0510)",
-        "borderColor": "#a080c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Google Pixel",
-        "stats": [
-          [
-            "Model",
-            "Google Pixel"
-          ],
-          [
-            "Role",
-            "Phone"
-          ],
-          [
-            "OS",
-            "Android"
-          ],
-          [
-            "IP",
-            "10.0.10.84"
-          ],
-          [
-            "MAC",
-            "ae:34:f7:75:c1:27"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "IoT"
-          ]
-        ]
-      },
-      "_role": "phone",
-      "_vendor": null,
-      "_os": "Android",
-      "_model": "Google Pixel",
-      "_hostname": "Pixel-7a",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_104a7d5c2dd0",
-      "type": "device",
-      "_auto": true,
-      "x": 2580,
-      "y": 750,
-      "ip": "10.0.11.252",
-      "mac": "10:4a:7d:5c:2d:d0",
-      "_last_seen": 1774195912.8058717,
-      "label": "stephen-Latitude-14-",
-      "icon": "&#128123;",
-      "sublabel": "10.0.11.252",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "IP",
-            "10.0.11.252"
-          ],
-          [
-            "MAC",
-            "10:4a:7d:5c:2d:d0"
-          ],
-          [
-            "Network",
-            "Guest"
-          ]
-        ]
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "stephen-Latitude-14-Rugged-5404",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_526e93f7bcca",
-      "type": "device",
-      "_auto": true,
-      "x": 2580,
-      "y": 900,
-      "ip": "10.0.11.161",
-      "mac": "52:6e:93:f7:bc:ca",
-      "_last_seen": 1774491497.3862789,
-      "label": "Guest Device bcca",
-      "icon": "&#128241;",
-      "sublabel": "10.0.11.161 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#a080c020,#0a0510)",
-        "borderColor": "#a080c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Phone",
-        "stats": [
-          [
-            "Role",
-            "Phone"
-          ],
-          [
-            "IP",
-            "10.0.11.161"
-          ],
-          [
-            "MAC",
-            "52:6e:93:f7:bc:ca"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "Guest"
-          ]
-        ]
-      },
-      "_role": "phone",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "Caseys-MBP-5",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_a4cf12c63fb2",
-      "type": "device",
-      "_auto": true,
-      "x": 2580,
-      "y": 1000,
-      "ip": "10.0.10.144",
-      "mac": "a4:cf:12:c6:3f:b2",
-      "_last_seen": 1774491513.5967367,
-      "label": "sprinkler-relay",
-      "icon": "&#128123;",
-      "sublabel": "10.0.10.144",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "IP",
-            "10.0.10.144"
-          ],
-          [
-            "MAC",
-            "a4:cf:12:c6:3f:b2"
-          ],
-          [
-            "Network",
-            "IoT"
-          ]
-        ]
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "sprinkler-relay",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_d81f12d36df6",
-      "type": "device",
-      "_auto": true,
-      "x": 2300,
-      "y": 1150,
-      "ip": "10.0.10.233",
-      "mac": "d8:1f:12:d3:6d:f6",
-      "_last_seen": 1774491513.6146247,
-      "label": "Tuya 6df6",
-      "icon": "&#128268;",
-      "sublabel": "10.0.10.233 \u2022 Tuya",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Tuya Smart Plug",
-        "stats": [
-          [
-            "Vendor",
-            "Tuya"
-          ],
-          [
-            "Role",
-            "Smart Plug"
-          ],
-          [
-            "IP",
-            "10.0.10.233"
-          ],
-          [
-            "MAC",
-            "d8:1f:12:d3:6d:f6"
-          ],
-          [
-            "Network",
-            "IoT"
-          ]
-        ]
-      },
-      "_role": "plug",
-      "_vendor": "Tuya",
-      "_os": null,
-      "_model": null,
-      "_hostname": "Nest-Thermostat-333F",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_4654ba789950",
-      "type": "device",
-      "_auto": true,
-      "x": 2800,
-      "y": 750,
-      "ip": "10.0.11.155",
-      "mac": "46:54:ba:78:99:50",
-      "_last_seen": 1774491513.624554,
-      "_wired": true,
-      "label": "Guest Device 9950",
-      "icon": "&#128241;",
-      "sublabel": "10.0.11.155 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#a080c020,#0a0510)",
-        "borderColor": "#a080c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Phone",
-        "stats": [
-          [
-            "Role",
-            "Phone"
-          ],
-          [
-            "IP",
-            "10.0.11.155"
-          ],
-          [
-            "MAC",
-            "46:54:ba:78:99:50"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "Guest"
-          ]
-        ]
-      },
-      "_role": "phone",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "V35-ThinQ",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_ea4879e05a22",
-      "type": "device",
-      "_auto": true,
-      "x": 3010,
-      "y": 750,
-      "ip": "10.0.11.124",
-      "mac": "ea:48:79:e0:5a:22",
-      "_last_seen": 1774491513.6414628,
-      "_wired": true,
-      "label": "Guest Device 5a22",
-      "icon": "&#128241;",
-      "sublabel": "10.0.11.124 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#a080c020,#0a0510)",
-        "borderColor": "#a080c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Phone",
-        "stats": [
-          [
-            "Role",
-            "Phone"
-          ],
-          [
-            "IP",
-            "10.0.11.124"
-          ],
-          [
-            "MAC",
-            "ea:48:79:e0:5a:22"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "Guest"
-          ]
-        ]
-      },
-      "_role": "phone",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "Flip3",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_9282e1282237",
-      "type": "device",
-      "_auto": true,
-      "x": 3150,
-      "y": 750,
-      "ip": "10.0.10.164",
-      "mac": "92:82:e1:28:22:37",
-      "_last_seen": 1774491529.8217616,
-      "_wired": true,
-      "label": "IoT Device 2237",
-      "icon": "&#128123;",
-      "sublabel": "10.0.10.164 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "IP",
-            "10.0.10.164"
-          ],
-          [
-            "MAC",
-            "92:82:e1:28:22:37"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "IoT"
-          ]
-        ]
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "HS103",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_ee0e15131558",
-      "type": "device",
-      "_auto": true,
-      "x": 2800,
-      "y": 800,
-      "ip": "10.0.11.159",
-      "mac": "ee:0e:15:13:15:58",
-      "_last_seen": 1774491529.840071,
-      "_wired": true,
-      "label": "Guest Device 1558",
-      "icon": "&#128241;",
-      "sublabel": "10.0.11.159 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#a080c020,#0a0510)",
-        "borderColor": "#a080c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Phone",
-        "stats": [
-          [
-            "Role",
-            "Phone"
-          ],
-          [
-            "IP",
-            "10.0.11.159"
-          ],
-          [
-            "MAC",
-            "ee:0e:15:13:15:58"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "Guest"
-          ]
-        ]
-      },
-      "_role": "phone",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "Pixel-4",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_60f6776074b7",
-      "type": "device",
-      "_auto": true,
-      "x": 2370,
-      "y": 1050,
-      "ip": "10.0.11.126",
-      "mac": "60:f6:77:60:74:b7",
-      "_last_seen": 1774495119.7391987,
-      "label": "Device 74b7",
-      "icon": "&#128123;",
-      "sublabel": "10.0.11.126",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "IP",
-            "10.0.11.126"
-          ],
-          [
-            "MAC",
-            "60:f6:77:60:74:b7"
-          ],
-          [
-            "Network",
-            "Guest"
-          ]
-        ]
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": null,
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_4237547e513c",
-      "type": "device",
-      "_auto": true,
-      "x": 2800,
-      "y": 750,
-      "ip": "10.0.6.117",
-      "mac": "42:37:54:7e:51:3c",
-      "_last_seen": 1774498261.3967352,
-      "_wired": true,
-      "label": "Admin Device 513c",
-      "icon": "&#128123;",
-      "sublabel": "10.0.6.117 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "IP",
-            "10.0.6.117"
-          ],
-          [
-            "MAC",
-            "42:37:54:7e:51:3c"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "Admin"
-          ]
-        ]
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "Flip3",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_6cc374eb9364",
-      "type": "device",
-      "_auto": true,
-      "x": 2650,
-      "y": 1100,
-      "ip": null,
-      "mac": "6c:c3:74:eb:93:64",
-      "_last_seen": 1774507014.136114,
-      "label": "Device 9364",
-      "icon": "&#128123;",
-      "sublabel": "6c:c3:74...",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "MAC",
-            "6c:c3:74:eb:93:64"
-          ]
-        ]
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "6CC374EB9364-mysimplelink",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_ea5545c551a4",
-      "type": "device",
-      "_auto": true,
-      "x": 2650,
-      "y": 850,
-      "ip": "10.0.11.158",
-      "mac": "ea:55:45:c5:51:a4",
-      "_last_seen": 1774552647.8386195,
-      "label": "Guest Device 51a4",
-      "icon": "&#128241;",
-      "sublabel": "10.0.11.158 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#a080c020,#0a0510)",
-        "borderColor": "#a080c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Phone",
-        "stats": [
-          [
-            "Role",
-            "Phone"
-          ],
-          [
-            "IP",
-            "10.0.11.158"
-          ],
-          [
-            "MAC",
-            "ea:55:45:c5:51:a4"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "Guest"
-          ]
-        ]
-      },
-      "_role": "phone",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": null,
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_fab5dfe47178",
-      "type": "device",
-      "_auto": true,
-      "x": 2800,
-      "y": 750,
-      "ip": "10.0.10.243",
-      "mac": "fa:b5:df:e4:71:78",
-      "_last_seen": 1774562870.45225,
-      "_wired": true,
-      "label": "IoT Device 7178",
-      "icon": "&#128123;",
-      "sublabel": "10.0.10.243 \u2022 Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "IP",
-            "10.0.10.243"
-          ],
-          [
-            "MAC",
-            "fa:b5:df:e4:71:78"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "IoT"
-          ]
-        ]
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "Nest-Thermostat-333F",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_0e0f986dea5f",
-      "type": "device",
-      "_auto": true,
-      "x": 2650,
-      "y": 1000,
-      "ip": null,
-      "mac": "0e:0f:98:6d:ea:5f",
-      "_last_seen": 1774566320.4584398,
-      "label": "Device ea5f",
-      "icon": "&#128123;",
-      "sublabel": "Randomized MAC",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "MAC",
-            "0e:0f:98:6d:ea:5f"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ]
-        ]
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "Galaxy-Tab-S5e",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_d6c15e6a6f33",
-      "type": "device",
-      "_auto": true,
-      "x": 2650,
-      "y": 1000,
-      "ip": "10.0.6.124",
-      "mac": "d6:c1:5e:6a:6f:33",
-      "_last_seen": 1774567149.3941066,
-      "label": "Galaxy-Tab-A7-Lite",
-      "icon": "&#128223;",
-      "sublabel": "10.0.6.124 \u2022 Samsung Galaxy Tab Android",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80a0c020,#0a0510)",
-        "borderColor": "#80a0c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Samsung Galaxy Tab",
-        "stats": [
-          [
-            "Model",
-            "Samsung Galaxy Tab"
-          ],
-          [
-            "Role",
-            "Tablet"
-          ],
-          [
-            "OS",
-            "Android"
-          ],
-          [
-            "IP",
-            "10.0.6.124"
-          ],
-          [
-            "MAC",
-            "d6:c1:5e:6a:6f:33"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "Admin"
-          ]
-        ]
-      },
-      "_role": "tablet",
-      "_vendor": null,
-      "_os": "Android",
-      "_model": "Samsung Galaxy Tab",
-      "_hostname": "Pixel-7a",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_266e81d7f7c9",
-      "type": "device",
-      "_auto": true,
-      "x": 2800,
-      "y": 750,
-      "ip": "10.0.11.123",
-      "mac": "26:6e:81:d7:f7:c9",
-      "_last_seen": 1774574975.3330047,
-      "_wired": true,
-      "label": "iPad",
-      "icon": "&#128223;",
-      "sublabel": "10.0.11.110 \u2022 iPadOS",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80a0c020,#0a0510)",
-        "borderColor": "#80a0c080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "iPad",
-        "stats": [
-          [
-            "Model",
-            "iPad"
-          ],
-          [
-            "Role",
-            "Tablet"
-          ],
-          [
-            "OS",
-            "iPadOS"
-          ],
-          [
-            "IP",
-            "10.0.11.123"
-          ],
-          [
-            "MAC",
-            "26:6e:81:d7:f7:c9"
-          ],
-          [
-            "MAC Type",
-            "Randomized (private)"
-          ],
-          [
-            "Network",
-            "Guest"
-          ]
-        ]
-      },
-      "_role": "tablet",
-      "_vendor": null,
-      "_os": "iPadOS",
-      "_model": "iPad",
-      "_hostname": "WolfCreekLaptop",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_381f8d9ba8d1",
-      "type": "device",
-      "_auto": true,
-      "x": 2580,
-      "y": 850,
-      "ip": "10.0.10.122",
-      "mac": "38:1f:8d:9b:a8:d1",
-      "_last_seen": 1774638220.310941,
-      "label": "wlan0",
-      "icon": "&#128268;",
-      "sublabel": "10.0.10.122 \u2022 Tuya",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0c06020,#0a0510)",
-        "borderColor": "#c0c06080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Tuya Smart Plug",
-        "stats": [
-          [
-            "Vendor",
-            "Tuya"
-          ],
-          [
-            "Role",
-            "Smart Plug"
-          ],
-          [
-            "IP",
-            "10.0.10.122"
-          ],
-          [
-            "MAC",
-            "38:1f:8d:9b:a8:d1"
-          ],
-          [
-            "Network",
-            "IoT"
-          ]
-        ]
-      },
-      "_role": "plug",
-      "_vendor": "Tuya",
-      "_os": null,
-      "_model": null,
-      "_hostname": "KL420",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_3c9c0f44a8ae",
-      "type": "device",
-      "_auto": true,
-      "x": 2300,
-      "y": 1050,
-      "ip": "10.0.11.127",
-      "mac": "3c:9c:0f:44:a8:ae",
-      "_last_seen": 1774648539.084622,
-      "label": "Device a8ae",
-      "icon": "&#128123;",
-      "sublabel": "3c:9c:0f...",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "MAC",
-            "3c:9c:0f:44:a8:ae"
-          ]
-        ]
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "jk-Precision-3551",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_1c4d70da8248",
-      "type": "device",
-      "_auto": true,
-      "x": 2650,
-      "y": 1000,
-      "ip": "10.0.6.107",
-      "mac": "1c:4d:70:da:82:48",
-      "_last_seen": 1774651271.4020472,
-      "label": "ultrabook2",
-      "icon": "&#128421;",
-      "sublabel": "10.0.6.107 \u2022 Linux \u2022 SSH RDP",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#c0606020,#0a0510)",
-        "borderColor": "#c0606080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Server",
-        "stats": [
-          [
-            "Role",
-            "Server"
-          ],
-          [
-            "OS",
-            "Linux"
-          ],
-          [
-            "IP",
-            "10.0.6.107"
-          ],
-          [
-            "MAC",
-            "1c:4d:70:da:82:48"
-          ],
-          [
-            "Services",
-            "SSH, RDP"
-          ],
-          [
-            "Network",
-            "Admin"
-          ]
-        ]
-      },
-      "_role": "server",
-      "_vendor": null,
-      "_os": "Linux",
-      "_model": null,
-      "_hostname": "jp-Latitude-7280",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
-      "id": "_unknown_34415d7cfc13",
-      "type": "device",
-      "_auto": true,
-      "x": 2650,
-      "y": 850,
-      "ip": "10.0.6.107",
-      "mac": "34:41:5d:7c:fc:13",
-      "_last_seen": 1774651482.361883,
-      "label": "Device fc13",
-      "icon": "&#128123;",
-      "sublabel": "34:41:5d...",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#80808020,#0a0510)",
-        "borderColor": "#80808080",
-        "width": "32px",
-        "height": "32px",
-        "fontSize": "14px"
-      },
-      "tip": {
-        "title": "Unknown Device",
-        "stats": [
-          [
-            "Role",
-            "Unknown Device"
-          ],
-          [
-            "MAC",
-            "34:41:5d:7c:fc:13"
-          ]
-        ]
-      },
-      "_role": "unknown",
-      "_vendor": null,
-      "_os": null,
-      "_model": null,
-      "_hostname": "Flip3",
-      "_ha_entity": null,
-      "_ha_battery": null
-    },
-    {
       "id": "_unknown_cca7c15e89f9",
       "type": "device",
       "_auto": true,
       "x": 2370,
       "y": 800,
-      "ip": "10.0.10.117",
+      "ip": "10.0.10.88",
       "mac": "cc:a7:c1:5e:89:f9",
-      "_last_seen": 1774653531.237673,
+      "_last_seen": 1775257754.9642408,
       "label": "Device 89f9",
       "icon": "&#128123;",
       "sublabel": "cc:a7:c1...",
@@ -6383,9 +3473,9 @@
       "_auto": true,
       "x": 2300,
       "y": 750,
-      "ip": null,
+      "ip": "10.0.11.100",
       "mac": "1e:15:a9:6e:aa:c7",
-      "_last_seen": 1774664401.0294633,
+      "_last_seen": 1775239158.3388877,
       "label": "Device aac7",
       "icon": "&#128123;",
       "sublabel": "Randomized MAC",
@@ -6762,9 +3852,9 @@
       "_auto": true,
       "x": 2580,
       "y": 850,
-      "ip": "10.0.10.88",
+      "ip": "10.0.10.109",
       "mac": "d0:ef:76:12:fb:bc",
-      "_last_seen": 1774967119.47943,
+      "_last_seen": 1775257662.5885496,
       "label": "yoto-mini",
       "icon": "&#128123;",
       "sublabel": "10.0.10.88",
@@ -6800,7 +3890,7 @@
       "_vendor": null,
       "_os": null,
       "_model": null,
-      "_hostname": "lwip0",
+      "_hostname": "yoto-mini",
       "_ha_entity": null,
       "_ha_battery": null
     },
@@ -6841,6 +3931,792 @@
       "_os": null,
       "_model": null,
       "_hostname": "sshein-HP-EliteBook-2760p",
+      "_ha_entity": null,
+      "_ha_battery": null
+    },
+    {
+      "id": "_unknown_a4cf12c63fb2",
+      "type": "device",
+      "_auto": true,
+      "x": 2510,
+      "y": 850,
+      "ip": "10.0.10.144",
+      "mac": "a4:cf:12:c6:3f:b2",
+      "_last_seen": 1775233899.5969012,
+      "label": "sprinkler-relay",
+      "icon": "&#128123;",
+      "sublabel": "10.0.10.144",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#80808020,#0a0510)",
+        "borderColor": "#80808080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "tip": {
+        "title": "Unknown Device",
+        "stats": [
+          [
+            "Role",
+            "Unknown Device"
+          ],
+          [
+            "IP",
+            "10.0.10.144"
+          ],
+          [
+            "MAC",
+            "a4:cf:12:c6:3f:b2"
+          ],
+          [
+            "Network",
+            "IoT"
+          ]
+        ]
+      },
+      "_role": "unknown",
+      "_vendor": null,
+      "_os": null,
+      "_model": null,
+      "_hostname": "sprinkler-relay",
+      "_ha_entity": null,
+      "_ha_battery": null
+    },
+    {
+      "id": "_unknown_c8f31948cfd7",
+      "type": "device",
+      "_auto": true,
+      "x": 2650,
+      "y": 900,
+      "ip": "10.0.6.117",
+      "mac": "c8:f3:19:48:cf:d7",
+      "_last_seen": 1775233900.1040845,
+      "label": "V60-ThinQ-5G",
+      "icon": "&#128123;",
+      "sublabel": "10.0.6.117",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#80808020,#0a0510)",
+        "borderColor": "#80808080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "tip": {
+        "title": "Unknown Device",
+        "stats": [
+          [
+            "Role",
+            "Unknown Device"
+          ],
+          [
+            "IP",
+            "10.0.6.117"
+          ],
+          [
+            "MAC",
+            "c8:f3:19:48:cf:d7"
+          ],
+          [
+            "Network",
+            "Admin"
+          ]
+        ]
+      },
+      "_role": "unknown",
+      "_vendor": null,
+      "_os": null,
+      "_model": null,
+      "_hostname": "V60-ThinQ-5G",
+      "_ha_entity": null,
+      "_ha_battery": null
+    },
+    {
+      "id": "_unknown_8e104878d2fd",
+      "type": "device",
+      "_auto": true,
+      "x": 2300,
+      "y": 950,
+      "ip": "10.0.6.115",
+      "mac": "8e:10:48:78:d2:fd",
+      "_last_seen": 1775233900.1184263,
+      "label": "Galaxy-Tab-A7-Lite",
+      "icon": "&#128223;",
+      "sublabel": "10.0.6.115 \u2022 Samsung Galaxy Tab Android",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#80a0c020,#0a0510)",
+        "borderColor": "#80a0c080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "tip": {
+        "title": "Samsung Galaxy Tab",
+        "stats": [
+          [
+            "Model",
+            "Samsung Galaxy Tab"
+          ],
+          [
+            "Role",
+            "Tablet"
+          ],
+          [
+            "OS",
+            "Android"
+          ],
+          [
+            "IP",
+            "10.0.6.115"
+          ],
+          [
+            "MAC",
+            "8e:10:48:78:d2:fd"
+          ],
+          [
+            "MAC Type",
+            "Randomized (private)"
+          ],
+          [
+            "Network",
+            "Admin"
+          ]
+        ]
+      },
+      "_role": "tablet",
+      "_vendor": null,
+      "_os": "Android",
+      "_model": "Samsung Galaxy Tab",
+      "_hostname": "Galaxy-Tab-A7-Lite",
+      "_ha_entity": null,
+      "_ha_battery": null
+    },
+    {
+      "id": "_unknown_583277d4170e",
+      "type": "device",
+      "_auto": true,
+      "x": 2580,
+      "y": 950,
+      "ip": "10.0.11.109",
+      "mac": "58:32:77:d4:17:0e",
+      "_last_seen": 1775233909.1084325,
+      "label": "Device 170e",
+      "icon": "&#128123;",
+      "sublabel": "10.0.11.109",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#80808020,#0a0510)",
+        "borderColor": "#80808080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "tip": {
+        "title": "Unknown Device",
+        "stats": [
+          [
+            "Role",
+            "Unknown Device"
+          ],
+          [
+            "IP",
+            "10.0.11.109"
+          ],
+          [
+            "MAC",
+            "58:32:77:d4:17:0e"
+          ],
+          [
+            "Network",
+            "Guest"
+          ]
+        ]
+      },
+      "_role": "unknown",
+      "_vendor": null,
+      "_os": null,
+      "_model": null,
+      "_hostname": null,
+      "_ha_entity": null,
+      "_ha_battery": null
+    },
+    {
+      "id": "_unknown_104a7d5c2dd0",
+      "type": "device",
+      "_auto": true,
+      "x": 2650,
+      "y": 950,
+      "ip": "10.0.11.252",
+      "mac": "10:4a:7d:5c:2d:d0",
+      "_last_seen": 1775233909.2847185,
+      "label": "stephen-Latitude-14-",
+      "icon": "&#128123;",
+      "sublabel": "10.0.11.252",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#80808020,#0a0510)",
+        "borderColor": "#80808080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "tip": {
+        "title": "Unknown Device",
+        "stats": [
+          [
+            "Role",
+            "Unknown Device"
+          ],
+          [
+            "IP",
+            "10.0.11.252"
+          ],
+          [
+            "MAC",
+            "10:4a:7d:5c:2d:d0"
+          ],
+          [
+            "Network",
+            "Guest"
+          ]
+        ]
+      },
+      "_role": "unknown",
+      "_vendor": null,
+      "_os": null,
+      "_model": null,
+      "_hostname": "stephen-Latitude-14-Rugged-5404",
+      "_ha_entity": null,
+      "_ha_battery": null
+    },
+    {
+      "id": "_unknown_301b97215b32",
+      "type": "device",
+      "_auto": true,
+      "x": 2440,
+      "y": 1250,
+      "ip": "10.0.10.7",
+      "mac": "30:1b:97:21:5b:32",
+      "_last_seen": 1775233914.0584307,
+      "label": "mppt",
+      "icon": "&#128123;",
+      "sublabel": "10.0.10.7",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#80808020,#0a0510)",
+        "borderColor": "#80808080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "tip": {
+        "title": "Unknown Device",
+        "stats": [
+          [
+            "Role",
+            "Unknown Device"
+          ],
+          [
+            "IP",
+            "10.0.10.7"
+          ],
+          [
+            "MAC",
+            "30:1b:97:21:5b:32"
+          ],
+          [
+            "Network",
+            "IoT"
+          ]
+        ]
+      },
+      "_role": "unknown",
+      "_vendor": null,
+      "_os": null,
+      "_model": null,
+      "_hostname": "mppt",
+      "_ha_entity": null,
+      "_ha_battery": null
+    },
+    {
+      "id": "_unknown_eeec6fb3067f",
+      "type": "device",
+      "_auto": true,
+      "x": 2800,
+      "y": 750,
+      "ip": "10.0.11.110",
+      "mac": "ee:ec:6f:b3:06:7f",
+      "_last_seen": 1775233914.0653548,
+      "_wired": true,
+      "label": "Guest Device 067f",
+      "icon": "&#128241;",
+      "sublabel": "10.0.11.110 \u2022 Randomized MAC",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#a080c020,#0a0510)",
+        "borderColor": "#a080c080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "tip": {
+        "title": "Phone",
+        "stats": [
+          [
+            "Role",
+            "Phone"
+          ],
+          [
+            "IP",
+            "10.0.11.110"
+          ],
+          [
+            "MAC",
+            "ee:ec:6f:b3:06:7f"
+          ],
+          [
+            "MAC Type",
+            "Randomized (private)"
+          ],
+          [
+            "Network",
+            "Guest"
+          ]
+        ]
+      },
+      "_role": "phone",
+      "_vendor": null,
+      "_os": null,
+      "_model": null,
+      "_hostname": "Pixel-4",
+      "_ha_entity": null,
+      "_ha_battery": null
+    },
+    {
+      "id": "_unknown_3cd92b6f7229",
+      "type": "device",
+      "_auto": true,
+      "x": 2870,
+      "y": 750,
+      "ip": "10.0.11.116",
+      "mac": "3c:d9:2b:6f:72:29",
+      "_last_seen": 1775233914.0776913,
+      "_wired": true,
+      "label": "disks",
+      "icon": "&#128187;",
+      "sublabel": "10.0.11.116 \u2022 HP Linux \u2022 SSH HTTP HTTPS",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#8080c020,#0a0510)",
+        "borderColor": "#8080c080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "tip": {
+        "title": "HP Laptop",
+        "stats": [
+          [
+            "Vendor",
+            "HP"
+          ],
+          [
+            "Role",
+            "Laptop"
+          ],
+          [
+            "OS",
+            "Linux"
+          ],
+          [
+            "IP",
+            "10.0.11.116"
+          ],
+          [
+            "MAC",
+            "3c:d9:2b:6f:72:29"
+          ],
+          [
+            "Services",
+            "SSH, HTTP, HTTPS"
+          ],
+          [
+            "Network",
+            "Guest"
+          ]
+        ]
+      },
+      "_role": "laptop",
+      "_vendor": "HP",
+      "_os": "Linux",
+      "_model": null,
+      "_hostname": "disks",
+      "_ha_entity": null,
+      "_ha_battery": null
+    },
+    {
+      "id": "_unknown_ee0e15131558",
+      "type": "device",
+      "_auto": true,
+      "x": 2940,
+      "y": 750,
+      "ip": "10.0.11.103",
+      "mac": "ee:0e:15:13:15:58",
+      "_last_seen": 1775233914.0844786,
+      "_wired": true,
+      "label": "Guest Device 1558",
+      "icon": "&#128241;",
+      "sublabel": "10.0.11.103 \u2022 Randomized MAC",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#a080c020,#0a0510)",
+        "borderColor": "#a080c080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "tip": {
+        "title": "Phone",
+        "stats": [
+          [
+            "Role",
+            "Phone"
+          ],
+          [
+            "IP",
+            "10.0.11.103"
+          ],
+          [
+            "MAC",
+            "ee:0e:15:13:15:58"
+          ],
+          [
+            "MAC Type",
+            "Randomized (private)"
+          ],
+          [
+            "Network",
+            "Guest"
+          ]
+        ]
+      },
+      "_role": "phone",
+      "_vendor": null,
+      "_os": null,
+      "_model": null,
+      "_hostname": "Pixel-4",
+      "_ha_entity": null,
+      "_ha_battery": null
+    },
+    {
+      "id": "_unknown_ea5545c551a4",
+      "type": "device",
+      "_auto": true,
+      "x": 3010,
+      "y": 750,
+      "ip": "10.0.11.115",
+      "mac": "ea:55:45:c5:51:a4",
+      "_last_seen": 1775233914.0913327,
+      "_wired": true,
+      "label": "Guest Device 51a4",
+      "icon": "&#128241;",
+      "sublabel": "10.0.11.115 \u2022 Randomized MAC",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#a080c020,#0a0510)",
+        "borderColor": "#a080c080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "tip": {
+        "title": "Phone",
+        "stats": [
+          [
+            "Role",
+            "Phone"
+          ],
+          [
+            "IP",
+            "10.0.11.115"
+          ],
+          [
+            "MAC",
+            "ea:55:45:c5:51:a4"
+          ],
+          [
+            "MAC Type",
+            "Randomized (private)"
+          ],
+          [
+            "Network",
+            "Guest"
+          ]
+        ]
+      },
+      "_role": "phone",
+      "_vendor": null,
+      "_os": null,
+      "_model": null,
+      "_hostname": null,
+      "_ha_entity": null,
+      "_ha_battery": null
+    },
+    {
+      "id": "_unknown_860b87d9be99",
+      "type": "device",
+      "_auto": true,
+      "x": 2370,
+      "y": 950,
+      "ip": "10.0.11.112",
+      "mac": "86:0b:87:d9:be:99",
+      "_last_seen": 1775234006.008304,
+      "label": "Guest Device be99",
+      "icon": "&#128241;",
+      "sublabel": "10.0.11.112 \u2022 Randomized MAC",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#a080c020,#0a0510)",
+        "borderColor": "#a080c080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "tip": {
+        "title": "Phone",
+        "stats": [
+          [
+            "Role",
+            "Phone"
+          ],
+          [
+            "IP",
+            "10.0.11.112"
+          ],
+          [
+            "MAC",
+            "86:0b:87:d9:be:99"
+          ],
+          [
+            "MAC Type",
+            "Randomized (private)"
+          ],
+          [
+            "Network",
+            "Guest"
+          ]
+        ]
+      },
+      "_role": "phone",
+      "_vendor": null,
+      "_os": null,
+      "_model": null,
+      "_hostname": null,
+      "_ha_entity": null,
+      "_ha_battery": null
+    },
+    {
+      "id": "_unknown_5e7cbd5d63aa",
+      "type": "device",
+      "_auto": true,
+      "x": 2580,
+      "y": 900,
+      "ip": "10.0.10.105",
+      "mac": "5e:7c:bd:5d:63:aa",
+      "_last_seen": 1775240552.861084,
+      "label": "IoT Device 63aa",
+      "icon": "&#128123;",
+      "sublabel": "10.0.10.105 \u2022 Randomized MAC",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#80808020,#0a0510)",
+        "borderColor": "#80808080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "tip": {
+        "title": "Unknown Device",
+        "stats": [
+          [
+            "Role",
+            "Unknown Device"
+          ],
+          [
+            "IP",
+            "10.0.10.105"
+          ],
+          [
+            "MAC",
+            "5e:7c:bd:5d:63:aa"
+          ],
+          [
+            "MAC Type",
+            "Randomized (private)"
+          ],
+          [
+            "Network",
+            "IoT"
+          ]
+        ]
+      },
+      "_role": "unknown",
+      "_vendor": null,
+      "_os": null,
+      "_model": null,
+      "_hostname": null,
+      "_ha_entity": null,
+      "_ha_battery": null
+    },
+    {
+      "id": "_unknown_be68f45be203",
+      "type": "device",
+      "_auto": true,
+      "x": 2800,
+      "y": 750,
+      "ip": "10.0.11.117",
+      "mac": "be:68:f4:5b:e2:03",
+      "_last_seen": 1775250303.6646976,
+      "_wired": true,
+      "label": "Guest Device e203",
+      "icon": "&#128241;",
+      "sublabel": "10.0.11.117 \u2022 Randomized MAC",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#a080c020,#0a0510)",
+        "borderColor": "#a080c080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "tip": {
+        "title": "Phone",
+        "stats": [
+          [
+            "Role",
+            "Phone"
+          ],
+          [
+            "IP",
+            "10.0.11.117"
+          ],
+          [
+            "MAC",
+            "be:68:f4:5b:e2:03"
+          ],
+          [
+            "MAC Type",
+            "Randomized (private)"
+          ],
+          [
+            "Network",
+            "Guest"
+          ]
+        ]
+      },
+      "_role": "phone",
+      "_vendor": null,
+      "_os": null,
+      "_model": null,
+      "_hostname": null,
+      "_ha_entity": null,
+      "_ha_battery": null
+    },
+    {
+      "id": "_unknown_60f262e3433d",
+      "type": "device",
+      "_auto": true,
+      "x": 2580,
+      "y": 900,
+      "ip": "10.0.6.123",
+      "mac": "60:f2:62:e3:43:3d",
+      "_last_seen": 1775251039.3651674,
+      "label": "jp-Latitude-7400-2-i",
+      "icon": "&#128421;",
+      "sublabel": "10.0.6.123 \u2022 Linux \u2022 SSH",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#c0606020,#0a0510)",
+        "borderColor": "#c0606080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "tip": {
+        "title": "Server",
+        "stats": [
+          [
+            "Role",
+            "Server"
+          ],
+          [
+            "OS",
+            "Linux"
+          ],
+          [
+            "IP",
+            "10.0.6.123"
+          ],
+          [
+            "MAC",
+            "60:f2:62:e3:43:3d"
+          ],
+          [
+            "Services",
+            "SSH"
+          ],
+          [
+            "Network",
+            "Admin"
+          ]
+        ]
+      },
+      "_role": "server",
+      "_vendor": null,
+      "_os": "Linux",
+      "_model": null,
+      "_hostname": "jp-Latitude-7400-2-in-1",
+      "_ha_entity": null,
+      "_ha_battery": null
+    },
+    {
+      "id": "_unknown_ce7201f860a8",
+      "type": "device",
+      "_auto": true,
+      "x": 2800,
+      "y": 750,
+      "ip": "10.0.10.106",
+      "mac": "ce:72:01:f8:60:a8",
+      "_last_seen": 1775258690.742442,
+      "_wired": true,
+      "label": "IoT Device 60a8",
+      "icon": "&#128123;",
+      "sublabel": "10.0.10.106 \u2022 Randomized MAC",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#80808020,#0a0510)",
+        "borderColor": "#80808080",
+        "width": "32px",
+        "height": "32px",
+        "fontSize": "14px"
+      },
+      "tip": {
+        "title": "Unknown Device",
+        "stats": [
+          [
+            "Role",
+            "Unknown Device"
+          ],
+          [
+            "IP",
+            "10.0.10.106"
+          ],
+          [
+            "MAC",
+            "ce:72:01:f8:60:a8"
+          ],
+          [
+            "MAC Type",
+            "Randomized (private)"
+          ],
+          [
+            "Network",
+            "IoT"
+          ]
+        ]
+      },
+      "_role": "unknown",
+      "_vendor": null,
+      "_os": null,
+      "_model": null,
+      "_hostname": null,
       "_ha_entity": null,
       "_ha_battery": null
     }
@@ -6938,7 +4814,7 @@
     },
     {
       "from": "tab-s5e",
-      "to": "ap-east-2",
+      "to": "ap-closet",
       "type": "active",
       "vlan": 6
     },
@@ -7055,19 +4931,19 @@
     },
     {
       "from": "flip3",
-      "to": "ap-east-1",
+      "to": "ap-closet",
       "type": "active",
       "vlan": 6
     },
     {
       "from": "flip3-5g",
-      "to": "center",
+      "to": "ap-closet",
       "type": "active",
       "vlan": 6
     },
     {
       "from": "pixel-7",
-      "to": "ap-east-2",
+      "to": "ap-east-1",
       "type": "active",
       "vlan": 6
     },
@@ -7169,7 +5045,7 @@
     },
     {
       "from": "iphone",
-      "to": "ap-east-2",
+      "to": "ap-closet",
       "type": "active",
       "vlan": 6
     },
@@ -7187,7 +5063,7 @@
     },
     {
       "from": "s24-ultra",
-      "to": "center",
+      "to": "ap-shed",
       "type": "active",
       "vlan": 6
     },
@@ -7246,16 +5122,6 @@
     },
     {
       "from": "_unknown_3e7592ac0b69",
-      "to": "ap-path",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_60f6775f363d",
-      "to": "ap-closet",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_be68f45be203",
       "to": "ap-shed",
       "type": "active"
     },
@@ -7267,11 +5133,6 @@
     {
       "from": "_unknown_cca7c15e89f9",
       "to": "center",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_40a3cc943680",
-      "to": "ap-closet",
       "type": "active"
     },
     {
@@ -7304,136 +5165,6 @@
       "from": "cam3",
       "to": "poe-switch",
       "type": "infra"
-    },
-    {
-      "from": "_unknown_583277d4170e",
-      "to": "ap-path",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_3ea44f764772",
-      "to": "ap-shed",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_e6d4c5bc89b3",
-      "to": "ap-closet",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_3cd92b6f7229",
-      "to": "jellyfin",
-      "type": "service"
-    },
-    {
-      "from": "_unknown_3cd92b6f7229",
-      "to": "navidrome",
-      "type": "service"
-    },
-    {
-      "from": "_unknown_3cd92b6f7229",
-      "to": "immich",
-      "type": "service"
-    },
-    {
-      "from": "_unknown_3cd92b6f7229",
-      "to": "syncthing",
-      "type": "service"
-    },
-    {
-      "from": "ap-path",
-      "to": "_unknown_3cd92b6f7229",
-      "type": "wired"
-    },
-    {
-      "from": "_unknown_70cf4901c24b",
-      "to": "center",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_301b97215b32",
-      "to": "ap-shed",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_2ab069e8c7a5",
-      "to": "ap-cabin",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_7a42dafd1a3a",
-      "to": "ap-closet",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_c8f31948cfd7",
-      "to": "center",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_b61a6b81083b",
-      "to": "ap-closet",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_104a7d5c2dd0",
-      "to": "ap-east-1",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_526e93f7bcca",
-      "to": "ap-shed",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_a4cf12c63fb2",
-      "to": "ap-closet",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_d81f12d36df6",
-      "to": "center",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_60f6776074b7",
-      "to": "ap-north-1",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_6cc374eb9364",
-      "to": "ap-shed",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_ea5545c551a4",
-      "to": "ap-south-1",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_0e0f986dea5f",
-      "to": "center",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_d6c15e6a6f33",
-      "to": "ap-closet",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_381f8d9ba8d1",
-      "to": "ap-closet",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_3c9c0f44a8ae",
-      "to": "ap-east-1",
-      "type": "active"
-    },
-    {
-      "from": "_unknown_1c4d70da8248",
-      "to": "center",
-      "type": "active"
     },
     {
       "from": "_unknown_4cb19949ad66",
@@ -7471,10 +5202,55 @@
       "type": "active"
     },
     {
-      "from": "ap-path",
-      "to": "woodshed",
+      "from": "_unknown_a4cf12c63fb2",
+      "to": "ap-closet",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_c8f31948cfd7",
+      "to": "ap-closet",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_8e104878d2fd",
+      "to": "ap-closet",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_583277d4170e",
+      "to": "ap-path",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_104a7d5c2dd0",
+      "to": "ap-south-1",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_301b97215b32",
+      "to": "ap-shed",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_860b87d9be99",
+      "to": "ap-south-1",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_5e7cbd5d63aa",
+      "to": "ap-closet",
+      "type": "active"
+    },
+    {
+      "from": "_unknown_60f262e3433d",
+      "to": "ap-closet",
+      "type": "active"
+    },
+    {
+      "from": "woodshed",
+      "to": "ap-path",
       "type": "trunk",
-      "label": "lan3\u2194eth0",
+      "label": "eth0\u2194lan3",
       "_lldp": true
     },
     {
