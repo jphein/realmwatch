@@ -30,6 +30,7 @@ import realm_db
 engine = RealmEngine()
 PORT = int(os.environ.get("REALM_PORT", 80))
 _server_start_time = time.time()
+_server_start_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 MAP_DIR = os.path.dirname(os.path.abspath(__file__))
 PERSONAS_FILE = os.path.join(MAP_DIR, "personas.json")
 TOPOLOGY_FILE = os.path.join(MAP_DIR, "topology.json")
@@ -1393,6 +1394,65 @@ def _h_delete_settings(req, params):
         return None
 
 
+# ── Cloud Status Proxy (OpenClaw) ──
+_cloud_status_cache = {"data": None, "ts": 0}
+_cloud_status_lock = threading.Lock()
+_CLOUD_STATUS_URL = "http://100.69.161.127:8080/status.json"
+_CLOUD_STATUS_TTL = 60  # seconds
+
+def _h_get_cloud_status(req, params):
+    """Proxy openclaw status.json via Tailscale with 60s cache."""
+    now = time.time()
+    with _cloud_status_lock:
+        if _cloud_status_cache["data"] is not None and (now - _cloud_status_cache["ts"]) < _CLOUD_STATUS_TTL:
+            return _cloud_status_cache["data"]
+    try:
+        import urllib.request
+        with urllib.request.urlopen(_CLOUD_STATUS_URL, timeout=10) as resp:
+            data = json.loads(resp.read())
+        with _cloud_status_lock:
+            _cloud_status_cache["data"] = data
+            _cloud_status_cache["ts"] = time.time()
+        return data
+    except Exception as e:
+        print(f"Cloud status fetch error: {e}")
+        # Return stale data if available
+        with _cloud_status_lock:
+            if _cloud_status_cache["data"] is not None:
+                return _cloud_status_cache["data"]
+        return {"error": str(e)}
+
+
+def _h_get_api_version(req, params):
+    """Serve /api/version using realm-sigil contract."""
+    import platform, socket
+    try:
+        hash_ = subprocess.run(["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True, text=True, cwd=MAP_DIR).stdout.strip() or "dev"
+        branch = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True, text=True, cwd=MAP_DIR).stdout.strip() or "unknown"
+        dirty = subprocess.run(["git", "diff", "--quiet"],
+            capture_output=True, cwd=MAP_DIR).returncode != 0
+    except Exception:
+        hash_, branch, dirty = "dev", "unknown", False
+
+    import sys as _sys
+    _sys.path.insert(0, os.path.expanduser("~/Projects/realm-sigil/python"))
+    from realm_sigil import version_dict
+    _sys.path.pop(0)
+
+    return version_dict(
+        "realmwatch", "Fantasy homelab network monitor", "fantasy",
+        "https://github.com/jphein/realmwatch",
+        hash=hash_, branch=branch, dirty=dirty,
+        built=_server_start_iso, started=_server_start_iso,
+        uptime=int(time.time() - _server_start_time),
+        runtime=f"python{_sys.version_info.major}.{_sys.version_info.minor}.{_sys.version_info.micro}",
+        os_info=f"{_sys.platform}/{platform.machine()}",
+        host=socket.gethostname(), pid=os.getpid(),
+    )
+
+
 # ── Register All Core Routes ──
 
 _route_table.add("GET", "/status", _h_get_status)
@@ -1420,6 +1480,8 @@ _route_table.add("GET", "/hooks", _h_get_hooks)
 _route_table.add("GET", "/plugins", _h_get_plugins)
 _route_table.add("GET", "/plugins/", _h_get_plugins)
 _route_table.add("GET", "/sse/sources", _h_get_sse_sources)
+_route_table.add("GET", "/api/cloud-status", _h_get_cloud_status)
+_route_table.add("GET", "/api/version", _h_get_api_version)
 
 _route_table.add("POST", "/plugins/toggle", _h_post_plugin_toggle)
 _route_table.add("POST", "/event", _h_post_event)
