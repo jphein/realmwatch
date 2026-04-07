@@ -75,6 +75,7 @@ class SSEBroker:
         self._running = False
         self._sources = []  # list of SSESource (plugin + migrated core sources)
         self._sources_lock = threading.Lock()
+        self._event_id = 0  # monotonic SSE event ID
 
     # ── Source Registration ──
 
@@ -118,7 +119,8 @@ class SSEBroker:
         try:
             topo = realm_db.get_topology()
             topo_nodes = topo.get("nodes", [])
-            q.put_nowait(("topology", _json(topo)))
+            self._event_id += 1
+            q.put_nowait(("topology", _json(topo), self._event_id))
         except Exception:
             log.warning("SSE burst: failed to send topology", exc_info=True)
 
@@ -127,7 +129,8 @@ class SSEBroker:
             try:
                 traffic = compute_traffic(topo_nodes)
                 if traffic:
-                    q.put_nowait(("traffic", _json(traffic)))
+                    self._event_id += 1
+                q.put_nowait(("traffic", _json(traffic), self._event_id))
             except Exception:
                 log.warning("SSE burst: failed to send traffic", exc_info=True)
 
@@ -144,7 +147,8 @@ class SSEBroker:
                     continue
                 if source.burst_filter and not source.burst_filter(data):
                     continue
-                q.put_nowait((source.event_type, _json(data)))
+                self._event_id += 1
+                q.put_nowait((source.event_type, _json(data), self._event_id))
             except Exception:
                 log.warning("SSE burst: failed to send %s", source.name, exc_info=True)
 
@@ -155,7 +159,8 @@ class SSEBroker:
             recent_events = realm_db.get_events_since(time.time() - 900)
             evt_count = 0
             for evt in recent_events:
-                q.put_nowait(("realm-event", _json(evt)))
+                self._event_id += 1
+                q.put_nowait(("realm-event", _json(evt), self._event_id))
                 evt_count += 1
                 if evt_count >= 200:
                     break
@@ -165,7 +170,8 @@ class SSEBroker:
         # ── Phase 3b: Status LAST (flips to live mode + dismisses loading screen) ──
         try:
             status = self._status_fn()
-            q.put_nowait(("status", _json(status)))
+            self._event_id += 1
+            q.put_nowait(("status", _json(status), self._event_id))
         except Exception:
             log.warning("SSE burst: failed to send status", exc_info=True)
 
@@ -197,12 +203,14 @@ class SSEBroker:
             event_type: SSE event name.
             payload: pre-serialized JSON string ready for the wire.
         """
+        self._event_id += 1
+        event_id = self._event_id
         dead = []
         now = time.time()
         with self._lock:
             for q in self._clients:
                 try:
-                    q.put_nowait((event_type, payload))
+                    q.put_nowait((event_type, payload, event_id))
                 except queue.Full:
                     dead.append(q)
                 else:
@@ -233,7 +241,7 @@ class SSEBroker:
 
     def send_event(self, event_type, data):
         """Public: broadcast an event to all clients immediately."""
-        payload = json.dumps(data, separators=(',', ':'))
+        payload = json.dumps(data, separators=(',',':'))
         self._broadcast(event_type, payload)
 
     # ── Collect Loop ──
@@ -282,7 +290,7 @@ class SSEBroker:
                 events = realm_db.get_events_since(self._last_event_ts)
                 for evt in events:
                     self._last_event_ts = max(self._last_event_ts, evt.get("ts", 0))
-                    self._broadcast("realm-event", json.dumps(evt, separators=(',', ':')))
+                    self._broadcast("realm-event", json.dumps(evt, separators=(',',':')))
 
             except Exception as e:
                 import traceback

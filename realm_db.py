@@ -296,6 +296,26 @@ def get_events_since(since_ts):
     return out
 
 
+def cleanup_old_events(max_age_days=30, max_rows=50000):
+    """Delete events older than max_age_days, keeping at most max_rows.
+    Called at startup and periodically to prevent unbounded growth."""
+    c = _conn()
+    cutoff = time.time() - (max_age_days * 86400)
+    # Delete by age
+    c.execute("DELETE FROM events WHERE ts < ?", (cutoff,))
+    # If still over max_rows, keep only the newest
+    count = c.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+    if count > max_rows:
+        c.execute("""DELETE FROM events WHERE id NOT IN (
+            SELECT id FROM events ORDER BY ts DESC LIMIT ?)""", (max_rows,))
+    deleted = c.total_changes
+    c.commit()
+    if deleted:
+        log.info("Event cleanup: removed %d old events (kept %d days / %d max rows)",
+                 deleted, max_age_days, max_rows)
+    return deleted
+
+
 def get_quests():
     """Return all quests as a nested tree (main quests with children)."""
     c = _conn()

@@ -222,6 +222,7 @@ export const getSseConnected = () => _sseConnected;
         updateUI(d);
         if (d.wifi) setWifiMap(d.wifi);
         liveOk = true;
+        clearTimeout(_initialTimer);
         console.log('Realm Map: SSE live data connected');
         if (window._advanceLoadStage) window._advanceLoadStage(4);
         const loadEl = document.getElementById('realm-loading');
@@ -301,6 +302,35 @@ export const getSseConnected = () => _sseConnected;
       }
     }
   }
+
+  // ── Initial connection timeout — show error if server never responds ──
+  const INITIAL_TIMEOUT = 15000;
+  const _initialTimer = setTimeout(() => {
+    if (liveOk) return; // connected fine, ignore
+    const loadEl = document.getElementById('realm-loading');
+    if (!loadEl || loadEl.classList.contains('dismissed')) return;
+    const msgEl = loadEl.querySelector('.rl-title') || loadEl.querySelector('h1');
+    if (msgEl) msgEl.textContent = 'Server Unreachable';
+    const subEl = loadEl.querySelector('.rl-subtitle') || loadEl.querySelector('p');
+    if (subEl) subEl.textContent = 'Cannot connect to realm map server. Retrying...';
+    // Add a retry button
+    let btn = loadEl.querySelector('.rl-retry-btn');
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.className = 'rl-retry-btn';
+      btn.textContent = 'Retry Now';
+      btn.style.cssText = 'margin-top:1em;padding:.5em 1.5em;cursor:pointer;font-size:1em;border-radius:4px;border:1px solid #888;background:#333;color:#ccc';
+      btn.onclick = () => {
+        if (msgEl) msgEl.textContent = 'Reconnecting...';
+        if (subEl) subEl.textContent = '';
+        _consecutiveFailures = 0;
+        _backoff = BACKOFF_INITIAL;
+        _ssePermanentlyDead = false;
+        _connect();
+      };
+      (subEl || msgEl || loadEl).after(btn);
+    }
+  }, INITIAL_TIMEOUT);
 
   // ── Visibility change: force immediate reconnect if tab becomes visible ──
   document.addEventListener('visibilitychange', () => {

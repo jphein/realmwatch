@@ -1,7 +1,7 @@
 # Quest Reward System Design
 
 **Date:** 2026-03-14
-**Status:** Approved
+**Status:** Partially Implemented
 
 ## Overview
 

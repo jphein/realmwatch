@@ -1536,8 +1536,8 @@ class RealmHandler(SimpleHTTPRequestHandler):
                 _sse_broker.client_wrote(client_q)
                 while True:
                     try:
-                        event_type, payload = client_q.get(timeout=15)
-                        self.wfile.write(f"event: {event_type}\ndata: {payload}\n\n".encode())
+                        event_type, payload, event_id = client_q.get(timeout=15)
+                        self.wfile.write(f"id: {event_id}\nevent: {event_type}\ndata: {payload}\n\n".encode())
                         self.wfile.flush()
                         _sse_broker.client_wrote(client_q)
                     except queue.Empty:
@@ -1720,6 +1720,9 @@ if __name__ == "__main__":
     realm_db.migrate_config("speech", _SPEECH_CONFIG, _SPEECH_SAFE_KEYS)
     realm_db.migrate_topology(TOPOLOGY_FILE)
     node_roles.migrate_to_db()
+
+    # ── Housekeeping ──
+    realm_db.cleanup_old_events()
 
     # ── Plugin system startup ──
     # All bridges (HA, WLED, WiFi, firewall, collectd, events, chat, notion, codex, herald)
