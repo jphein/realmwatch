@@ -1,0 +1,16 @@
+{
+  "name": "discovery",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Discovery engine companion — registers API endpoints, SSE source, and node enricher for the autodiscovery system.",
+  "fantasy_name": "Realm Surveyors",
+  "icon": "\ud83d\udd0d",
+
+  "python": {
+    "module": "plugin",
+    "entry": "setup"
+  },
+
+  "endpoints": [],
+  "sse_types": ["discovery"]
+}

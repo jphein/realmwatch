@@ -36,6 +36,7 @@ PERSONAS_FILE = os.path.join(MAP_DIR, "personas.json")
 TOPOLOGY_FILE = os.path.join(MAP_DIR, "topology.json")
 _CHAT_CONFIG = os.path.expanduser("~/.config/azure-chat-assistant/config.json")
 _SPEECH_CONFIG = os.path.expanduser("~/.config/speech-to-cli/config.json")
+_discovery_engine = None  # Set during startup
 
 # ── game.db write-back helpers ──
 import sqlite3 as _sql
@@ -1750,6 +1751,15 @@ if __name__ == "__main__":
             ))
 
     _sse_broker.start()
+
+    # ── Discovery engine startup ──
+    import discovery_engine as _de_mod
+    _discovery_engine = _de_mod.DiscoveryEngine()
+    for provider in _plugin_registry.get_discovery_providers():
+        _discovery_engine.register_provider(provider)
+    _discovery_engine.start()
+    print(f"Discovery engine started with {len(_discovery_engine.get_providers())} provider(s)")
+
     server = ThreadingHTTPServer(("", PORT), RealmHandler)
 
     def _shutdown(sig, frame):
