@@ -1,0 +1,10 @@
+{
+  "name": "kvm",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "KVM/libvirt VM discovery — finds virtual machines on hypervisor hosts via SSH + virsh.",
+  "fantasy_name": "Ethereal Planes",
+  "icon": "\u2601\ufe0f",
+  "python": {"module": "plugin", "entry": "setup"},
+  "depends_on": ["discovery"]
+}
