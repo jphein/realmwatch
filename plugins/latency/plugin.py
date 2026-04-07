@@ -108,6 +108,14 @@ def _probe_once():
     global _latency_map, _last_probe_ts
     _load_topology()
     ip_latencies = _probe_fping()
+    # Feed reachability data to discovery engine HostAccess cache
+    try:
+        from discovery_engine import HostAccess
+        for ip in _wired_ips:
+            rtt = ip_latencies.get(ip)
+            HostAccess.update_reachability(ip, rtt is not None, rtt)
+    except ImportError:
+        pass
     # Convert {ip: rtt} -> {node_id: rtt}
     new_map = {}
     for ip, rtt in ip_latencies.items():

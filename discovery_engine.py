@@ -75,6 +75,22 @@ class HostAccess:
 
     _ssh_cache = {}  # {node_id: (available, timestamp)}
     _SSH_CACHE_TTL = 300  # 5 minutes
+    _reachability_cache = {}  # {ip: (reachable, rtt_ms, timestamp)}
+    _REACHABILITY_TTL = 60  # seconds
+
+    @classmethod
+    def update_reachability(cls, ip, reachable, rtt_ms=None):
+        """Update reachability from external source (e.g., fping)."""
+        cls._reachability_cache[ip] = (reachable, rtt_ms, time.time())
+
+    def is_reachable(self):
+        """Check fping reachability cache before attempting SSH/SNMP."""
+        if not self.ip:
+            return True  # no IP, can't check
+        cached = self._reachability_cache.get(self.ip)
+        if cached and (time.time() - cached[2]) < self._REACHABILITY_TTL:
+            return cached[0]
+        return True  # assume reachable if no data
 
     def __init__(self, node_id, node_data):
         self.node_id = node_id
@@ -114,6 +130,9 @@ class HostAccess:
 
     def ssh_available(self):
         """Check if SSH is reachable (cached for 5 minutes)."""
+        # Check fping reachability first
+        if not self.is_reachable():
+            return False
         now = time.time()
         cached = self._ssh_cache.get(self.node_id)
         if cached and (now - cached[1]) < self._SSH_CACHE_TTL:
