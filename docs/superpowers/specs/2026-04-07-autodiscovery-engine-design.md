@@ -7,9 +7,58 @@
 
 ## Overview
 
-A universal discovery layer in realmwatch that expands what the realm can see. Today, realmwatch discovers WiFi clients via AP scanning and enriches unknowns via the 6-signal pipeline. This spec adds discovery of Docker containers, KVM/libvirt VMs, systemd services, SNMP-managed devices, and Netdata-monitored hosts — all through a plugin-based architecture with a shared core engine.
+This is the maturation step for realmwatch — the upgrade from "beautiful map with manually-placed nodes" to **authoritative infrastructure source of truth**.
 
-Realmwatch **is** the discovery engine. No external tools (Uptime Kuma, Gatus) — the realm learns about everything and exposes it through its existing `/status` API and SSE stream.
+Today, realmwatch has siloed discovery (WiFi clients in ap_scanner, HA devices in ha_bridge, collectd hosts in RRD dirs) with no unified model. Nodes are mostly hand-placed. The 6-signal enrichment pipeline is clever but only runs on unknown WiFi clients. If a container stops, a VM crashes, or a switch port goes down, realmwatch doesn't know unless something else happens to surface it.
+
+This spec adds a **universal discovery layer** that:
+- Discovers Docker containers, KVM/libvirt VMs, systemd services, SNMP-managed devices, Netdata hosts, Caddy reverse proxies, GitHub repos, and local projects
+- Upgrades all existing plugins (WiFi, HA, collectd, firewall, WLED) to feed the same unified SubEntity model
+- Auto-links discovered entities to existing topology nodes — `jellyfin` on the map automatically gains live container health from Docker on disks
+- Makes the enrichment pipeline universal — not just for unknown WiFi clients, but for every node from every source
+- Provides health checking (HTTP, TCP, UDP, TLS, realm-sigil versions) auto-derived from what other plugins discover
+- Surfaces everything through `/status`, `/discovery`, and SSE — making realmwatch the single API that status.realm.watch, the oracle, and any future tool can depend on
+
+Realmwatch **is** the discovery engine. No external tools (Uptime Kuma, Gatus) — the realm learns about everything and exposes it through its existing API.
+
+## What Changes for Existing Features
+
+### Enrichment Pipeline Goes Universal
+
+Today the 6-signal enrichment pipeline (`node_roles.py: enrich_unknown_node()`) only runs on newly-discovered WiFi unknowns. With the discovery engine:
+
+- **Every node from every source** gets enriched — not just WiFi unknowns
+- Discovery providers feed structured data into the enricher chain
+- nmap scan results (OS fingerprint, service versions) become a new enrichment signal, superseding the primitive 11-port TCP probe (signal 4)
+- The enrichment pipeline priority order becomes: manual override > HA > WLED > discovery engine > WiFi > collectd > nmap > OUI
+
+### Topology Becomes Discovery-Driven
+
+Today topology.json is manually curated (plus WiFi auto-nodes). With the discovery engine:
+
+- **Existing nodes gain live status** — a manually-placed `jellyfin` node now shows "container running on disks, image jellyfin/jellyfin:latest, 512MB RAM" because Docker discovery linked it
+- **New entities surface for review** — unknown Docker containers, unmatched VMs, new SNMP devices appear in the discovery dashboard for manual linking or promotion
+- **Host→child relationships emerge** — `disks` → `[jellyfin, navidrome, immich, ...]` and `ubox0` → `[realm-portal, realmcoin, bestiary, ...]` are automatically discovered, not manually maintained
+- **Physical topology from SNMP** — switch port ↔ device MAC mappings answer "which port is each device plugged into?" for the first time
+- **Stale detection** — nodes that go unreachable across all providers get flagged, not silently ignored
+
+### Node Roles Become Smarter
+
+Today node roles are mostly manually assigned or inferred from the 6-signal pipeline on first discovery. With the discovery engine:
+
+- **nmap OS fingerprinting** upgrades role detection — nmap can identify "HP ProCurve Switch 2920" or "Synology DSM 7.2" from a port scan, providing authoritative role assignment
+- **Role refinement** — a node assigned `server` role gets Docker/systemd scanned. If Docker returns nothing but SNMP responds, the role might be refined to `appliance` or `nas`
+- **Capability-based role augmentation** — discovering that a `server` node runs KVM means it's also a `hypervisor`. Roles become composable rather than single-value
+
+### The Realm Becomes Dependable
+
+After this work, you can:
+- Open the map and **trust** that every node's status is live and current
+- Click any host and see **everything running on it** — containers, VMs, services, reverse proxy routes
+- Get **alerted** when a container stops, a service fails, or a new unknown device appears
+- Ask "what's running on disks?" and get a complete, auto-discovered answer via `/discovery/disks`
+- Have status.realm.watch read from realmwatch's API instead of maintaining its own manual checks
+- Add a new server to the network and watch it **auto-appear** with correct role, services, and connections
 
 ## Design Decisions
 
@@ -21,7 +70,7 @@ Realmwatch **is** the discovery engine. No external tools (Uptime Kuma, Gatus) �
 | Entity linking | Auto-match by ID/hostname/IP, manual override | Existing topology nodes (e.g., `jellyfin`) auto-gain container health when Docker plugin finds a matching container |
 | Remote access | SSH primary, API where available | AP scanner already proves SSH works; Docker API and Netdata REST supplement where available |
 | collectd | Keep as-is | Existing, working, no reason to remove. Netdata supplements rather than replaces for now |
-| SNMP | Direct polling via pysnmp | Lightweight, no external daemon needed |
+| SNMP | Net-SNMP CLI tools (snmpwalk/snmpget) | Same shell-out pattern as fping/SSH, zero Python deps, battle-tested |
 | Systemd filtering | Auto-detect interesting + manual watch list | Surface port-listening, user-level, and failed units; allow per-node pinned services |
 | Scan scheduling | Per-provider intervals, staggered | Heavy scans (SNMP walk, Docker inspect) run less frequently than lightweight checks |
 
