@@ -673,20 +673,17 @@ SubEntity(
 
 ### Plugin: `manual` ("The Chronicler's Quill")
 
-**Discovers:** Nothing — this plugin provides a way to declare static sub-entities that can't be auto-discovered.
+**Discovers:** Nothing — this plugin provides a way to declare static sub-entities, relationships, annotations, and external bookmarks that can't be auto-discovered. It's the catch-all for human knowledge that no scanner can infer.
 
-**Use cases:**
-- ISP fiber gateway (108.74.4.89) — just an IP, no SNMP/SSH
-- Azure VMs (terra2) — no SSH from LAN
-- External cloud services with no API (WordPress on GCP)
-- Known intermittent devices
-- Anything with a static status that should appear in the discovery dashboard
+**Entry types:**
 
-**Declaration format** (stored in realm.db, managed via API):
+#### 1. Static Infrastructure
+Nodes with no management interface — can't SSH, can't SNMP, can't API.
+
 ```json
 {
     "id": "manual:fiber-gateway",
-    "type": "manual",
+    "type": "infrastructure",
     "name": "Fiber Gateway",
     "host_node_id": "fiber-gateway",
     "status": "assumed_up",
@@ -698,9 +695,123 @@ SubEntity(
 }
 ```
 
-**API:** `POST /discovery/manual` to create/update, `DELETE /discovery/manual/<id>` to remove.
+#### 2. Service Declarations
+"This node runs X" when no plugin can detect it — services behind VPNs, custom protocols, or devices the engine can't reach.
 
-**Scan interval:** None — manual entries don't scan. Status is set explicitly or derived from the latency prober (if the node is pingable).
+```json
+{
+    "id": "manual:terra2:minecraft",
+    "type": "service",
+    "name": "Minecraft Bedrock Servers",
+    "host_node_id": "terra2",
+    "status": "running",
+    "metadata": {
+        "description": "3 Bedrock servers on Azure VM",
+        "ports": [19132, 8888, 8890],
+        "provider": "azure",
+        "url": "https://portal.azure.com/...",
+        "notes": "No SSH from LAN, managed via Azure Portal"
+    }
+}
+```
+
+#### 3. Relationship Declarations
+Manual parent-child or dependency links that auto-discovery can't infer.
+
+```json
+{
+    "id": "manual:rel:jellyfin-depends-disks",
+    "type": "relationship",
+    "name": "jellyfin → disks",
+    "host_node_id": "jellyfin",
+    "status": "active",
+    "metadata": {
+        "relationship": "depends_on",
+        "target_node_id": "disks",
+        "description": "Jellyfin container runs on disks, media stored on NFS mount"
+    }
+}
+```
+
+Relationships surface as connection annotations on the map — dotted lines, dependency arrows, or grouping indicators.
+
+#### 4. Tags and Annotations
+Metadata that enriches the map but isn't discoverable — ownership, purpose, grouping, operational notes.
+
+```json
+{
+    "id": "manual:tag:media-stack",
+    "type": "tag",
+    "name": "Media Stack",
+    "host_node_id": "disks",
+    "status": "active",
+    "metadata": {
+        "tag": "media-stack",
+        "members": ["jellyfin", "navidrome", "immich", "syncthing"],
+        "owner": "jp",
+        "description": "Self-hosted media services on disks"
+    }
+}
+```
+
+```json
+{
+    "id": "manual:annotation:glenns-gear",
+    "type": "annotation",
+    "name": "<Owner>'s Equipment",
+    "host_node_id": "glenns-bastion",
+    "status": "active",
+    "metadata": {
+        "owner": "glenn",
+        "notes": "<Owner> manages his own router and AP configs",
+        "members": ["glenns-bastion", "the-hidden-chamber"]
+    }
+}
+```
+
+#### 5. External Bookmarks
+Cloud services, SaaS tools, third-party APIs that are part of the realm's operational landscape but have no LAN presence.
+
+```json
+{
+    "id": "manual:ext:cloudflare",
+    "type": "external",
+    "name": "Cloudflare",
+    "host_node_id": "cloud",
+    "status": "active",
+    "metadata": {
+        "service": "DNS + CDN",
+        "domains": ["realm.watch", "jphe.in", "imaginalvision.com"],
+        "dashboard": "https://dash.cloudflare.com/",
+        "notes": "DNS for all public domains, proxy for some"
+    }
+}
+```
+
+```json
+{
+    "id": "manual:ext:vercel",
+    "type": "external",
+    "name": "Vercel",
+    "host_node_id": "cloud",
+    "status": "active",
+    "metadata": {
+        "service": "Static hosting",
+        "projects": ["artcardsv5", "techempower", "dreamspace"],
+        "dashboard": "https://vercel.com/jphein"
+    }
+}
+```
+
+**API:**
+- `POST /discovery/manual` — create or update a manual entry
+- `DELETE /discovery/manual/<id>` — remove a manual entry
+- `GET /discovery/manual` — list all manual entries
+- `GET /discovery/manual/tags` — list all tags (for filtering/grouping)
+
+**Scan interval:** None — manual entries don't scan. Status is set explicitly or derived from the latency prober (if the node is pingable). Tags and annotations have no status — they're pure metadata.
+
+**Frontend:** Manual entries are editable from the discovery dashboard panel. Tags can be used as map filters ("show me just the media stack"). Annotations show as tooltips or badges.
 
 ## Frontend Integration
 
