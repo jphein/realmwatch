@@ -252,6 +252,27 @@ class PluginContext:
         """
         self._registry.register_event_handler(event_type, handler_fn, self.name)
 
+    def register_discovery_provider(self, name, roles, discover_fn, interval=60,
+                                     entity_types=None, priority=50):
+        """Register a discovery provider with the engine.
+
+        Args:
+            name: Provider name (e.g., 'docker', 'systemd').
+            roles: Node roles this provider scans (e.g., ['server', 'nas']).
+            discover_fn: Callable(node_id, node_data, host_access, engine) -> list[SubEntity].
+            interval: Seconds between scans (default 60).
+            entity_types: What this provider discovers (e.g., ['container']).
+            priority: Scan order (lower = earlier, default 50).
+        """
+        from discovery_engine import DiscoveryProvider
+        provider = DiscoveryProvider(
+            name=name, roles=roles, discover_fn=discover_fn,
+            interval=interval, entity_types=entity_types or [],
+            priority=priority, plugin=self.name,
+        )
+        self._registry.register_discovery_provider(provider)
+        self._logger.info("Registered discovery provider: %s (roles=%s)", name, roles)
+
     # ── Utilities ──
 
     def push_event(self, event_type, data):

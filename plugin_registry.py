@@ -9,6 +9,8 @@ import subprocess
 import dataclasses
 from typing import Any, Callable
 
+from discovery_engine import DiscoveryProvider
+
 log = logging.getLogger(__name__)
 
 
@@ -73,6 +75,7 @@ class PluginRegistry:
         self._status_providers: list[tuple[Callable, str]] = []  # (fn, plugin)
         self._event_handlers: dict[str, list[tuple[Callable, str]]] = {}  # event_type -> [(fn, plugin)]
         self._plugin_apis: dict[str, dict] = {}  # plugin_name -> api_dict
+        self._discovery_providers: list[DiscoveryProvider] = []
 
     def register_plugin(self, info: PluginInfo):
         """Register a plugin's metadata."""
@@ -109,6 +112,14 @@ class PluginRegistry:
     def expose_plugin_api(self, plugin_name: str, api_dict: dict):
         """Store a plugin's public API for inter-plugin access."""
         self._plugin_apis[plugin_name] = api_dict
+
+    def register_discovery_provider(self, provider: DiscoveryProvider):
+        """Register a discovery provider."""
+        self._discovery_providers.append(provider)
+
+    def get_discovery_providers(self) -> list[DiscoveryProvider]:
+        """All registered discovery providers."""
+        return list(self._discovery_providers)
 
     # ── Queries ──
 
