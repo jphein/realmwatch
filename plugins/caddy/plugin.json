@@ -1,0 +1,10 @@
+{
+  "name": "caddy",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Caddy reverse proxy discovery — maps domain→backend routes from Caddyfile or admin API.",
+  "fantasy_name": "Gate Warden",
+  "icon": "🚧",
+  "python": {"module": "plugin", "entry": "setup"},
+  "depends_on": ["discovery"]
+}
