@@ -109,6 +109,38 @@ def init():
         CREATE INDEX IF NOT EXISTS idx_conn_from ON connections(from_node);
         CREATE INDEX IF NOT EXISTS idx_conn_to ON connections(to_node);
         CREATE INDEX IF NOT EXISTS idx_quests_parent ON quests(parent_id);
+
+        CREATE TABLE IF NOT EXISTS sub_entities (
+            id TEXT PRIMARY KEY,
+            type TEXT NOT NULL,
+            name TEXT NOT NULL,
+            host_node_id TEXT NOT NULL,
+            status TEXT DEFAULT 'unknown',
+            metadata TEXT DEFAULT '{}',
+            linked_node_id TEXT,
+            provider TEXT NOT NULL,
+            first_seen REAL NOT NULL,
+            last_seen REAL NOT NULL,
+            link_type TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_sub_entities_host ON sub_entities(host_node_id);
+        CREATE INDEX IF NOT EXISTS idx_sub_entities_linked ON sub_entities(linked_node_id);
+        CREATE INDEX IF NOT EXISTS idx_sub_entities_provider ON sub_entities(provider);
+
+        CREATE TABLE IF NOT EXISTS discovery_links (
+            sub_entity_id TEXT PRIMARY KEY,
+            linked_node_id TEXT NOT NULL,
+            created REAL NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS discovery_capabilities (
+            node_id TEXT NOT NULL,
+            provider TEXT NOT NULL,
+            available INTEGER DEFAULT 1,
+            last_checked REAL,
+            error TEXT,
+            PRIMARY KEY (node_id, provider)
+        );
     """)
     c.commit()
     # Migration: add rewards column to quests (idempotent)
@@ -895,3 +927,139 @@ def update_topology_connections(topo_connections):
 def update_node_fields(node_id, updates):
     """Update specific fields on a node (e.g. ip, sublabel after DHCP change)."""
     return update_node(node_id, updates)
+
+
+# ── Sub-entities (discovery) ──
+
+def get_sub_entities(host_node_id=None, provider=None, linked_node_id=None):
+    """Query sub-entities with optional filters."""
+    c = _conn()
+    sql = "SELECT * FROM sub_entities WHERE 1=1"
+    params = []
+    if host_node_id:
+        sql += " AND host_node_id = ?"
+        params.append(host_node_id)
+    if provider:
+        sql += " AND provider = ?"
+        params.append(provider)
+    if linked_node_id:
+        sql += " AND linked_node_id = ?"
+        params.append(linked_node_id)
+    rows = c.execute(sql, params).fetchall()
+    result = []
+    for r in rows:
+        d = dict(r)
+        d["metadata"] = json.loads(d["metadata"]) if d["metadata"] else {}
+        result.append(d)
+    return result
+
+
+def upsert_sub_entity(entity):
+    """Insert or update a sub-entity. entity is a dict with at minimum: id, type, name, host_node_id, status, provider."""
+    c = _conn()
+    now = time.time()
+    existing = c.execute("SELECT first_seen FROM sub_entities WHERE id = ?", (entity["id"],)).fetchone()
+    first_seen = existing["first_seen"] if existing else now
+    metadata = json.dumps(entity.get("metadata", {}))
+    c.execute("""INSERT OR REPLACE INTO sub_entities
+        (id, type, name, host_node_id, status, metadata, linked_node_id, provider, first_seen, last_seen, link_type)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (entity["id"], entity["type"], entity["name"], entity["host_node_id"],
+         entity.get("status", "unknown"), metadata, entity.get("linked_node_id"),
+         entity["provider"], first_seen, now, entity.get("link_type")))
+    c.commit()
+
+
+def upsert_sub_entities_batch(entities):
+    """Batch upsert sub-entities. More efficient than individual calls."""
+    c = _conn()
+    now = time.time()
+    for entity in entities:
+        existing = c.execute("SELECT first_seen FROM sub_entities WHERE id = ?", (entity["id"],)).fetchone()
+        first_seen = existing["first_seen"] if existing else now
+        metadata = json.dumps(entity.get("metadata", {}))
+        c.execute("""INSERT OR REPLACE INTO sub_entities
+            (id, type, name, host_node_id, status, metadata, linked_node_id, provider, first_seen, last_seen, link_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (entity["id"], entity["type"], entity["name"], entity["host_node_id"],
+             entity.get("status", "unknown"), metadata, entity.get("linked_node_id"),
+             entity["provider"], first_seen, now, entity.get("link_type")))
+    c.commit()
+
+
+def delete_sub_entity(entity_id):
+    """Delete a sub-entity by ID."""
+    c = _conn()
+    c.execute("DELETE FROM sub_entities WHERE id = ?", (entity_id,))
+    c.execute("DELETE FROM discovery_links WHERE sub_entity_id = ?", (entity_id,))
+    c.commit()
+
+
+def cleanup_stale_sub_entities(stale_hours=24, dead_days=7, manual_days=30):
+    """Mark unseen entities as stale, delete very old ones."""
+    c = _conn()
+    now = time.time()
+    stale_cutoff = now - (stale_hours * 3600)
+    dead_cutoff = now - (dead_days * 86400)
+    manual_cutoff = now - (manual_days * 86400)
+    # Mark stale
+    c.execute("UPDATE sub_entities SET status = 'stale' WHERE last_seen < ? AND status != 'stale'",
+              (stale_cutoff,))
+    # Delete very old non-manual entities
+    c.execute("DELETE FROM sub_entities WHERE last_seen < ? AND link_type != 'manual'",
+              (dead_cutoff,))
+    # Delete very old manual entities
+    c.execute("DELETE FROM sub_entities WHERE last_seen < ? AND link_type = 'manual'",
+              (manual_cutoff,))
+    c.commit()
+
+
+# ── Discovery links ──
+
+def get_discovery_link(sub_entity_id):
+    """Get manual link override for a sub-entity."""
+    c = _conn()
+    row = c.execute("SELECT * FROM discovery_links WHERE sub_entity_id = ?",
+                    (sub_entity_id,)).fetchone()
+    return dict(row) if row else None
+
+
+def set_discovery_link(sub_entity_id, linked_node_id):
+    """Set a manual link between sub-entity and topology node."""
+    c = _conn()
+    now = time.time()
+    c.execute("INSERT OR REPLACE INTO discovery_links (sub_entity_id, linked_node_id, created) VALUES (?, ?, ?)",
+              (sub_entity_id, linked_node_id, now))
+    c.execute("UPDATE sub_entities SET linked_node_id = ?, link_type = 'manual' WHERE id = ?",
+              (linked_node_id, sub_entity_id))
+    c.commit()
+
+
+def delete_discovery_link(sub_entity_id):
+    """Remove a manual link."""
+    c = _conn()
+    c.execute("DELETE FROM discovery_links WHERE sub_entity_id = ?", (sub_entity_id,))
+    c.execute("UPDATE sub_entities SET linked_node_id = NULL, link_type = NULL WHERE id = ? AND link_type = 'manual'",
+              (sub_entity_id,))
+    c.commit()
+
+
+# ── Discovery capabilities ──
+
+def get_discovery_capabilities(node_id=None):
+    """Get discovery capabilities, optionally filtered by node."""
+    c = _conn()
+    if node_id:
+        rows = c.execute("SELECT * FROM discovery_capabilities WHERE node_id = ?", (node_id,)).fetchall()
+    else:
+        rows = c.execute("SELECT * FROM discovery_capabilities").fetchall()
+    return [dict(r) for r in rows]
+
+
+def set_discovery_capability(node_id, provider, available, error=None):
+    """Record whether a provider can reach a specific node."""
+    c = _conn()
+    c.execute("""INSERT OR REPLACE INTO discovery_capabilities
+        (node_id, provider, available, last_checked, error) VALUES (?, ?, ?, ?, ?)""",
+        (node_id, provider, 1 if available else 0, time.time(), error))
+    c.commit()
