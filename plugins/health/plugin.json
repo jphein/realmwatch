@@ -1,0 +1,10 @@
+{
+  "name": "health",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Health monitoring — HTTP, TCP, TLS expiry, realm-sigil version checks with auto-discovery.",
+  "fantasy_name": "Watchtower Beacon",
+  "icon": "\ud83d\udea8",
+  "python": {"module": "plugin", "entry": "setup"},
+  "depends_on": ["discovery"]
+}
