@@ -1,0 +1,10 @@
+{
+  "name": "game-servers",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Game server status — Minecraft Bedrock UDP ping, Terraria TCP check.",
+  "fantasy_name": "Arena Watcher",
+  "icon": "\ud83c\udfae",
+  "python": {"module": "plugin", "entry": "setup"},
+  "depends_on": ["discovery"]
+}
