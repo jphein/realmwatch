@@ -1,0 +1,15 @@
+{
+  "name": "docker-discovery",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Docker container discovery — finds containers on hosts via SSH.",
+  "fantasy_name": "Iron Golem Foundry",
+  "icon": "📦",
+
+  "python": {
+    "module": "plugin",
+    "entry": "setup"
+  },
+
+  "depends_on": ["discovery"]
+}
