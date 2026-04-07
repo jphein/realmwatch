@@ -3215,6 +3215,113 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  /* Vassals tab */
+  .vassal-group {
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    background: rgba(40,35,25,0.5);
+    border: 1px solid rgba(212,197,160,0.12);
+    border-radius: 6px;
+  }
+  .vassal-group-title {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: #a89870;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .vassal-group-count {
+    font-family: inherit;
+    font-size: 10px;
+    color: #80704a;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .vassal-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-bottom: 1px solid rgba(212,197,160,0.06);
+    transition: background 0.15s;
+  }
+  .vassal-row:hover {
+    background: rgba(212,197,160,0.05);
+  }
+  .vassal-row:last-child { border-bottom: none; }
+  .vassal-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .vassal-up { background: #4caf50; box-shadow: 0 0 4px rgba(76,175,80,0.5); }
+  .vassal-down { background: #78706060; }
+  .vassal-critical { background: #f44336; box-shadow: 0 0 4px rgba(244,67,54,0.5); }
+  .vassal-stale { background: #ff9800; box-shadow: 0 0 4px rgba(255,152,0,0.3); }
+  .vassal-unknown { background: #60584a; }
+  .vassal-info { flex: 1; min-width: 0; }
+  .vassal-name {
+    color: #d4c5a0;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .vassal-id {
+    color: #60584a;
+    font-size: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .vassal-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .vassal-btn {
+    font-size: 9px !important;
+    padding: 3px 8px !important;
+  }
+  .vassal-expand-btn {
+    background: none;
+    border: none;
+    color: #80704a;
+    font-size: 10px;
+    cursor: pointer;
+    padding: 2px 4px;
+    transition: color 0.15s;
+  }
+  .vassal-expand-btn:hover { color: #d4c5a0; }
+  .vassal-meta {
+    margin: 4px 0 8px 16px;
+    padding: 8px 10px;
+    background: rgba(30,25,18,0.6);
+    border: 1px solid rgba(212,197,160,0.08);
+    border-radius: 4px;
+  }
+  .vassal-meta-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 2px 0;
+    font-size: 10px;
+  }
+  .vassal-meta-key {
+    color: #80704a;
+    flex-shrink: 0;
+    margin-right: 12px;
+  }
+  .vassal-meta-val {
+    color: #a89870;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .pe-role-badge {
     display: flex;
     align-items: center;

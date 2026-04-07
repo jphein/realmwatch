@@ -282,6 +282,213 @@ export function renderGroupPane(nodeKey) {
   body.innerHTML = html;
 }
 
+// ── Vassals Tab (discovered sub-entities) ──
+
+const _vassalTypeLabels = {
+  container: 'Iron Golems', vm: 'Ethereal Planes',
+  service: 'Runic Wards', wifi_client: 'Wandering Spirits',
+  snmp_port: 'Crystal Channels', reverse_proxy: 'Gate Wardens',
+  ha_device: 'Enchanted Artifacts', collectd_host: 'Scrying Stones',
+  local_project: 'Arcane Tomes',
+};
+
+const _vassalTypeIcons = {
+  container: '\uD83E\uDDF1', vm: '\uD83C\uDF0C', service: '\uD83D\uDD2E',
+  wifi_client: '\uD83D\uDC7B', snmp_port: '\uD83D\uDD2E', reverse_proxy: '\uD83D\uDEE1\uFE0F',
+  ha_device: '\u2728', collectd_host: '\uD83D\uDD2D', local_project: '\uD83D\uDCDC',
+};
+
+function _vassalStatusClass(status) {
+  return {
+    running: 'vassal-up', stopped: 'vassal-down',
+    failed: 'vassal-critical', stale: 'vassal-stale',
+    connected: 'vassal-up', up: 'vassal-up', down: 'vassal-down',
+  }[status] || 'vassal-unknown';
+}
+
+function _vassalStatusLabel(status) {
+  return {
+    running: 'Active', stopped: 'Dormant', failed: 'Fallen',
+    stale: 'Fading', connected: 'Active', up: 'Active', down: 'Dormant',
+  }[status] || 'Unknown';
+}
+
+export async function renderVassalsPane(nodeKey) {
+  const body = document.getElementById('pe-vassals-body');
+  const titleEl = document.getElementById('pe-vassals-title');
+  const countEl = document.getElementById('pe-vassals-count');
+  if (!body) return;
+
+  const info = infraNodes[nodeKey];
+  const nodeName = info ? info.name : nodeKey;
+  titleEl.textContent = nodeName + ' \u2014 Vassals';
+
+  body.textContent = '';
+  const loadingDiv = document.createElement('div');
+  loadingDiv.className = 'pe-control-empty';
+  loadingDiv.textContent = 'Scrying for vassals\u2026';
+  body.appendChild(loadingDiv);
+
+  let data;
+  try {
+    const r = await fetch('/discovery/' + encodeURIComponent(nodeKey));
+    if (!r.ok) { body.textContent = ''; const d = document.createElement('div'); d.className = 'pe-control-empty'; d.textContent = 'No vassals discovered.'; body.appendChild(d); countEl.textContent = ''; return; }
+    data = await r.json();
+  } catch {
+    body.textContent = ''; const d = document.createElement('div'); d.className = 'pe-control-empty'; d.textContent = 'Failed to reach the discovery oracle.'; body.appendChild(d);
+    countEl.textContent = '';
+    return;
+  }
+
+  const entities = [...(data.host_entities || []), ...(data.linked_entities || [])];
+  if (!entities.length) {
+    body.textContent = ''; const d = document.createElement('div'); d.className = 'pe-control-empty'; d.textContent = 'No vassals discovered for this node.'; body.appendChild(d);
+    countEl.textContent = '';
+    return;
+  }
+
+  countEl.textContent = entities.length + ' vassal' + (entities.length !== 1 ? 's' : '');
+
+  // Group by type
+  const groups = {};
+  for (const e of entities) {
+    (groups[e.type] = groups[e.type] || []).push(e);
+  }
+
+  const frag = document.createDocumentFragment();
+  for (const [type, items] of Object.entries(groups)) {
+    const groupLabel = _vassalTypeLabels[type] || type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const icon = _vassalTypeIcons[type] || '\u2022';
+    const groupEl = document.createElement('div');
+    groupEl.className = 'vassal-group';
+
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'vassal-group-title';
+    titleDiv.textContent = icon + ' ' + groupLabel + ' ';
+    const countSpan = document.createElement('span');
+    countSpan.className = 'vassal-group-count';
+    countSpan.textContent = '(' + items.length + ')';
+    titleDiv.appendChild(countSpan);
+    groupEl.appendChild(titleDiv);
+
+    for (const ent of items) {
+      const sc = _vassalStatusClass(ent.status);
+      const sl = _vassalStatusLabel(ent.status);
+      const isLinked = !!ent.linked_node_id;
+
+      const row = document.createElement('div');
+      row.className = 'vassal-row';
+      row.dataset.vassalId = ent.id;
+
+      const dot = document.createElement('span');
+      dot.className = 'vassal-status-dot ' + sc;
+      dot.title = sl;
+      row.appendChild(dot);
+
+      const infoDiv = document.createElement('div');
+      infoDiv.className = 'vassal-info';
+      const nameDiv = document.createElement('div');
+      nameDiv.className = 'vassal-name';
+      nameDiv.textContent = ent.name || ent.id;
+      infoDiv.appendChild(nameDiv);
+      if (ent.name && ent.name !== ent.id) {
+        const idDiv = document.createElement('div');
+        idDiv.className = 'vassal-id';
+        idDiv.textContent = ent.id;
+        infoDiv.appendChild(idDiv);
+      }
+      row.appendChild(infoDiv);
+
+      const actionsDiv = document.createElement('div');
+      actionsDiv.className = 'vassal-actions';
+      const actionBtn = document.createElement('button');
+      actionBtn.className = 'pe-control-btn vassal-btn';
+      actionBtn.dataset.vassalAction = isLinked ? 'unlink' : 'promote';
+      actionBtn.dataset.vassalId = ent.id;
+      actionBtn.title = isLinked ? 'Unlink from node' : 'Promote to map node';
+      actionBtn.textContent = isLinked ? 'Unlink' : 'Promote';
+      actionsDiv.appendChild(actionBtn);
+
+      const expandBtn = document.createElement('button');
+      expandBtn.className = 'vassal-expand-btn';
+      expandBtn.dataset.vassalId = ent.id;
+      expandBtn.title = 'Show details';
+      expandBtn.textContent = '\u25B6';
+      actionsDiv.appendChild(expandBtn);
+      row.appendChild(actionsDiv);
+      groupEl.appendChild(row);
+
+      // Expandable metadata
+      const meta = ent.metadata || {};
+      const metaKeys = Object.keys(meta);
+      if (metaKeys.length) {
+        const metaDiv = document.createElement('div');
+        metaDiv.className = 'vassal-meta';
+        metaDiv.id = 'vassal-meta-' + ent.id;
+        metaDiv.style.display = 'none';
+        for (const [k, v] of Object.entries(meta)) {
+          const metaRow = document.createElement('div');
+          metaRow.className = 'vassal-meta-row';
+          const keySpan = document.createElement('span');
+          keySpan.className = 'vassal-meta-key';
+          keySpan.textContent = k;
+          const valSpan = document.createElement('span');
+          valSpan.className = 'vassal-meta-val';
+          valSpan.textContent = v;
+          metaRow.appendChild(keySpan);
+          metaRow.appendChild(valSpan);
+          metaDiv.appendChild(metaRow);
+        }
+        groupEl.appendChild(metaDiv);
+      }
+    }
+    frag.appendChild(groupEl);
+  }
+
+  body.textContent = '';
+  body.appendChild(frag);
+
+  // Wire event handlers via delegation
+  body.addEventListener('click', async (e) => {
+    // Expand/collapse metadata
+    const expBtn = e.target.closest('.vassal-expand-btn');
+    if (expBtn) {
+      const vid = expBtn.dataset.vassalId;
+      const metaEl = document.getElementById('vassal-meta-' + vid);
+      if (metaEl) {
+        const showing = metaEl.style.display !== 'none';
+        metaEl.style.display = showing ? 'none' : '';
+        expBtn.textContent = showing ? '\u25B6' : '\u25BC';
+      }
+      return;
+    }
+
+    // Promote / Unlink actions
+    const actBtn = e.target.closest('[data-vassal-action]');
+    if (!actBtn) return;
+    const action = actBtn.dataset.vassalAction;
+    const vassalId = actBtn.dataset.vassalId;
+    actBtn.disabled = true;
+    actBtn.textContent = '\u2026';
+    try {
+      const endpoint = action === 'promote' ? '/discovery/promote' : '/discovery/unlink';
+      const payload = action === 'promote'
+        ? { sub_entity_id: vassalId }
+        : { sub_entity_id: vassalId };
+      const r = await fetch(endpoint, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!r.ok) throw new Error((await r.json()).error || action + ' failed');
+      renderVassalsPane(nodeKey);
+    } catch (err) {
+      actBtn.textContent = 'Error';
+      actBtn.title = err.message;
+      setTimeout(() => { actBtn.textContent = action === 'promote' ? 'Promote' : 'Unlink'; actBtn.disabled = false; }, 2000);
+    }
+  });
+}
+
 function _groupMemberIcon(domain, fnType) {
   const icons = {
     climate: '\uD83C\uDF21\uFE0F', camera: '\uD83D\uDCF9', media_player: '\uD83D\uDD0A',

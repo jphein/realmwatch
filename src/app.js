@@ -10,8 +10,8 @@ import { renderEvent, updateBubblePositions, firePulse, showOffline,
 import { isZoomActive,
          setDeferredStatus, setDeferredTraffic,
          setGhostDirty, applyTopoZ, setOpenPersonaEditor, invalidateGlobeZCache } from './map-view.js';
-import { openPersonaEditor, setTabRenderers } from './persona-editor.js';
-import { renderControlPane, renderGroupPane, renderShellPane, renderConnectionsPane, focusShellInput, openNodeChat } from './node-controls.js';
+import { openPersonaEditor, setTabRenderers, getCurrentEditNode } from './persona-editor.js';
+import { renderControlPane, renderGroupPane, renderShellPane, renderConnectionsPane, renderVassalsPane, focusShellInput, openNodeChat } from './node-controls.js';
 import { initSpellbook, invalidateSearchIndex } from './spellbook.js';
 import { saveSettings, scheduleSave } from './layout.js';
 import { initRealmAPI, dispatchPluginSSE } from './plugin-api.js';
@@ -98,6 +98,7 @@ setTabRenderers({
   renderGroupPane,
   renderShellPane,
   renderConnectionsPane,
+  renderVassalsPane,
   focusShellInput,
 });
 
@@ -266,6 +267,21 @@ export const getSseConnected = () => _sseConnected;
     });
 
     // Firewall + WiFi panel rendering handled by plugins/firewall/ and plugins/wifi/
+
+    // Discovery SSE — refresh Vassals tab if open for the affected node
+    sse.addEventListener('discovery', e => {
+      _onMessageReceived();
+      try {
+        const d = JSON.parse(e.data);
+        const activeTab = document.querySelector('.pe-tab.active');
+        if (activeTab && activeTab.dataset.peTab === 'vassals') {
+          const editNode = getCurrentEditNode();
+          if (editNode && (!d.node_id || d.node_id === editNode)) {
+            renderVassalsPane(editNode);
+          }
+        }
+      } catch {}
+    });
 
     // ── Connection lifecycle ──
 

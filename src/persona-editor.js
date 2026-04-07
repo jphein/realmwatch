@@ -56,6 +56,17 @@ export function openPersonaEditor(nodeKey) {
     );
     groupTab.style.display = hasMembers ? '' : 'none';
   }
+  // Show/hide Vassals tab based on whether node has discovered sub-entities
+  const vassalsTab = document.querySelector('.pe-tab[data-pe-tab="vassals"]');
+  if (vassalsTab) {
+    fetch('/discovery/' + encodeURIComponent(nodeKey))
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        const count = (data?.host_entities?.length || 0) + (data?.linked_entities?.length || 0);
+        vassalsTab.style.display = count > 0 ? '' : 'none';
+      })
+      .catch(() => { vassalsTab.style.display = 'none'; });
+  }
   peEditor.classList.add('open');
   peOverlay.classList.add('open');
   peSaved.classList.remove('show');
@@ -141,6 +152,7 @@ document.querySelectorAll('.pe-tab').forEach(tab => {
     if (target === 'group') _tabRenderers.renderGroupPane?.(currentEditNode);
     if (target === 'shell') { _tabRenderers.renderShellPane?.(currentEditNode); _tabRenderers.focusShellInput?.(); }
     if (target === 'links') _tabRenderers.renderConnectionsPane?.(currentEditNode);
+    if (target === 'vassals') _tabRenderers.renderVassalsPane?.(currentEditNode);
   });
 });
 
@@ -159,6 +171,7 @@ function _switchToTab(name) {
   if (name === 'group') _tabRenderers.renderGroupPane?.(currentEditNode);
   if (name === 'shell') _tabRenderers.renderShellPane?.(currentEditNode);
   if (name === 'links') _tabRenderers.renderConnectionsPane?.(currentEditNode);
+  if (name === 'vassals') _tabRenderers.renderVassalsPane?.(currentEditNode);
 }
 
 function startStatsRefresh() {
