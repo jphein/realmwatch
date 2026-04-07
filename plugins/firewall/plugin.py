@@ -5,6 +5,7 @@ zone/VLAN mapping, suggestions, and SSE firewall events.
 """
 
 import firewall_parser
+from discovery_engine import SubEntity
 from engine import RealmEngine
 
 # Module-level engine ref for SSH to gatekeeper
@@ -47,6 +48,40 @@ def handle_firewall(req, params):
     return None
 
 
+def discover_firewall(node_id, node_data, host_access, engine):
+    """Discover firewall zones from nftables on gatekeeper."""
+    from firewall_parser import get_firewall_data
+    fw = get_firewall_data()
+    if not fw:
+        return []
+
+    entities = []
+    zones = fw.get("zones", {})
+    for zone_name, zone_data in zones.items():
+        if isinstance(zone_data, dict):
+            interfaces = zone_data.get("interfaces", [])
+            vlan = zone_data.get("vlan")
+            rule_count = len(zone_data.get("rules", []))
+        else:
+            interfaces = []
+            vlan = None
+            rule_count = 0
+
+        entities.append(SubEntity(
+            id=f"fw:zone:{zone_name}",
+            type="firewall_zone",
+            name=zone_name,
+            host_node_id="gatekeeper",
+            status="running",
+            metadata={
+                "vlan": vlan,
+                "interfaces": interfaces,
+                "rule_count": rule_count,
+            },
+        ))
+    return entities
+
+
 def setup(ctx):
     """Plugin setup — register SSE source and expose API."""
 
@@ -66,5 +101,12 @@ def setup(ctx):
         "VLANS": firewall_parser.VLANS,
         "ZONE_VLAN": firewall_parser.ZONE_VLAN,
     })
+
+    # Register firewall zones as a global discovery provider
+    ctx.register_discovery_provider(
+        name="firewall", roles=[],  # global — parses gatekeeper nftables
+        discover_fn=discover_firewall, interval=120,
+        entity_types=["firewall_zone"], priority=55,
+    )
 
     ctx.log("Ward Stones firewall parser registered (interval=60s)")
