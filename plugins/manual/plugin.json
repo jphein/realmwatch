@@ -1,0 +1,10 @@
+{
+  "name": "manual",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Manual discovery entries — static infrastructure, relationships, tags, bookmarks.",
+  "fantasy_name": "The Chronicler's Quill",
+  "icon": "\u270d\ufe0f",
+  "python": {"module": "plugin", "entry": "setup"},
+  "depends_on": ["discovery"]
+}
