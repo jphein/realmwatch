@@ -1,0 +1,10 @@
+{
+  "name": "snmp",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "SNMP discovery — switch ports, interface status, MAC tables, system info.",
+  "fantasy_name": "Crystal Resonance",
+  "icon": "\ud83d\udd2e",
+  "python": {"module": "plugin", "entry": "setup"},
+  "depends_on": ["discovery"]
+}

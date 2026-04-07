@@ -152,6 +152,40 @@ class HostAccess:
         except Exception:
             return None
 
+    def snmp_get(self, oid, community="public", version=2):
+        """SNMP GET via snmpget CLI. Returns value string or None."""
+        host = self.ip or self.hostname
+        if not host:
+            return None
+        cmd = ["snmpget", f"-v{version}", "-c", community, "-Oqv", host, oid]
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            return result.stdout.strip() if result.returncode == 0 else None
+        except Exception:
+            return None
+
+    def snmp_walk(self, oid, community="public", version=2):
+        """SNMP WALK via snmpwalk CLI. Returns list of (oid, value) tuples."""
+        host = self.ip or self.hostname
+        if not host:
+            return []
+        cmd = ["snmpwalk", f"-v{version}", "-c", community, "-Oqn", host, oid]
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            if result.returncode != 0:
+                return []
+            pairs = []
+            for line in result.stdout.strip().split("\n"):
+                line = line.strip()
+                if not line:
+                    continue
+                if " " in line:
+                    o, v = line.split(" ", 1)
+                    pairs.append((o.strip(), v.strip()))
+            return pairs
+        except Exception:
+            return []
+
 
 class DiscoveryEngine:
     """Central discovery orchestrator."""
