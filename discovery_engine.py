@@ -145,6 +145,7 @@ class DiscoveryEngine:
         self._last_scan: dict[str, float] = {}  # {provider_name: last_scan_timestamp}
         self._sub_entities: dict[str, SubEntity] = {}  # {entity_id: SubEntity} in-memory cache
         self._lock = threading.Lock()
+        self._event_subscribers = []  # list of callback(event_type, entity, old_status)
 
     def register_provider(self, provider: DiscoveryProvider):
         """Register a discovery provider."""
@@ -174,6 +175,14 @@ class DiscoveryEngine:
         with self._lock:
             return [e.to_dict() for e in self._sub_entities.values()
                     if e.linked_node_id == node_id]
+
+    def on_change(self, callback):
+        """Subscribe to discovery change events.
+
+        callback(event_type, entity, old_status) where event_type is
+        'status_change' or 'new_entity'.
+        """
+        self._event_subscribers.append(callback)
 
     # ── Entity Linker ──
 
@@ -325,9 +334,25 @@ class DiscoveryEngine:
             # Run entity linker
             self._link_entity(entity, topo_nodes)
 
-            # Update in-memory cache
+            # Detect changes and update cache
             with self._lock:
+                old = self._sub_entities.get(entity.id)
+                old_status = old.status if old else None
                 self._sub_entities[entity.id] = entity
+
+            # Fire change events
+            if old_status is None:
+                for cb in self._event_subscribers:
+                    try:
+                        cb("new_entity", entity, None)
+                    except Exception:
+                        pass
+            elif old_status != entity.status:
+                for cb in self._event_subscribers:
+                    try:
+                        cb("status_change", entity, old_status)
+                    except Exception:
+                        pass
 
         # Batch persist
         realm_db.upsert_sub_entities_batch([e.to_dict() for e in entities if isinstance(e, SubEntity)])
