@@ -1,0 +1,10 @@
+{
+  "name": "nmap",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Network scan — open ports, service versions, OS fingerprinting via nmap.",
+  "fantasy_name": "The Far Sight",
+  "icon": "🔭",
+  "python": {"module": "plugin", "entry": "setup"},
+  "depends_on": ["discovery"]
+}
