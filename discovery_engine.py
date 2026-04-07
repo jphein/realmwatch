@@ -265,6 +265,21 @@ class DiscoveryEngine:
                 continue
 
             self._last_scan[provider.name] = now
+
+            # Global providers (roles=[]) run once, not per-node
+            if not provider.roles:
+                host = HostAccess("local", {"ip": "127.0.0.1", "hostname": "local"})
+                future = self._pool.submit(
+                    self._safe_discover, provider, "local", {}, host, topo_nodes
+                )
+                try:
+                    entities = future.result(timeout=60)
+                    if entities:
+                        self._process_results(entities, topo_nodes, provider.name)
+                except Exception:
+                    log.debug("Global discovery %s failed", provider.name, exc_info=True)
+                continue  # Skip per-node logic for global providers
+
             eligible = self._get_eligible_nodes(provider, topo_nodes)
             if not eligible:
                 continue
