@@ -591,6 +591,117 @@ SubEntity(
 
 **Note:** This plugin only activates for nodes explicitly configured with `discovery.game_servers`. It doesn't scan broadly.
 
+### Plugin: `github` ("The Archive Spire")
+
+**Discovers:** GitHub repositories, their status, and links them to existing topology/project nodes.
+
+**Access method:** `gh` CLI or GitHub REST API (already authenticated via gh credential helper).
+
+**What it tracks:**
+- All repos in the `jphein` account (currently 56)
+- Per-repo: last commit date, default branch, open PRs, open issues, CI status (last workflow run), public/private, description
+- Links repos to topology nodes by matching repo name to node_id (e.g., `portfolio` repo → `portfolio` node)
+- Links repos to local `~/Projects/` directories by matching directory name
+
+**SubEntity output:**
+```python
+SubEntity(
+    id="github:jphein:portfolio",
+    type="github_repo",
+    name="portfolio",
+    host_node_id="github",  # meta-node representing GitHub
+    status="active",  # active (recent commits), stale (>30d), archived
+    metadata={
+        "url": "https://github.com/jphein/portfolio",
+        "private": True,
+        "description": "The Builder's Sanctum — fantasy-themed developer portfolio",
+        "default_branch": "main",
+        "last_commit": "2026-04-06T...",
+        "open_prs": 0,
+        "open_issues": 2,
+        "ci_status": "success",  # success, failure, pending, none
+        "local_path": "/home/jp/Projects/portfolio",
+        "has_claude_md": True,
+    },
+)
+```
+
+**Entity linking:** Repos auto-link to topology nodes by name match. When linked, the node gains repo metadata (CI status badge, last commit, open PRs). Repos also link to local project directories for a full "project → code → deployment" chain.
+
+**Scan interval:** 300 seconds (GitHub API is rate-limited, lightweight polling).
+
+**Config:**
+- `github_user`: GitHub username (default: from `gh` config)
+- `include_forks`: Include forked repos (default: false)
+
+### Plugin: `projects` ("The Scholar's Archive")
+
+**Discovers:** Local project directories in `~/Projects/` — git status, structure, and health.
+
+**Access method:** Local filesystem + git commands.
+
+**What it tracks:**
+- All directories in `~/Projects/` (currently 66)
+- Per-project: git status (clean/dirty), current branch, last commit, remote URL, has CLAUDE.md, has tests, language/stack detection
+- Cross-references with GitHub plugin (local dir ↔ remote repo)
+- Cross-references with topology (project dir ↔ running service node)
+
+**SubEntity output:**
+```python
+SubEntity(
+    id="project:realmwatch",
+    type="local_project",
+    name="realmwatch",
+    host_node_id="forge",  # the machine where ~/Projects/ lives
+    status="active",  # active (dirty or recent commits), clean, stale
+    metadata={
+        "path": "/home/jp/Projects/realmwatch",
+        "git_dirty": True,
+        "branch": "master",
+        "last_commit": "2026-04-07T...",
+        "remote": "https://github.com/jphein/realmwatch",
+        "has_claude_md": True,
+        "has_tests": False,
+        "stack": ["python", "javascript"],
+        "github_repo": "github:jphein:realmwatch",  # cross-link
+        "topology_node": "realmwatch",  # cross-link
+    },
+)
+```
+
+**Scan interval:** 120 seconds.
+
+### Plugin: `manual` ("The Chronicler's Quill")
+
+**Discovers:** Nothing — this plugin provides a way to declare static sub-entities that can't be auto-discovered.
+
+**Use cases:**
+- ISP fiber gateway (108.74.4.89) — just an IP, no SNMP/SSH
+- Azure VMs (terra2) — no SSH from LAN
+- External cloud services with no API (WordPress on GCP)
+- Known intermittent devices
+- Anything with a static status that should appear in the discovery dashboard
+
+**Declaration format** (stored in realm.db, managed via API):
+```json
+{
+    "id": "manual:fiber-gateway",
+    "type": "manual",
+    "name": "Fiber Gateway",
+    "host_node_id": "fiber-gateway",
+    "status": "assumed_up",
+    "metadata": {
+        "description": "AT&T fiber ONT",
+        "ip": "108.74.4.89",
+        "notes": "No management access, ping only"
+    }
+}
+```
+
+**API:** `POST /discovery/manual` to create/update, `DELETE /discovery/manual/<id>` to remove.
+
+**Scan interval:** None — manual entries don't scan. Status is set explicitly or derived from the latency prober (if the node is pingable).
+
 ## Frontend Integration
 
 ### Host Detail Panel Enhancement
@@ -654,10 +765,15 @@ No other new dependencies. Docker discovery uses SSH + JSON parsing (stdlib). KV
 9. **Game servers plugin** — Minecraft Bedrock + Terraria on terra2
 10. **Netdata plugin** — supplements collectd
 
-**Phase 4 — Frontend:**
-11. **Frontend: Vassals tab** — sub-entity display in node detail panel
-12. **Frontend: Discovery dashboard panel** — overview panel
-13. **Frontend: Linked node indicators** — badges and status on map nodes
+**Phase 4 — Inventory & code (project awareness):**
+11. **GitHub plugin** — repo status, CI, PRs, issues for all 56 repos
+12. **Projects plugin** — local ~/Projects/ directory inventory, git status, stack detection
+13. **Manual plugin** — static entries for non-discoverable nodes
+
+**Phase 5 — Frontend:**
+14. **Frontend: Vassals tab** — sub-entity display in node detail panel
+15. **Frontend: Discovery dashboard panel** — overview panel
+16. **Frontend: Linked node indicators** — badges and status on map nodes
 
 ## Relationship to status.realm.watch
 
@@ -685,5 +801,6 @@ The autodiscovery engine subsumes most of what status.realm.watch tracks manuall
 - **Reverse DNS** — could supplement entity linking but not core to this spec.
 - **Netdata installation/provisioning** — the plugin assumes Netdata agents are already installed on target hosts.
 - **SNMP trap receiver** — only polling, not trap-based alerting.
-- **External cloud monitoring** — Vercel/GCP/Azure hosted sites (dreamscape, artcards, techempower, jphein.com, jewelrycycle) are checked by the health plugin via HTTP but not "discovered" — their URLs come from topology node metadata.
+- **Vercel/cloud deployment API polling** — health plugin checks HTTP endpoints, but we don't poll Vercel/GCP deployment APIs for build status. Future plugin if needed.
 - **Replacing status.realm.watch** — this spec makes realmwatch the data source, but status.realm.watch may still be the public-facing status page consuming that data.
+- **WordPress introspection** — WP admin API for plugin/theme status. Health plugin covers HTTP + version checks, which is sufficient.
