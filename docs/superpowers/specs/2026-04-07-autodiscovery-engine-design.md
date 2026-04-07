@@ -308,6 +308,100 @@ The discovery engine registers a node enricher (priority 35, between WLED and Wi
 
 Each plugin is a standard realmwatch plugin (`plugins/<name>/plugin.json` + `plugin.py`) that registers a discovery provider in its `setup()`. The plugin can also register panels, endpoints, SSE sources, and enrichers as usual.
 
+## Existing Plugin Upgrades
+
+These existing plugins gain discovery provider registration so their data flows into the unified SubEntity model. This means the discovery dashboard, Vassals tab, and entity linker work across *all* sources — not just the new plugins.
+
+### wifi → Discovery Provider
+
+**Current:** Runs its own scan loop, creates `_unknown_<mac>` nodes directly in topology, does its own fuzzy MAC matching and stale cleanup.
+
+**Upgrade:**
+- Register as a discovery provider (`entity_types=["wifi_client"]`)
+- WiFi clients become SubEntities: `SubEntity(id="wifi:<ap>:<mac>", type="wifi_client", ...)`
+- Entity linker replaces the custom MAC fuzzy matching — same logic, unified codepath
+- Auto-node creation (`_unknown_<mac>`) moves to the discovery engine's promote flow
+- Stale cleanup (7-day TTL) handled by the engine's standard stale entity cleanup
+- WiFi-specific scan logic (SSH to APs, DHCP leases, LLDP) stays in the wifi plugin — only the output format changes
+
+**Migration note:** This is the most complex upgrade because wifi currently does its own node CRUD. The discovery engine needs to handle this without breaking existing WiFi client visibility during the transition.
+
+### ha → Discovery Provider
+
+**Current:** Polls HA REST API every 30s, builds entity→node mapping, generates sublabels. Device registry polled every 5 minutes.
+
+**Upgrade:**
+- Register as a discovery provider (`entity_types=["ha_device", "ha_entity"]`)
+- HA devices become SubEntities: `SubEntity(id="ha:<device_id>", type="ha_device", ...)`
+- Device registry MAC/IP data feeds the entity linker (currently this is signal 5 in the enrichment pipeline — same data, unified flow)
+- HA entity→node mapping (the `entity_map` in realm.db) becomes manual link declarations in the discovery engine
+- Sublabel generation stays in the ha plugin as a node enricher — it's presentation logic, not discovery
+
+### collectd → Discovery Provider
+
+**Current:** Scans `/var/lib/collectd/rrd/` for host directories. UDP listener receives live metrics. Exposes summaries via status provider.
+
+**Upgrade:**
+- Register as a discovery provider (`entity_types=["collectd_host"]`)
+- Each collectd-monitored host becomes a SubEntity: `SubEntity(id="collectd:<hostname>", type="collectd_host", ...)`
+- Entity linker auto-matches collectd hostnames to topology nodes (currently this matching is implicit — RRD dir name must match hostname)
+- Cross-references with Netdata provider: if both monitor a host, metadata from both is available, Netdata gets sublabel priority
+- Metrics and status provider functionality stay as-is — this just adds the host to the unified discovery view
+
+### firewall → Discovery Provider
+
+**Current:** Parses nftables JSON from gatekeeper via SSH every 30s. Exposes zones, VLANs, and suggestions.
+
+**Upgrade:**
+- Register as a discovery provider (`entity_types=["firewall_zone", "firewall_rule"]`)
+- Firewall zones become SubEntities on the gatekeeper node: `SubEntity(id="fw:zone:admin", type="firewall_zone", ...)`
+- Zone→VLAN→node relationships feed the entity linker (which nodes are in which firewall zone)
+- Rule suggestions surface as discovery annotations
+
+### wled → Discovery Provider
+
+**Current:** Polls WLED devices via HTTP, provides control API, generates sublabels.
+
+**Upgrade:**
+- Register as a discovery provider (`entity_types=["wled_device"]`)
+- WLED devices become SubEntities: `SubEntity(id="wled:<node_id>", type="wled_device", ...)`
+- Auto-links to existing WLED topology nodes via IP/hostname match
+- Device metadata (LED count, firmware version, effects) available in the discovery model
+- Control API and sublabel generation stay as-is
+
+### latency → Feed HostAccess
+
+**Current:** fping batch probe every 30s, returns RTT map.
+
+**Upgrade:**
+- Does NOT register as a discovery provider (it doesn't discover entities)
+- Instead, feeds the HostAccess layer's reachability cache — `host.ssh_available()` and `host.snmp_available()` can consult latency prober results to skip unreachable hosts
+- nmap scan results inform which IPs the latency prober should probe (new hosts discovered by nmap get added to the probe list)
+
+### events → Subscribe to Discovery Events
+
+**Current:** Monitors collectd metrics and HA states, fires themed realm events with cooldowns.
+
+**Upgrade:**
+- Subscribe to `discovery` SSE events via `ctx.on_event("discovery_change", handler)`
+- Generate realm events for discovery state changes: container stopped, service failed, VM crashed, new device found, host unreachable
+- Apply the same fantasy theming and cooldown logic as existing threshold events
+- Example: "The Iron Golem 'jellyfin' has fallen silent in the Great Forge" (container stopped on disks)
+
+### scan → Unified Scan Trigger
+
+**Current:** Panel with buttons for WiFi AP scan and LLDP scan.
+
+**Upgrade:**
+- Add "Run Full Discovery" button that triggers `POST /discovery/scan` with `{"provider": "all"}`
+- Add per-provider scan buttons (Docker, SNMP, nmap) for targeted scans
+- Show discovery provider status (last scan time, error count) alongside existing scan status
+- WiFi and LLDP scan buttons stay as-is — they still trigger the wifi plugin directly
+
+## New Discovery Plugins
+
+Each new plugin is a standard realmwatch plugin (`plugins/<name>/plugin.json` + `plugin.py`) that registers a discovery provider in its `setup()`.
+
 ### Plugin: `docker` ("Iron Golem Foundry")
 
 **Discovers:** Docker containers on hosts with Docker installed.
@@ -925,32 +1019,44 @@ That's it. The design deliberately minimizes Python dependencies:
 
 ## Build Order
 
-**Phase 1 — Core + first plugins (entity linking is the key feature):**
+**Phase 1 — Core engine + first new plugins:**
 1. **Core discovery engine** (`discovery_engine.py`) — SubEntity model, provider registry, entity linker, host access layer, scan orchestrator, DB tables, API endpoints, SSE integration, node enricher
 2. **PluginContext extension** — add `register_discovery_provider()` method
-3. **systemd plugin** — easiest to test (local machine first, then SSH)
-4. **Docker plugin** — high value (disks runs media stack, 14 containers in status.realm.watch)
+3. **systemd plugin** (new) — easiest to test (local machine first, then SSH)
+4. **Docker plugin** (new) — high value (disks runs media stack, 14 containers)
 
-**Phase 2 — Infrastructure discovery:**
-5. **nmap plugin** — broad sweep, service/OS fingerprinting, unknown host detection
-6. **SNMP plugin** — switch port mapping, interface counters, device inventory (via Net-SNMP CLI)
-7. **KVM plugin** — VMs on ubox0 and nodered (8 guests in status.realm.watch)
-8. **Caddy plugin** — reverse proxy mapping (14 domain→backend mappings across 2 hosts)
+**Phase 2 — Existing plugin upgrades (unified model):**
+5. **collectd → discovery provider** — lightweight, hosts already known from RRD dirs
+6. **wled → discovery provider** — small, self-contained, good validation of the pattern
+7. **ha → discovery provider** — device registry feeds entity linker, entity_map becomes discovery links
+8. **firewall → discovery provider** — zones/rules as sub-entities on gatekeeper
+9. **events → subscribe to discovery changes** — themed alerts for container/service/VM events
+10. **latency → feed HostAccess** — reachability cache integration
+11. **scan → unified scan trigger** — add discovery scan buttons to panel
 
-**Phase 3 — Health & monitoring (replaces status.realm.watch manual checks):**
-9. **Health plugin** — HTTP health, TCP/UDP ports, realm-sigil versions, TLS expiry
-10. **Game servers plugin** — Minecraft Bedrock + Terraria on terra2
-11. **Netdata plugin** — supplements collectd
+**Phase 3 — Infrastructure discovery:**
+12. **nmap plugin** (new) — broad sweep, service/OS fingerprinting, unknown host detection
+13. **SNMP plugin** (new) — switch port mapping, interface counters, device inventory (Net-SNMP CLI)
+14. **KVM plugin** (new) — VMs on ubox0 and nodered (8 guests)
+15. **Caddy plugin** (new) — reverse proxy domain→backend mappings (14 across 2 hosts)
 
-**Phase 4 — Inventory & code (project awareness):**
-12. **GitHub plugin** — repo status, CI, PRs, issues for all 56 repos
-13. **Projects plugin** — local ~/Projects/ directory inventory, git status, stack detection
-14. **Manual plugin** — static entries for non-discoverable nodes
+**Phase 4 — Health & monitoring (replaces status.realm.watch manual checks):**
+16. **Health plugin** (new) — HTTP health, TCP/UDP ports, realm-sigil versions, TLS expiry
+17. **Game servers plugin** (new) — Minecraft Bedrock + Terraria on terra2
+18. **Netdata plugin** (new) — supplements collectd
 
-**Phase 5 — Frontend:**
-15. **Frontend: Vassals tab** — sub-entity display in node detail panel
-16. **Frontend: Discovery dashboard panel** — overview panel
-17. **Frontend: Linked node indicators** — badges and status on map nodes
+**Phase 5 — Inventory & code (project awareness):**
+19. **GitHub plugin** (new) — repo status, CI, PRs, issues for all 56 repos
+20. **Projects plugin** (new) — local ~/Projects/ directory inventory, git status, stack detection
+21. **Manual plugin** (new) — static entries for non-discoverable nodes
+
+**Phase 6 — WiFi migration (most complex, do last):**
+22. **wifi → discovery provider** — WiFi clients as SubEntities, entity linker replaces custom MAC matching, auto-node creation moves to promote flow. Most complex upgrade due to existing node CRUD.
+
+**Phase 7 — Frontend:**
+23. **Frontend: Vassals tab** — sub-entity display in node detail panel
+24. **Frontend: Discovery dashboard panel** — overview panel
+25. **Frontend: Linked node indicators** — badges and status on map nodes
 
 ## Relationship to status.realm.watch
 
