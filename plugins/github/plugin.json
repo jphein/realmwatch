@@ -1,0 +1,10 @@
+{
+  "name": "github",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "GitHub repo discovery — tracks repos, CI status, PRs via gh CLI.",
+  "fantasy_name": "The Archive Spire",
+  "icon": "\ud83d\udcdc",
+  "python": {"module": "plugin", "entry": "setup"},
+  "depends_on": ["discovery"]
+}
