@@ -115,10 +115,14 @@ class HostAccess:
         """Check if HTTP port is reachable (cached)."""
 
     def snmp_get(self, oid, community="public", version=2):
-        """SNMP GET. Returns value or None."""
+        """SNMP GET via snmpget CLI. Returns value or None."""
 
     def snmp_walk(self, oid, community="public", version=2):
-        """SNMP WALK. Returns list of (oid, value) tuples."""
+        """SNMP WALK via snmpwalk CLI. Returns list of (oid, value) tuples.
+        Parses Net-SNMP text output into structured data."""
+
+    def snmp_table(self, oid, community="public", version=2):
+        """SNMP TABLE via snmptable CLI. Returns list of row dicts."""
 
     def snmp_available(self):
         """Check if SNMP port 161 is reachable (cached)."""
@@ -175,15 +179,20 @@ Default provider mappings by node role:
 
 ### Scan Orchestration
 
-The engine runs a background thread (started by `map_server.py`) that:
+The engine uses a `ThreadPoolExecutor(max_workers=20)` with `concurrent.futures.as_completed()` for scan batches. This provides backpressure (won't spawn 130 SSH connections at once), clean timeout control, and structured error handling — an improvement over unbounded daemon threads.
+
+Scan loop (runs in a single coordinator thread):
 
 1. Every tick (10s), checks which providers are due to run based on their `interval`
 2. Groups nodes by provider (all Docker-eligible nodes scanned in one batch)
-3. Calls each provider's `discover_fn` per-node
-4. Deduplicates results (same sub-entity from multiple providers → first wins by priority)
-5. Runs entity linker on new/changed sub-entities
-6. Stores results in `sub_entities` table
-7. Pushes `discovery` SSE event if data changed (hash-based dedup like existing SSE)
+3. Submits `discover_fn` calls to the thread pool, one future per (provider, node) pair
+4. Collects results via `as_completed()` with per-future timeout
+5. Deduplicates results (same sub-entity from multiple providers → first wins by priority)
+6. Runs entity linker on new/changed sub-entities
+7. Stores results in `sub_entities` table
+8. Pushes `discovery` SSE event if data changed (hash-based dedup like existing SSE)
+
+**Why threading, not asyncio:** map_server.py is synchronous (`http.server` + `ThreadingMixIn`). Grafting an asyncio event loop alongside it requires either running everything through `run_in_executor` (defeating the purpose) or migrating to an async HTTP server (massive rewrite). At homelab scale (30-130 nodes), network I/O is the bottleneck regardless of concurrency model — threading with a pool of 20 workers is more than sufficient.
 
 **Staggering:** Heavy providers (SNMP walk, Docker inspect) offset their start by a few seconds to avoid slamming the network simultaneously.
 
@@ -399,7 +408,7 @@ SubEntity(
 
 **Discovers:** SNMP-managed device data — interfaces, port status, MAC tables, system info.
 
-**Access method:** pysnmp library (SNMPv2c default, v3 optional per-node).
+**Access method:** Net-SNMP CLI tools (`snmpwalk`, `snmpget`, `snmptable`) via subprocess. Same pattern as ap_scanner (SSH) and latency_prober (fping) — shell out to battle-tested C tools, parse structured output. Zero Python dependencies, full SNMPv3 support, rock-solid. If high-frequency polling is needed later, upgrade to `pysnmp-lextudio` (the only maintained pure-Python SNMP library with async + SNMPv3).
 
 **MIBs polled:**
 - **IF-MIB** — interface status, speed, counters (ifOperStatus, ifInOctets, ifOutOctets, ifSpeed)
@@ -438,6 +447,49 @@ SubEntity(
 - `community`: SNMP community string (default: `"public"`)
 - `version`: 2 or 3 (default: 2)
 - `snmpv3_user`, `snmpv3_auth`, `snmpv3_priv`: v3 credentials (optional)
+
+### Plugin: `nmap` ("The Far Sight")
+
+**Discovers:** Open ports, service versions, and OS fingerprints across all topology nodes. This is the broad sweep — protocol-specific plugins (Docker, SNMP, systemd) then go deep on what nmap finds.
+
+**Access method:** `python-nmap` library wrapping the `nmap` CLI. nmap's service probe database is decades of community fingerprinting — we shouldn't replicate it.
+
+**What it does:**
+1. **Periodic full scan** — `nmap -sV -O --open` against all topology node IPs (or a configured subnet). Identifies open ports, service names/versions, and OS.
+2. **Feed enrichment pipeline** — nmap results are cross-referenced with existing nodes. If nmap detects a Synology NAS running DSM 7.2, that enriches the node's metadata even if no other plugin can reach it.
+3. **Discover unknown hosts** — if nmap finds IPs not in topology, they're flagged as candidates for auto-creation (same flow as ap_scanner's unknown node handling).
+4. **Supersedes signal 4** — the 6-signal enrichment pipeline's TCP port probe (11 ports, 1.5s timeout) is a primitive version of what nmap does natively. With nmap available, signal 4 can defer to nmap results.
+
+**SubEntity output:**
+```python
+SubEntity(
+    id="nmap:10.0.6.103:scan",
+    type="nmap_scan",
+    name="hp-switch scan",
+    host_node_id="hp-switch",
+    status="up",
+    metadata={
+        "os_match": "HP ProCurve Switch 2920",
+        "os_accuracy": 95,
+        "open_ports": [22, 80, 161, 443],
+        "services": {
+            "22": {"name": "ssh", "product": "OpenSSH", "version": "8.9"},
+            "80": {"name": "http", "product": "HP Web Management"},
+            "161": {"name": "snmp"},
+        },
+        "scan_time_ms": 3200,
+    },
+)
+```
+
+**Scan interval:** 600 seconds (10 minutes — nmap scans are heavy).
+
+**Config:**
+- `scan_args`: Extra nmap arguments (default: `-sV -O --open -T4`)
+- `subnets`: Additional subnets to scan beyond topology IPs (default: none)
+- `exclude_ips`: IPs to skip (default: none)
+
+**System requirement:** `apt install nmap` (not installed by default).
 
 ### Plugin: `netdata` ("Oracle Sight")
 
@@ -846,17 +898,30 @@ This is a standard plugin panel registered by the discovery engine's companion p
 
 | Package | Version | Used By |
 |---------|---------|---------|
-| `pysnmp-lextudio` | >=6.0 | SNMP plugin — pure Python SNMPv2c/v3 |
-| `pyasn1` | (dep of pysnmp) | ASN.1 encoding |
+| `python-nmap` | >=0.7 | nmap plugin — wraps nmap CLI for service/OS detection |
 
-No other new dependencies. Docker discovery uses SSH + JSON parsing (stdlib). KVM uses SSH + virsh (stdlib). Systemd uses SSH + systemctl (stdlib). Netdata uses httpx (already in requirements.txt).
+That's it. The design deliberately minimizes Python dependencies:
+- **SNMP** → shells out to Net-SNMP CLI tools (same pattern as fping, SSH)
+- **Docker** → SSH + `docker ps --format json` (no Docker SDK, no exposed socket)
+- **KVM** → SSH + `virsh` commands (stdlib)
+- **systemd** → SSH + `systemctl` (stdlib)
+- **Netdata** → httpx (already in requirements.txt)
+- **GitHub** → `gh` CLI (already installed)
 
-### System Requirements
+### System Packages (apt install)
 
-- **pysnmp** needs no system packages (pure Python)
-- **SSH access** to target hosts (already required for AP scanning)
-- **Docker** must be installed on target hosts for Docker discovery (engine detects presence)
-- **virsh** must be installed on hypervisor hosts for KVM discovery (engine detects presence)
+| Package | Used By | Notes |
+|---------|---------|-------|
+| `snmp` | SNMP plugin | Net-SNMP CLI tools (snmpwalk, snmpget, snmptable) |
+| `snmp-mibs-downloader` | SNMP plugin | Standard MIB definitions for human-readable OID names |
+| `nmap` | nmap plugin | Network scanner for service/OS fingerprinting |
+
+### On Target Hosts (not on the realmwatch server)
+
+- **SSH access** — already required for AP scanning; key auth to most hosts
+- **Docker** must be installed on hosts for Docker discovery (engine detects presence)
+- **virsh** must be installed on hypervisors for KVM discovery (engine detects presence)
+- No agents or packages need to be installed on target hosts for SNMP, systemd, or nmap discovery — all probed remotely
 
 ## Build Order
 
@@ -867,24 +932,25 @@ No other new dependencies. Docker discovery uses SSH + JSON parsing (stdlib). KV
 4. **Docker plugin** — high value (disks runs media stack, 14 containers in status.realm.watch)
 
 **Phase 2 — Infrastructure discovery:**
-5. **SNMP plugin** — switch port mapping, interface counters, device inventory
-6. **KVM plugin** — VMs on ubox0 and nodered (8 guests in status.realm.watch)
-7. **Caddy plugin** — reverse proxy mapping (14 domain→backend mappings across 2 hosts)
+5. **nmap plugin** — broad sweep, service/OS fingerprinting, unknown host detection
+6. **SNMP plugin** — switch port mapping, interface counters, device inventory (via Net-SNMP CLI)
+7. **KVM plugin** — VMs on ubox0 and nodered (8 guests in status.realm.watch)
+8. **Caddy plugin** — reverse proxy mapping (14 domain→backend mappings across 2 hosts)
 
 **Phase 3 — Health & monitoring (replaces status.realm.watch manual checks):**
-8. **Health plugin** — HTTP health, TCP/UDP ports, realm-sigil versions, TLS expiry
-9. **Game servers plugin** — Minecraft Bedrock + Terraria on terra2
-10. **Netdata plugin** — supplements collectd
+9. **Health plugin** — HTTP health, TCP/UDP ports, realm-sigil versions, TLS expiry
+10. **Game servers plugin** — Minecraft Bedrock + Terraria on terra2
+11. **Netdata plugin** — supplements collectd
 
 **Phase 4 — Inventory & code (project awareness):**
-11. **GitHub plugin** — repo status, CI, PRs, issues for all 56 repos
-12. **Projects plugin** — local ~/Projects/ directory inventory, git status, stack detection
-13. **Manual plugin** — static entries for non-discoverable nodes
+12. **GitHub plugin** — repo status, CI, PRs, issues for all 56 repos
+13. **Projects plugin** — local ~/Projects/ directory inventory, git status, stack detection
+14. **Manual plugin** — static entries for non-discoverable nodes
 
 **Phase 5 — Frontend:**
-14. **Frontend: Vassals tab** — sub-entity display in node detail panel
-15. **Frontend: Discovery dashboard panel** — overview panel
-16. **Frontend: Linked node indicators** — badges and status on map nodes
+15. **Frontend: Vassals tab** — sub-entity display in node detail panel
+16. **Frontend: Discovery dashboard panel** — overview panel
+17. **Frontend: Linked node indicators** — badges and status on map nodes
 
 ## Relationship to status.realm.watch
 
