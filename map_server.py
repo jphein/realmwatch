@@ -223,9 +223,28 @@ def _compute_sublabels(status, topo_nodes):
     # O(1) host lookup (cached, rebuilt when topology or collectd keys change)
     host_lookup = _get_host_lookup(topo_nodes, collectd)
 
+    # Collect node enrichers from plugin registry (discovery, ansible, etc.)
+    enrichers = []
+    if _plugin_registry:
+        enrichers = _plugin_registry.get_node_enrichers()
+
     for n in topo_nodes:
         nid = n["id"]
         ip = n.get("ip", "")
+
+        # Plugin node enrichers (discovery, ansible — priority-sorted)
+        enriched = None
+        for enricher_fn, _plugin_name, _priority in enrichers:
+            try:
+                result = enricher_fn(nid, n)
+                if result and "sublabel" in result:
+                    enriched = result
+                    break  # First enricher with a sublabel wins
+            except Exception:
+                pass
+        if enriched:
+            sublabels[nid] = enriched["sublabel"]
+            continue
 
         # HA sublabels (already pre-computed by ha_bridge)
         ha_info = ha.get(nid)
@@ -296,6 +315,9 @@ def _build_status_fresh():
             lat_api["set_wifi_nodes"](status.get("wifi", {}))
     # Pre-compute sublabels (saves client hostname matching + string formatting)
     status["sublabels"] = _compute_sublabels(status, topo_nodes)
+    # Discovery entity counts per host node
+    if _discovery_engine:
+        status["discovery_counts"] = _discovery_engine.get_entity_counts_by_host()
     return status
 
 

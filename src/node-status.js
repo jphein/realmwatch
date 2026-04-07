@@ -183,6 +183,13 @@ function _rebuildTipStats(tipKey) {
   if (!tips[tipKey].stats.some(s => s[0] === 'Status')) {
     tips[tipKey].stats.push(['Status', online ? 'Online' : 'Offline']);
   }
+  // Discovery vassal count
+  const discCount = lastStatus?.discovery_counts?.[tipKey];
+  if (discCount) {
+    const existing = tips[tipKey].stats.filter(s => s[0] !== 'Vassals');
+    existing.push(['Vassals', discCount + ' discovered']);
+    tips[tipKey].stats = existing;
+  }
 }
 
 function updateHASublabels(d) {
@@ -272,12 +279,34 @@ function updateTooltips(d) {
   });
 }
 
+function updateDiscoveryBadges(d) {
+  const counts = d.discovery_counts || {};
+  for (const [nodeId, count] of Object.entries(counts)) {
+    const n = getNodeDOM(nodeId);
+    if (!n.el) continue;
+    const iconEl = n.el.querySelector('.node-icon');
+    if (!iconEl) continue;
+    let badge = iconEl.querySelector('.discovery-count-badge');
+    if (count > 0) {
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'discovery-count-badge';
+        iconEl.appendChild(badge);
+      }
+      badge.textContent = count;
+    } else if (badge) {
+      badge.remove();
+    }
+  }
+}
+
 // ── Main status update ──
 export function updateUI(d) {
   lastStatus = d;
   updateGauges(d);
   updateCoreSublabels(d);
   updateInfraNodes(d);
+  updateDiscoveryBadges(d);
   updateHASublabels(d);
   updateTooltips(d);
 

@@ -1075,6 +1075,27 @@
     position: relative;
   }
 
+  /* Discovery entity count badge on host nodes */
+  .discovery-count-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: var(--gold, #d4a843);
+    color: #1a1a2e;
+    font-size: 9px;
+    font-weight: bold;
+    min-width: 14px;
+    height: 14px;
+    line-height: 14px;
+    text-align: center;
+    border-radius: 7px;
+    padding: 0 3px;
+    pointer-events: none;
+    z-index: 2;
+    font-family: var(--font-mono, monospace);
+    box-shadow: 0 0 4px rgba(212,168,67,0.4);
+  }
+
   /* Collectd-monitored nodes: arcane scrying frame */
   .collectd-monitored .node-icon {
     border: 2px solid transparent;

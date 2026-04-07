@@ -503,6 +503,15 @@ class DiscoveryEngine:
 
     # ── SSE Data ──
 
+    def get_entity_counts_by_host(self):
+        """Return {host_node_id: count} for all entities."""
+        counts = {}
+        with self._lock:
+            for entity in self._sub_entities.values():
+                host = entity.host_node_id
+                counts[host] = counts.get(host, 0) + 1
+        return counts
+
     def get_sse_data(self):
         """Returns discovery data for SSE broadcast."""
         with self._lock:
