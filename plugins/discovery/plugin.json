@@ -11,6 +11,16 @@
     "entry": "setup"
   },
 
+  "panel": {
+    "id": "discovery-panel",
+    "name": "Realm Surveyors",
+    "html": "panel.html",
+    "js": "panel.js",
+    "css": "panel.css",
+    "anchor": "sw",
+    "priority": 40
+  },
+
   "endpoints": [],
   "sse_types": ["discovery"]
 }

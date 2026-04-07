@@ -1,0 +1,211 @@
+/* ── Discovery Plugin Panel Styles (Realm Surveyors) ── */
+
+.disc-header-badge {
+  font-size: 9px;
+  color: rgba(200,170,80,0.6);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* ── Summary bar ── */
+.disc-summary {
+  display: flex;
+  gap: 2px;
+  padding: 8px 10px 6px;
+  border-bottom: 1px solid rgba(200,170,80,0.1);
+}
+.disc-stat {
+  flex: 1;
+  text-align: center;
+  padding: 4px 2px;
+  border-radius: 4px;
+  background: rgba(30,25,40,0.4);
+}
+.disc-stat-num {
+  display: block;
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.disc-stat-label {
+  display: block;
+  font-size: 7px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.5;
+}
+.disc-stat-total .disc-stat-num { color: rgba(200,170,80,0.9); }
+.disc-stat-active .disc-stat-num { color: rgba(80,200,120,0.9); }
+.disc-stat-stopped .disc-stat-num { color: rgba(140,140,160,0.7); }
+.disc-stat-failed .disc-stat-num { color: rgba(220,80,80,0.9); }
+
+/* ── Section titles ── */
+.disc-section-title {
+  font-size: 8px;
+  color: rgba(200,170,80,0.5);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin: 8px 10px 4px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid rgba(200,170,80,0.1);
+}
+
+/* ── Provider grid ── */
+.disc-providers {
+  padding: 0 0 2px;
+}
+.disc-provider-grid {
+  padding: 0 10px;
+}
+.disc-provider-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+}
+.disc-provider-name {
+  font-size: 9px;
+  color: #b0c8e0;
+  width: 70px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.disc-provider-types {
+  font-size: 8px;
+  color: rgba(160,140,180,0.6);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.disc-provider-interval {
+  font-family: 'Cinzel', serif;
+  font-size: 8px;
+  color: rgba(200,170,80,0.5);
+  min-width: 28px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Status dots ── */
+.disc-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+.disc-status-up {
+  background: rgba(80,200,120,0.9);
+  box-shadow: 0 0 4px rgba(80,200,120,0.4);
+}
+.disc-status-down {
+  background: rgba(220,80,80,0.9);
+  box-shadow: 0 0 4px rgba(220,80,80,0.4);
+}
+.disc-status-stale {
+  background: rgba(140,140,160,0.5);
+}
+
+/* ── Host breakdown ── */
+.disc-hosts {
+  padding: 0 0 2px;
+}
+.disc-host-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.disc-host-row:hover {
+  background: rgba(200,170,80,0.08);
+}
+.disc-host-icon {
+  font-size: 11px;
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.disc-host-label {
+  font-size: 9px;
+  color: #7090b0;
+  width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.disc-host-count {
+  font-family: 'Cinzel', serif;
+  font-size: 9px;
+  color: rgba(200,170,80,0.8);
+  min-width: 18px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.disc-host-failed {
+  font-size: 7px;
+  color: rgba(220,80,80,0.8);
+  background: rgba(220,80,80,0.1);
+  border-radius: 3px;
+  padding: 1px 4px;
+  flex-shrink: 0;
+}
+.disc-host-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(40,35,60,0.3);
+  border-radius: 2px;
+  overflow: hidden;
+  min-width: 30px;
+}
+.disc-host-fill {
+  height: 100%;
+  background: linear-gradient(90deg, rgba(80,200,120,0.6), rgba(200,170,80,0.6));
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+.disc-empty {
+  font-size: 9px;
+  color: rgba(140,140,160,0.4);
+  font-style: italic;
+  padding: 8px 10px;
+}
+
+/* ── Unlinked entities ── */
+.disc-unlinked {
+  padding: 0 0 6px;
+}
+.disc-unlinked-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+}
+.disc-unlinked-name {
+  font-size: 9px;
+  color: rgba(180,160,200,0.7);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.disc-unlinked-type {
+  font-size: 7px;
+  color: rgba(200,170,80,0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+.disc-more {
+  font-size: 8px;
+  color: rgba(200,170,80,0.3);
+  font-style: italic;
+  padding: 2px 10px;
+  text-align: center;
+}
