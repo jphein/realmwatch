@@ -1,0 +1,15 @@
+{
+  "name": "systemd",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Systemd service discovery — finds interesting services on Linux hosts via SSH or local D-Bus.",
+  "fantasy_name": "Runic Services",
+  "icon": "\u2699\ufe0f",
+
+  "python": {
+    "module": "plugin",
+    "entry": "setup"
+  },
+
+  "depends_on": ["discovery"]
+}
