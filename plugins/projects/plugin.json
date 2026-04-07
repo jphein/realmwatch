@@ -1,0 +1,15 @@
+{
+  "name": "projects",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Local project discovery — ~/Projects/ inventory, git status, stack detection.",
+  "fantasy_name": "The Scholar's Archive",
+  "icon": "\ud83d\udcda",
+
+  "python": {
+    "module": "plugin",
+    "entry": "setup"
+  },
+
+  "depends_on": ["discovery"]
+}
