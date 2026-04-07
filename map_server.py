@@ -1725,6 +1725,10 @@ if __name__ == "__main__":
     # ── Housekeeping ──
     realm_db.cleanup_old_events()
 
+    # ── Discovery engine (create before plugins so companion plugin finds it) ──
+    import discovery_engine as _de_mod
+    _discovery_engine = _de_mod.DiscoveryEngine()
+
     # ── Plugin system startup ──
     # All bridges (HA, WLED, WiFi, firewall, collectd, events, chat, notion, codex, herald)
     # are now loaded as plugins. Latency prober is also started by its plugin.
@@ -1752,9 +1756,7 @@ if __name__ == "__main__":
 
     _sse_broker.start()
 
-    # ── Discovery engine startup ──
-    import discovery_engine as _de_mod
-    _discovery_engine = _de_mod.DiscoveryEngine()
+    # ── Discovery engine startup (register providers from plugins, start scan loop) ──
     for provider in _plugin_registry.get_discovery_providers():
         _discovery_engine.register_provider(provider)
     _discovery_engine.start()

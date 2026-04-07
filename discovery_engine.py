@@ -225,10 +225,11 @@ class DiscoveryEngine:
 
     def _get_eligible_nodes(self, provider, topo_nodes):
         """Get nodes eligible for this provider based on role and config."""
+        import node_roles
         eligible = []
         for node in topo_nodes:
             node_id = node.get("id", "")
-            role = node.get("role", "unknown")
+            role = node.get("role") or node_roles.get_role(node_id, node)
             discovery_config = node.get("discovery", {})
 
             # Explicit provider list overrides role defaults
