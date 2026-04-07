@@ -1,0 +1,16 @@
+{
+  "name": "alerting",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Realm Herald's Watch — routes realm events to notification channels based on configurable rules.",
+  "fantasy_name": "Herald's Watch",
+  "icon": "\ud83d\udce2",
+
+  "python": {
+    "module": "plugin",
+    "entry": "setup"
+  },
+
+  "endpoints": [],
+  "sse_types": ["toast"]
+}
