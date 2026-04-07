@@ -1,0 +1,10 @@
+{
+  "name": "netdata",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Netdata agent discovery — REST API info, charts, alarms, collectors.",
+  "fantasy_name": "Oracle Sight",
+  "icon": "\ud83d\udd6e",
+  "python": {"module": "plugin", "entry": "setup"},
+  "depends_on": ["discovery"]
+}
