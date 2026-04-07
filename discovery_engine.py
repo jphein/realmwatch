@@ -283,6 +283,16 @@ class DiscoveryEngine:
             entity.link_type = "auto"
             return
 
+        # 5. MAC match — for WiFi clients
+        entity_mac = (entity.metadata.get("mac") or "").lower()
+        if entity_mac:
+            for n in topo_nodes:
+                node_mac = (n.get("mac") or "").lower()
+                if node_mac and node_mac == entity_mac:
+                    entity.linked_node_id = n["id"]
+                    entity.link_type = "auto"
+                    return
+
     # ── Scan Orchestration ──
 
     def _get_eligible_nodes(self, provider, topo_nodes):

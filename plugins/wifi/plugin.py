@@ -2,10 +2,48 @@
 
 Wraps ap_scanner to provide WiFi scanning, AP client lists, signal data,
 LLDP ethernet topology, and SSE wifi events via the plugin system.
+Also registers as a discovery provider, surfacing WiFi clients as SubEntities.
 """
 
+import logging
 import ap_scanner
 import realm_db
+from discovery_engine import SubEntity
+
+log = logging.getLogger(__name__)
+
+
+def discover_wifi(node_id, node_data, host_access, engine):
+    """Create SubEntities from existing WiFi scan data."""
+    wifi_data = ap_scanner.get_wifi_signal()
+    if not wifi_data:
+        return []
+    entities = []
+    for nid, info in wifi_data.items():
+        mac = info.get("mac", "")
+        if not mac:
+            continue
+        ap = info.get("ap", "")
+        signal = info.get("signal", 0)
+        hostname = info.get("hostname", "")
+        ip = info.get("ip", "")
+        entities.append(SubEntity(
+            id=f"wifi:{ap}:{mac}",
+            type="wifi_client",
+            name=hostname or f"device-{mac[-8:].replace(':', '')}",
+            host_node_id=ap or "unknown-ap",
+            status="connected",
+            metadata={
+                "mac": mac,
+                "ip": ip,
+                "signal_dbm": signal,
+                "ap": ap,
+                "hostname": hostname,
+                "band": info.get("band", ""),
+                "node_id": nid,
+            },
+        ))
+    return entities
 
 
 def _get_wifi_sse_data():
@@ -94,4 +132,14 @@ def setup(ctx):
         "detect_ethernet_topology": ap_scanner.detect_ethernet_topology,
     })
 
-    ctx.log("Aether Towers WiFi scanner started")
+    # Register WiFi as discovery provider (reads existing scan data)
+    ctx.register_discovery_provider(
+        name="wifi-clients",
+        roles=[],  # global — reads existing ap_scanner data
+        discover_fn=discover_wifi,
+        interval=90,
+        entity_types=["wifi_client"],
+        priority=25,
+    )
+
+    ctx.log("Aether Towers WiFi scanner started + discovery provider registered")
