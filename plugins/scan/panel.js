@@ -405,4 +405,107 @@
     if (document.hidden) return;
     SCANS.forEach(function(scan) { if (_state[scan.id].status !== 'running') _updateCard(scan); });
   }, 30000);
+
+  // ── Discovery Scans Section ──
+
+  var discSection = document.createElement('div');
+  discSection.className = 'scan-discovery-section';
+
+  var discHdr = document.createElement('div');
+  discHdr.className = 'scan-discovery-hdr';
+
+  var discIcon = document.createElement('span');
+  discIcon.className = 'scan-icon';
+  discIcon.textContent = '\ud83d\udd2d';
+  discHdr.appendChild(discIcon);
+
+  var discTitle = document.createElement('span');
+  discTitle.className = 'scan-discovery-title';
+  discTitle.textContent = 'Realm Discovery';
+  discHdr.appendChild(discTitle);
+
+  var discRunAll = document.createElement('button');
+  discRunAll.className = 'scan-run-btn scan-discovery-run-all';
+  discRunAll.dataset.action = 'disc-run';
+  discRunAll.dataset.provider = 'all';
+  discRunAll.textContent = 'Scan All';
+  discHdr.appendChild(discRunAll);
+
+  discSection.appendChild(discHdr);
+
+  var discStatusEl = document.createElement('div');
+  discStatusEl.className = 'scan-discovery-status';
+  discSection.appendChild(discStatusEl);
+
+  var discProvidersEl = document.createElement('div');
+  discProvidersEl.className = 'scan-discovery-providers';
+  discSection.appendChild(discProvidersEl);
+
+  body.appendChild(discSection);
+
+  function _loadDiscoveryProviders() {
+    window.fetch('/discovery/providers').then(function(r) { return r.json(); }).then(function(providers) {
+      discProvidersEl.textContent = '';
+      providers.forEach(function(p) {
+        var btn = document.createElement('button');
+        btn.className = 'scan-run-btn scan-btn-sm';
+        btn.dataset.action = 'disc-run';
+        btn.dataset.provider = p.name;
+        btn.textContent = p.name + ' (' + p.entity_types.join(', ') + ')';
+        discProvidersEl.appendChild(btn);
+      });
+    }).catch(function() {});
+  }
+
+  function _updateDiscoveryStatus() {
+    window.fetch('/discovery').then(function(r) { return r.json(); }).then(function(data) {
+      var s = data.summary;
+      discStatusEl.textContent = '';
+      var stats = [
+        { text: s.total + ' entities', cls: '' },
+        { text: s.running + ' running', cls: 'scan-disc-ok' },
+        { text: s.stopped + ' stopped', cls: 'scan-disc-warn' },
+        { text: s.failed + ' failed', cls: 'scan-disc-crit' }
+      ];
+      stats.forEach(function(st) {
+        var span = document.createElement('span');
+        span.className = 'scan-disc-stat' + (st.cls ? ' ' + st.cls : '');
+        span.textContent = st.text;
+        discStatusEl.appendChild(span);
+      });
+    }).catch(function() {});
+  }
+
+  function _triggerDiscoveryScan(provider, btn) {
+    var origText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Scanning\u2026';
+    window.fetch('/discovery/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider: provider }),
+    }).then(function() {
+      btn.textContent = '\u2713 Triggered';
+      setTimeout(function() { btn.disabled = false; btn.textContent = origText; }, 4000);
+      setTimeout(_updateDiscoveryStatus, 5000);
+      setTimeout(_updateDiscoveryStatus, 15000);
+    }).catch(function() {
+      btn.textContent = 'Error';
+      setTimeout(function() { btn.disabled = false; btn.textContent = origText; }, 4000);
+    });
+  }
+
+  discSection.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-action="disc-run"]');
+    if (!btn || btn.disabled) return;
+    _triggerDiscoveryScan(btn.dataset.provider, btn);
+  });
+
+  _loadDiscoveryProviders();
+  _updateDiscoveryStatus();
+
+  setInterval(function() {
+    if (document.hidden) return;
+    _updateDiscoveryStatus();
+  }, 30000);
 })();

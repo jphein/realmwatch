@@ -201,3 +201,62 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ── Discovery Scan Section ── */
+.scan-discovery-section {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(120,200,220,0.15);
+}
+.scan-discovery-hdr {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+.scan-discovery-title {
+  font-family: 'MedievalSharp', cursive;
+  font-size: 11px;
+  color: #70b8d0;
+  flex: 1;
+}
+.scan-discovery-run-all {
+  background: rgba(80,180,220,0.1);
+  border-color: rgba(80,180,220,0.3);
+  color: #60b0d0;
+}
+.scan-discovery-run-all:hover:not(:disabled) {
+  background: rgba(80,180,220,0.2);
+  border-color: rgba(80,180,220,0.55);
+}
+.scan-discovery-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 5px 20px;
+  font-size: 9px;
+}
+.scan-disc-stat {
+  color: #7a9ab0;
+  font-family: 'Consolas', 'Fira Code', monospace;
+}
+.scan-disc-ok   { color: #60c060; }
+.scan-disc-warn { color: #c0a040; }
+.scan-disc-crit { color: #c05050; }
+.scan-discovery-providers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-left: 20px;
+}
+.scan-discovery-providers .scan-btn-sm {
+  font-size: 8px;
+  padding: 2px 6px;
+  background: rgba(80,180,220,0.08);
+  border-color: rgba(80,180,220,0.2);
+  color: #60a8c0;
+}
+.scan-discovery-providers .scan-btn-sm:hover:not(:disabled) {
+  background: rgba(80,180,220,0.18);
+  border-color: rgba(80,180,220,0.45);
+}
