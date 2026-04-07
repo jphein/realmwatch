@@ -15,6 +15,7 @@ import time
 import urllib.request
 
 import ha_bridge
+from discovery_engine import SubEntity
 
 # ── Energy data cache (ported from map_server.py) ──
 _energy_cache = {"data": None, "ts": 0}
@@ -87,6 +88,60 @@ def handle_energy(req, params):
     req.respond(_get_energy_data())
 
 
+# ── Discovery provider ──
+
+def discover_ha(node_id, node_data, host_access, engine):
+    """Discover Home Assistant devices from the HA REST API."""
+    ha_url = os.environ.get("HA_URL", "https://10.0.6.108:8123")
+    ha_token = os.environ.get("HA_TOKEN", "")
+    if not ha_token:
+        return []
+
+    import httpx
+    headers = {"Authorization": f"Bearer {ha_token}"}
+    try:
+        resp = httpx.get(f"{ha_url}/api/states", headers=headers, verify=False, timeout=10)
+        if resp.status_code != 200:
+            return []
+    except Exception:
+        return []
+
+    entities = []
+    for state in resp.json():
+        entity_id = state.get("entity_id", "")
+        domain = entity_id.split(".")[0] if "." in entity_id else ""
+
+        # Only surface interesting domains
+        if domain not in ("light", "switch", "sensor", "binary_sensor", "climate",
+                          "media_player", "camera", "cover", "fan", "lock"):
+            continue
+
+        friendly_name = state.get("attributes", {}).get("friendly_name", entity_id)
+        ha_state = state.get("state", "unknown")
+
+        if ha_state in ("unavailable", "unknown"):
+            status = "stale"
+        elif ha_state in ("on", "open", "playing", "home"):
+            status = "running"
+        else:
+            status = "stopped"
+
+        entities.append(SubEntity(
+            id=f"ha:{entity_id}",
+            type="ha_device",
+            name=friendly_name,
+            host_node_id="home-assistant",
+            status=status,
+            metadata={
+                "entity_id": entity_id,
+                "domain": domain,
+                "state": ha_state,
+                "device_class": state.get("attributes", {}).get("device_class", ""),
+            },
+        ))
+    return entities
+
+
 # ── Plugin entry point ──
 
 def setup(ctx):
@@ -115,5 +170,12 @@ def setup(ctx):
         "poll_once": ha_bridge.poll_once,
         "get_energy_data": _get_energy_data,
     })
+
+    # Register HA as a global discovery provider
+    ctx.register_discovery_provider(
+        name="ha", roles=[],  # global — polls HA API once
+        discover_fn=discover_ha, interval=120,
+        entity_types=["ha_device"], priority=50,
+    )
 
     ctx.log("Crystal Bridge started (HA bridge + energy)")
