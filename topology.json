@@ -6140,7 +6140,7 @@
     },
     {
       "from": "flip3-5g",
-      "to": "ap-north-1",
+      "to": "woodshed",
       "type": "active",
       "vlan": 6
     },
@@ -6496,7 +6496,7 @@
     },
     {
       "from": "_unknown_3ea44f764772",
-      "to": "ap-north-1",
+      "to": "ap-closet",
       "type": "active"
     },
     {
