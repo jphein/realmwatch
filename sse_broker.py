@@ -262,6 +262,8 @@ class SSEBroker:
                     topo = realm_db.get_topology()
                     topo_nodes = topo.get("nodes", [])
                     self._check_and_push("topology", topo)
+                    # Prune DB connections from dead request-handler threads
+                    realm_db._prune_dead_connections()
 
                 # -- Core: Status every 2nd tick (10s) --
                 if tick % 2 == 0:

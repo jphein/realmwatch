@@ -2,14 +2,17 @@
 
 import atexit
 import json
+import logging
 import os
 import sqlite3
 import threading
 import time
 
+log = logging.getLogger(__name__)
+
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "realm.db")
 _local = threading.local()
-_all_connections = []
+_all_connections = []  # list of (thread_id, conn)
 _all_connections_lock = threading.Lock()
 
 
@@ -22,14 +25,34 @@ def _conn():
         _local.conn.execute("PRAGMA busy_timeout=10000")
         _local.conn.row_factory = sqlite3.Row
         with _all_connections_lock:
-            _all_connections.append(_local.conn)
+            _all_connections.append((threading.current_thread().ident, _local.conn))
     return _local.conn
+
+
+def _prune_dead_connections():
+    """Close connections from threads that no longer exist."""
+    alive_ids = {t.ident for t in threading.enumerate()}
+    with _all_connections_lock:
+        still_alive = []
+        for tid, conn in _all_connections:
+            if tid in alive_ids:
+                still_alive.append((tid, conn))
+            else:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+        pruned = len(_all_connections) - len(still_alive)
+        _all_connections[:] = still_alive
+    if pruned:
+        log.debug("Pruned %d dead-thread DB connections (%d remaining)", pruned, len(still_alive))
+    return pruned
 
 
 def _cleanup_connections():
     """Close all tracked connections and checkpoint WAL on shutdown."""
     with _all_connections_lock:
-        for conn in _all_connections:
+        for _tid, conn in _all_connections:
             try:
                 conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
             except Exception:

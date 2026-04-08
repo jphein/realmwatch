@@ -50,8 +50,8 @@ def handle_firewall(req, params):
 
 def discover_firewall(node_id, node_data, host_access, engine):
     """Discover firewall zones from nftables on gatekeeper."""
-    from firewall_parser import get_firewall_data
-    fw = get_firewall_data()
+    from firewall_parser import get_cached
+    fw = get_cached()
     if not fw:
         return []
 
