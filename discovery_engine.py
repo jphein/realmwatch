@@ -199,6 +199,11 @@ class DiscoveryEngine:
         self._sub_entities: dict[str, SubEntity] = {}  # {entity_id: SubEntity} in-memory cache
         self._lock = threading.Lock()
         self._event_subscribers = []  # list of callback(event_type, entity, old_status)
+        # Host alias map: {alternate_name → canonical_node_id}
+        # Built from topology (collectd hostname, IP, short hostname)
+        self._host_alias_map: dict[str, str] = {}
+        self._topo_node_ids: set[str] = set()
+        self._alias_map_lock = threading.Lock()
 
     def register_provider(self, provider: DiscoveryProvider):
         """Register a discovery provider."""
@@ -216,11 +221,16 @@ class DiscoveryEngine:
             return list(self._providers)
 
     def get_sub_entities(self, host_node_id=None):
-        """Get sub-entities, optionally filtered by host."""
+        """Get sub-entities, optionally filtered by host.
+
+        Supports alias resolution — querying by topology node_id will match
+        entities whose host_node_id is a collectd hostname or IP for that node.
+        """
         with self._lock:
             if host_node_id:
                 return [e.to_dict() for e in self._sub_entities.values()
-                        if e.host_node_id == host_node_id]
+                        if e.host_node_id == host_node_id
+                        or self._resolve_host(e.host_node_id) == host_node_id]
             return [e.to_dict() for e in self._sub_entities.values()]
 
     def get_sub_entities_for_linked_node(self, node_id):
@@ -328,6 +338,9 @@ class DiscoveryEngine:
         topo = realm_db.get_topology()
         topo_nodes = topo.get("nodes", [])
 
+        # Rebuild host alias map so enricher can match collectd hostnames to node IDs
+        self._rebuild_host_alias_map(topo_nodes)
+
         with self._providers_lock:
             providers = list(self._providers)
 
@@ -422,11 +435,113 @@ class DiscoveryEngine:
 
     # ── Node Enricher ──
 
+    def _rebuild_host_alias_map(self, topo_nodes):
+        """Build reverse lookup from alternate hostnames/IPs to topology node IDs.
+
+        Enables matching when discovery providers report hosts by collectd
+        hostname, FQDN, or IP instead of the topology node ID.
+        """
+        alias_map = {}
+        for n in topo_nodes:
+            nid = n.get("id", "")
+            if not nid:
+                continue
+            # Collectd hostname → node_id (e.g. "EA6350-CL" → "ap-cabin")
+            collectd = n.get("collectd", "")
+            if collectd and collectd.lower() != nid.lower():
+                alias_map[collectd.lower()] = nid
+            # IP → node_id (e.g. "10.0.6.108" → "ha")
+            ip = n.get("ip", "")
+            if ip:
+                alias_map[ip] = nid
+            # Hostname/SSH host → node_id
+            hostname = n.get("hostname", "")
+            if hostname and hostname.lower() != nid.lower():
+                alias_map[hostname.lower()] = nid
+            ssh = n.get("ssh", "")
+            if ssh:
+                # Extract hostname from "root@host" or "user@host"
+                ssh_host = ssh.split("@")[-1] if "@" in ssh else ssh
+                if ssh_host and ssh_host.lower() != nid.lower():
+                    alias_map[ssh_host.lower()] = nid
+            # Label (lowercased) as last resort — only if unique enough
+            label = n.get("label", "")
+            if label and len(label) > 3:
+                alias_map.setdefault(label.lower(), nid)  # don't overwrite
+
+        # Scan collectd RRD directories — these are the authoritative hostnames
+        # that collectd providers report as host_node_id
+        self._add_collectd_rrd_aliases(alias_map, topo_nodes)
+
+        # Also store the set of valid topology node IDs for short-hostname matching
+        node_ids = {n["id"].lower() for n in topo_nodes if n.get("id")}
+
+        with self._alias_map_lock:
+            self._host_alias_map = alias_map
+            self._topo_node_ids = node_ids
+        log.debug("Host alias map rebuilt: %d entries, %d node IDs", len(alias_map), len(node_ids))
+
+    def _add_collectd_rrd_aliases(self, alias_map, topo_nodes):
+        """Add collectd RRD directory names as aliases using the existing host matcher."""
+        import os
+        rrd_base = "/var/lib/collectd/rrd"
+        if not os.path.isdir(rrd_base):
+            return
+        try:
+            from traffic_precompute import _match_host
+        except ImportError:
+            return
+        rrd_hosts = os.listdir(rrd_base)
+        # Build a dummy collectd dict for the matcher
+        dummy_collectd = {h: {"hostname": h} for h in rrd_hosts}
+        for n in topo_nodes:
+            nid = n["id"]
+            # Try matching each topo node to a collectd RRD host
+            matched = _match_host(dummy_collectd, nid)
+            if matched:
+                cd_host = matched["hostname"]
+                if cd_host.lower() != nid.lower() and cd_host.lower() not in alias_map:
+                    alias_map[cd_host.lower()] = nid
+
+    def _resolve_host(self, host_id):
+        """Resolve a discovery host_node_id to the canonical topology node ID.
+
+        Tries: direct pass-through, then collectd/hostname/IP alias lookup,
+        then short hostname (strip .lan, .ts.net suffixes), then case-insensitive
+        node ID match.
+        """
+        with self._alias_map_lock:
+            alias_map = self._host_alias_map
+            node_ids = getattr(self, "_topo_node_ids", set())
+
+        # 1. Direct match (host_id IS a topology node ID) — checked by caller
+        # 2. Exact alias match (collectd hostname, IP, ssh host)
+        canonical = alias_map.get(host_id.lower())
+        if canonical:
+            return canonical
+        # 3. Short hostname — strip domain suffixes
+        short = host_id.split(".")[0].lower()
+        if short != host_id.lower():
+            # Check alias map first
+            canonical = alias_map.get(short)
+            if canonical:
+                return canonical
+            # Check if short hostname IS a topology node ID
+            if short in node_ids:
+                return short
+        # 4. Case-insensitive node ID match (e.g. "jp-Latitude-7390" → "latitude-7390")
+        host_lower = host_id.lower()
+        if host_lower in node_ids and host_lower != host_id:
+            return host_lower
+        # No match — return original
+        return host_id
+
     def enrich_node(self, node_id, node_data):
         """Node enricher — called by plugin system for each node during status build."""
         with self._lock:
             host_entities = [e for e in self._sub_entities.values()
-                            if e.host_node_id == node_id]
+                            if e.host_node_id == node_id
+                            or self._resolve_host(e.host_node_id) == node_id]
             linked_entities = [e for e in self._sub_entities.values()
                               if e.linked_node_id == node_id]
 
@@ -454,7 +569,9 @@ class DiscoveryEngine:
                 result["status_class"] = "warning"
 
         # Linked node enrichment: "container on disks | running"
-        if linked_entities:
+        # Only use linked enrichment if this node isn't primarily a host
+        # (a host with 100+ entities shouldn't be overridden by one linked project)
+        if linked_entities and not host_entities:
             e = linked_entities[0]  # primary link
             type_label = {"container": "container", "vm": "VM", "service": "service"}.get(e.type, e.type)
             result["sublabel"] = f"{type_label} on {e.host_node_id} | {e.status}"
@@ -491,6 +608,9 @@ class DiscoveryEngine:
                                   if k in entity_dict})
             self._sub_entities[entity.id] = entity
         log.info("Discovery engine loaded %d persisted sub-entities", len(self._sub_entities))
+        # Seed host alias map so enricher works before first scan cycle
+        topo = realm_db.get_topology()
+        self._rebuild_host_alias_map(topo.get("nodes", []))
 
         self._running = True
         t = threading.Thread(target=self._scan_loop, daemon=True, name="discovery-engine")
@@ -504,11 +624,15 @@ class DiscoveryEngine:
     # ── SSE Data ──
 
     def get_entity_counts_by_host(self):
-        """Return {host_node_id: count} for all entities."""
+        """Return {canonical_node_id: count} for all entities.
+
+        Resolves discovery host IDs to topology node IDs via alias map,
+        so badges appear on the correct map nodes.
+        """
         counts = {}
         with self._lock:
             for entity in self._sub_entities.values():
-                host = entity.host_node_id
+                host = self._resolve_host(entity.host_node_id)
                 counts[host] = counts.get(host, 0) + 1
         return counts
 
@@ -517,7 +641,7 @@ class DiscoveryEngine:
         with self._lock:
             by_host = {}
             for e in self._sub_entities.values():
-                host = e.host_node_id
+                host = self._resolve_host(e.host_node_id)
                 if host not in by_host:
                     by_host[host] = []
                 by_host[host].append({

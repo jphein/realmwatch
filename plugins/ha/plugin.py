@@ -130,7 +130,7 @@ def discover_ha(node_id, node_data, host_access, engine):
             id=f"ha:{entity_id}",
             type="ha_device",
             name=friendly_name,
-            host_node_id="home-assistant",
+            host_node_id="ha",
             status=status,
             metadata={
                 "entity_id": entity_id,

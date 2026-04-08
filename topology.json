@@ -49,113 +49,6 @@
       "_role": "router"
     },
     {
-      "id": "ap-east-1",
-      "type": "tower",
-      "x": 1150,
-      "y": 280,
-      "icon": "&#127984;",
-      "label": "<REDACTED>",
-      "sublabel": "ap-east-1 \u2022 10.0.6.100",
-      "ip": "10.0.6.100",
-      "collectd": "ap-east-1",
-      "ssh": "glenn",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#2a1f10,#1a1408)"
-      },
-      "pulse": true,
-      "tip": {
-        "title": "<REDACTED>",
-        "stats": [
-          [
-            "Type",
-            "Linksys MR8300"
-          ],
-          [
-            "IP",
-            "10.0.6.100"
-          ],
-          [
-            "Role",
-            "WiFi AP"
-          ]
-        ]
-      },
-      "mac": "30:23:03:82:5e:c0",
-      "_role": "router",
-      "_hostname": "ap-east-1"
-    },
-    {
-      "id": "ap-path",
-      "type": "tower",
-      "x": 650,
-      "y": 1000,
-      "icon": "&#127984;",
-      "label": "The Great Hall",
-      "sublabel": "ap-path \u2022 10.0.6.114",
-      "ip": "10.0.6.114",
-      "collectd": "ap-path",
-      "ssh": "julia",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#2a1f10,#1a1408)"
-      },
-      "pulse": true,
-      "tip": {
-        "title": "The Great Hall",
-        "stats": [
-          [
-            "Type",
-            "Linksys WRT1900AC"
-          ],
-          [
-            "IP",
-            "10.0.6.114"
-          ],
-          [
-            "Role",
-            "Family AP"
-          ]
-        ]
-      },
-      "mac": "94:10:3e:7e:7b:c5",
-      "_role": "router",
-      "_hostname": "ap-path"
-    },
-    {
-      "id": "ap-south-1",
-      "type": "tower",
-      "x": 500,
-      "y": 900,
-      "icon": "&#127984;",
-      "label": "The Inner Ward",
-      "sublabel": "ap-south-1 \u2022 10.0.6.135",
-      "ip": "10.0.6.135",
-      "collectd": "ap-south-1",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#2a1f10,#1a1408)"
-      },
-      "pulse": true,
-      "tip": {
-        "title": "The Inner Ward",
-        "stats": [
-          [
-            "Type",
-            "Linksys EA6350v3"
-          ],
-          [
-            "IP",
-            "10.0.6.135"
-          ],
-          [
-            "Role",
-            "Family AP"
-          ]
-        ]
-      },
-      "mac": "60:38:e0:96:1c:31",
-      "_role": "router",
-      "_hostname": "ap-south-1"
-    },
-    {
       "id": "ap-cabin",
       "type": "tower",
       "x": 1000,
@@ -190,254 +83,6 @@
       "mac": "60:38:e0:a6:7d:d5",
       "_role": "router",
       "_hostname": "ap-cabin"
-    },
-    {
-      "id": "ap-shed",
-      "type": "tower",
-      "x": 350,
-      "y": 500,
-      "icon": "&#127984;",
-      "label": "The Woodshed Watch",
-      "sublabel": "ap-shed \u2022 10.0.6.109",
-      "ip": "10.0.6.109",
-      "collectd": "ap-shed",
-      "ssh": "willow",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#2a1f10,#1a1408)"
-      },
-      "pulse": true,
-      "tip": {
-        "title": "The Woodshed Watch",
-        "stats": [
-          [
-            "Type",
-            "WNDR4300"
-          ],
-          [
-            "IP",
-            "10.0.6.109"
-          ],
-          [
-            "Role",
-            "Shed AP"
-          ]
-        ]
-      },
-      "mac": "a0:63:91:8d:bd:4a",
-      "_role": "router",
-      "_hostname": "ap-shed"
-    },
-    {
-      "id": "ap-closet",
-      "type": "tower",
-      "x": 750,
-      "y": 300,
-      "icon": "&#127984;",
-      "label": "The Hidden Chamber",
-      "sublabel": "ap-closet \u2022 10.0.6.102",
-      "ip": "10.0.6.102",
-      "collectd": "ap-closet",
-      "ssh": "cl",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#2a1f10,#1a1408)"
-      },
-      "pulse": true,
-      "tip": {
-        "title": "The Hidden Chamber",
-        "stats": [
-          [
-            "Type",
-            "Google OnHub"
-          ],
-          [
-            "IP",
-            "10.0.6.102"
-          ],
-          [
-            "Role",
-            "Network Closet AP"
-          ]
-        ]
-      },
-      "mac": "2c:56:dc:df:bd:9d",
-      "_role": "ap",
-      "_hostname": "ap-closet"
-    },
-    {
-      "id": "ap-north-1",
-      "type": "tower",
-      "x": 1200,
-      "y": 850,
-      "icon": "&#127984;",
-      "label": "The Dreamer's Rest",
-      "sublabel": "ap-north-1 \u2022 10.0.6.246",
-      "ip": "10.0.6.246",
-      "collectd": "ap-north-1",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#2a1f10,#1a1408)"
-      },
-      "pulse": true,
-      "tip": {
-        "title": "The Dreamer's Rest",
-        "stats": [
-          [
-            "Type",
-            "Google OnHub"
-          ],
-          [
-            "IP",
-            "10.0.6.246"
-          ],
-          [
-            "Role",
-            "Bedroom AP"
-          ]
-        ]
-      },
-      "mac": "9c:5c:8e:cb:db:8d",
-      "_role": "ap",
-      "_hostname": "ap-north-1"
-    },
-    {
-      "id": "center",
-      "type": "tower",
-      "x": 1350,
-      "y": 450,
-      "icon": "&#127984;",
-      "label": "The Scribe's Alcove",
-      "sublabel": "center \u2022 10.0.6.101",
-      "ip": "10.0.6.101",
-      "collectd": "center",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#2a1f10,#1a1408)"
-      },
-      "pulse": true,
-      "tip": {
-        "title": "The Scribe's Alcove",
-        "stats": [
-          [
-            "Type",
-            "Google OnHub"
-          ],
-          [
-            "IP",
-            "10.0.6.101"
-          ],
-          [
-            "Role",
-            "Office AP"
-          ]
-        ]
-      },
-      "mac": "a4:2b:b0:b7:d3:a0",
-      "_role": "ap",
-      "_hostname": "center"
-    },
-    {
-      "id": "ap-pump",
-      "type": "tower",
-      "x": 380,
-      "y": 680,
-      "icon": "&#127984;",
-      "label": "The Pumphouse Keep",
-      "sublabel": "ap-pump \u2022 10.0.6.111",
-      "ip": "10.0.6.111",
-      "collectd": "ap-pump",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#2a1f10,#1a1408)"
-      },
-      "pulse": true,
-      "tip": {
-        "title": "The Pumphouse Keep",
-        "stats": [
-          [
-            "Type",
-            "Google OnHub"
-          ],
-          [
-            "IP",
-            "10.0.6.111"
-          ],
-          [
-            "Role",
-            "Pumphouse AP"
-          ]
-        ]
-      },
-      "mac": "18:d6:c7:b6:d5:2d",
-      "_role": "ap",
-      "_hostname": "ap-pump"
-    },
-    {
-      "id": "ap-east-2",
-      "type": "tower",
-      "x": 780,
-      "y": 950,
-      "icon": "&#127984;",
-      "label": "The Family Hearth",
-      "sublabel": "ap-east-2 \u2022 10.0.6.141",
-      "ip": "10.0.6.141",
-      "collectd": "ap-east-2",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#2a1f10,#1a1408)"
-      },
-      "pulse": true,
-      "tip": {
-        "title": "The Family Hearth",
-        "stats": [
-          [
-            "Type",
-            "Google OnHub"
-          ],
-          [
-            "IP",
-            "10.0.6.141"
-          ],
-          [
-            "Role",
-            "Family Room AP"
-          ]
-        ]
-      },
-      "mac": "18:d6:c7:72:d8:65",
-      "_role": "ap",
-      "_hostname": "ap-east-2"
-    },
-    {
-      "id": "ap-deck",
-      "type": "tower",
-      "x": 500,
-      "y": 350,
-      "icon": "&#127984;",
-      "label": "The Sentinel",
-      "sublabel": "ap-deck \u2022 10.0.6.119",
-      "ip": "10.0.6.119",
-      "collectd": "ap-deck",
-      "ssh": "kristen",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#2a1f10,#1a1408)"
-      },
-      "pulse": true,
-      "tip": {
-        "title": "The Sentinel",
-        "stats": [
-          [
-            "Type",
-            "TP-Link EAP225"
-          ],
-          [
-            "IP",
-            "10.0.6.119"
-          ],
-          [
-            "Role",
-            "Outdoor AP"
-          ]
-        ]
-      },
-      "mac": "10:27:f5:7a:02:aa",
-      "_role": "ap",
-      "_hostname": "ap-deck"
     },
     {
       "id": "hp-switch",
@@ -1467,43 +1112,6 @@
       },
       "_role": "laptop",
       "_hostname": "jp-Latitude-5490"
-    },
-    {
-      "id": "latitude-7390",
-      "type": "device",
-      "x": 1050,
-      "y": 550,
-      "icon": "&#128187;",
-      "label": "The Wandering Codex",
-      "sublabel": "jp-Latitude-7390 \u2022 10.0.6.156",
-      "ip": "10.0.6.156",
-      "iconStyle": {
-        "background": "radial-gradient(circle,#151520,#0a0a15)",
-        "borderColor": "rgba(100,140,200,0.4)",
-        "width": "44px",
-        "height": "44px",
-        "fontSize": "20px"
-      },
-      "mac": "7c:76:35:37:05:69",
-      "tip": {
-        "title": "Dell Latitude 7390",
-        "stats": [
-          [
-            "Model",
-            "Dell Latitude 7390"
-          ],
-          [
-            "Role",
-            "Laptop"
-          ],
-          [
-            "IP",
-            "10.0.6.156"
-          ]
-        ]
-      },
-      "_role": "laptop",
-      "_hostname": "jp-Latitude-7390"
     },
     {
       "id": "users-air",
@@ -4008,13 +3616,13 @@
       "_auto": true,
       "x": 2800,
       "y": 750,
-      "ip": "10.0.11.100",
+      "ip": "10.0.11.110",
       "mac": "be:68:f4:5b:e2:03",
       "_last_seen": 1775250303.6646976,
       "_wired": true,
       "label": "Guest Device e203",
       "icon": "&#128241;",
-      "sublabel": "10.0.11.100 \u2022 Randomized MAC",
+      "sublabel": "10.0.11.110 \u2022 Randomized MAC",
       "iconStyle": {
         "background": "radial-gradient(circle,#a080c020,#0a0510)",
         "borderColor": "#a080c080",
@@ -4031,7 +3639,7 @@
           ],
           [
             "IP",
-            "10.0.11.100"
+            "10.0.11.110"
           ],
           [
             "MAC",
@@ -4629,7 +4237,7 @@
       "_vendor": null,
       "_os": null,
       "_model": null,
-      "_hostname": null,
+      "_hostname": "Galaxy-Z-Flip3-5G",
       "_ha_entity": null,
       "_ha_battery": null
     },
@@ -5921,6 +5529,399 @@
       "_hostname": "Liza-s-A54",
       "_ha_entity": null,
       "_ha_battery": null
+    },
+    {
+      "id": "ap-path",
+      "type": "tower",
+      "x": 650,
+      "y": 1000,
+      "icon": "&#127984;",
+      "label": "The Great Hall",
+      "sublabel": "ap-path \u2022 10.0.6.114",
+      "ip": "10.0.6.114",
+      "collectd": "wrt1900ac-family",
+      "ssh": "julia",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#2a1f10,#1a1408)"
+      },
+      "pulse": true,
+      "tip": {
+        "title": "The Great Hall",
+        "stats": [
+          [
+            "Type",
+            "Linksys WRT1900AC"
+          ],
+          [
+            "IP",
+            "10.0.6.114"
+          ],
+          [
+            "Role",
+            "Family AP"
+          ]
+        ]
+      },
+      "mac": "94:10:3e:7e:7b:c5",
+      "_role": "router",
+      "_hostname": "ap-path"
+    },
+    {
+      "id": "ap-south-1",
+      "type": "tower",
+      "x": 500,
+      "y": 900,
+      "icon": "&#127984;",
+      "label": "The Inner Ward",
+      "sublabel": "ap-south-1 \u2022 10.0.6.135",
+      "ip": "10.0.6.135",
+      "collectd": "ea6350v3-family",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#2a1f10,#1a1408)"
+      },
+      "pulse": true,
+      "tip": {
+        "title": "The Inner Ward",
+        "stats": [
+          [
+            "Type",
+            "Linksys EA6350v3"
+          ],
+          [
+            "IP",
+            "10.0.6.135"
+          ],
+          [
+            "Role",
+            "Family AP"
+          ]
+        ]
+      },
+      "mac": "60:38:e0:96:1c:31",
+      "_role": "router",
+      "_hostname": "ap-south-1"
+    },
+    {
+      "id": "ap-shed",
+      "type": "tower",
+      "x": 350,
+      "y": 500,
+      "icon": "&#127984;",
+      "label": "The Woodshed Watch",
+      "sublabel": "ap-shed \u2022 10.0.6.109",
+      "ip": "10.0.6.109",
+      "collectd": "wndr4300sw-shed",
+      "ssh": "willow",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#2a1f10,#1a1408)"
+      },
+      "pulse": true,
+      "tip": {
+        "title": "The Woodshed Watch",
+        "stats": [
+          [
+            "Type",
+            "WNDR4300"
+          ],
+          [
+            "IP",
+            "10.0.6.109"
+          ],
+          [
+            "Role",
+            "Shed AP"
+          ]
+        ]
+      },
+      "mac": "a0:63:91:8d:bd:4a",
+      "_role": "router",
+      "_hostname": "ap-shed"
+    },
+    {
+      "id": "ap-closet",
+      "type": "tower",
+      "x": 750,
+      "y": 300,
+      "icon": "&#127984;",
+      "label": "The Hidden Chamber",
+      "sublabel": "ap-closet \u2022 10.0.6.102",
+      "ip": "10.0.6.102",
+      "collectd": "onhub-closet",
+      "ssh": "cl",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#2a1f10,#1a1408)"
+      },
+      "pulse": true,
+      "tip": {
+        "title": "The Hidden Chamber",
+        "stats": [
+          [
+            "Type",
+            "Google OnHub"
+          ],
+          [
+            "IP",
+            "10.0.6.102"
+          ],
+          [
+            "Role",
+            "Network Closet AP"
+          ]
+        ]
+      },
+      "mac": "2c:56:dc:df:bd:9d",
+      "_role": "ap",
+      "_hostname": "ap-closet"
+    },
+    {
+      "id": "ap-north-1",
+      "type": "tower",
+      "x": 1200,
+      "y": 850,
+      "icon": "&#127984;",
+      "label": "The Dreamer's Rest",
+      "sublabel": "ap-north-1 \u2022 10.0.6.246",
+      "ip": "10.0.6.246",
+      "collectd": "onhub-bed",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#2a1f10,#1a1408)"
+      },
+      "pulse": true,
+      "tip": {
+        "title": "The Dreamer's Rest",
+        "stats": [
+          [
+            "Type",
+            "Google OnHub"
+          ],
+          [
+            "IP",
+            "10.0.6.246"
+          ],
+          [
+            "Role",
+            "Bedroom AP"
+          ]
+        ]
+      },
+      "mac": "9c:5c:8e:cb:db:8d",
+      "_role": "ap",
+      "_hostname": "ap-north-1"
+    },
+    {
+      "id": "center",
+      "type": "tower",
+      "x": 1350,
+      "y": 450,
+      "icon": "&#127984;",
+      "label": "The Scribe's Alcove",
+      "sublabel": "center \u2022 10.0.6.101",
+      "ip": "10.0.6.101",
+      "collectd": "onhub-office",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#2a1f10,#1a1408)"
+      },
+      "pulse": true,
+      "tip": {
+        "title": "The Scribe's Alcove",
+        "stats": [
+          [
+            "Type",
+            "Google OnHub"
+          ],
+          [
+            "IP",
+            "10.0.6.101"
+          ],
+          [
+            "Role",
+            "Office AP"
+          ]
+        ]
+      },
+      "mac": "a4:2b:b0:b7:d3:a0",
+      "_role": "ap",
+      "_hostname": "center"
+    },
+    {
+      "id": "ap-east-2",
+      "type": "tower",
+      "x": 780,
+      "y": 950,
+      "icon": "&#127984;",
+      "label": "The Family Hearth",
+      "sublabel": "ap-east-2 \u2022 10.0.6.141",
+      "ip": "10.0.6.141",
+      "collectd": "onhub-family",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#2a1f10,#1a1408)"
+      },
+      "pulse": true,
+      "tip": {
+        "title": "The Family Hearth",
+        "stats": [
+          [
+            "Type",
+            "Google OnHub"
+          ],
+          [
+            "IP",
+            "10.0.6.141"
+          ],
+          [
+            "Role",
+            "Family Room AP"
+          ]
+        ]
+      },
+      "mac": "18:d6:c7:72:d8:65",
+      "_role": "ap",
+      "_hostname": "ap-east-2"
+    },
+    {
+      "id": "ap-deck",
+      "type": "tower",
+      "x": 500,
+      "y": 350,
+      "icon": "&#127984;",
+      "label": "The Sentinel",
+      "sublabel": "ap-deck \u2022 10.0.6.119",
+      "ip": "10.0.6.119",
+      "collectd": "eap225-outdoor",
+      "ssh": "kristen",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#2a1f10,#1a1408)"
+      },
+      "pulse": true,
+      "tip": {
+        "title": "The Sentinel",
+        "stats": [
+          [
+            "Type",
+            "TP-Link EAP225"
+          ],
+          [
+            "IP",
+            "10.0.6.119"
+          ],
+          [
+            "Role",
+            "Outdoor AP"
+          ]
+        ]
+      },
+      "mac": "10:27:f5:7a:02:aa",
+      "_role": "ap",
+      "_hostname": "ap-deck"
+    },
+    {
+      "id": "ap-east-1",
+      "type": "tower",
+      "x": 1150,
+      "y": 280,
+      "icon": "&#127984;",
+      "label": "<REDACTED>",
+      "sublabel": "ap-east-1 \u2022 10.0.6.100",
+      "ip": "10.0.6.100",
+      "collectd": "mr8300-host",
+      "ssh": "glenn",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#2a1f10,#1a1408)"
+      },
+      "pulse": true,
+      "tip": {
+        "title": "<REDACTED>",
+        "stats": [
+          [
+            "Type",
+            "Linksys MR8300"
+          ],
+          [
+            "IP",
+            "10.0.6.100"
+          ],
+          [
+            "Role",
+            "WiFi AP"
+          ]
+        ]
+      },
+      "mac": "30:23:03:82:5e:c0",
+      "_role": "router",
+      "_hostname": "ap-east-1"
+    },
+    {
+      "id": "ap-pump",
+      "type": "tower",
+      "x": 380,
+      "y": 680,
+      "icon": "&#127984;",
+      "label": "The Pumphouse Keep",
+      "sublabel": "ap-pump \u2022 10.0.6.111",
+      "ip": "10.0.6.111",
+      "collectd": "onhub-pumphouse",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#2a1f10,#1a1408)"
+      },
+      "pulse": true,
+      "tip": {
+        "title": "The Pumphouse Keep",
+        "stats": [
+          [
+            "Type",
+            "Google OnHub"
+          ],
+          [
+            "IP",
+            "10.0.6.111"
+          ],
+          [
+            "Role",
+            "Pumphouse AP"
+          ]
+        ]
+      },
+      "mac": "18:d6:c7:b6:d5:2d",
+      "_role": "ap",
+      "_hostname": "ap-pump"
+    },
+    {
+      "id": "latitude-7390",
+      "type": "device",
+      "x": 1050,
+      "y": 550,
+      "icon": "&#128187;",
+      "label": "The Wandering Codex",
+      "sublabel": "jp-Latitude-7390 \u2022 10.0.6.156",
+      "ip": "10.0.6.156",
+      "iconStyle": {
+        "background": "radial-gradient(circle,#151520,#0a0a15)",
+        "borderColor": "rgba(100,140,200,0.4)",
+        "width": "44px",
+        "height": "44px",
+        "fontSize": "20px"
+      },
+      "mac": "7c:76:35:37:05:69",
+      "tip": {
+        "title": "Dell Latitude 7390",
+        "stats": [
+          [
+            "Model",
+            "Dell Latitude 7390"
+          ],
+          [
+            "Role",
+            "Laptop"
+          ],
+          [
+            "IP",
+            "10.0.6.156"
+          ]
+        ]
+      },
+      "_role": "laptop",
+      "_hostname": "jp-Latitude-7390",
+      "collectd": "jp-Latitude-7390"
     }
   ],
   "connections": [
@@ -6139,7 +6140,7 @@
     },
     {
       "from": "flip3-5g",
-      "to": "center",
+      "to": "ap-north-1",
       "type": "active",
       "vlan": 6
     },
@@ -6499,10 +6500,10 @@
       "type": "active"
     },
     {
-      "from": "ap-path",
-      "to": "woodshed",
+      "from": "woodshed",
+      "to": "ap-path",
       "type": "trunk",
-      "label": "lan3\u2194eth0",
+      "label": "eth0\u2194lan3",
       "_lldp": true
     },
     {
