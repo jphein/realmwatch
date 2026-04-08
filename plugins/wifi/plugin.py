@@ -14,19 +14,55 @@ log = logging.getLogger(__name__)
 
 
 def discover_wifi(node_id, node_data, host_access, engine):
-    """Create SubEntities from existing WiFi scan data."""
-    wifi_data = ap_scanner.get_wifi_signal()
-    if not wifi_data:
-        return []
+    """Create SubEntities from existing WiFi scan data.
+
+    Two sources:
+    1. get_wifi_signal() — known nodes with signal data (resolved to topology)
+    2. get_last_scan()["unknown"] — unresolved WiFi/DHCP clients (replaces
+       the old _unknown_* auto-node creation in ap_scanner)
+    """
     entities = []
-    for nid, info in wifi_data.items():
-        mac = info.get("mac", "")
-        if not mac:
+    seen_macs = set()
+
+    # Known nodes with signal data
+    wifi_data = ap_scanner.get_wifi_signal()
+    if wifi_data:
+        for nid, info in wifi_data.items():
+            mac = info.get("mac", "")
+            if not mac:
+                continue
+            seen_macs.add(mac)
+            ap = info.get("ap", "")
+            signal = info.get("signal", 0)
+            hostname = info.get("hostname", "")
+            ip = info.get("ip", "")
+            entities.append(SubEntity(
+                id=f"wifi:{ap}:{mac}",
+                type="wifi_client",
+                name=hostname or f"device-{mac[-8:].replace(':', '')}",
+                host_node_id=ap or "unknown-ap",
+                status="connected",
+                metadata={
+                    "mac": mac,
+                    "ip": ip,
+                    "signal_dbm": signal,
+                    "ap": ap,
+                    "hostname": hostname,
+                    "band": info.get("band", ""),
+                    "node_id": nid,
+                },
+            ))
+
+    # Unknown clients — not resolved to topology nodes
+    scan = ap_scanner.get_last_scan() or {}
+    for client in scan.get("unknown", []):
+        mac = client.get("mac", "")
+        if not mac or mac in seen_macs:
             continue
-        ap = info.get("ap", "")
-        signal = info.get("signal", 0)
-        hostname = info.get("hostname", "")
-        ip = info.get("ip", "")
+        seen_macs.add(mac)
+        ap = client.get("ap", "")
+        hostname = client.get("hostname") or ""
+        ip = client.get("ip") or ""
         entities.append(SubEntity(
             id=f"wifi:{ap}:{mac}",
             type="wifi_client",
@@ -36,13 +72,12 @@ def discover_wifi(node_id, node_data, host_access, engine):
             metadata={
                 "mac": mac,
                 "ip": ip,
-                "signal_dbm": signal,
                 "ap": ap,
                 "hostname": hostname,
-                "band": info.get("band", ""),
-                "node_id": nid,
+                "unresolved": True,
             },
         ))
+
     return entities
 
 

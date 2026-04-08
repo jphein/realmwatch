@@ -36,4 +36,3 @@ access-to-power.pdf
 .claude/*
 !.claude/skills/
 !.claude/skills/**
-wifi-optimization-plan.md
