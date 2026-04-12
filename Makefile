@@ -1,4 +1,4 @@
-.PHONY: build dev oracle herald health install clean watch
+.PHONY: build dev oracle herald health install clean watch deploy
 
 build:
 	npm run build
@@ -26,3 +26,13 @@ clean:
 
 watch:
 	npm run watch
+
+# Public files served at realm.watch via realm-portal
+PORTAL_STATIC := $(HOME)/Projects/realm-portal/static
+PUBLIC_HTML := wifi-guide.html report-card.html
+
+deploy:
+	@for f in $(PUBLIC_HTML); do \
+		cp $$f $(PORTAL_STATIC)/$$f && echo "  $$f → realm-portal/static/"; \
+	done
+	@echo "Now run: cd ~/Projects/realm-portal && make deploy"
