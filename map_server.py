@@ -61,6 +61,7 @@ def _game_db_rw():
     conn.row_factory = _sql.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
+    conn.execute("PRAGMA busy_timeout=5000")
     return conn
 
 def _game_level_info(total_xp, level):
@@ -361,7 +362,8 @@ def _h_get_status(req, params):
     return build_status()
 
 
-def _h_get_quests(req, params):
+def _h_get_quests_legacy(req, params):
+    """Legacy: read quests from realm.db. Unused — see _h_get_api_quests."""
     return realm_db.get_quests()
 
 def _h_get_events(req, params):
@@ -678,6 +680,7 @@ def _h_get_api_quests(req, params):
 
     conn = _sql.connect(f"file:{db_path}?mode=ro", uri=True, timeout=5)
     conn.row_factory = _sql.Row
+    conn.execute("PRAGMA busy_timeout=5000")
 
     try:
         rows = conn.execute(
@@ -1218,13 +1221,35 @@ def _h_post_player_reward(req, params):
         return None
 
 def _h_post_quest_create(req, params):
+    """Create a quest in game.db (quest-forge schema)."""
     try:
-        quest = req.json()
-        if "id" not in quest or "title" not in quest:
-            req.respond({"error": "missing id or title"}, 400)
+        data = req.json()
+        title = data.get("title", "").strip()
+        if not title:
+            req.respond({"error": "missing title"}, 400)
             return None
-        realm_db.upsert_quest(quest)
-        return {"ok": True, "id": quest["id"]}
+
+        quest_id = data.get("id") or _generate_ulid()
+        now_ms = int(time.time() * 1000)
+        quest_type = data.get("quest_type", "manual")
+        dedupe_key = data.get("dedupe_key") or f"manual:{quest_id}"
+        conn = _game_db_rw()
+        conn.execute(
+            """INSERT INTO quests
+            (quest_id, quest_type, title, description, dedupe_key,
+             parent_quest_id, node, status, actions_json,
+             sort_order, xp_reward, created_ts)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (quest_id, quest_type, title, data.get("description", ""),
+             dedupe_key, data.get("parent_id"), data.get("node"),
+             data.get("status", "created"),
+             json.dumps(data.get("actions", [])),
+             data.get("sort_order", 0),
+             data.get("xp_reward", 0),
+             now_ms))
+        conn.commit()
+        conn.close()
+        return {"ok": True, "id": quest_id}
     except Exception as e:
         req.respond({"error": str(e)}, 500)
         return None
