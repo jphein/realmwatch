@@ -153,6 +153,7 @@ Independent daemons (separate processes):
 | Script | What it does |
 |--------|-------------|
 | `scripts/realm-health.sh` | Color-coded status: processes, :80, realm.db, env tokens |
+| `scripts/realm-update.sh` | Manual runner for the Scroll of Patch Runes plugin — check/run updates from APT, Snap, Flatpak, brew, mise, npm, pip, firmware, and AI CLIs |
 | `scripts/reset-camera.sh` | USB reset for Razer Kiyo Pro when it hangs (UVC -71/-110 errors) |
 
 ## Desktop Themes

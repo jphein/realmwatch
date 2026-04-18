@@ -78,6 +78,8 @@ def _run_cmd(source_id: str, cmd, shell: bool, timeout: int, mode: str, ok_codes
                        os.path.expanduser("~/.npm-global/bin") + ":" + \
                        "/home/linuxbrew/.linuxbrew/bin" + ":" + \
                        env.get("PATH", "")
+        env.setdefault("HOMEBREW_NO_AUTO_UPDATE", "1")
+        env.setdefault("HOMEBREW_NO_ENV_HINTS", "1")
 
         try:
             proc = subprocess.Popen(
