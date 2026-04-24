@@ -477,6 +477,7 @@ def test_skip_with_more_pending_stays_awaiting_approvals():
     ]
     st.status = "awaiting-approvals"
 
+    assert sources._state["npm"].status == "awaiting-approvals"  # precondition
     ok = runner.skip_package("npm", "left-pad")
     assert ok is True
 

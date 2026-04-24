@@ -344,6 +344,9 @@ def get_state(source_id: str) -> dict:
         # fall back to an empty map rather than failing SSE serialization.
         quarantine = {}
 
+    with st._approval_lock:
+        pending_approvals_snapshot = list(st.pending_approvals)
+
     return {
         "id": src.id,
         "fantasy_name": src.fantasy_name,
@@ -361,7 +364,7 @@ def get_state(source_id: str) -> dict:
         "advisories": list(st.advisories),
         "first_seen_at": dict(st.first_seen_at),
         "quarantine": quarantine,
-        "pending_approvals": list(st.pending_approvals),
+        "pending_approvals": pending_approvals_snapshot,
         "skip_list": dict(st.skip_list),
         "script_audits": list(st.script_audits),
     }

@@ -549,13 +549,15 @@ def _do_update_risky(source_id: str, push_event_fn=None):
                 ready_to_install.append((pkg, from_ver, to_ver))
 
         # Populate pending_approvals entries for UI.
-        for pkg, from_ver, to_ver, changes in pending_diff:
-            st.pending_approvals.append({
-                "package": pkg,
-                "from_version": from_ver,
-                "to_version": to_ver,
-                "changes": [_script_change_dict(c) for c in changes],
-            })
+        with st._approval_lock:
+            for pkg, from_ver, to_ver, changes in pending_diff:
+                st.pending_approvals.append({
+                    "package": pkg,
+                    "from_version": from_ver,
+                    "to_version": to_ver,
+                    "changes": [_script_change_dict(c) for c in changes],
+                })
+            has_pending = bool(st.pending_approvals)
         _notify()
 
         # Install the diff-free packages right now under the held lock.
@@ -570,7 +572,7 @@ def _do_update_risky(source_id: str, push_event_fn=None):
         # If any packages are awaiting approval, transition into
         # "awaiting-approvals" and return. Approval/skip endpoints drive
         # the next phase.
-        if st.pending_approvals:
+        if has_pending:
             update_state(source_id, status="awaiting-approvals")
             _notify()
             return
@@ -886,8 +888,10 @@ def _install_after_approval(source_id: str, entry: dict, push_event_fn):
         try:
             ok = _install_one_locked(source_id, pkg, to_ver, push_event_fn)
             if not ok:
-                # C4: cancel_source sets status="failed" via SIGTERM before
-                # _install_one_locked returns False — leave that status alone.
+                # status may already be "failed" from cancel_source (SIGTERM) or from
+                # _run_install_subprocess (non-zero exit / timeout). Either way, the
+                # specific error set by the earlier path is more useful than a generic
+                # fallback — don't overwrite it.
                 from sources import _state
                 if _state[source_id].status != "failed":
                     update_state(source_id, status="failed",
@@ -897,7 +901,7 @@ def _install_after_approval(source_id: str, entry: dict, push_event_fn):
 
             from sources import _state
             st = _state[source_id]
-            installed = [(pkg, to_ver)] if to_ver else []
+            installed = [(pkg, to_ver)]
 
             if not st.pending_approvals:
                 _finish_risky(source_id, installed, push_event_fn)
