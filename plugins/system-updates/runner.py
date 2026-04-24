@@ -448,17 +448,20 @@ def _risky_install_cmd(source_id: str, pkg: str, to_ver: str) -> list[str]:
     ``update_cmd`` — ``--user --break-system-packages --upgrade`` — so
     the per-package path behaves the same as the batch path on Ubuntu
     24.04 (PEP 668 marks /usr/bin/python3 as externally managed).
+
+    Raises ``ValueError`` if ``to_ver`` is empty — installing without a
+    pinned version would bypass both the quarantine window and the script
+    diff that was done against the specific version (I2).
     """
+    if not to_ver:
+        raise ValueError(f"Cannot install {pkg}: target version unknown")
     if source_id == "npm":
-        spec = f"{pkg}@{to_ver}" if to_ver else pkg
-        return ["npm", "install", "-g", spec]
+        return ["npm", "install", "-g", f"{pkg}@{to_ver}"]
     if source_id == "mise":
-        spec = f"{pkg}@{to_ver}" if to_ver else pkg
-        return ["mise", "upgrade", spec]
+        return ["mise", "upgrade", f"{pkg}@{to_ver}"]
     if source_id == "pip-user":
-        spec = f"{pkg}=={to_ver}" if to_ver else pkg
         return ["pip", "install", "--user", "--break-system-packages",
-                "--upgrade", spec]
+                "--upgrade", f"{pkg}=={to_ver}"]
     raise ValueError(f"Not a risky source: {source_id}")
 
 
@@ -483,7 +486,8 @@ def _do_update_risky(source_id: str, push_event_fn=None):
         st = _state[source_id]
         # Fresh run — clear stale pending approvals / advisories but keep
         # skip_list (persists for the session).
-        st.pending_approvals = []
+        with st._approval_lock:
+            st.pending_approvals = []
         st.advisories = []
         _notify()
 
@@ -641,7 +645,13 @@ def _audit_installed(source_id: str, pkg: str, approved: dict[str, str]) -> dict
 def _run_install_subprocess(source_id: str, pkg: str, to_ver: str) -> bool:
     """Run the per-package install command, streaming output to the log."""
     src = SOURCES[source_id]
-    cmd = _risky_install_cmd(source_id, pkg, to_ver)
+    try:
+        cmd = _risky_install_cmd(source_id, pkg, to_ver)
+    except ValueError as exc:
+        append_log(source_id, f"[error] {exc}")
+        update_state(source_id, status="failed", error=str(exc))
+        _notify()
+        return False
     append_log(source_id, f"$ {' '.join(cmd)}")
     _notify()
 
@@ -788,8 +798,8 @@ def run_source(source_id: str, push_event_fn=None) -> bool:
     if source_id not in SOURCES:
         return False
     from sources import _state
-    if _state[source_id].status in ("updating", "checking"):
-        return False  # already running
+    if _state[source_id].status in ("updating", "checking", "awaiting-approvals", "queued"):
+        return False  # already running or awaiting user decision
     threading.Thread(target=_do_update, args=(source_id, push_event_fn), daemon=True).start()
     return True
 
@@ -852,10 +862,15 @@ def skip_package(source_id: str, pkg: str) -> bool:
 
 
 def _pop_pending_approval(st, pkg: str) -> dict | None:
-    """Remove and return the pending_approvals entry for pkg (or None)."""
-    for i, entry in enumerate(st.pending_approvals):
-        if entry.get("package") == pkg:
-            return st.pending_approvals.pop(i)
+    """Remove and return the pending_approvals entry for pkg (or None).
+
+    Acquires ``st._approval_lock`` to prevent concurrent iterate+pop races
+    between approve_package / skip_package and _do_update_risky.
+    """
+    with st._approval_lock:
+        for i, entry in enumerate(st.pending_approvals):
+            if entry.get("package") == pkg:
+                return st.pending_approvals.pop(i)
     return None
 
 
@@ -868,19 +883,33 @@ def _install_after_approval(source_id: str, entry: dict, push_event_fn):
         pkg = entry["package"]
         to_ver = entry.get("to_version", "")
 
-        ok = _install_one_locked(source_id, pkg, to_ver, push_event_fn)
-        if not ok:
-            return
+        try:
+            ok = _install_one_locked(source_id, pkg, to_ver, push_event_fn)
+            if not ok:
+                # C4: cancel_source sets status="failed" via SIGTERM before
+                # _install_one_locked returns False — leave that status alone.
+                from sources import _state
+                if _state[source_id].status != "failed":
+                    update_state(source_id, status="failed",
+                                 error=f"Install of {pkg} failed")
+                    _notify()
+                return
 
-        from sources import _state
-        st = _state[source_id]
-        installed = [(pkg, to_ver)] if to_ver else []
+            from sources import _state
+            st = _state[source_id]
+            installed = [(pkg, to_ver)] if to_ver else []
 
-        if not st.pending_approvals:
-            _finish_risky(source_id, installed, push_event_fn)
-        else:
-            # Still more awaiting approval — stay in that status.
-            update_state(source_id, status="awaiting-approvals")
+            if not st.pending_approvals:
+                _finish_risky(source_id, installed, push_event_fn)
+            else:
+                # Still more awaiting approval — stay in that status.
+                update_state(source_id, status="awaiting-approvals")
+                _notify()
+        except Exception as exc:
+            # C2: unhandled crash — mark failed so the source doesn't strand
+            # in "updating" or "awaiting-approvals" forever.
+            update_state(source_id, status="failed",
+                         error=f"Install worker crashed: {exc}")
             _notify()
     finally:
         try:

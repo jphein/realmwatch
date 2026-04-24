@@ -340,9 +340,9 @@ def test_pip_user_install_cmd_shape():
         "pip", "install", "--user", "--break-system-packages",
         "--upgrade", "requests==2.31.0",
     ]
-    # Fall-through shape when version is unknown.
-    cmd_noversion = runner._risky_install_cmd("pip-user", "requests", "")
-    assert cmd_noversion[-1] == "requests"
+    # Empty to_ver must raise ValueError (I2: no silent latest-install).
+    with pytest.raises(ValueError, match="target version unknown"):
+        runner._risky_install_cmd("pip-user", "requests", "")
 
 
 def test_pip_user_outdated_versions_parses_json():
@@ -413,6 +413,114 @@ def test_check_sets_updates_available_when_quarantine_elapsed(monkeypatch):
 
     runner._do_check("npm")
     assert st.status == "updates-available"
+
+
+# ── Concurrent path tests (I4) ───────────────────────────────────
+
+def test_double_approve_same_pkg_second_returns_false(monkeypatch):
+    """Calling approve_package twice for the same pkg: second call returns False.
+
+    The first call pops the entry from pending_approvals; the second call
+    finds nothing and must return False without spawning a worker.
+    """
+    import threading
+    st = sources._state["npm"]
+    st.pending_approvals = [{
+        "package": "left-pad",
+        "from_version": "1.0.0",
+        "to_version": "1.0.1",
+        "changes": [],
+    }]
+    st.approved_scripts["left-pad"] = {}
+    st.status = "awaiting-approvals"
+
+    monkeypatch.setattr(
+        verification, "audit_installed_scripts_npm",
+        lambda pkg, approved: {"match": True, "divergences": []},
+    )
+    _mock_osv_empty(monkeypatch)
+    calls = _mock_install_success(monkeypatch)
+
+    real_thread = threading.Thread
+
+    class _SyncThread(real_thread):
+        def start(self):
+            self.run()
+
+    monkeypatch.setattr(threading, "Thread", _SyncThread)
+
+    first = runner.approve_package("npm", "left-pad", push_event_fn=None)
+    second = runner.approve_package("npm", "left-pad", push_event_fn=None)
+
+    assert first is True
+    assert second is False
+    # Install ran exactly once.
+    assert calls == [("npm", "left-pad", "1.0.1")]
+
+
+def test_skip_with_more_pending_stays_awaiting_approvals():
+    """skip_package with remaining entries does NOT transition to up-to-date."""
+    st = sources._state["npm"]
+    st.pending_approvals = [
+        {
+            "package": "left-pad",
+            "from_version": "1.0.0",
+            "to_version": "1.0.1",
+            "changes": [],
+        },
+        {
+            "package": "lodash",
+            "from_version": "4.17.20",
+            "to_version": "4.17.21",
+            "changes": [],
+        },
+    ]
+    st.status = "awaiting-approvals"
+
+    ok = runner.skip_package("npm", "left-pad")
+    assert ok is True
+
+    # left-pad removed; lodash still pending.
+    assert len(st.pending_approvals) == 1
+    assert st.pending_approvals[0]["package"] == "lodash"
+    assert "left-pad|1.0.0|1.0.1" in st.skip_list
+    # Source should NOT flip to up-to-date — lodash still needs a decision.
+    assert st.status == "awaiting-approvals"
+
+
+def test_run_source_blocked_during_awaiting_approvals():
+    """run_source returns False without spawning a thread when status is
+    'awaiting-approvals', leaving the status unchanged."""
+    import threading
+
+    st = sources._state["npm"]
+    st.pending_approvals = [{
+        "package": "left-pad",
+        "from_version": "1.0.0",
+        "to_version": "1.0.1",
+        "changes": [],
+    }]
+    st.status = "awaiting-approvals"
+
+    threads_spawned: list = []
+    real_thread = threading.Thread
+
+    class _TrackThread(real_thread):
+        def start(self):
+            threads_spawned.append(self)
+            super().start()
+
+    # Temporarily patch Thread to track spawning.
+    orig = threading.Thread
+    threading.Thread = _TrackThread
+    try:
+        result = runner.run_source("npm", push_event_fn=None)
+    finally:
+        threading.Thread = orig
+
+    assert result is False
+    assert threads_spawned == [], "no thread should be spawned while awaiting approvals"
+    assert st.status == "awaiting-approvals"
 
 
 if __name__ == "__main__":

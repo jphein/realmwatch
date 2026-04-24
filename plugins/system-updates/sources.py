@@ -1,5 +1,6 @@
 """Update source definitions and state registry."""
 
+import threading
 import time
 from dataclasses import dataclass, field
 
@@ -50,6 +51,10 @@ class SourceState:
     pending_approvals: list = field(default_factory=list)
     # L3A: "pkg|from|to" -> True, persisted in-memory this session only.
     skip_list: dict = field(default_factory=dict)
+    # Thread-safety: guards pending_approvals iterate+pop from concurrent
+    # approve_package / skip_package calls and _do_update_risky resets.
+    # Underscore prefix signals non-serialised; get_state() doesn't list it.
+    _approval_lock: threading.RLock = field(default_factory=threading.RLock)
 
 
 MAX_LOG_LINES = 200
