@@ -13,6 +13,6 @@
 #   source definitions, commands, parsers, and lock groups as the web panel,
 #   so CLI and browser stay in sync.
 set -euo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$(realpath "$0")")/.."
 
 exec python3 plugins/system-updates/cli.py "$@"
