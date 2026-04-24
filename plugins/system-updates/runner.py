@@ -39,13 +39,20 @@ _push_sse = None  # set by init()
 
 # ── Risky sources (Layer 3 script verification) ──────────────────
 
-RISKY_SOURCES: set[str] = {"npm", "pipx", "mise"}
+# Source ids that run through the per-package verification flow. Note
+# the spec talks about "pipx" conceptually, but this plugin registers
+# ``pip-user`` (pip install --user) as its Python-ecosystem source,
+# so that's the id we protect. The verification module still uses the
+# ``fetch_scripts_pipx`` / ``read_installed_scripts_pipx`` naming since
+# those hooks represent Python-sdist inspection shared between pipx and
+# pip-user.
+RISKY_SOURCES: set[str] = {"npm", "pip-user", "mise"}
 
 # OSV ecosystem identifier per risky source. ``None`` means we skip the L1
 # advisory lookup for that source (no OSV coverage).
 OSV_ECOSYSTEMS: dict[str, str | None] = {
     "npm": "npm",
-    "pipx": "PyPI",
+    "pip-user": "PyPI",
     "mise": None,
 }
 
@@ -220,8 +227,25 @@ def _do_check(source_id: str):
                 st.first_seen_at[ver] = now
 
     if count > 0:
+        # For risky sources: if every pending version is still in its
+        # quarantine window, surface that at the source level so the UI
+        # can filter cleanly (Pass C). Per-version detail still rides in
+        # the `quarantine` map inside get_state().
+        status = "updates-available"
+        if source_id in RISKY_SOURCES and version_info:
+            import verification
+            from sources import _state
+            first_seen = _state[source_id].first_seen_at
+            versions = [info.get("to", "") for info in version_info.values()
+                        if info.get("to")]
+            if versions and all(
+                verification.is_quarantined(source_id, v, first_seen)[0]
+                for v in versions
+            ):
+                status = "updates-available-quarantined"
+
         update_state(source_id,
-                     status="updates-available",
+                     status=status,
                      available=count,
                      packages=packages,
                      last_check=time.time())
@@ -246,7 +270,8 @@ def _collect_risky_versions(source_id: str, check_stdout: str) -> dict[str, dict
 
     - **npm**: shells out to ``npm -g outdated --json`` (short, offline-safe).
     - **mise**: parses the already-captured ``mise outdated`` stdout.
-    - **pipx**: not registered in this plugin; returns ``{}``.
+    - **pip-user**: parses the ``pip list --user --outdated --format=json``
+      stdout already captured during the check (or re-runs the command).
 
     Any parse/subprocess failure returns ``{}`` so the caller falls back to
     the name-only packages list without blocking the update flow.
@@ -256,8 +281,8 @@ def _collect_risky_versions(source_id: str, check_stdout: str) -> dict[str, dict
             return _npm_outdated_versions()
         if source_id == "mise":
             return _mise_outdated_versions(check_stdout)
-        if source_id == "pipx":
-            return _pipx_outdated_versions()
+        if source_id == "pip-user":
+            return _pip_user_outdated_versions(check_stdout)
     except Exception:
         return {}
     return {}
@@ -313,9 +338,51 @@ def _mise_outdated_versions(stdout: str) -> dict[str, dict[str, str]]:
     return out
 
 
-def _pipx_outdated_versions() -> dict[str, dict[str, str]]:
-    """Placeholder — pipx source not registered yet; returns ``{}``."""
-    return {}
+def _pip_user_outdated_versions(check_stdout: str = "") -> dict[str, dict[str, str]]:
+    """Parse ``pip list --user --outdated --format=json`` into version info.
+
+    Prefers the stdout already captured by ``_do_check`` (no extra
+    subprocess). If that's empty or unparseable, re-runs the command.
+    """
+    payload: list = []
+    text = (check_stdout or "").strip()
+    if text:
+        try:
+            data = json.loads(text)
+            if isinstance(data, list):
+                payload = data
+        except (json.JSONDecodeError, ValueError):
+            payload = []
+
+    if not payload:
+        try:
+            r = subprocess.run(
+                ["pip", "list", "--user", "--outdated", "--format=json"],
+                capture_output=True, text=True, env=_env(),
+                timeout=60, check=False,
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+            return {}
+        if r.stdout.strip():
+            try:
+                data = json.loads(r.stdout)
+                if isinstance(data, list):
+                    payload = data
+            except (json.JSONDecodeError, ValueError):
+                return {}
+
+    out: dict[str, dict[str, str]] = {}
+    for item in payload:
+        if not isinstance(item, dict):
+            continue
+        name = item.get("name")
+        if not name:
+            continue
+        cur = str(item.get("version") or "")
+        tgt = str(item.get("latest_version") or "")
+        if tgt:
+            out[name] = {"from": cur, "to": tgt}
+    return out
 
 
 def check_source(source_id: str) -> bool:
@@ -375,15 +442,23 @@ def _skip_key(pkg: str, from_ver: str, to_ver: str) -> str:
 
 
 def _risky_install_cmd(source_id: str, pkg: str, to_ver: str) -> list[str]:
-    """Build a per-package install command for a risky source."""
+    """Build a per-package install command for a risky source.
+
+    For pip-user, mirrors the flags from ``sources.py``'s existing
+    ``update_cmd`` — ``--user --break-system-packages --upgrade`` — so
+    the per-package path behaves the same as the batch path on Ubuntu
+    24.04 (PEP 668 marks /usr/bin/python3 as externally managed).
+    """
     if source_id == "npm":
         spec = f"{pkg}@{to_ver}" if to_ver else pkg
         return ["npm", "install", "-g", spec]
     if source_id == "mise":
         spec = f"{pkg}@{to_ver}" if to_ver else pkg
         return ["mise", "upgrade", spec]
-    if source_id == "pipx":
-        return ["pipx", "upgrade", pkg]
+    if source_id == "pip-user":
+        spec = f"{pkg}=={to_ver}" if to_ver else pkg
+        return ["pip", "install", "--user", "--break-system-packages",
+                "--upgrade", spec]
     raise ValueError(f"Not a risky source: {source_id}")
 
 
@@ -519,10 +594,19 @@ def _script_change_dict(change) -> dict:
 
 
 def _fetch_scripts(source_id: str, pkg: str, version: str) -> dict[str, str]:
+    """Dispatch to the verification module's registry-metadata fetch.
+
+    Note: the ``pip-user`` branch calls ``fetch_scripts_pipx`` — the
+    verification module uses the pipx naming for its Python-sdist
+    inspection, which is the right shape for both pipx (future) and
+    pip-user (today). The function is a stub in Pass A, so pip-user
+    sees an empty script set → "no changes" → proceed to install.
+    That's the graceful-degradation contract the spec calls for.
+    """
     import verification
     if source_id == "npm":
         return verification.fetch_scripts_npm(pkg, version)
-    if source_id == "pipx":
+    if source_id == "pip-user":
         return verification.fetch_scripts_pipx(pkg, version)
     if source_id == "mise":
         return verification.fetch_scripts_mise(pkg, version)
@@ -533,7 +617,7 @@ def _read_installed_scripts(source_id: str, pkg: str) -> dict[str, str]:
     import verification
     if source_id == "npm":
         return verification.read_installed_scripts_npm(pkg)
-    if source_id == "pipx":
+    if source_id == "pip-user":
         return verification.read_installed_scripts_pipx(pkg)
     if source_id == "mise":
         return verification.read_installed_scripts_mise(pkg)
@@ -541,11 +625,16 @@ def _read_installed_scripts(source_id: str, pkg: str) -> dict[str, str]:
 
 
 def _audit_installed(source_id: str, pkg: str, approved: dict[str, str]) -> dict:
-    """Post-install audit dispatch for risky sources."""
+    """Post-install audit dispatch for risky sources.
+
+    Only npm has an implemented audit in Pass A. pip-user and mise fall
+    through to a passing result until ``audit_installed_scripts_pipx``
+    and ``audit_installed_scripts_mise`` land in a future pass.
+    """
     import verification
     if source_id == "npm":
         return verification.audit_installed_scripts_npm(pkg, approved)
-    # pipx/mise audits not yet implemented — treat as passing.
+    # pip-user / mise audits not yet implemented — treat as passing.
     return {"match": True, "divergences": []}
 
 

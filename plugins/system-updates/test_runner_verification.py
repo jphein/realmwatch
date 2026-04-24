@@ -7,6 +7,7 @@ paths around ``_do_update_risky``, ``approve_package``, and
 ``skip_package``.
 """
 
+import json
 import os
 import sys
 import time
@@ -27,19 +28,17 @@ import verification  # noqa: E402
 
 @pytest.fixture(autouse=True)
 def _clean_state():
-    """Reset npm source state + runner internals between tests."""
+    """Reset risky-source state + runner internals between tests."""
     # Re-init the locks so each test gets a fresh mutex (tests run
     # synchronously from the main thread so reusing the dict is fine,
     # but we avoid cross-test contamination).
     runner.init(push_fn=lambda: None)
 
-    # Reset npm state to a known baseline.
-    sources._state["npm"] = sources.SourceState()
-    # No-op decorators; run the test.
+    for sid in ("npm", "pip-user", "mise"):
+        sources._state[sid] = sources.SourceState()
     yield
-
-    # Tidy up for next test.
-    sources._state["npm"] = sources.SourceState()
+    for sid in ("npm", "pip-user", "mise"):
+        sources._state[sid] = sources.SourceState()
 
 
 def _mock_install_success(monkeypatch):
@@ -304,6 +303,116 @@ def test_get_state_exposes_new_fields():
     assert payload["skip_list"] == {"x|1|2": True}
     # Quarantine data should be computed on the fly from first_seen_at.
     assert "1.0.0" in payload["quarantine"]
+
+
+# ── pip-user coverage ────────────────────────────────────────────
+
+def test_pip_user_risky_update_end_to_end(monkeypatch):
+    """pip-user should route through the risky flow: diff (no changes) →
+    install via per-package command → audit pass → up-to-date."""
+    st = sources._state["pip-user"]
+    st.packages = ["requests"]
+    st._risky_versions = {"requests": {"from": "2.30.0", "to": "2.31.0"}}
+    # Past quarantine so the install actually runs.
+    st.first_seen_at["2.31.0"] = time.time() - (
+        verification.QUARANTINE_DEFAULTS.get("pip-user", 0) + 10
+    )
+
+    # Pass A stubs return {} for pipx — that's our "graceful degradation"
+    # path for pip-user too. Force it explicitly in case a future pass
+    # wires them up.
+    monkeypatch.setattr(verification, "fetch_scripts_pipx", lambda p, v: {})
+    monkeypatch.setattr(verification, "read_installed_scripts_pipx", lambda p: {})
+    _mock_osv_empty(monkeypatch)
+    calls = _mock_install_success(monkeypatch)
+
+    runner._do_update_risky("pip-user", push_event_fn=None)
+
+    assert calls == [("pip-user", "requests", "2.31.0")]
+    assert st.status == "up-to-date"
+    assert st.pending_approvals == []
+
+
+def test_pip_user_install_cmd_shape():
+    """Per-package install must mirror sources.py's flag set."""
+    cmd = runner._risky_install_cmd("pip-user", "requests", "2.31.0")
+    assert cmd == [
+        "pip", "install", "--user", "--break-system-packages",
+        "--upgrade", "requests==2.31.0",
+    ]
+    # Fall-through shape when version is unknown.
+    cmd_noversion = runner._risky_install_cmd("pip-user", "requests", "")
+    assert cmd_noversion[-1] == "requests"
+
+
+def test_pip_user_outdated_versions_parses_json():
+    """``_pip_user_outdated_versions`` should consume pip's JSON shape."""
+    stdout = json.dumps([
+        {"name": "requests", "version": "2.30.0",
+         "latest_version": "2.31.0", "latest_filetype": "wheel"},
+        {"name": "urllib3",  "version": "1.26.0",
+         "latest_version": "2.0.0",  "latest_filetype": "wheel"},
+    ])
+    result = runner._pip_user_outdated_versions(stdout)
+    assert result == {
+        "requests": {"from": "2.30.0", "to": "2.31.0"},
+        "urllib3":  {"from": "1.26.0", "to": "2.0.0"},
+    }
+
+
+# ── Quarantined status surfacing ─────────────────────────────────
+
+def test_check_sets_updates_available_quarantined_when_all_fresh(monkeypatch):
+    """If every pending version is within its quarantine window after
+    _do_check records first_seen_at, the source-level status should flip
+    to `updates-available-quarantined` so the UI can filter on it."""
+    # Stub _run_cmd to bypass the real subprocess and return a canned
+    # stdout that the parser will yield one package from.
+    canned_stdout = (
+        "Package  Current  Wanted  Latest  Location\n"
+        "left-pad 1.0.0    1.0.1   1.0.1   ...\n"
+    )
+    monkeypatch.setattr(
+        runner, "_run_cmd",
+        lambda *a, **kw: canned_stdout,
+    )
+    # Avoid the separate `npm -g outdated --json` subprocess.
+    monkeypatch.setattr(
+        runner, "_npm_outdated_versions",
+        lambda: {"left-pad": {"from": "1.0.0", "to": "1.0.1"}},
+    )
+
+    runner._do_check("npm")
+
+    st = sources._state["npm"]
+    assert st.status == "updates-available-quarantined"
+    assert st.available == 1
+    # Per-version quarantine map still populated for the UI detail view.
+    payload = sources.get_state("npm")
+    assert payload["quarantine"]["1.0.1"]["quarantined"] is True
+
+
+def test_check_sets_updates_available_when_quarantine_elapsed(monkeypatch):
+    """When the (only) pending version is past its quarantine window, the
+    source-level status stays `updates-available`, not the quarantined
+    variant."""
+    st = sources._state["npm"]
+    # Pre-seed first_seen so the window has already elapsed.
+    elapsed = time.time() - (verification.QUARANTINE_DEFAULTS["npm"] + 100)
+    st.first_seen_at["1.0.1"] = elapsed
+
+    canned = (
+        "Package  Current  Wanted  Latest  Location\n"
+        "left-pad 1.0.0    1.0.1   1.0.1   ...\n"
+    )
+    monkeypatch.setattr(runner, "_run_cmd", lambda *a, **kw: canned)
+    monkeypatch.setattr(
+        runner, "_npm_outdated_versions",
+        lambda: {"left-pad": {"from": "1.0.0", "to": "1.0.1"}},
+    )
+
+    runner._do_check("npm")
+    assert st.status == "updates-available"
 
 
 if __name__ == "__main__":
