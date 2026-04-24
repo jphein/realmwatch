@@ -1,5 +1,8 @@
 /* ── System Updates Panel — Scroll of Patch Runes ── */
 
+/* Local palette extension — amber is not in the base realmwatch theme */
+:root { --updates-amber: #e8a030; }
+
 /* Header */
 .updates-header {
   display: flex;
@@ -118,12 +121,16 @@
   background: rgba(255, 255, 255, 0.04);
 }
 
-.updates-row--warded    { border-left-color: var(--gem-emerald); }
-.updates-row--pending   { border-left-color: var(--gem-gold); }
-.updates-row--running   { border-left-color: var(--gem-amethyst); }
-.updates-row--failed    { border-left-color: var(--gem-ruby); }
-.updates-row--idle      { border-left-color: var(--gold-rim-dim); }
-.updates-row--queued    { border-left-color: rgba(208, 160, 255, 0.4); }
+.updates-row--warded      { border-left-color: var(--gem-emerald); }
+.updates-row--pending     { border-left-color: var(--gem-gold); }
+.updates-row--running     { border-left-color: var(--gem-amethyst); }
+.updates-row--failed      { border-left-color: var(--gem-ruby); }
+.updates-row--idle        { border-left-color: var(--gold-rim-dim); }
+.updates-row--queued      { border-left-color: rgba(208, 160, 255, 0.4); }
+.updates-row--advised      { border-left-color: var(--updates-amber); }
+.updates-row--audit-failed { border-left-color: var(--gem-ruby); }
+.updates-row--awaiting     { border-left-color: var(--gem-amethyst); }
+.updates-row--quarantined  { border-left-color: rgba(240, 208, 128, 0.5); }
 
 /* Row header (always visible) */
 .updates-row-header {
@@ -153,12 +160,16 @@
   white-space: nowrap;
 }
 
-.updates-row-status--warded    { color: var(--gem-emerald); }
-.updates-row-status--pending   { color: var(--gem-gold); }
-.updates-row-status--running   { color: var(--gem-amethyst); }
-.updates-row-status--failed    { color: var(--gem-ruby); }
-.updates-row-status--idle      { color: var(--text-dim); }
-.updates-row-status--queued    { color: rgba(208, 160, 255, 0.6); }
+.updates-row-status--warded      { color: var(--gem-emerald); }
+.updates-row-status--pending     { color: var(--gem-gold); }
+.updates-row-status--running     { color: var(--gem-amethyst); }
+.updates-row-status--failed      { color: var(--gem-ruby); }
+.updates-row-status--idle        { color: var(--text-dim); }
+.updates-row-status--queued      { color: rgba(208, 160, 255, 0.6); }
+.updates-row-status--advised      { color: var(--updates-amber); }
+.updates-row-status--audit-failed { color: var(--gem-ruby); }
+.updates-row-status--awaiting     { color: var(--gem-amethyst); }
+.updates-row-status--quarantined  { color: var(--gem-gold); }
 
 .updates-row-time {
   font-size: 9px;
@@ -249,4 +260,102 @@
 @keyframes updates-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
+}
+
+/* Advisory list (L1 OSV) */
+.updates-advisories {
+  margin-bottom: 6px;
+  padding: 5px 8px;
+  background: rgba(232, 160, 48, 0.08);
+  border-left: 2px solid var(--updates-amber);
+  border-radius: 0 4px 4px 0;
+  font-size: 10px;
+}
+.updates-advisory-title {
+  color: var(--updates-amber);
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+.updates-advisory-item {
+  color: rgba(232, 160, 48, 0.8);
+  line-height: 1.5;
+}
+.updates-advisory-item a {
+  color: var(--updates-amber);
+  text-decoration: none;
+  opacity: 0.8;
+}
+.updates-advisory-item a:hover { opacity: 1; }
+
+/* Quarantine badge (L2) */
+.updates-quarantine-badge {
+  display: inline-block;
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: rgba(240, 208, 128, 0.1);
+  color: var(--gem-gold);
+  border: 1px solid rgba(240, 208, 128, 0.2);
+  white-space: nowrap;
+  cursor: help;
+  margin-left: 4px;
+}
+
+/* Approval prompt (L3A) */
+.updates-approval {
+  margin-bottom: 6px;
+  padding: 6px 8px;
+  background: rgba(208, 160, 255, 0.06);
+  border-left: 2px solid var(--gem-amethyst);
+  border-radius: 0 4px 4px 0;
+}
+.updates-approval-title {
+  font-size: 10px;
+  color: var(--gem-amethyst);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.updates-approval-diff {
+  font-family: 'Ubuntu Mono', 'Fira Code', monospace;
+  font-size: 9px;
+  white-space: pre;
+  line-height: 1.5;
+  color: rgba(200, 180, 150, 0.7);
+  margin-bottom: 5px;
+  overflow-x: auto;
+  max-height: 80px;
+  overflow-y: auto;
+}
+.updates-approval-diff .diff-added   { color: var(--gem-emerald); }
+.updates-approval-diff .diff-removed { color: var(--gem-ruby); }
+.updates-approval-actions {
+  display: flex;
+  gap: 4px;
+}
+.updates-btn--approve {
+  color: var(--gem-emerald);
+  border-color: rgba(128, 232, 160, 0.3);
+}
+.updates-btn--approve:hover {
+  background: rgba(128, 232, 160, 0.1);
+  border-color: var(--gem-emerald);
+}
+.updates-btn--skip {
+  color: var(--text-dim);
+  border-color: rgba(200, 180, 150, 0.2);
+}
+.updates-btn--skip:hover {
+  border-color: var(--text-dim);
+  color: var(--text-leather);
+}
+
+/* Audit divergence block (L3B) */
+.updates-audit-failed {
+  margin-bottom: 6px;
+  padding: 5px 8px;
+  background: rgba(255, 80, 80, 0.06);
+  border-left: 2px solid var(--gem-ruby);
+  border-radius: 0 4px 4px 0;
+  font-size: 10px;
+  color: var(--gem-ruby);
 }
