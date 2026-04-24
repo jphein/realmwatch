@@ -28,7 +28,7 @@ import verification  # noqa: E402
 from verification import (  # noqa: E402
     QUARANTINE_DEFAULTS,
     ScriptChange,
-    audit_installed_scripts,
+    audit_installed_scripts_npm,
     diff_scripts,
     is_quarantined,
     osv_batch_query,
@@ -140,7 +140,7 @@ def test_audit_match_when_read_matches_approved(tmp_path, monkeypatch):
     monkeypatch.setattr(
         verification, "read_installed_scripts_npm", lambda pkg: dict(approved)
     )
-    result = audit_installed_scripts("pkg", approved)
+    result = audit_installed_scripts_npm("pkg", approved)
     assert result == {"match": True, "divergences": []}
 
 
@@ -152,7 +152,7 @@ def test_audit_divergence_shape():
         "read_installed_scripts_npm",
         return_value={"postinstall": "node build.js", "preinstall": "evil.sh"},
     ):
-        result = audit_installed_scripts("pkg", approved)
+        result = audit_installed_scripts_npm("pkg", approved)
 
     assert result["match"] is False
     assert len(result["divergences"]) == 1
@@ -216,6 +216,64 @@ def test_fetch_scripts_npm_empty_on_missing_binary(monkeypatch):
 def test_read_installed_scripts_npm_empty_when_file_missing():
     """Reading a nonexistent installed package → {} not FileNotFoundError."""
     assert verification.read_installed_scripts_npm("definitely-not-installed-xyz") == {}
+
+
+# ── Pass A review fixes ──────────────────────────────────────────
+
+def test_osv_cache_hit_skips_network(monkeypatch):
+    """A second call for the same (name, version, ecosystem) must be
+    served from cache without any network traffic."""
+    verification._advisory_cache.clear()
+    verification._advisory_cache[("pkg", "1.0", "npm")] = (time.time(), [])
+
+    called: list[int] = []
+
+    def _record(*a, **kw):
+        called.append(1)
+        raise AssertionError("should not reach the network")
+
+    monkeypatch.setattr(verification.urllib.request, "urlopen", _record)
+    assert osv_batch_query([("pkg", "1.0")], "npm") == []
+    assert called == []
+
+
+def test_read_installed_scripts_npm_rejects_path_traversal():
+    """A package name with .. or absolute paths must return {} and must
+    never open a file outside the npm global prefix. We prove the latter
+    by patching open() to record every path it's asked to open."""
+    opened_paths: list[str] = []
+    real_open = open
+
+    def _tracking_open(path, *args, **kwargs):
+        opened_paths.append(str(path))
+        return real_open(path, *args, **kwargs)
+
+    with patch("builtins.open", side_effect=_tracking_open):
+        for evil in (
+            "../../etc",
+            "../../../etc/shadow",
+            "/etc/passwd",
+            "./foo",
+            "foo/../bar",
+            "foo/bar/baz",            # two slashes without @-scope
+            "@scope/pkg/../evil",     # traversal inside scoped name
+            "",
+            "foo\x00bar",
+            "foo\\bar",
+        ):
+            assert verification.read_installed_scripts_npm(evil) == {}
+
+    # The guard must short-circuit before any open() call happens.
+    assert opened_paths == [], f"open() was called with: {opened_paths}"
+
+
+def test_read_installed_scripts_npm_accepts_safe_names():
+    """Legitimate plain and scoped npm package names must pass the guard.
+    We can't assert they read real files (they may or may not be installed
+    on this machine), but they must return a dict and never raise."""
+    for safe in ("left-pad", "@bitwarden/cli", "typescript", "@types/node"):
+        result = verification.read_installed_scripts_npm(safe)
+        assert isinstance(result, dict)
 
 
 if __name__ == "__main__":

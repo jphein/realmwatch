@@ -20,11 +20,13 @@ Design constraints:
   are stubbed with graceful empties; Pass B will exercise them.
 """
 
+import http.client
 import json
 import os
 import subprocess
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 
@@ -38,7 +40,7 @@ class Advisory:
     severity: str
     package: str
     version: str
-    summary: str
+    summary: str          # truncated to 280 chars in osv_batch_query()
     url: str
 
 
@@ -105,8 +107,16 @@ def osv_batch_query(
         )
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, ValueError, OSError):
+    except (
+        urllib.error.URLError,
+        http.client.HTTPException,
+        TimeoutError,
+        ValueError,
+        OSError,
+    ):
         # Network, parse, or timeout failure — best-effort, skip silently.
+        # http.client.HTTPException covers IncompleteRead / RemoteDisconnected
+        # which inherit from Exception, not OSError.
         return results
 
     batch = payload.get("results", []) if isinstance(payload, dict) else []
@@ -141,10 +151,19 @@ def osv_batch_query(
 def _osv_fetch_detail(vuln_id: str, timeout: float = 5.0) -> dict:
     """Fetch full OSV vuln detail by ID. Returns {} on any failure."""
     try:
-        req = urllib.request.Request(_OSV_DETAIL + vuln_id, method="GET")
+        req = urllib.request.Request(
+            _OSV_DETAIL + urllib.parse.quote(vuln_id, safe=""),
+            method="GET",
+        )
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return json.loads(resp.read().decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, ValueError, OSError):
+    except (
+        urllib.error.URLError,
+        http.client.HTTPException,
+        TimeoutError,
+        ValueError,
+        OSError,
+    ):
         return {}
 
 
@@ -165,6 +184,7 @@ def _extract_severity(detail: dict) -> str:
 
 # ── Layer 2: Quarantine ──────────────────────────────────────────
 
+# read-only; treat as config. Values in seconds per source id.
 QUARANTINE_DEFAULTS: dict[str, int] = {
     "npm": 24 * 3600,
     "pipx": 24 * 3600,
@@ -228,6 +248,36 @@ _NPM_HOOKS: tuple[str, ...] = ("preinstall", "install", "postinstall", "prepare"
 _NPM_GLOBAL_PREFIX = "~/.npm-global/lib/node_modules"
 
 
+def _is_safe_npm_pkg_name(pkg: str) -> bool:
+    """Reject pkg names that could escape the npm global prefix.
+
+    Allowed: plain names (``left-pad``) and scoped names (``@scope/name``)
+    with exactly one ``/`` after a leading ``@`` for the scope separator.
+    Rejects traversal (``..``), absolute paths, hidden dirs, empty strings,
+    and anything containing NUL or backslashes.
+    """
+    if not pkg or not isinstance(pkg, str):
+        return False
+    if "\x00" in pkg or "\\" in pkg:
+        return False
+    if pkg.startswith("/") or pkg.startswith("."):
+        return False
+    # Split into segments on "/". Legitimate shapes:
+    #   ["name"]            → unscoped
+    #   ["@scope", "name"]  → scoped (scope must start with "@")
+    parts = pkg.split("/")
+    if len(parts) == 1:
+        segments = parts
+    elif len(parts) == 2 and parts[0].startswith("@") and len(parts[0]) > 1:
+        segments = parts
+    else:
+        return False
+    for seg in segments:
+        if not seg or seg == "." or seg == "..":
+            return False
+    return True
+
+
 def fetch_scripts_npm(pkg: str, version: str, timeout: float = 10.0) -> dict[str, str]:
     """Fetch target-version script hooks from the npm registry.
 
@@ -267,8 +317,12 @@ def read_installed_scripts_npm(pkg: str) -> dict[str, str]:
     """Read hook scripts from an installed npm global package on disk.
 
     Returns ``{}`` if the package is not installed, the manifest is
-    malformed, or any I/O error occurs.
+    malformed, any I/O error occurs, or the package name fails the
+    traversal-safety check (defends against untrusted input flowing in
+    from HTTP handlers in Pass B).
     """
+    if not _is_safe_npm_pkg_name(pkg):
+        return {}
     path = os.path.expanduser(f"{_NPM_GLOBAL_PREFIX}/{pkg}/package.json")
     try:
         with open(path, encoding="utf-8") as f:
@@ -289,22 +343,26 @@ def fetch_scripts_pipx(pkg: str, version: str, timeout: float = 10.0) -> dict[st
     """Stub — Pass B will implement pipx script fetch via pip download +
     pyproject.toml / [project.scripts] inspection. Returns {} for now so
     the diff pipeline short-circuits to 'no changes'."""
+    del pkg, version, timeout  # unused; Pass B fills in
     return {}
 
 
 def read_installed_scripts_pipx(pkg: str) -> dict[str, str]:
     """Stub — Pass B will read installed pipx venv metadata."""
+    del pkg  # unused; Pass B fills in
     return {}
 
 
 def fetch_scripts_mise(pkg: str, version: str, timeout: float = 10.0) -> dict[str, str]:
     """Stub — Pass B will inspect mise plugin manifests where available
     and gracefully skip where not."""
+    del pkg, version, timeout  # unused; Pass B fills in
     return {}
 
 
 def read_installed_scripts_mise(pkg: str) -> dict[str, str]:
     """Stub — Pass B will read installed mise shim/plugin metadata."""
+    del pkg  # unused; Pass B fills in
     return {}
 
 
@@ -356,13 +414,18 @@ def diff_scripts(
     return changes
 
 
-def audit_installed_scripts(pkg: str, approved: dict[str, str]) -> dict:
-    """Post-install audit: compare on-disk scripts vs the approved set.
+def audit_installed_scripts_npm(pkg: str, approved: dict[str, str]) -> dict:
+    """Post-install audit (npm): compare on-disk scripts vs the approved set.
 
     Re-reads the installed package's scripts and returns a report. Any
     divergence from the ``approved`` set captured at pre-install time
     indicates the installed artifact does not match the registry
     metadata that was reviewed.
+
+    The ``_npm`` suffix matches the existing ``fetch_scripts_npm`` /
+    ``read_installed_scripts_npm`` convention — Pass B will add
+    ``audit_installed_scripts_pipx`` and ``audit_installed_scripts_mise``
+    alongside, rather than routing every source through npm disk reads.
 
     Returns:
         ``{"match": bool, "divergences": [{"hook", "approved", "actual"}, ...]}``
