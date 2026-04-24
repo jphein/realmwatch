@@ -88,7 +88,7 @@
     if (src.status === 'updates-available-quarantined' || src.status === 'updates-available') {
       var quarantine = src.quarantine || {};
       var quarantinedVersions = Object.keys(quarantine).filter(function (v) {
-        return quarantine[v].quarantined;
+        return quarantine[v].quarantined && quarantine[v].remaining > 0;
       });
       if (quarantinedVersions.length > 0) {
         var minRemaining = Math.min.apply(null, quarantinedVersions.map(function (v) {
@@ -96,7 +96,13 @@
         }));
         var hoursLeft = Math.ceil(minRemaining / 3600);
         var qBadge = el('span', 'updates-quarantine-badge', '⏳ ' + hoursLeft + 'h');
-        qBadge.title = quarantinedVersions.length + ' version(s) in quarantine window. Earliest available in ~' + hoursLeft + 'h.';
+        var tooltipMsg;
+        if (src.status === 'updates-available-quarantined') {
+          tooltipMsg = quarantinedVersions.length + ' version(s) in quarantine window. Earliest available in ~' + hoursLeft + 'h.';
+        } else {
+          tooltipMsg = 'Some versions in quarantine (' + hoursLeft + 'h remaining) — other updates are available now.';
+        }
+        qBadge.title = tooltipMsg;
         header.appendChild(qBadge);
       }
     }
@@ -125,7 +131,7 @@
         var advItem = el('div', 'updates-advisory-item');
         var sev = adv.severity ? '[' + adv.severity + '] ' : '';
         advItem.textContent = sev + (adv.package || '') + ' ' + (adv.version || '') + ': ' + (adv.summary || adv.id);
-        if (adv.url) {
+        if (adv.url && (adv.url.startsWith('https://') || adv.url.startsWith('http://'))) {
           var link = document.createElement('a');
           link.href = adv.url;
           link.target = '_blank';
@@ -146,7 +152,7 @@
         var auditLines = ['🛑 Install-script audit failed: on-disk hooks differ from approved manifest'];
         for (var fi = 0; fi < failedAudits.length; fi++) {
           var fa = failedAudits[fi];
-          auditLines.push('  ' + fa.package + ' → ' + fa.hook + ': approved=' + (fa.approved || '(none)').substring(0, 40) + '…');
+          auditLines.push('  ' + (fa.package || '?') + ' → ' + (fa.hook || '?') + ': approved=' + (fa.approved || '(none)').substring(0, 40) + '…');
         }
         auditBlock.textContent = auditLines.join('\n');
         detail.appendChild(auditBlock);
@@ -278,7 +284,9 @@
       if (src.status === 'updating' || src.status === 'checking') {
         _expanded[sid] = true;
       }
-      if (src.status === 'awaiting-approvals' || src.status === 'warded-but-audit-failed') {
+      if (src.status === 'awaiting-approvals' ||
+          src.status === 'warded-but-audit-failed' ||
+          src.status === 'warded-but-advised') {
         _expanded[sid] = true;
       }
     }
