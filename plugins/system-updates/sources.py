@@ -34,6 +34,22 @@ class SourceState:
     log_lines: list = field(default_factory=list)
     error: str | None = None
     queued_behind: str | None = None
+    # ── Integrity verification fields (Layer 1/2/3) ──
+    # L1: OSV advisories collected after a successful update (list[dict]).
+    advisories: list = field(default_factory=list)
+    # L2: {version: unix_timestamp} of when each upstream version was first
+    # observed as available. Drives the quarantine window.
+    first_seen_at: dict = field(default_factory=dict)
+    # L3A: {pkg: {hook: body}} captured when the user approves a pre-install
+    # diff. Audited against on-disk metadata post-install.
+    approved_scripts: dict = field(default_factory=dict)
+    # L3B: recent audit results (append-only log of {pkg, match, divergences}).
+    script_audits: list = field(default_factory=list)
+    # L3A: entries awaiting user decision:
+    #   {"package", "from_version", "to_version", "changes": [dict, ...]}
+    pending_approvals: list = field(default_factory=list)
+    # L3A: "pkg|from|to" -> True, persisted in-memory this session only.
+    skip_list: dict = field(default_factory=dict)
 
 
 MAX_LOG_LINES = 200
@@ -302,6 +318,27 @@ def get_state(source_id: str) -> dict:
     st = _state.get(source_id)
     if not src or not st:
         return {}
+
+    # Compute quarantine status for each first-seen version on the fly.
+    # Kept out of the stored state so we don't need to re-persist on every
+    # tick; the computation is cheap.
+    quarantine = {}
+    try:
+        import verification
+        for ver, ts in st.first_seen_at.items():
+            quar, remaining = verification.is_quarantined(
+                src.id, ver, st.first_seen_at
+            )
+            quarantine[ver] = {
+                "quarantined": quar,
+                "remaining": remaining,
+                "first_seen_at": ts,
+            }
+    except Exception:
+        # Verification module may not be importable in some test contexts;
+        # fall back to an empty map rather than failing SSE serialization.
+        quarantine = {}
+
     return {
         "id": src.id,
         "fantasy_name": src.fantasy_name,
@@ -315,6 +352,13 @@ def get_state(source_id: str) -> dict:
         "log_lines": list(st.log_lines),
         "error": st.error,
         "queued_behind": st.queued_behind,
+        # ── New verification fields ──
+        "advisories": list(st.advisories),
+        "first_seen_at": dict(st.first_seen_at),
+        "quarantine": quarantine,
+        "pending_approvals": list(st.pending_approvals),
+        "skip_list": dict(st.skip_list),
+        "script_audits": list(st.script_audits),
     }
 
 

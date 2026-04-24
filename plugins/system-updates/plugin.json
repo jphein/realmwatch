@@ -27,7 +27,9 @@
     { "method": "POST", "path": "/updates/check/<source>","handler": "handle_check_one",   "raw_path": true },
     { "method": "POST", "path": "/updates/run",           "handler": "handle_run_all",     "raw_path": true },
     { "method": "POST", "path": "/updates/run/<source>",  "handler": "handle_run_one",     "raw_path": true },
-    { "method": "DELETE","path": "/updates/run/<source>",  "handler": "handle_cancel_one",  "raw_path": true }
+    { "method": "DELETE","path": "/updates/run/<source>",  "handler": "handle_cancel_one",  "raw_path": true },
+    { "method": "POST",  "path": "/updates/approve/<source>", "handler": "handle_approve_one", "raw_path": true },
+    { "method": "DELETE","path": "/updates/approve/<source>", "handler": "handle_skip_one",    "raw_path": true }
   ],
 
   "sse_types": ["updates"]

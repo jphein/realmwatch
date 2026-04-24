@@ -70,6 +70,60 @@ def handle_cancel_one(req, params):
         req.respond({"error": f"Source {source_id} is not running"}, status=404)
 
 
+def _extract_pkg(req, params):
+    """Pull the ``pkg`` name from a JSON body or ``?pkg=`` query param.
+
+    Body approach is preferred (clean for scoped npm names like
+    ``@scope/name`` — no URL-encoding gotchas) but the query-string
+    fallback keeps the endpoint easy to exercise from curl.
+    """
+    body = req.json() or {}
+    pkg = body.get("pkg") if isinstance(body, dict) else None
+    if not pkg:
+        pkg = params.get("_query", {}).get("pkg")
+    return pkg or ""
+
+
+def handle_approve_one(req, params):
+    """POST /updates/approve/<source> — approve a pending script diff.
+
+    Body: ``{"pkg": "<name>"}``. Kicks off the single-package install.
+    """
+    from runner import approve_package
+    source_id = params.get("source", "")
+    pkg = _extract_pkg(req, params)
+    if not pkg:
+        req.respond({"error": "missing 'pkg' in body or query"}, status=400)
+        return
+    ok = approve_package(source_id, pkg,
+                         push_event_fn=_ctx.push_event if _ctx else None)
+    if ok:
+        req.respond({"status": "approved", "pkg": pkg})
+    else:
+        req.respond({"error": f"No pending approval for {pkg} on {source_id}"},
+                    status=404)
+
+
+def handle_skip_one(req, params):
+    """DELETE /updates/approve/<source> — skip a pending script diff.
+
+    Body: ``{"pkg": "<name>"}``. Adds (pkg, from, to) to skip_list and
+    removes the pending entry. Does NOT kick off an install.
+    """
+    from runner import skip_package
+    source_id = params.get("source", "")
+    pkg = _extract_pkg(req, params)
+    if not pkg:
+        req.respond({"error": "missing 'pkg' in body or query"}, status=400)
+        return
+    ok = skip_package(source_id, pkg)
+    if ok:
+        req.respond({"status": "skipped", "pkg": pkg})
+    else:
+        req.respond({"error": f"No pending approval for {pkg} on {source_id}"},
+                    status=404)
+
+
 def setup(ctx):
     """Plugin entry point."""
     global _ctx
