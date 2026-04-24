@@ -191,7 +191,6 @@ def _collect_versions(src) -> dict:
 
     except Exception:
         return {}
-    return {}
 
 
 # ── Per-package install for risky sources ────────────────────────
@@ -439,8 +438,10 @@ def cmd_run(source_id=None):
         _header(src, "upgrading")
         if src.id in RISKY_SOURCES:
             first_seen = _load_first_seen()
-            ok, _ = _run_risky(src, first_seen)
-            _save_first_seen(first_seen)
+            try:
+                ok, _ = _run_risky(src, first_seen)
+            finally:
+                _save_first_seen(first_seen)
             if ok:
                 _ok("warded")
             else:
@@ -489,8 +490,10 @@ def cmd_interactive():
         _header(src, "upgrading")
         if src.id in RISKY_SOURCES:
             first_seen = _load_first_seen()
-            ok, _ = _run_risky(src, first_seen)
-            _save_first_seen(first_seen)
+            try:
+                ok, _ = _run_risky(src, first_seen)
+            finally:
+                _save_first_seen(first_seen)
             if ok:
                 _ok("warded")
             else:
