@@ -1,8 +1,11 @@
 """Update source definitions and state registry."""
 
+import os
 import threading
 import time
 from dataclasses import dataclass, field
+
+_PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 # ── Data models ──────────────────────────────────────────────────
@@ -169,6 +172,12 @@ def parse_pip_user(stdout: str) -> tuple[int, list[str]]:
         return 0, []
 
 
+def parse_pipx(stdout: str) -> tuple[int, list[str]]:
+    """Parse the helper's output — one outdated package name per line."""
+    names = [l.strip() for l in stdout.splitlines() if l.strip()]
+    return len(names), names
+
+
 def parse_version_only(stdout: str) -> tuple[int, list[str]]:
     """For self-updating tools (claude, copilot) — no check, just version info."""
     return 0, []
@@ -184,6 +193,7 @@ PARSERS = {
     "brew": parse_brew,
     "npm": parse_npm,
     "pip_user": parse_pip_user,
+    "pipx": parse_pipx,
     "version_only": parse_version_only,
     "default": parse_version_only,
 }
@@ -314,6 +324,17 @@ _register(UpdateSource(
     parse_check_fn="pip_user",
 ))
 
+_register(UpdateSource(
+    id="pipx",
+    fantasy_name="Pipx Phylacteries",
+    icon="\U0001f9ff",  # 🧿
+    lock_group="pipx",
+    check_cmd=["python3", os.path.join(_PLUGIN_DIR, "_pipx_outdated.py")],
+    update_cmd=["pipx", "upgrade-all"],
+    parse_check_fn="pipx",
+    timeout=120,  # PyPI queries dominate; 5s/pkg × N installs + slack
+))
+
 
 # ── State access ─────────────────────────────────────────────────
 
@@ -389,6 +410,41 @@ def get_all_state() -> dict:
             "total": len(SOURCES),
         },
     }
+
+
+def get_inventory(since: float = 0.0) -> dict:
+    """Slim projection of source state for non-UI consumers (e.g., Claude
+    SessionStart hook).
+
+    Returns a stable, lightweight shape — no log buffers, no quarantine
+    detail, no pending-approval payloads — so callers don't need to track
+    every change to the rich SourceState used by the panel.
+
+    Filtering: when ``since > 0``, only sources whose ``last_check`` is
+    strictly greater than ``since`` are included. Pass ``since=0`` (or omit)
+    to get all sources.
+
+    Note on shape: the panel intentionally tracks only what's *outdated*,
+    not what's *installed*. ``outdated`` here is a list of package names
+    (no per-package versions, since the upstream parsers normalize away
+    version detail). Consumers who need installed-set deltas should still
+    do their own listing — this endpoint is for the upgrade-status side.
+    """
+    sources = {}
+    for sid, src in SOURCES.items():
+        st = _state.get(sid)
+        if not st:
+            continue
+        if since > 0 and st.last_check <= since:
+            continue
+        sources[sid] = {
+            "fantasy_name": src.fantasy_name,
+            "outdated": list(st.packages),
+            "available_count": st.available,
+            "last_check": st.last_check,
+            "status": st.status,
+        }
+    return {"sources": sources, "since": since}
 
 
 def update_state(source_id: str, **kwargs):

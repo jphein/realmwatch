@@ -1,6 +1,6 @@
 {
   "name": "system-updates",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "integrated",
   "description": "Desktop package update tracker and runner — APT, Snap, Flatpak, mise, brew, and more.",
   "fantasy_name": "Scroll of Patch Runes",
@@ -23,6 +23,7 @@
 
   "endpoints": [
     { "method": "GET",  "path": "/updates",              "handler": "handle_get_updates",  "raw_path": true },
+    { "method": "GET",  "path": "/api/inventory",        "handler": "handle_get_inventory","raw_path": true },
     { "method": "POST", "path": "/updates/check",        "handler": "handle_check_all",    "raw_path": true },
     { "method": "POST", "path": "/updates/check/<source>","handler": "handle_check_one",   "raw_path": true },
     { "method": "POST", "path": "/updates/run",           "handler": "handle_run_all",     "raw_path": true },

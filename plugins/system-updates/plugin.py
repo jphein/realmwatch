@@ -23,6 +23,22 @@ def handle_get_updates(req, params):
     req.respond(get_all_state())
 
 
+def handle_get_inventory(req, params):
+    """GET /api/inventory[?since=<unix-ts>] — slim projection for non-UI consumers.
+
+    Designed for the Claude SessionStart hook at
+    ~/.claude/hooks/package-inventory.sh. Returns outdated counts and
+    last_check timestamps without the full panel state shape.
+    """
+    from sources import get_inventory
+    since_raw = params.get("_query", {}).get("since", "0")
+    try:
+        since = float(since_raw)
+    except (TypeError, ValueError):
+        since = 0.0
+    req.respond(get_inventory(since=since))
+
+
 def handle_check_all(req, params):
     """POST /updates/check — check all sources for available updates."""
     from runner import check_all
