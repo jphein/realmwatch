@@ -1,0 +1,17 @@
+[Unit]
+Description=Scroll of Patch Runes — daily check for available updates
+Documentation=https://github.com/jphein/update
+After=network-online.target realm-map-server.service
+Requires=realm-map-server.service
+
+[Service]
+Type=oneshot
+# Hit the running plugin endpoint rather than re-implementing the check
+# loop here. Keeps the timer's logic to one curl and inherits all the
+# plugin's state, locking, and SSE pushes for free.
+ExecStart=/usr/bin/curl -fsS --max-time 30 -X POST http://localhost:80/updates/check
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

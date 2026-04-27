@@ -39,6 +39,24 @@ def handle_get_inventory(req, params):
     req.respond(get_inventory(since=since))
 
 
+def handle_get_history(req, params):
+    """GET /updates/history[?source=<id>&type=check|update&limit=N] — recent runs.
+
+    Returns the last ``limit`` (default 50) runs newest-first. Optionally
+    narrowed by source and/or run_type. Used to render a "Last 10 runs"
+    sub-panel in the UI and answer "when did this last succeed?" questions.
+    """
+    from history import get
+    q = params.get("_query", {})
+    source_id = q.get("source") or None
+    run_type = q.get("type") or None
+    try:
+        limit = max(1, min(int(q.get("limit", 50)), 500))
+    except (TypeError, ValueError):
+        limit = 50
+    req.respond({"runs": get(source_id=source_id, run_type=run_type, limit=limit)})
+
+
 def handle_check_all(req, params):
     """POST /updates/check — check all sources for available updates."""
     from runner import check_all
@@ -147,6 +165,13 @@ def setup(ctx):
 
     from runner import init
     init(push_fn=lambda: None)  # SSE getter handles data; broker polls it
+
+    # Idempotent — creates the system_updates_runs table if missing.
+    try:
+        from history import init as history_init
+        history_init()
+    except Exception as exc:
+        ctx.log("system-updates: history.init failed: %s", exc)
 
     ctx.register_sse_source(
         event_type="updates",

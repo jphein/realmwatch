@@ -202,10 +202,19 @@ def _run_cmd(source_id: str, cmd, shell: bool, timeout: int, mode: str, ok_codes
 def _do_check(source_id: str):
     """Run the check command for a source and parse results."""
     src = SOURCES[source_id]
+    started_at = time.time()
     stdout = _run_cmd(source_id, src.check_cmd, src.check_shell, src.timeout, "checking",
                       ok_codes=src.check_ok_codes)
 
     if stdout is None:
+        # Failed path — last_check stays unchanged but record the failure.
+        try:
+            from history import record
+            from sources import _state
+            record(source_id, "check", started_at, time.time(),
+                   ok=False, count=0, error=_state[source_id].error)
+        except Exception:
+            pass  # never let history-write break the runner
         return  # already set to failed
 
     parser = PARSERS.get(src.parse_check_fn, PARSERS["default"])
@@ -254,12 +263,20 @@ def _do_check(source_id: str):
         if source_id in RISKY_SOURCES:
             from sources import _state
             _state[source_id]._risky_versions = version_info  # type: ignore[attr-defined]
+        from notifications import notify_check_result
+        notify_check_result(SOURCES[source_id].fantasy_name, count)
     else:
         update_state(source_id,
                      status="up-to-date",
                      available=0,
                      packages=[],
                      last_check=time.time())
+    try:
+        from history import record
+        record(source_id, "check", started_at, time.time(),
+               ok=True, count=count)
+    except Exception:
+        pass  # never let history-write break the runner
     _notify()
 
 
@@ -412,6 +429,12 @@ def _do_update(source_id: str, push_event_fn=None):
         return _do_update_risky(source_id, push_event_fn)
 
     src = SOURCES[source_id]
+    started_at = time.time()
+    # Capture the pending-update count before update_state resets it to 0,
+    # so history shows "how many packages were upgraded" not "how many are
+    # left after the upgrade" (which is always 0 on success).
+    from sources import _state
+    pre_count = _state[source_id].available
     stdout = _run_cmd(source_id, src.update_cmd, src.update_shell, src.timeout, "updating",
                       ok_codes=src.update_ok_codes)
 
@@ -420,6 +443,14 @@ def _do_update(source_id: str, push_event_fn=None):
         error = _state[source_id].error or "Unknown error"
         _event(push_event_fn, "system-update-failed",
                f"{src.fantasy_name} update failed: {error}", "red")
+        from notifications import notify_update_result
+        notify_update_result(src.fantasy_name, ok=False, error=error)
+        try:
+            from history import record
+            record(source_id, "update", started_at, time.time(),
+                   ok=False, count=0, error=error)
+        except Exception:
+            pass
         return
 
     update_state(source_id,
@@ -432,6 +463,14 @@ def _do_update(source_id: str, push_event_fn=None):
 
     _event(push_event_fn, "system-update-complete",
            f"{src.fantasy_name} — all tools warded", "green")
+    from notifications import notify_update_result
+    notify_update_result(src.fantasy_name, ok=True, error=None)
+    try:
+        from history import record
+        record(source_id, "update", started_at, time.time(),
+               ok=True, count=pre_count)
+    except Exception:
+        pass
 
 
 # ── Risky-source update flow ─────────────────────────────────────

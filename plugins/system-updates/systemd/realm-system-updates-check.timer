@@ -1,0 +1,12 @@
+[Unit]
+Description=Daily check for system updates at 03:00
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+# Persistent=true means: if the machine was off at 03:00, fire on next
+# boot. Matches the behavior of realm-optimizer.timer for consistency.
+Persistent=true
+RandomizedDelaySec=10m
+
+[Install]
+WantedBy=timers.target
