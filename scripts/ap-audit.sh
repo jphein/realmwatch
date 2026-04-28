@@ -3,7 +3,7 @@
 #
 # Usage:
 #   ./scripts/ap-audit.sh               # all 12 APs
-#   ./scripts/ap-audit.sh onhub-closet  # single AP by name
+#   ./scripts/ap-audit.sh ap-closet  # single AP by name
 #   ./scripts/ap-audit.sh 10.0.6.102    # single AP by IP
 #
 # Description:
@@ -20,20 +20,25 @@ set -euo pipefail
 
 G='\033[0;32m'; R='\033[0;31m'; Y='\033[0;33m'; C='\033[0;36m'; N='\033[0m'
 
-# All known APs: hostname (SSH alias or IP)
+# All known APs (hostname → IP). Source of truth: /etc/config/system on each AP
+# (system.@system[0].hostname). Captured live 2026-04-28 via:
+#   for ip in <vlan6-ips>; do ssh root@$ip "uci -q get system.@system[0].hostname"; done
+# Do NOT use `uname -n` to populate this — it can lag /etc/config/system if
+# /etc/init.d/system reload hasn't run since the last hostname change.
+# Hardware comments come from /tmp/sysinfo/board_name.
 declare -A APS=(
-  [mr8300-host]="10.0.6.100"
-  [onhub-office]="10.0.6.101"
-  [onhub-closet]="10.0.6.102"
-  [woodshed]="10.0.6.105"
-  [wndr4300sw-shed]="10.0.6.109"
-  [onhub-pumphouse]="10.0.6.111"
-  [wrt1900ac]="10.0.6.114"
-  [ea6350-cl]="10.0.6.116"
-  [eap225-outdoor]="10.0.6.119"
-  [ea6350v3]="10.0.6.135"
-  [onhub-family]="10.0.6.141"
-  [onhub-bed]="10.0.6.246"
+  [ap-east-1]="10.0.6.100"           # linksys mr8300
+  [center]="10.0.6.101"        # tplink onhub
+  [ap-closet]="10.0.6.102"        # asus onhub
+  [ap-woodshed]="10.0.6.105"      # extreme-networks ws-ap3825i
+  [ap-shed]="10.0.6.109"          # netgear wndr4300sw
+  [ap-pump]="10.0.6.111"     # tplink onhub
+  [ap-path]="10.0.6.114"          # linksys wrt1900ac-v1
+  [ap-cabin]="10.0.6.116"      # linksys ea6350v3
+  [ap-deck]="10.0.6.119"          # tplink eap225-outdoor-v1
+  [ap-south-1]="10.0.6.135"          # linksys ea6350v3
+  [ap-east-2]="10.0.6.141"  # tplink onhub
+  [ap-north-1]="10.0.6.246"       # asus onhub
 )
 
 audit_ap() {

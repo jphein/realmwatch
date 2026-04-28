@@ -3,8 +3,8 @@
 #
 # Usage:
 #   ./scripts/ap-migrate-ssid.sh --ssid "roam" --network family
-#   ./scripts/ap-migrate-ssid.sh --ssid "roam" --network family --ap onhub-closet
-#   ./scripts/ap-migrate-ssid.sh --ssid "goodwe" --network lan --ap wndr4300sw-shed
+#   ./scripts/ap-migrate-ssid.sh --ssid "roam" --network family --ap ap-closet
+#   ./scripts/ap-migrate-ssid.sh --ssid "goodwe" --network iot --ap ap-shed
 #   ./scripts/ap-migrate-ssid.sh --dry-run --ssid "roam" --network family
 #
 # Description:
@@ -19,19 +19,22 @@ set -euo pipefail
 
 G='\033[0;32m'; R='\033[0;31m'; Y='\033[0;33m'; C='\033[0;36m'; N='\033[0m'
 
+# AP names match /etc/config/system on each AP (verified 2026-04-28).
+# TODO: extract this array to scripts/lib/aps.sh and source from all
+# AP scripts (currently duplicated in 4 places).
 declare -A APS=(
-  [mr8300-host]="10.0.6.100"
-  [onhub-office]="10.0.6.101"
-  [onhub-closet]="10.0.6.102"
-  [woodshed]="10.0.6.105"
-  [wndr4300sw-shed]="10.0.6.109"
-  [onhub-pumphouse]="10.0.6.111"
-  [wrt1900ac]="10.0.6.114"
-  [ea6350-cl]="10.0.6.116"
-  [eap225-outdoor]="10.0.6.119"
-  [ea6350v3]="10.0.6.135"
-  [onhub-family]="10.0.6.141"
-  [onhub-bed]="10.0.6.246"
+  [ap-east-1]="10.0.6.100"           # linksys mr8300
+  [center]="10.0.6.101"        # tplink onhub
+  [ap-closet]="10.0.6.102"        # asus onhub
+  [ap-woodshed]="10.0.6.105"      # extreme-networks ws-ap3825i
+  [ap-shed]="10.0.6.109"          # netgear wndr4300sw
+  [ap-pump]="10.0.6.111"     # tplink onhub
+  [ap-path]="10.0.6.114"          # linksys wrt1900ac-v1
+  [ap-cabin]="10.0.6.116"      # linksys ea6350v3
+  [ap-deck]="10.0.6.119"          # tplink eap225-outdoor-v1
+  [ap-south-1]="10.0.6.135"          # linksys ea6350v3
+  [ap-east-2]="10.0.6.141"  # tplink onhub
+  [ap-north-1]="10.0.6.246"       # asus onhub
 )
 
 SSID=""
@@ -54,7 +57,7 @@ if [ -z "$SSID" ] || [ -z "$NETWORK" ]; then
   echo ""
   echo "Examples:"
   echo "  $0 --ssid roam --network family           # all APs"
-  echo "  $0 --ssid goodwe --network lan --ap wndr4300sw-shed"
+  echo "  $0 --ssid goodwe --network iot --ap ap-shed"
   echo "  $0 --dry-run --ssid roam --network family  # preview only"
   exit 1
 fi

@@ -2,9 +2,9 @@
 # Add a VLAN interface to a single OpenWrt AP (DSA or swconfig, auto-detected).
 #
 # Usage:
-#   ./scripts/ap-add-vlan.sh --ap onhub-closet --vlan 11 --name family
-#   ./scripts/ap-add-vlan.sh --ap wndr4300sw-shed --vlan 11 --name family
-#   ./scripts/ap-add-vlan.sh --dry-run --ap onhub-bed --vlan 11 --name family
+#   ./scripts/ap-add-vlan.sh --ap ap-closet --vlan 11 --name family
+#   ./scripts/ap-add-vlan.sh --ap ap-shed --vlan 11 --name family
+#   ./scripts/ap-add-vlan.sh --dry-run --ap ap-north-1 --vlan 11 --name family
 #
 # Description:
 #   Detects whether the AP uses DSA (bridge-vlan) or swconfig (switch_vlan)
@@ -21,28 +21,32 @@ set -euo pipefail
 
 G='\033[0;32m'; R='\033[0;31m'; Y='\033[0;33m'; C='\033[0;36m'; N='\033[0m'
 
+# AP names match /etc/config/system on each AP (verified 2026-04-28).
+# TODO: extract this array to scripts/lib/aps.sh and source from all
+# AP scripts (currently duplicated in 4 places).
 declare -A APS=(
-  [mr8300-host]="10.0.6.100"
-  [onhub-office]="10.0.6.101"
-  [onhub-closet]="10.0.6.102"
-  [woodshed]="10.0.6.105"
-  [wndr4300sw-shed]="10.0.6.109"
-  [onhub-pumphouse]="10.0.6.111"
-  [wrt1900ac]="10.0.6.114"
-  [ea6350-cl]="10.0.6.116"
-  [eap225-outdoor]="10.0.6.119"
-  [ea6350v3]="10.0.6.135"
-  [onhub-family]="10.0.6.141"
-  [onhub-bed]="10.0.6.246"
+  [ap-east-1]="10.0.6.100"           # linksys mr8300
+  [center]="10.0.6.101"        # tplink onhub
+  [ap-closet]="10.0.6.102"        # asus onhub
+  [ap-woodshed]="10.0.6.105"      # extreme-networks ws-ap3825i
+  [ap-shed]="10.0.6.109"          # netgear wndr4300sw
+  [ap-pump]="10.0.6.111"     # tplink onhub
+  [ap-path]="10.0.6.114"          # linksys wrt1900ac-v1
+  [ap-cabin]="10.0.6.116"      # linksys ea6350v3
+  [ap-deck]="10.0.6.119"          # tplink eap225-outdoor-v1
+  [ap-south-1]="10.0.6.135"          # linksys ea6350v3
+  [ap-east-2]="10.0.6.141"  # tplink onhub
+  [ap-north-1]="10.0.6.246"       # asus onhub
 )
 
-# swconfig APs use different ethernet ports
+# swconfig APs use different ethernet ports.
+# Note: ap-pump and ap-path are now DSA, not swconfig (migrated
+# during 2026-04-28 iot-SSID rollout). ap-shed and ap-east-2
+# remain swconfig.
 declare -A SWCONFIG_ETH=(
-  [onhub-office]="eth1"
-  [onhub-pumphouse]="eth1"
-  [onhub-family]="eth1"
-  [onhub-bed]="eth1"
-  [wndr4300sw-shed]="eth0"
+  [center]="eth1"
+  [ap-east-2]="eth1"
+  [ap-shed]="eth0"
 )
 
 AP=""
@@ -66,9 +70,9 @@ if [ -z "$AP" ] || [ -z "$VLAN" ] || [ -z "$IFNAME" ]; then
   echo "Auto-detects DSA vs swconfig and uses correct commands."
   echo ""
   echo "Examples:"
-  echo "  $0 --ap onhub-closet --vlan 11 --name family"
-  echo "  $0 --ap wndr4300sw-shed --vlan 11 --name family"
-  echo "  $0 --dry-run --ap onhub-bed --vlan 11 --name family"
+  echo "  $0 --ap ap-closet --vlan 11 --name family"
+  echo "  $0 --ap ap-shed --vlan 11 --name family"
+  echo "  $0 --dry-run --ap ap-north-1 --vlan 11 --name family"
   exit 1
 fi
 
