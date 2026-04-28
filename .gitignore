@@ -15,6 +15,11 @@ realm.db
 realm.db-shm
 realm.db-wal
 monitor_3min.log
+topology.json
+
+# Screenshots / preview assets (not consumed by the served pages)
+report-card-*.png
+wifi-guide-*.png
 
 # Secrets
 .env
