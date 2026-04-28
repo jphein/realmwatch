@@ -1,0 +1,84 @@
+#!/usr/bin/expect -f
+# HP V1910-24G audit via SSH (admin / cmdline-mode unlock).
+# Captures full running config + VLAN port memberships.
+#
+# Credentials: admin password is fetched from Bitwarden at runtime
+# (vault item "HP Switch 10.0.6.103"). Vault must be unlocked.
+# The cmdline-mode unlock 512900 is the public HP V1910 service code,
+# not a real secret — left inline.
+
+set timeout 30
+log_user 1
+
+set HOST   "10.0.6.103"
+set USER   "admin"
+if {[catch {exec bw get password "HP Switch 10.0.6.103"} PASS]} {
+    puts stderr "ERROR: failed to fetch credentials from Bitwarden: $PASS"
+    puts stderr "Hint: run 'bw unlock' or set BW_SESSION first."
+    exit 1
+}
+set UNLOCK "512900"
+
+set ::env(SSHPASS) $PASS
+spawn sshpass -e ssh -tt \
+    -o StrictHostKeyChecking=no \
+    -o UserKnownHostsFile=/dev/null \
+    -o ConnectTimeout=10 \
+    -o KexAlgorithms=+diffie-hellman-group-exchange-sha1 \
+    -o Ciphers=+aes128-cbc \
+    -o HostKeyAlgorithms=+ssh-rsa \
+    -o PubkeyAuthentication=no \
+    $USER@$HOST
+
+expect {
+    -re {<[^>]+>} { }
+    timeout { puts "TIMEOUT waiting for prompt"; exit 1 }
+}
+
+# Enter hidden cmdline-mode for full management privileges
+send "_cmdline-mode on\r"
+expect {
+    "Continue?" { send "Y\r" }
+    "All commands can be displayed" { }
+    timeout { puts "TIMEOUT after _cmdline-mode on"; exit 1 }
+}
+expect {
+    "password:" { send "$UNLOCK\r" }
+    timeout { puts "TIMEOUT waiting for unlock password"; exit 1 }
+}
+expect -re {<[^>]+>}
+
+# Disable paging so long output flushes in one read
+send "screen-length disable\r"
+expect -re {<[^>]+>}
+
+# --- Audit commands ---
+# Try a battery of V1910-correct syntaxes; harmless errors are fine.
+
+set cmds {
+    "display version"
+    "display device"
+    "display current-configuration | include vlan"
+    "display vlan"
+    "display vlan all"
+    "display port"
+    "display port hybrid"
+    "display port trunk"
+    "display interface brief"
+    "display interface GigabitEthernet1/0/1"
+    "display mac-address"
+    "display lldp neighbor-information"
+    "display current-configuration"
+}
+
+foreach c $cmds {
+    send -- "$c\r"
+    # generous wait — full config can be a few hundred lines
+    expect {
+        -re {<[^>]+>\s*$} { }
+        timeout { puts "\n--- TIMEOUT after: $c ---"; }
+    }
+}
+
+send "quit\r"
+expect eof

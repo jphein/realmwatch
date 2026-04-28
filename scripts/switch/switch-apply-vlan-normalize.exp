@@ -1,0 +1,100 @@
+#!/usr/bin/expect -f
+# Apply VLAN trunk normalization to GE1/0/15 .. GE1/0/28
+#   - Add VLAN1 untagged, set PVID=1
+#   - Tag every real VLAN (3-12, 20, 38) on every trunk port
+#   - This converts the previously-untagged VLAN10 (or VLAN7) to tagged
+#
+# Credentials: admin password is fetched from Bitwarden at runtime
+# (vault item "HP Switch 10.0.6.103"). Vault must be unlocked.
+# The cmdline-mode unlock 512900 is the public HP V1910 service code.
+
+set timeout 45
+log_user 1
+
+set HOST   "10.0.6.103"
+set USER   "admin"
+if {[catch {exec bw get password "HP Switch 10.0.6.103"} PASS]} {
+    puts stderr "ERROR: failed to fetch credentials from Bitwarden: $PASS"
+    puts stderr "Hint: run 'bw unlock' or set BW_SESSION first."
+    exit 1
+}
+set UNLOCK "512900"
+
+set ::env(SSHPASS) $PASS
+spawn sshpass -e ssh -tt \
+    -o StrictHostKeyChecking=no \
+    -o UserKnownHostsFile=/dev/null \
+    -o ConnectTimeout=10 \
+    -o KexAlgorithms=+diffie-hellman-group-exchange-sha1 \
+    -o Ciphers=+aes128-cbc \
+    -o HostKeyAlgorithms=+ssh-rsa \
+    -o PubkeyAuthentication=no \
+    $USER@$HOST
+
+expect {
+    -re {<[^>]+>} { }
+    timeout { puts "TIMEOUT waiting for prompt"; exit 1 }
+}
+
+send "_cmdline-mode on\r"
+expect {
+    "Continue?" { send "Y\r" }
+    "All commands can be displayed" { }
+    timeout { puts "TIMEOUT after _cmdline-mode on"; exit 1 }
+}
+expect {
+    "password:" { send "$UNLOCK\r" }
+    timeout { puts "TIMEOUT waiting for unlock password"; exit 1 }
+}
+expect -re {<[^>]+>}
+
+send "screen-length disable\r"
+expect -re {<[^>]+>}
+
+# Backup running-config to startup-config marker by saving current state file
+# (we already have a fresh capture in full-audit.log, so this is just belt-and-suspenders)
+
+send "system-view\r"
+expect -re {\[[^\]]+\]\s*$}
+
+# For ports 15..28, normalize as described
+for {set p 15} {$p <= 28} {incr p} {
+    send "interface GigabitEthernet1/0/$p\r"
+    expect -re {\[[^\]]+\]\s*$}
+
+    # Add VLAN1 untagged so PVID=1 is allowed
+    send "port hybrid vlan 1 untagged\r"
+    expect -re {\[[^\]]+\]\s*$}
+
+    # Switch PVID to default (VLAN1)
+    send "port hybrid pvid vlan 1\r"
+    expect -re {\[[^\]]+\]\s*$}
+
+    # Tag all real VLANs (covers any previously-untagged 7 or 10)
+    send "port hybrid vlan 3 to 12 20 38 tagged\r"
+    expect -re {\[[^\]]+\]\s*$}
+
+    send "quit\r"
+    expect -re {\[[^\]]+\]\s*$}
+}
+
+send "quit\r"
+expect -re {<[^>]+>\s*$}
+
+# Save to startup-config
+send "save force\r"
+expect {
+    "successfully" { }
+    -re {<[^>]+>\s*$} { }
+    timeout { puts "\n--- TIMEOUT during save ---" }
+}
+expect -re {<[^>]+>\s*$}
+
+# Verify
+send "display port hybrid\r"
+expect -re {<[^>]+>\s*$}
+send "display vlan all\r"
+expect -re {<[^>]+>\s*$}
+
+send "quit\r"
+expect eof
