@@ -152,24 +152,41 @@ class HostAccess:
         except Exception:
             return None
 
-    def snmp_get(self, oid, community="public", version=2):
+    def _snmp_auth_args(self, community="public", version=2, v3=None):
+        """Build the version+auth fragment for snmpget/snmpwalk.
+
+        v3 dict: {"user": str, "auth_pass": str, "priv_pass": str,
+                  "auth_proto": "SHA"|"MD5", "priv_proto": "AES"|"DES",
+                  "level": "authPriv"|"authNoPriv"|"noAuthNoPriv"}
+        """
+        if version == 3 and v3:
+            level = v3.get("level", "authPriv")
+            args = ["-v3", "-l", level, "-u", v3["user"]]
+            if level in ("authPriv", "authNoPriv"):
+                args += ["-a", v3.get("auth_proto", "SHA"), "-A", v3["auth_pass"]]
+            if level == "authPriv":
+                args += ["-x", v3.get("priv_proto", "AES"), "-X", v3["priv_pass"]]
+            return args
+        return [f"-v{version}", "-c", community]
+
+    def snmp_get(self, oid, community="public", version=2, v3=None):
         """SNMP GET via snmpget CLI. Returns value string or None."""
         host = self.ip or self.hostname
         if not host:
             return None
-        cmd = ["snmpget", f"-v{version}", "-c", community, "-Oqv", host, oid]
+        cmd = ["snmpget", *self._snmp_auth_args(community, version, v3), "-Oqv", host, oid]
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
             return result.stdout.strip() if result.returncode == 0 else None
         except Exception:
             return None
 
-    def snmp_walk(self, oid, community="public", version=2):
+    def snmp_walk(self, oid, community="public", version=2, v3=None):
         """SNMP WALK via snmpwalk CLI. Returns list of (oid, value) tuples."""
         host = self.ip or self.hostname
         if not host:
             return []
-        cmd = ["snmpwalk", f"-v{version}", "-c", community, "-Oqn", host, oid]
+        cmd = ["snmpwalk", *self._snmp_auth_args(community, version, v3), "-Oqn", host, oid]
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
             if result.returncode != 0:

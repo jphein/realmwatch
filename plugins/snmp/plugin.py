@@ -5,19 +5,54 @@ Discovers interfaces with status and speed on SNMP-capable devices.
 """
 
 import logging
+import os
 from discovery_engine import SubEntity
 
 log = logging.getLogger(__name__)
 
-# Common OIDs
-OID_SYS_DESCR = "SNMPv2-MIB::sysDescr.0"
-OID_SYS_NAME = "SNMPv2-MIB::sysName.0"
-OID_SYS_UPTIME = "SNMPv2-MIB::sysUpTime.0"
-OID_IF_DESCR = "IF-MIB::ifDescr"
-OID_IF_OPER_STATUS = "IF-MIB::ifOperStatus"
-OID_IF_SPEED = "IF-MIB::ifSpeed"
-OID_IF_IN_OCTETS = "IF-MIB::ifInOctets"
-OID_IF_OUT_OCTETS = "IF-MIB::ifOutOctets"
+
+def _v3_creds_from_config(discovery_config):
+    """Build v3 credentials dict from a node's discovery config, or None.
+
+    Reads passwords from environment variables named in the config so secrets
+    stay in .env, not topology.json. Required keys when snmp_version == 3:
+      snmp_user, snmp_auth_env, snmp_priv_env (env var names)
+    Optional: snmp_auth_proto (default SHA), snmp_priv_proto (default AES),
+              snmp_level (default authPriv)
+    """
+    if discovery_config.get("snmp_version") != 3:
+        return None
+    auth_env = discovery_config.get("snmp_auth_env")
+    priv_env = discovery_config.get("snmp_priv_env")
+    user = discovery_config.get("snmp_user")
+    if not (user and auth_env and priv_env):
+        log.warning("SNMPv3 config incomplete: need snmp_user/snmp_auth_env/snmp_priv_env")
+        return None
+    auth_pass = os.environ.get(auth_env, "")
+    priv_pass = os.environ.get(priv_env, "")
+    if not (auth_pass and priv_pass):
+        log.warning("SNMPv3 env vars missing values: %s/%s", auth_env, priv_env)
+        return None
+    return {
+        "user": user,
+        "auth_pass": auth_pass,
+        "priv_pass": priv_pass,
+        "auth_proto": discovery_config.get("snmp_auth_proto", "SHA"),
+        "priv_proto": discovery_config.get("snmp_priv_proto", "AES"),
+        "level": discovery_config.get("snmp_level", "authPriv"),
+    }
+
+# Numeric OIDs (no MIB resolution needed — snmp-mibs-downloader is not installed
+# by default on Debian/Ubuntu due to MIB licensing, and symbolic names fail
+# silently with "Unknown Object Identifier" returning empty output).
+OID_SYS_DESCR = "1.3.6.1.2.1.1.1.0"
+OID_SYS_NAME = "1.3.6.1.2.1.1.5.0"
+OID_SYS_UPTIME = "1.3.6.1.2.1.1.3.0"
+OID_IF_DESCR = "1.3.6.1.2.1.2.2.1.2"
+OID_IF_OPER_STATUS = "1.3.6.1.2.1.2.2.1.8"
+OID_IF_SPEED = "1.3.6.1.2.1.2.2.1.5"
+OID_IF_IN_OCTETS = "1.3.6.1.2.1.2.2.1.10"
+OID_IF_OUT_OCTETS = "1.3.6.1.2.1.2.2.1.16"
 
 
 def _parse_walk_index(walk_results):
@@ -31,24 +66,35 @@ def _parse_walk_index(walk_results):
 
 
 def discover_snmp(node_id, node_data, host_access, engine):
-    """Discover interfaces and system info via SNMP."""
+    """Discover interfaces and system info via SNMP (v2c or v3)."""
     discovery_config = node_data.get("discovery", {})
+    version = discovery_config.get("snmp_version", 2)
     community = discovery_config.get("snmp_community", "public")
+    v3 = _v3_creds_from_config(discovery_config)
+    if version == 3 and not v3:
+        import realm_db
+        realm_db.set_discovery_capability(node_id, "snmp", False, error="SNMPv3 config invalid")
+        return []
+
+    def get(oid):
+        return host_access.snmp_get(oid, community=community, version=version, v3=v3)
+    def walk(oid):
+        return host_access.snmp_walk(oid, community=community, version=version, v3=v3)
 
     # Probe SNMP availability
-    sys_descr = host_access.snmp_get(OID_SYS_DESCR, community)
+    sys_descr = get(OID_SYS_DESCR)
     if not sys_descr:
         import realm_db
         realm_db.set_discovery_capability(node_id, "snmp", False, error="SNMP not responding")
         return []
 
-    sys_name = host_access.snmp_get(OID_SYS_NAME, community) or node_id
-    sys_uptime = host_access.snmp_get(OID_SYS_UPTIME, community) or ""
+    sys_name = get(OID_SYS_NAME) or node_id
+    sys_uptime = get(OID_SYS_UPTIME) or ""
 
     # Walk interface table
-    if_names = _parse_walk_index(host_access.snmp_walk(OID_IF_DESCR, community))
-    if_statuses = _parse_walk_index(host_access.snmp_walk(OID_IF_OPER_STATUS, community))
-    if_speeds = _parse_walk_index(host_access.snmp_walk(OID_IF_SPEED, community))
+    if_names = _parse_walk_index(walk(OID_IF_DESCR))
+    if_statuses = _parse_walk_index(walk(OID_IF_OPER_STATUS))
+    if_speeds = _parse_walk_index(walk(OID_IF_SPEED))
 
     entities = []
 
@@ -73,8 +119,12 @@ def discover_snmp(node_id, node_data, host_access, engine):
         if name.lower() in ("lo", "lo0", "null0"):
             continue
 
-        status_raw = if_statuses.get(idx, "unknown")
-        status = "running" if "up" in status_raw.lower() else "stopped"
+        # ifOperStatus per IF-MIB: 1=up, 2=down, 3=testing, 4=unknown,
+        # 5=dormant, 6=notPresent, 7=lowerLayerDown. snmpwalk -Oq returns
+        # the raw integer when no MIB is loaded; older callers might also
+        # see "up(1)" textual form, so accept both.
+        status_raw = if_statuses.get(idx, "")
+        status = "running" if status_raw.strip() == "1" or "up" in status_raw.lower() else "stopped"
 
         speed_raw = if_speeds.get(idx, "0")
         try:
