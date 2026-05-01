@@ -31,23 +31,8 @@ KATANA_IP="10.0.6.129"
 COLLECTD_PORT="25826"
 INTERVAL="30"
 
-# AP names match /etc/config/system on each AP (verified 2026-04-28).
-# TODO: extract this array to scripts/lib/aps.sh and source from all
-# AP scripts (currently duplicated in 4 places).
-declare -A APS=(
-  [ap-east-1]="10.0.6.100"           # linksys mr8300
-  [center]="10.0.6.101"        # tplink onhub
-  [ap-closet]="10.0.6.102"        # asus onhub
-  [ap-woodshed]="10.0.6.105"      # extreme-networks ws-ap3825i
-  [ap-shed]="10.0.6.109"          # netgear wndr4300sw
-  [ap-pump]="10.0.6.111"     # tplink onhub
-  [ap-path]="10.0.6.114"          # linksys wrt1900ac-v1
-  [ap-cabin]="10.0.6.116"      # linksys ea6350v3
-  [ap-deck]="10.0.6.119"          # tplink eap225-outdoor-v1
-  [ap-south-1]="10.0.6.135"          # linksys ea6350v3
-  [ap-east-2]="10.0.6.141"  # tplink onhub
-  [ap-north-1]="10.0.6.246"       # asus onhub
-)
+# shellcheck source=lib/fleet.sh
+source "$(dirname "$0")/lib/fleet.sh"
 
 setup_ap() {
   local name="$1" ip="$2"

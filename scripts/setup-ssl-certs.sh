@@ -11,34 +11,9 @@ CA_CERT="$CERT_DIR/realm-ca.pem"
 CA_DAYS=3650  # 10 years
 CERT_DAYS=825 # ~2.25 years (Chrome max)
 
-# OpenWrt devices with LuCI web interface (uhttpd)
-declare -A ROUTERS=(
-  # Routers (VRRP pair — VIP 10.0.6.1 floats between these)
-  [gatekeeper]="10.0.6.3"
-  [gatekeeper-vm]="10.0.6.4"
-  # North — Yurt Palace
-  [center]="10.0.6.101"
-  [ap-closet]="10.0.6.102"
-  [ap-north-1]="10.0.6.246"
-  [ap-pump]="10.0.6.111"
-  [ap-deck]="10.0.6.119"
-  [ap-path]="10.0.6.114"
-  [ap-woodshed]="10.0.6.105"
-  [ap-shed]="10.0.6.109"
-  # South — Dad's House
-  [ap-south-1]="10.0.6.135"
-  # East — Mom's House
-  [ap-east-1]="10.0.6.100"
-  [ap-cabin]="10.0.6.116"
-  [ap-east-2]="10.0.6.141"
-  # Infrastructure
-  [gs308t]="10.0.6.110"
-)
-
-# HP managed switch — has web UI but not uhttpd (cert generated, push is manual)
-declare -A SWITCHES=(
-  [hp]="10.0.6.103"
-)
+# Fleet definitions: OPENWRT_FLEET (uhttpd-capable) + SWITCHES_VENDOR_VENDOR (manual upload).
+# shellcheck source=lib/fleet.sh
+source "$(dirname "$0")/lib/fleet.sh"
 
 SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes"
 
@@ -178,13 +153,13 @@ main() {
   echo ""
 
   # Generate certs for all OpenWrt devices
-  for name in "${!ROUTERS[@]}"; do
-    generate_cert "$name" "${ROUTERS[$name]}"
+  for name in "${!OPENWRT_FLEET[@]}"; do
+    generate_cert "$name" "${OPENWRT_FLEET[$name]}"
   done
 
   # Generate certs for managed switches (no uhttpd push)
-  for name in "${!SWITCHES[@]}"; do
-    generate_cert "$name" "${SWITCHES[$name]}"
+  for name in "${!SWITCHES_VENDOR[@]}"; do
+    generate_cert "$name" "${SWITCHES_VENDOR[$name]}"
   done
   echo ""
 
@@ -192,8 +167,8 @@ main() {
   info "Pushing certs to OpenWrt devices..."
   echo ""
   local success=0 fail=0
-  for name in "${!ROUTERS[@]}"; do
-    if push_cert "$name" "${ROUTERS[$name]}"; then
+  for name in "${!OPENWRT_FLEET[@]}"; do
+    if push_cert "$name" "${OPENWRT_FLEET[$name]}"; then
       ((++success))
     else
       ((++fail))
@@ -205,8 +180,8 @@ main() {
 
   # Note about managed switches
   info "Managed switch certs (upload manually via web UI):"
-  for name in "${!SWITCHES[@]}"; do
-    echo "  $name (${SWITCHES[$name]}): $CERT_DIR/${name}.key + $CERT_DIR/${name}.pem"
+  for name in "${!SWITCHES_VENDOR[@]}"; do
+    echo "  $name (${SWITCHES_VENDOR[$name]}): $CERT_DIR/${name}.key + $CERT_DIR/${name}.pem"
   done
   echo ""
 
@@ -217,13 +192,13 @@ main() {
   fi
 
   echo ""
-  ok "Done! ${#ROUTERS[@]} OpenWrt devices + ${#SWITCHES[@]} switch certs generated."
+  ok "Done! ${#OPENWRT_FLEET[@]} OpenWrt devices + ${#SWITCHES_VENDOR[@]} switch certs generated."
   echo "  HTTPS URLs:"
-  for name in "${!ROUTERS[@]}"; do
-    echo "    https://${ROUTERS[$name]}  ($name)"
+  for name in "${!OPENWRT_FLEET[@]}"; do
+    echo "    https://${OPENWRT_FLEET[$name]}  ($name)"
   done
-  for name in "${!SWITCHES[@]}"; do
-    echo "    https://${SWITCHES[$name]}  ($name) — manual cert upload"
+  for name in "${!SWITCHES_VENDOR[@]}"; do
+    echo "    https://${SWITCHES_VENDOR[$name]}  ($name) — manual cert upload"
   done
   echo ""
 }

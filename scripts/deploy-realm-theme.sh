@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Deploy Realm fantasy LuCI theme to all OpenWrt devices.
+# Deploy Realm fantasy LuCI theme to all OpenWrt devices in the fleet.
 #
 # Usage:
-#   ./scripts/deploy-realm-theme.sh               # all 13 devices
+#   ./scripts/deploy-realm-theme.sh               # all OpenWrt devices
 #   ./scripts/deploy-realm-theme.sh gatekeeper     # single device by name
 #   ./scripts/deploy-realm-theme.sh 10.0.6.100     # single device by IP
 set -uo pipefail
@@ -12,23 +12,8 @@ SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=8 -o BatchMode=yes"
 
 G='\033[1;32m'; R='\033[1;31m'; Y='\033[1;33m'; C='\033[0;36m'; N='\033[0m'
 
-declare -A DEVICES=(
-  [gatekeeper]="10.0.6.3"
-  [gatekeeper-vm]="10.0.6.4"
-  [ap-east-1]="10.0.6.100"           # linksys mr8300
-  [center]="10.0.6.101"        # tplink onhub
-  [ap-closet]="10.0.6.102"        # asus onhub
-  [ap-woodshed]="10.0.6.105"      # extreme-networks ws-ap3825i
-  [ap-shed]="10.0.6.109"          # netgear wndr4300sw
-  [ap-pump]="10.0.6.111"     # tplink onhub
-  [ap-path]="10.0.6.114"          # linksys wrt1900ac-v1
-  [ap-cabin]="10.0.6.116"      # linksys ea6350v3
-  [ap-deck]="10.0.6.119"          # tplink eap225-outdoor-v1
-  [ap-south-1]="10.0.6.135"          # linksys ea6350v3
-  [ap-east-2]="10.0.6.141"  # tplink onhub
-  [ap-north-1]="10.0.6.246"       # asus onhub
-  [GS308T]="10.0.6.110"              # netgear gs308t managed switch
-)
+# shellcheck source=lib/fleet.sh
+source "$(dirname "$0")/lib/fleet.sh"
 
 # Remote paths
 CSS_DIR="/www/luci-static/realm"
@@ -89,14 +74,14 @@ if [[ $# -gt 0 ]]; then
   # Single device mode
   target="$1"
   # Check if it's a name or IP
-  if [[ -n "${DEVICES[$target]+x}" ]]; then
-    deploy_device "$target" "${DEVICES[$target]}" || ((FAILED++))
+  if [[ -n "${OPENWRT_FLEET[$target]+x}" ]]; then
+    deploy_device "$target" "${OPENWRT_FLEET[$target]}" || ((FAILED++))
     ((DEPLOYED++))
   else
     # Try as IP — find matching name
     found=0
-    for name in "${!DEVICES[@]}"; do
-      if [[ "${DEVICES[$name]}" == "$target" ]]; then
+    for name in "${!OPENWRT_FLEET[@]}"; do
+      if [[ "${OPENWRT_FLEET[$name]}" == "$target" ]]; then
         deploy_device "$name" "$target" || ((FAILED++))
         ((DEPLOYED++))
         found=1
@@ -110,8 +95,8 @@ if [[ $# -gt 0 ]]; then
   fi
 else
   # All devices
-  for name in $(echo "${!DEVICES[@]}" | tr ' ' '\n' | sort); do
-    deploy_device "$name" "${DEVICES[$name]}" || ((FAILED++))
+  for name in $(echo "${!OPENWRT_FLEET[@]}" | tr ' ' '\n' | sort); do
+    deploy_device "$name" "${OPENWRT_FLEET[$name]}" || ((FAILED++))
     ((DEPLOYED++))
   done
 fi
