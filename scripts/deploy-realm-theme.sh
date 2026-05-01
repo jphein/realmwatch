@@ -13,20 +13,21 @@ SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=8 -o BatchMode=yes"
 G='\033[1;32m'; R='\033[1;31m'; Y='\033[1;33m'; C='\033[0;36m'; N='\033[0m'
 
 declare -A DEVICES=(
-  [gatekeeper]="10.0.6.1"
-  [mr8300-host]="10.0.6.100"
-  [onhub-office]="10.0.6.101"
-  [onhub-closet]="10.0.6.102"
-  [woodshed]="10.0.6.105"
-  [wndr4300sw-shed]="10.0.6.109"
-  [onhub-pumphouse]="10.0.6.111"
-  [wrt1900ac]="10.0.6.114"
-  [ea6350-cl]="10.0.6.116"
-  [eap225-outdoor]="10.0.6.119"
-  [ea6350v3]="10.0.6.135"
-  [onhub-family]="10.0.6.141"
-  [onhub-bed]="10.0.6.246"
-  [gs308t]="10.0.6.110"
+  [gatekeeper]="10.0.6.3"
+  [gatekeeper-vm]="10.0.6.4"
+  [ap-east-1]="10.0.6.100"           # linksys mr8300
+  [center]="10.0.6.101"        # tplink onhub
+  [ap-closet]="10.0.6.102"        # asus onhub
+  [ap-woodshed]="10.0.6.105"      # extreme-networks ws-ap3825i
+  [ap-shed]="10.0.6.109"          # netgear wndr4300sw
+  [ap-pump]="10.0.6.111"     # tplink onhub
+  [ap-path]="10.0.6.114"          # linksys wrt1900ac-v1
+  [ap-cabin]="10.0.6.116"      # linksys ea6350v3
+  [ap-deck]="10.0.6.119"          # tplink eap225-outdoor-v1
+  [ap-south-1]="10.0.6.135"          # linksys ea6350v3
+  [ap-east-2]="10.0.6.141"  # tplink onhub
+  [ap-north-1]="10.0.6.246"       # asus onhub
+  [GS308T]="10.0.6.110"              # netgear gs308t managed switch
 )
 
 # Remote paths
@@ -55,11 +56,11 @@ deploy_device() {
   # Create directories
   ssh_cmd "$ip" "mkdir -p $CSS_DIR $TPL_DIR"
 
-  # Push CSS + assets
-  push_file "$ip" "$THEME_DIR/cascade.css" "$CSS_DIR/cascade.css"
+  # Push our overrides only — header.ut loads upstream bootstrap cascade.css
+  # and mobile.css directly from /luci-static/bootstrap/, so we don't ship those.
+  push_file "$ip" "$THEME_DIR/realm-overrides.css" "$CSS_DIR/realm-overrides.css"
   push_file "$ip" "$THEME_DIR/logo.svg" "$CSS_DIR/logo.svg"
   push_file "$ip" "$THEME_DIR/logo_48.png" "$CSS_DIR/logo_48.png"
-  push_file "$ip" "$THEME_DIR/mobile.css" "$CSS_DIR/mobile.css"
 
   # Push templates
   push_file "$ip" "$THEME_DIR/header.ut" "$TPL_DIR/header.ut"
