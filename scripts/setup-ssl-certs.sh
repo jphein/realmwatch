@@ -13,7 +13,9 @@ CERT_DAYS=825 # ~2.25 years (Chrome max)
 
 # OpenWrt devices with LuCI web interface (uhttpd)
 declare -A ROUTERS=(
-  [gatekeeper]="10.0.6.1"
+  # Routers (VRRP pair — VIP 10.0.6.1 floats between these)
+  [gatekeeper]="10.0.6.3"
+  [gatekeeper-vm]="10.0.6.4"
   # North — Yurt Palace
   [center]="10.0.6.101"
   [ap-closet]="10.0.6.102"
@@ -192,9 +194,9 @@ main() {
   local success=0 fail=0
   for name in "${!ROUTERS[@]}"; do
     if push_cert "$name" "${ROUTERS[$name]}"; then
-      ((success++))
+      ((++success))
     else
-      ((fail++))
+      ((++fail))
     fi
   done
   echo ""
