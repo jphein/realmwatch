@@ -1,0 +1,75 @@
+#!/usr/bin/expect -f
+# HP V1910-24G — pull thermal/fan baseline + SNMP diagnostics.
+# Read-only: no config changes, no save. Safe to run anytime.
+
+set timeout 30
+log_user 1
+
+set HOST   "10.0.6.103"
+set USER   "admin"
+if {[catch {exec bw get password "HP Switch 10.0.6.103"} PASS]} {
+    puts stderr "ERROR: failed to fetch credentials from Bitwarden: $PASS"
+    exit 1
+}
+set UNLOCK "512900"
+
+set ::env(SSHPASS) $PASS
+spawn sshpass -e ssh -tt \
+    -o StrictHostKeyChecking=no \
+    -o UserKnownHostsFile=/dev/null \
+    -o ConnectTimeout=10 \
+    -o KexAlgorithms=+diffie-hellman-group-exchange-sha1 \
+    -o Ciphers=+aes128-cbc \
+    -o HostKeyAlgorithms=+ssh-rsa \
+    -o PubkeyAuthentication=no \
+    $USER@$HOST
+
+expect {
+    -re {<[^>]+>} { }
+    timeout { puts "TIMEOUT waiting for prompt"; exit 1 }
+}
+
+send "_cmdline-mode on\r"
+expect {
+    "Continue?" { send "Y\r" }
+    "All commands can be displayed" { }
+    timeout { puts "TIMEOUT after _cmdline-mode on"; exit 1 }
+}
+expect {
+    "password:" { send "$UNLOCK\r" }
+    timeout { puts "TIMEOUT waiting for unlock password"; exit 1 }
+}
+expect -re {<[^>]+>}
+
+send "screen-length disable\r"
+expect -re {<[^>]+>}
+
+# Baseline + SNMP diagnostics. Comware 5.20 verbs only.
+set cmds {
+    "display clock"
+    "display version"
+    "display device"
+    "display environment"
+    "display fan"
+    "display power"
+    "display cpu-usage"
+    "display memory"
+    "display snmp-agent sys-info"
+    "display snmp-agent local-engineid"
+    "display snmp-agent usm-user"
+    "display snmp-agent group"
+    "display snmp-agent community"
+    "display acl all"
+}
+
+foreach c $cmds {
+    send -- "\r=== $c ===\r"
+    send -- "$c\r"
+    expect {
+        -re {<[^>]+>\s*$} { }
+        timeout { puts "\n--- TIMEOUT after: $c ---"; }
+    }
+}
+
+send "quit\r"
+expect eof

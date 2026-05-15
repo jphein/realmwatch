@@ -1,0 +1,112 @@
+#!/usr/bin/expect -f
+# HP V1910-24G — persistent thermal poller.
+# Holds ONE SSH+cmdline session and prints structured lines:
+#   POLL <epoch> <temp_c> <fan_state> <power_state>
+# on every cycle. Drives a bash wrapper that handles alerts/UI.
+#
+# Argv: [interval_seconds]  (default 30)
+# Read-only: never sends config or save commands.
+
+set INTERVAL 30
+if {$argc >= 1} { set INTERVAL [lindex $argv 0] }
+
+set timeout 30
+log_user 0   ;# suppress raw SSH chatter; we emit our own structured lines
+
+set HOST   "10.0.6.103"
+set USER   "admin"
+if {[catch {exec bw get password "HP Switch 10.0.6.103"} PASS]} {
+    puts stderr "ERR fetch_credentials: $PASS"
+    exit 1
+}
+set UNLOCK "512900"
+
+set ::env(SSHPASS) $PASS
+spawn sshpass -e ssh -tt \
+    -o StrictHostKeyChecking=no \
+    -o UserKnownHostsFile=/dev/null \
+    -o ConnectTimeout=10 \
+    -o ServerAliveInterval=20 \
+    -o KexAlgorithms=+diffie-hellman-group-exchange-sha1 \
+    -o Ciphers=+aes128-cbc \
+    -o HostKeyAlgorithms=+ssh-rsa \
+    -o PubkeyAuthentication=no \
+    $USER@$HOST
+
+expect {
+    -re {<[^>]+>} { }
+    timeout { puts stderr "ERR initial_prompt"; exit 1 }
+}
+
+send "_cmdline-mode on\r"
+expect {
+    "Continue?" { send "Y\r" }
+    "All commands can be displayed" { }
+    timeout { puts stderr "ERR cmdline_unlock_1"; exit 1 }
+}
+expect {
+    "password:" { send "$UNLOCK\r" }
+    timeout { puts stderr "ERR cmdline_unlock_2"; exit 1 }
+}
+expect -re {<[^>]+>}
+
+send "screen-length disable\r"
+expect -re {<[^>]+>}
+
+puts "READY interval=${INTERVAL}s"
+flush stdout
+
+# Poll loop — runs until SIGINT or session drop.
+while {1} {
+    set ts [clock seconds]
+
+    # ---- temperature ----
+    send "display environment\r"
+    set temp "?"
+    expect {
+        -re {hotspot 1\s+(\d+)\s} {
+            set temp $expect_out(1,string)
+            exp_continue
+        }
+        -re {<[^>]+>\s*$} { }
+        timeout { puts stderr "WARN env_timeout"; }
+    }
+
+    # ---- fan ----
+    send "display fan\r"
+    set fan "?"
+    expect {
+        -re {Fan\s+\d+\s+State:\s+(\w+)} {
+            set fan $expect_out(1,string)
+            exp_continue
+        }
+        -re {<[^>]+>\s*$} { }
+        timeout { puts stderr "WARN fan_timeout"; }
+    }
+
+    # ---- power ----
+    send "display power\r"
+    set power "?"
+    expect {
+        -re {Power\s+\d+\s+State:\s+(\w+)} {
+            set power $expect_out(1,string)
+            exp_continue
+        }
+        -re {<[^>]+>\s*$} { }
+        timeout { puts stderr "WARN pwr_timeout"; }
+    }
+
+    puts "POLL $ts $temp $fan $power"
+    flush stdout
+
+    # use exp idle-sleep so the SSH keepalive thread keeps running
+    set wake [expr {[clock seconds] + $INTERVAL}]
+    while {[clock seconds] < $wake} {
+        # absorb any unsolicited output (e.g. console messages) without loop death
+        expect {
+            -timeout 1
+            -re {.+} { }
+            timeout { }
+        }
+    }
+}
