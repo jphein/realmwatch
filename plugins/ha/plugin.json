@@ -43,5 +43,17 @@
       "default": 30,
       "description": "Poll interval in seconds"
     }
+  },
+
+  "cli": {
+    "summary": "Query Home Assistant bridge (energy, solar/battery/grid)",
+    "verbs": [
+      {
+        "name": "energy",
+        "summary": "Show solar/battery/grid energy snapshot",
+        "method": "GET",
+        "path": "/energy"
+      }
+    ]
   }
 }

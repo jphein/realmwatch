@@ -37,5 +37,49 @@
     "playbooks_dir": { "default": "playbooks", "description": "Directory for playbook YAML files" },
     "check_mode_default": { "default": true, "description": "Default to --check (dry run) mode" },
     "openwrt_exclude_kernel": { "default": true, "description": "Exclude kernel packages on OpenWrt upgrades" }
+  },
+
+  "cli": {
+    "summary": "Ansible playbook execution and infrastructure (War Room)",
+    "verbs": [
+      {
+        "name": "inventory",
+        "summary": "Show parsed Ansible inventory",
+        "method": "GET",
+        "path": "/plugins/ansible/inventory"
+      },
+      {
+        "name": "playbooks",
+        "summary": "List available playbooks",
+        "method": "GET",
+        "path": "/plugins/ansible/playbooks",
+        "table": "(.playbooks // .) | .[] | [.name // \"-\", .description // \"-\", (.tags // [] | join(\",\"))]",
+        "header": ["NAME", "DESCRIPTION", "TAGS"]
+      },
+      {
+        "name": "runs",
+        "summary": "Recent playbook runs",
+        "method": "GET",
+        "path": "/plugins/ansible/runs",
+        "table": "(.runs // .) | .[] | [.id // \"-\", .playbook // \"-\", .status // \"-\", (.started // \"-\"), (.duration // \"-\" | tostring)]",
+        "header": ["ID", "PLAYBOOK", "STATUS", "STARTED", "DURATION"]
+      },
+      {
+        "name": "run",
+        "summary": "Run a playbook (use --json for full response). Pass --check for dry-run.",
+        "method": "POST",
+        "path": "/plugins/ansible/run",
+        "args": ["playbook"],
+        "body": "{\"playbook\":\"$1\"}"
+      },
+      {
+        "name": "ai",
+        "summary": "Ask the War Room AI to suggest/explain a playbook",
+        "method": "POST",
+        "path": "/plugins/ansible/ai",
+        "args": ["prompt"],
+        "body": "{\"prompt\":\"$1\"}"
+      }
+    ]
   }
 }

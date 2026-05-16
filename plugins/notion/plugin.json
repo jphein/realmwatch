@@ -24,5 +24,25 @@
       "handler": "handle_notion_complete",
       "raw_path": true
     }
-  ]
+  ],
+
+  "cli": {
+    "summary": "Notion sync — pull Today todos as quests, mark them complete",
+    "verbs": [
+      {
+        "name": "sync",
+        "summary": "Sync Notion Today database into realm quests",
+        "method": "GET",
+        "path": "/notion-sync"
+      },
+      {
+        "name": "complete",
+        "summary": "Mark a Notion page complete (archives the quest)",
+        "method": "POST",
+        "path": "/notion-complete",
+        "args": ["page_id"],
+        "body": "{\"page_id\":\"$1\"}"
+      }
+    ]
+  }
 }

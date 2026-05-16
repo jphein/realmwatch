@@ -122,6 +122,12 @@ arg_names=$(printf '%s' "$verb_spec" | jq -r '(.args // []) | .[]')
 # appear in the path.
 declare -A path_vars=()
 
+# `all_args` captures every positional in declaration order — used for body
+# template substitution ($1, $2, ...) regardless of whether args are also
+# consumed by path placeholders. This lets a verb declare `args: ["msg"]`
+# and a body template like {"message":"$1"} without colliding.
+declare -a all_args=()
+
 if [[ -n "$arg_names" ]]; then
   i=0
   while IFS= read -r name; do
@@ -129,13 +135,16 @@ if [[ -n "$arg_names" ]]; then
     if [[ $i -lt $# ]]; then
       eval "v=\${$((i+1))}"
       path_vars["$name"]="$v"
+      all_args+=("$v")
       i=$((i+1))
     else
       realm::die "verb '$verb' requires argument: $name" 2
     fi
   done <<< "$arg_names"
-  # Shift consumed args off so $@ is what's left
+  # Shift consumed args off so $@ is what's left for any extra body subs
   shift $i || true
+  # Append remaining positionals (rare but supported)
+  for v in "$@"; do all_args+=("$v"); done
 else
   # Auto-fill from positionals in placeholder order
   while [[ "$path" == *"<"*">"* ]]; do
@@ -146,6 +155,7 @@ else
       realm::die "verb '$verb' requires argument: $name (for $placeholder)" 2
     fi
     path_vars["$name"]="$1"
+    all_args+=("$1")
     shift
     # Replace just the first occurrence so we keep iterating cleanly
     path="${path//$placeholder/__PLACEHOLDER_${name}__}"
@@ -154,9 +164,9 @@ else
   for name in "${!path_vars[@]}"; do
     path="${path//__PLACEHOLDER_${name}__/${path_vars[$name]}}"
   done
+  # Any leftover positionals are part of all_args too
+  for v in "$@"; do all_args+=("$v"); done
 fi
-
-# Now $@ holds remaining args. Used by body substitution if needed.
 
 # Apply path substitution if --args mode was used (path_vars filled but path not yet substituted)
 for name in "${!path_vars[@]}"; do
@@ -165,23 +175,21 @@ done
 
 realm::api_reachable || realm::die_unreachable
 
-# Build the request body. If body is a JSON object literal in the manifest,
-# use it directly. If body is a string containing $1/$2 etc., substitute
-# remaining positionals.
+# Build the request body. Substitution always runs — a body template can be
+# valid JSON containing $N placeholders (e.g. {"message":"$1"}), so we don't
+# branch on "is it parseable JSON" here. Templates with no $N placeholders
+# are unaffected. Substitution happens BEFORE the request so --dry-run shows
+# the resolved body.
 final_body=""
 if [[ -n "$body_tmpl" ]]; then
-  # Check if it's a JSON literal (object/array) or a string template
-  if printf '%s' "$body_tmpl" | jq -e . >/dev/null 2>&1; then
-    final_body="$body_tmpl"
-  else
-    # String template — substitute $1, $2, etc.
-    final_body="$body_tmpl"
-    i=1
-    for v in "$@"; do
-      final_body="${final_body//\$$i/$v}"
-      i=$((i+1))
-    done
-  fi
+  final_body="$body_tmpl"
+  i=1
+  for v in "${all_args[@]+"${all_args[@]}"}"; do
+    # JSON-escape the value (handles quotes, backslashes, control chars)
+    v_escaped=$(printf '%s' "$v" | jq -Rs . 2>/dev/null | sed -e 's/^"//' -e 's/"$//')
+    final_body="${final_body//\$$i/$v_escaped}"
+    i=$((i+1))
+  done
 fi
 
 # Issue the request

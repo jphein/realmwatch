@@ -36,5 +36,39 @@
       "handler": "handle_history",
       "raw_path": true
     }
-  ]
+  ],
+
+  "cli": {
+    "summary": "Chat with the realm via Azure AI (o4-mini, session-aware)",
+    "verbs": [
+      {
+        "name": "ask",
+        "summary": "Send a single message and print the reply",
+        "method": "POST",
+        "path": "/chat",
+        "args": ["message"],
+        "body": "{\"message\":\"$1\"}"
+      },
+      {
+        "name": "sessions",
+        "summary": "List active chat sessions",
+        "method": "GET",
+        "path": "/chat/sessions",
+        "table": ".sessions // [] | .[] | [.id // \"-\", .name // \"-\", (.messages // 0 | tostring), (.updated // \"-\")]",
+        "header": ["ID", "NAME", "MESSAGES", "UPDATED"]
+      },
+      {
+        "name": "history",
+        "summary": "Show recent chat history",
+        "method": "GET",
+        "path": "/chat/history"
+      },
+      {
+        "name": "clear",
+        "summary": "Clear the current chat session",
+        "method": "POST",
+        "path": "/chat/clear"
+      }
+    ]
+  }
 }

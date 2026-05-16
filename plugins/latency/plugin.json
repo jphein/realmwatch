@@ -30,5 +30,17 @@
     }
   ],
 
-  "sse_types": ["latency"]
+  "sse_types": ["latency"],
+
+  "cli": {
+    "summary": "Background fping latency probes (RTT per node, grouped by VLAN)",
+    "verbs": [
+      {
+        "name": "show",
+        "summary": "Current RTT map and per-VLAN grouping",
+        "method": "GET",
+        "path": "/latency"
+      }
+    ]
+  }
 }

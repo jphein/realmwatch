@@ -54,5 +54,43 @@
     }
   ],
 
-  "sse_types": ["wifi"]
+  "sse_types": ["wifi"],
+
+  "cli": {
+    "summary": "Inspect WiFi APs, clients, and scan state",
+    "verbs": [
+      {
+        "name": "aps",
+        "summary": "List APs with their client counts and SSIDs",
+        "method": "GET",
+        "path": "/wifi/aps",
+        "table": "to_entries[] | [.key, (.value.label // \"-\"), (.value.ip // \"-\"), ((.value.clients // []) | length | tostring), ((.value.ssids // []) | map(.ssid) | join(\",\"))]",
+        "header": ["AP", "LABEL", "IP", "CLIENTS", "SSIDS"]
+      },
+      {
+        "name": "clients",
+        "summary": "Per-AP client list with signal/SNR",
+        "method": "GET",
+        "path": "/scan/wifi"
+      },
+      {
+        "name": "lldp",
+        "summary": "LLDP topology snapshot",
+        "method": "GET",
+        "path": "/scan/lldp"
+      },
+      {
+        "name": "status",
+        "summary": "Current scan job status",
+        "method": "GET",
+        "path": "/scan/status"
+      },
+      {
+        "name": "scan",
+        "summary": "Trigger / refresh a full scan",
+        "method": "GET",
+        "path": "/scan"
+      }
+    ]
+  }
 }

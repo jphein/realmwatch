@@ -241,15 +241,16 @@ _realm_complete() {
     return 0
   fi
 
-  # Per-subcommand completion: ask the subcommand if it knows
+  # Per-subcommand completion: ask the dispatcher to delegate to the
+  # subcommand's --list-subcommands. Works for both Method-A executables and
+  # Method-B declarative plugins (the dispatcher routes both through the
+  # same hook).
   local sub="${COMP_WORDS[1]}"
-  if command -v "realm-$sub" >/dev/null 2>&1 || [[ -x "${REALM_EXEC_PATH:-}/realm-$sub" ]]; then
-    local subs
-    subs=$(realm "$sub" --list-subcommands 2>/dev/null) || subs=""
-    if [[ -n "$subs" ]]; then
-      COMPREPLY=( $(compgen -W "$subs --help --json --no-color --verbose --quiet --dry-run --host" -- "$cur") )
-      return 0
-    fi
+  local subs
+  subs=$(realm "$sub" --list-subcommands 2>/dev/null) || subs=""
+  if [[ -n "$subs" ]]; then
+    COMPREPLY=( $(compgen -W "$subs --help --json --no-color --verbose --quiet --dry-run --host" -- "$cur") )
+    return 0
   fi
 
   COMPREPLY=( $(compgen -W "--help --json --no-color --verbose --quiet --dry-run --host" -- "$cur") )

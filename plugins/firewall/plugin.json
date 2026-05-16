@@ -30,5 +30,17 @@
     }
   ],
 
-  "sse_types": ["firewall"]
+  "sse_types": ["firewall"],
+
+  "cli": {
+    "summary": "Inspect gatekeeper nftables zones and counters",
+    "verbs": [
+      {
+        "name": "show",
+        "summary": "Parsed nftables snapshot (zones, rules, counters)",
+        "method": "GET",
+        "path": "/firewall"
+      }
+    ]
+  }
 }

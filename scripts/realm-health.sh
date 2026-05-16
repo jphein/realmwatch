@@ -108,22 +108,28 @@ if [[ -z "$SKIP_SIBLINGS" ]]; then
       SIBLINGS["$k"]="$v"
     done < "$sib_conf"
   fi
-  # Iterate in sorted name order
+  # Iterate in sorted name order. `set -e` is in effect so every step that
+  # might fail (curl, jq) is explicitly tolerated with `|| true`.
   for name in $(echo "${!SIBLINGS[@]}" | tr ' ' '\n' | sort); do
     url="${SIBLINGS[$name]}"
     resp=$(curl -sf --max-time 2 "$url/api/version" 2>/dev/null || true)
     if [[ -z "$resp" ]]; then
-      printf "  ${R}--${N}  %-8s %s (unreachable)\n" "$name" "$url"
-    else
-      # Try to extract a name and hash from the response. Falls back to raw if jq missing.
-      if command -v jq >/dev/null 2>&1; then
-        v=$(echo "$resp" | jq -r '.name // .version // "?"' 2>/dev/null)
-        h=$(echo "$resp" | jq -r '.hash // .commit // "?"' 2>/dev/null)
-        printf "  ${G}OK${N}  %-8s %s (%s)\n" "$name" "$v" "$h"
-      else
-        printf "  ${G}OK${N}  %-8s %s\n" "$name" "$url"
-      fi
+      printf "  ${R}--${N}  %-10s %s (unreachable)\n" "$name" "$url"
+      continue
     fi
+    # Verify it's actually JSON; if not, the service is up but doesn't speak
+    # the /api/version contract (e.g., a static frontend like bestiary).
+    if ! command -v jq >/dev/null 2>&1; then
+      printf "  ${G}OK${N}  %-10s %s\n" "$name" "$url"
+      continue
+    fi
+    if ! echo "$resp" | jq -e . >/dev/null 2>&1; then
+      printf "  ${Y}??${N}  %-10s %s (responds, but no JSON /api/version)\n" "$name" "$url"
+      continue
+    fi
+    v=$(echo "$resp" | jq -r '.name // .version // "?"' 2>/dev/null || echo "?")
+    h=$(echo "$resp" | jq -r '.hash // .commit // "?"' 2>/dev/null || echo "?")
+    printf "  ${G}OK${N}  %-10s %s (%s)\n" "$name" "$v" "$h"
   done
 fi
 echo ""

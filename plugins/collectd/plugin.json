@@ -43,5 +43,19 @@
       "default": 25826,
       "description": "UDP port for collectd network protocol listener"
     }
+  },
+
+  "cli": {
+    "summary": "Per-host metric summaries from collectd (Realm Census)",
+    "verbs": [
+      {
+        "name": "show",
+        "summary": "Snapshot of every host with recent collectd metrics",
+        "method": "GET",
+        "path": "/collectd",
+        "table": "(.hosts // .) | (if type==\"object\" then to_entries | map(.value + {host: .key}) else . end) | .[] | [.host // \"-\", (.cpu // \"-\" | tostring), (.load // \"-\" | tostring), (.mem_pct // .mem // \"-\" | tostring), (.uptime // \"-\" | tostring)]",
+        "header": ["HOST", "CPU", "LOAD", "MEM%", "UPTIME"]
+      }
+    ]
   }
 }
