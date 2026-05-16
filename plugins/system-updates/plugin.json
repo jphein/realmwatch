@@ -34,5 +34,80 @@
     { "method": "DELETE","path": "/updates/approve/<source>", "handler": "handle_skip_one",    "raw_path": true }
   ],
 
-  "sse_types": ["updates"]
+  "sse_types": ["updates"],
+
+  "cli": {
+    "summary": "Track and run desktop package updates (apt, snap, flatpak, mise, brew, ...)",
+    "verbs": [
+      {
+        "name": "list",
+        "summary": "List all known update sources and their pending updates",
+        "method": "GET",
+        "path": "/updates",
+        "table": ".sources | to_entries[] | [.key, (.value.available // 0 | tostring), (.value.status // \"-\"), (.value.last_check // 0 | if . == 0 then \"never\" else (. | strftime(\"%Y-%m-%d %H:%M\")) end)]",
+        "header": ["SOURCE", "PENDING", "STATUS", "LAST_CHECK"]
+      },
+      {
+        "name": "inventory",
+        "summary": "Show full inventory of installed packages across sources",
+        "method": "GET",
+        "path": "/api/inventory"
+      },
+      {
+        "name": "history",
+        "summary": "Show recent update runs",
+        "method": "GET",
+        "path": "/updates/history",
+        "table": "(.history // [])[] | [.ts // \"-\", .source // \"-\", .action // \"-\", (.result // \"-\")]",
+        "header": ["TIME", "SOURCE", "ACTION", "RESULT"]
+      },
+      {
+        "name": "check",
+        "summary": "Trigger an update check (all sources, or one if --source given)",
+        "method": "POST",
+        "path": "/updates/check"
+      },
+      {
+        "name": "check-one",
+        "summary": "Trigger an update check for one source",
+        "method": "POST",
+        "path": "/updates/check/<source>",
+        "args": ["source"]
+      },
+      {
+        "name": "run",
+        "summary": "Run all approved updates",
+        "method": "POST",
+        "path": "/updates/run"
+      },
+      {
+        "name": "run-one",
+        "summary": "Run updates for one source",
+        "method": "POST",
+        "path": "/updates/run/<source>",
+        "args": ["source"]
+      },
+      {
+        "name": "cancel",
+        "summary": "Cancel an in-flight update run for one source",
+        "method": "DELETE",
+        "path": "/updates/run/<source>",
+        "args": ["source"]
+      },
+      {
+        "name": "approve",
+        "summary": "Approve pending updates for one source so the next run picks them up",
+        "method": "POST",
+        "path": "/updates/approve/<source>",
+        "args": ["source"]
+      },
+      {
+        "name": "skip",
+        "summary": "Skip pending updates for one source",
+        "method": "DELETE",
+        "path": "/updates/approve/<source>",
+        "args": ["source"]
+      }
+    ]
+  }
 }

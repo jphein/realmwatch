@@ -18,5 +18,17 @@
       "handler": "handle_herald",
       "raw_path": true
     }
-  ]
+  ],
+
+  "cli": {
+    "summary": "Inspect the herald (voice daemon) status",
+    "verbs": [
+      {
+        "name": "status",
+        "summary": "Show herald daemon status",
+        "method": "GET",
+        "path": "/herald"
+      }
+    ]
+  }
 }

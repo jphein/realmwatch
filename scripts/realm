@@ -56,10 +56,20 @@ realm::_resolve() {
     fi
   done
 
-  # 2. plugin-provided cli
+  # 2. plugin-provided cli (Method A — executable file)
   if [[ -x "$_plugins_dir/$sub/cli" ]]; then
     printf '%s' "$_plugins_dir/$sub/cli"
     return 0
+  fi
+
+  # 2b. plugin with declarative cli section in plugin.json (Method B)
+  if [[ -f "$_plugins_dir/$sub/plugin.json" ]]; then
+    if jq -e '.cli.verbs and (.cli.verbs | length > 0)' "$_plugins_dir/$sub/plugin.json" >/dev/null 2>&1; then
+      # Route through the generic plugin handler, passing the plugin name
+      # via REALM_DELEGATE_PLUGIN so the exec wrapper can prepend it.
+      printf 'REALM_DELEGATE_PLUGIN:%s' "$sub"
+      return 0
+    fi
   fi
 
   # 3. on $PATH
@@ -86,6 +96,9 @@ realm::_list_subcommands() {
       # Skip hidden / internal names
       [[ "$sub" == ".realm-version" ]] && continue
       [[ "$sub" == .* ]] && continue
+      # Skip the generic plugin handler — it's an internal dispatch target,
+      # not a user-facing subcommand. Users reach it via `realm <plugin>`.
+      [[ "$sub" == "plugin" ]] && continue
       if [[ "$seen" != *"|$sub|"* ]]; then
         printf '%s\n' "$sub"
         seen="$seen|$sub|"
@@ -106,12 +119,22 @@ realm::_list_subcommands() {
     fi
   done
 
-  # Plugin-provided CLI hooks
+  # Plugin-provided CLI hooks (Method A — executable)
   if [[ -d "$_plugins_dir" ]]; then
     for f in "$_plugins_dir"/*/cli; do
       [[ -x "$f" ]] || continue
       sub="$(basename "$(dirname "$f")")"
       if [[ "$seen" != *"|$sub|"* ]]; then
+        printf '%s\n' "$sub"
+        seen="$seen|$sub|"
+      fi
+    done
+    # Method B — plugins with a `cli` section in plugin.json
+    for f in "$_plugins_dir"/*/plugin.json; do
+      [[ -f "$f" ]] || continue
+      sub="$(basename "$(dirname "$f")")"
+      [[ "$seen" == *"|$sub|"* ]] && continue
+      if jq -e '.cli.verbs and (.cli.verbs | length > 0)' "$f" >/dev/null 2>&1; then
         printf '%s\n' "$sub"
         seen="$seen|$sub|"
       fi
@@ -136,6 +159,20 @@ realm::_summary_for() {
   local sub="$1"
   local path="$2"
   local out
+
+  # Plugin-declared (Method B) — pull the summary straight from plugin.json
+  if [[ "$path" = "REALM_DELEGATE_PLUGIN:"* ]]; then
+    local plugin="${path#REALM_DELEGATE_PLUGIN:}"
+    out="$(jq -r '.cli.summary // .description // ""' "$_plugins_dir/$plugin/plugin.json" 2>/dev/null || true)"
+    # Single-line, reasonable length
+    if [[ -n "$out" ]] && [[ "$(printf '%s' "$out" | wc -l)" -le 1 ]] && [[ "${#out}" -lt 120 ]]; then
+      printf '%s' "$out"
+      return
+    fi
+    printf '%s' "(plugin)"
+    return
+  fi
+
   # 1s timeout so a slow / wrong script can't wedge the index
   out="$(timeout 1 "$path" --one-line-help 2>/dev/null || true)"
   # Single-line, reasonable length, not starting with whitespace garbage
@@ -286,6 +323,23 @@ esac
 
 sub="$1"; shift
 
+# Helper: exec the resolved command. Handles the "REALM_DELEGATE_PLUGIN:<name>"
+# sentinel by routing through scripts/cli/realm-plugin.sh with the plugin name
+# as the first arg.
+realm::_exec_resolved() {
+  local resolved="$1"; shift
+  if [[ "$resolved" = "REALM_DELEGATE_PLUGIN:"* ]]; then
+    local plugin="${resolved#REALM_DELEGATE_PLUGIN:}"
+    local handler="$REALM_EXEC_PATH/realm-plugin.sh"
+    [[ -x "$handler" ]] || handler="$REALM_EXEC_PATH/realm-plugin"
+    if [[ ! -x "$handler" ]]; then
+      realm::die "plugin '$plugin' declares cli but realm-plugin handler is missing" 4
+    fi
+    exec "$handler" "$plugin" "$@"
+  fi
+  exec "$resolved" "$@"
+}
+
 # `realm help <sub>` — delegate to the subcommand's --help
 if [[ "$sub" = "help" ]]; then
   if [[ $# -eq 0 ]]; then
@@ -294,13 +348,13 @@ if [[ "$sub" = "help" ]]; then
   fi
   sub="$1"; shift
   if path="$(realm::_resolve "$sub")"; then
-    exec "$path" --help
+    realm::_exec_resolved "$path" --help
   fi
   realm::die "no such command: $sub" 127
 fi
 
 if path="$(realm::_resolve "$sub")"; then
-  exec "$path" "$@"
+  realm::_exec_resolved "$path" "$@"
 fi
 
 # Suggest closest match (best-effort; never fail the dispatcher if grep finds nothing)

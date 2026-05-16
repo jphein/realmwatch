@@ -17,6 +17,9 @@ realm.db-wal
 monitor_3min.log
 topology.json
 
+# realm CLI install-time version stamp (written by `make cli-install`)
+scripts/cli/.realm-version
+
 # Screenshots / preview assets (not consumed by the served pages)
 report-card-*.png
 wifi-guide-*.png
