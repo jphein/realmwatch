@@ -66,11 +66,19 @@
       },
       {
         "name": "run",
-        "summary": "Run a playbook (use --json for full response). Pass --check for dry-run.",
+        "summary": "Run a playbook against ONE target (id from inventory). For multi-host, use `realm ansible-update`.",
         "method": "POST",
         "path": "/plugins/ansible/run",
-        "args": ["playbook"],
-        "body": "{\"playbook\":\"$1\"}"
+        "args": ["playbook", "target"],
+        "body": "{\"playbook\":\"$1\",\"targets\":[\"$2\"],\"check_mode\":false}"
+      },
+      {
+        "name": "run-check",
+        "summary": "Same as `run` but with --check (Ansible dry-run mode)",
+        "method": "POST",
+        "path": "/plugins/ansible/run",
+        "args": ["playbook", "target"],
+        "body": "{\"playbook\":\"$1\",\"targets\":[\"$2\"],\"check_mode\":true}"
       },
       {
         "name": "ai",

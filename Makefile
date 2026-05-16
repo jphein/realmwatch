@@ -1,4 +1,4 @@
-.PHONY: build dev oracle herald health install clean watch deploy cli-install cli-uninstall cli-doctor
+.PHONY: build dev oracle herald health install clean watch deploy cli-install cli-uninstall cli-doctor update-all-install update-all-uninstall
 
 build:
 	npm run build
@@ -87,3 +87,29 @@ cli-doctor:
 	@curl --silent --max-time 2 --fail $${REALM_HOST:-http://localhost}/server-info >/dev/null 2>&1 \
 	  && echo "  ✓ realm server reachable at $${REALM_HOST:-http://localhost}" \
 	  || echo "  ! realm server unreachable (start map_server.py)"
+
+# ---- daily update-all timer install ----
+# Drops the systemd user units into ~/.config/systemd/user/ and enables the
+# timer. NEVER auto-installs; JP runs `make update-all-install` to opt in.
+
+SYSTEMD_USER_DIR := $(HOME)/.config/systemd/user
+
+update-all-install:
+	@mkdir -p $(SYSTEMD_USER_DIR)
+	@cp $(CURDIR)/systemd/realm-update-all.service $(SYSTEMD_USER_DIR)/
+	@cp $(CURDIR)/systemd/realm-update-all.timer   $(SYSTEMD_USER_DIR)/
+	@systemctl --user daemon-reload
+	@systemctl --user enable --now realm-update-all.timer
+	@echo ""
+	@echo "Enabled realm-update-all.timer (fires daily at ~03:00)."
+	@echo "  Check next run:   systemctl --user list-timers realm-update-all"
+	@echo "  Fire manually:    systemctl --user start realm-update-all.service"
+	@echo "  Tail logs:        journalctl --user -u realm-update-all -f"
+	@echo "  Disable:          make update-all-uninstall"
+
+update-all-uninstall:
+	@systemctl --user disable --now realm-update-all.timer 2>/dev/null || true
+	@rm -fv $(SYSTEMD_USER_DIR)/realm-update-all.service
+	@rm -fv $(SYSTEMD_USER_DIR)/realm-update-all.timer
+	@systemctl --user daemon-reload
+	@echo "Disabled realm-update-all.timer."

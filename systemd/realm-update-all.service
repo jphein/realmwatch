@@ -1,0 +1,41 @@
+# Realm Update All — daily two-stage update across katana + Ubuntu fleet
+# Triggered by realm-update-all.timer (off by default; opt in to enable).
+#
+# Install:
+#   cp systemd/realm-update-all.{service,timer} ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now realm-update-all.timer
+# Logs:
+#   journalctl --user -u realm-update-all -f
+# Manual fire:
+#   systemctl --user start realm-update-all.service
+#
+# This unit invokes `realm update-all`, which:
+#   1. Refreshes the local package index (system-updates check)
+#   2. Runs `apt` updates on katana itself
+#   3. Dry-runs `update-ubuntu.yml` against the Ubuntu fleet
+#   4. Live-runs the playbook if dry-run is clean
+#   5. Posts realm events; alerting plugin routes them
+# Reboot-required hosts are NEVER auto-rebooted; JP reboots manually.
+
+[Unit]
+Description=Daily realm.watch update orchestration (system-updates + ansible)
+Documentation=https://github.com/jphein/realmwatch
+After=network-online.target realm-map-server.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/Projects/realmwatch
+EnvironmentFile=-%h/Projects/realmwatch/.env
+ExecStart=%h/.local/bin/realm update-all
+# Send all output to journal; let JP `journalctl` for details
+StandardOutput=journal
+StandardError=journal
+# 30 min hard cap — well above expected runtime (~5-10 min for typical fleet)
+TimeoutStartSec=1800
+# Don't restart oneshots; the timer fires again tomorrow
+Restart=no
+
+[Install]
+WantedBy=default.target
