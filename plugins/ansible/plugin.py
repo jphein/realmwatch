@@ -136,7 +136,19 @@ def handle_inventory(req, params):
 
 
 def _guess_os(node):
-    """Guess OS from node type/label for ansible grouping."""
+    """Determine OS for ansible grouping.
+
+    Source-of-truth order:
+      1. Explicit node.data.os (written by `realm discover-os` via SSH
+         to /etc/os-release — authoritative). Returns the os-release ID
+         field directly: "ubuntu", "debian", "openwrt", "alpine", etc.
+      2. Heuristic from label/type (legacy; only when discover-os hasn't
+         touched this node).
+    """
+    explicit = (node.get("os") or "").strip().lower()
+    if explicit:
+        return explicit
+
     label = (node.get("label", "") + " " + node.get("id", "")).lower()
     node_type = node.get("type", "").lower()
 

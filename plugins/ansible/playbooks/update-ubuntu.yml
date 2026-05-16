@@ -1,33 +1,132 @@
-# Update Ubuntu hosts — apt update + upgrade with safety checks
+# Update Ubuntu hosts — apt update + upgrade + DKMS verify + fwupd refresh.
+#
+# Safety contract:
+#   - `safe` upgrade only (no dist-upgrade, no release upgrade)
+#   - After upgrade, verify every DKMS module rebuilt successfully — fail
+#     the play if any module is in a non-`installed` state (catches the
+#     "kernel upgraded but NVIDIA didn't rebuild" silent breakage)
+#   - Refresh fwupd metadata but DO NOT auto-apply firmware (separate
+#     explicit play: firmware-apply.yml when one exists)
+#   - Never reboot — the play reports the reboot-required hosts; humans
+#     decide when to reboot
+#
+# Variables (override with --extra-vars):
+#   release_upgrade_check   true  — emit a hint if a new Ubuntu LTS is available
+#                                   (does NOT perform a release upgrade)
 ---
 - name: Update Ubuntu Hosts
   hosts: all
   become: true
   gather_facts: true
   vars:
-    reboot_required: false
+    release_upgrade_check: true
 
   tasks:
-    - name: Update apt cache
+    # ── apt: safe upgrade ────────────────────────────────────────
+    - name: Refresh apt cache
       ansible.builtin.apt:
         update_cache: true
         cache_valid_time: 3600
 
-    - name: Upgrade all packages
+    - name: Upgrade all packages (safe, with autoremove + autoclean)
       ansible.builtin.apt:
         upgrade: safe
         autoremove: true
         autoclean: true
       register: upgrade_result
 
-    - name: Check if reboot is required
+    # ── DKMS verification (catches silent NVIDIA / VirtualBox / ZFS rebuild failures) ──
+    - name: Check whether DKMS is installed
+      ansible.builtin.stat:
+        path: /usr/sbin/dkms
+      register: dkms_stat
+
+    - name: Capture DKMS module status
+      ansible.builtin.command: /usr/sbin/dkms status
+      register: dkms_status
+      changed_when: false
+      failed_when: false
+      when: dkms_stat.stat.exists
+
+    - name: Identify any DKMS modules that did NOT rebuild cleanly
+      ansible.builtin.set_fact:
+        dkms_broken: >-
+          {{
+            (dkms_status.stdout_lines | default([]))
+            | reject('search', 'installed')
+            | reject('search', '^$')
+            | list
+          }}
+      when: dkms_stat.stat.exists
+
+    - name: FAIL if any DKMS module is broken (e.g. nvidia didn't rebuild for new kernel)
+      ansible.builtin.fail:
+        msg: >-
+          DKMS modules in non-installed state after upgrade:
+          {{ dkms_broken | join(' | ') }}.
+          Investigate /var/log/dkms or run: sudo dkms autoinstall
+      when:
+        - dkms_stat.stat.exists
+        - dkms_broken | length > 0
+
+    # ── fwupd: refresh metadata + list available (don't apply) ────
+    - name: Check whether fwupdmgr is installed
+      ansible.builtin.stat:
+        path: /usr/bin/fwupdmgr
+      register: fwupd_stat
+
+    - name: Refresh fwupd metadata (LVFS sync)
+      ansible.builtin.command: /usr/bin/fwupdmgr refresh --force
+      register: fwupd_refresh
+      changed_when: "'Updating' in fwupd_refresh.stdout"
+      failed_when: false
+      when: fwupd_stat.stat.exists
+
+    - name: List firmware updates available (informational only)
+      ansible.builtin.command: /usr/bin/fwupdmgr get-updates --json
+      register: fwupd_updates
+      changed_when: false
+      failed_when: false
+      when: fwupd_stat.stat.exists
+
+    - name: Parse fwupd available update count
+      ansible.builtin.set_fact:
+        fwupd_pending: >-
+          {{ (fwupd_updates.stdout | from_json).Devices | default([]) | length }}
+      when:
+        - fwupd_stat.stat.exists
+        - fwupd_updates.rc == 0
+        - fwupd_updates.stdout is search('^\s*\{')
+
+    # ── reboot-required check (just report; never reboot) ─────────
+    - name: Check whether a reboot is required
       ansible.builtin.stat:
         path: /var/run/reboot-required
       register: reboot_file
 
+    - name: Capture reboot-required packages list
+      ansible.builtin.slurp:
+        src: /var/run/reboot-required.pkgs
+      register: reboot_pkgs_b64
+      failed_when: false
+      when: reboot_file.stat.exists
+
+    # ── release upgrade hint (informational; we never do-release-upgrade) ──
+    - name: Check if a new Ubuntu release is available
+      ansible.builtin.command: /usr/bin/do-release-upgrade -c
+      register: release_hint
+      changed_when: false
+      failed_when: false
+      when: release_upgrade_check | bool
+
+    # ── final summary ────────────────────────────────────────────
     - name: Display upgrade summary
       ansible.builtin.debug:
-        msg: >-
-          Upgrade complete.
-          Changed: {{ upgrade_result.changed }}.
-          Reboot required: {{ reboot_file.stat.exists | default(false) }}.
+        msg:
+          - "host:            {{ inventory_hostname }}"
+          - "apt changed:     {{ upgrade_result.changed }}"
+          - "dkms status:     {{ 'OK' if (dkms_stat.stat.exists and (dkms_broken | default([]) | length == 0)) else ('N/A' if not dkms_stat.stat.exists else 'BROKEN — see fail above') }}"
+          - "firmware pending:{{ fwupd_pending | default(0) }} (run firmware-apply.yml separately to apply)"
+          - "reboot required: {{ reboot_file.stat.exists | default(false) }}"
+          - "reboot packages: {{ (reboot_pkgs_b64.content | default('') | b64decode | trim) if reboot_file.stat.exists else 'n/a' }}"
+          - "release upgrade: {{ 'available — see do-release-upgrade' if (release_hint.stdout is defined and 'New release' in release_hint.stdout) else 'none' }}"

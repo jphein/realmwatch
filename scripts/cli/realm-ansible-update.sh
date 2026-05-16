@@ -86,6 +86,11 @@ done
 
 realm::api_reachable || realm::die_unreachable
 
+# `--dry-run` here gates the playbook submission, NOT the read-only
+# inventory fetch we need to resolve targets. Save and clear so reads work.
+LOCAL_DRY_RUN="${REALM_DRY_RUN:-}"
+REALM_DRY_RUN=""
+
 # ── resolve host list ─────────────────────────────────────────────
 declare -a HOSTS=()
 
@@ -142,7 +147,7 @@ realm::verbose "Targets: ${HOSTS[*]}"
 realm::verbose "Body: $body"
 
 # ── kick off the run ─────────────────────────────────────────────
-if [[ -n "${REALM_DRY_RUN:-}" ]]; then
+if [[ -n "$LOCAL_DRY_RUN" ]]; then
   printf 'REALM DRY-RUN: would POST /plugins/ansible/run\n  body: %s\n' "$body" >&2
   exit 0
 fi

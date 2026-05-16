@@ -1,0 +1,97 @@
+# Install Netdata agent on Ubuntu hosts using the official kickstart installer.
+#
+# Idempotent: if netdata is already installed and running, this play is a
+# no-op except for a status report.
+#
+# Why kickstart vs apt: the apt-packaged netdata is years behind. The official
+# kickstart installs the latest stable from netdata's own repos and keeps it
+# updated automatically. https://learn.netdata.cloud/docs/installing
+#
+# Result: each host runs the netdata agent on :19999. The realmwatch netdata
+# plugin (plugins/netdata/) auto-discovers them when it sees the port open
+# and populates sub_entities with os_name, kernel, charts_count, alarms, etc.
+---
+- name: Install Netdata Agent
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    netdata_kickstart_url: "https://get.netdata.cloud/kickstart.sh"
+    netdata_port: 19999
+
+  tasks:
+    - name: Refuse to proceed on non-Ubuntu/Debian hosts
+      ansible.builtin.fail:
+        msg: "This playbook supports apt-based distros only ({{ ansible_distribution }} detected)."
+      when: ansible_pkg_mgr != "apt"
+
+    # ── short-circuit if already installed ──────────────────────
+    - name: Probe existing netdata
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ netdata_port }}/api/v1/info"
+        return_content: false
+        status_code: 200
+        timeout: 3
+      register: netdata_probe
+      failed_when: false
+      changed_when: false
+
+    - name: Show pre-existing netdata
+      ansible.builtin.debug:
+        msg: "Netdata already running on :{{ netdata_port }} — skipping install."
+      when: netdata_probe.status == 200
+
+    # ── install path: prereqs + kickstart ───────────────────────
+    - name: Ensure curl + ca-certificates are present
+      ansible.builtin.apt:
+        name:
+          - curl
+          - ca-certificates
+        state: present
+        update_cache: false
+      when: netdata_probe.status != 200
+
+    - name: Download netdata kickstart installer
+      ansible.builtin.get_url:
+        url: "{{ netdata_kickstart_url }}"
+        dest: /tmp/netdata-kickstart.sh
+        mode: '0755'
+      when: netdata_probe.status != 200
+
+    - name: Run netdata kickstart installer (stable, non-interactive)
+      ansible.builtin.command:
+        cmd: >
+          /tmp/netdata-kickstart.sh
+          --non-interactive
+          --stable-channel
+          --disable-telemetry
+      register: kickstart_run
+      changed_when: "'is already installed' not in kickstart_run.stdout"
+      when: netdata_probe.status != 200
+
+    - name: Ensure netdata service is enabled and running
+      ansible.builtin.systemd:
+        name: netdata
+        state: started
+        enabled: true
+      when: netdata_probe.status != 200
+
+    - name: Wait for netdata to start responding on :19999
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ netdata_port }}/api/v1/info"
+        status_code: 200
+        timeout: 5
+      register: netdata_post_install
+      retries: 6
+      delay: 5
+      until: netdata_post_install.status == 200
+      when: netdata_probe.status != 200
+
+    # ── final status ────────────────────────────────────────────
+    - name: Report result
+      ansible.builtin.debug:
+        msg:
+          - "host:        {{ inventory_hostname }}"
+          - "state:       {{ 'already installed' if netdata_probe.status == 200 else 'just installed' }}"
+          - "endpoint:    http://{{ ansible_default_ipv4.address | default(inventory_hostname) }}:{{ netdata_port }}"
+          - "next:        realmwatch netdata plugin will discover this on its next scan"

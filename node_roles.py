@@ -515,6 +515,20 @@ def get_role(node_id, node_data=None):
     if node_data and node_data.get("_role"):
         return node_data["_role"]
 
+    # Explicit OS (written by `realm discover-os` via SSH probe) implies role.
+    # This runs before pattern heuristics so probed hosts get correct roles
+    # even without MAC/OUI data — fixes auto-discovery for nodes added by
+    # POST /node which don't carry a MAC.
+    if node_data:
+        os_id = (node_data.get("os") or "").strip().lower()
+        if os_id in ("ubuntu", "debian", "centos", "rocky", "alma", "fedora", "rhel", "linux"):
+            return "server"
+        if os_id == "alpine":
+            return "server"  # Alpine boxes (e.g. HA OS) are server-class for discovery
+        if os_id == "openwrt":
+            node_type = (node_data.get("type") or "").lower()
+            return "router" if node_type in ("router", "core") else "ap"
+
     # Auto-detect from node ID patterns
     nid = node_id.lower()
     if nid.startswith("wled"):
