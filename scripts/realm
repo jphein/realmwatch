@@ -1,0 +1,315 @@
+#!/usr/bin/env bash
+#
+# realm — unified CLI dispatcher for realmwatch.
+#
+# Resolves `realm <sub> <args...>` by searching, in order:
+#   1. $REALM_EXEC_PATH/realm-<sub>      (core subcommands)
+#   2. <repo>/plugins/<sub>/cli          (plugin CLI handlers)
+#   3. realm-<sub> on $PATH              (user-installed)
+#
+# If nothing matches, prints an error suggesting close matches.
+#
+# Special tokens handled by the dispatcher itself:
+#   realm                       → command index (one line per subcommand)
+#   realm -h | --help | help    → command index + global flags
+#   realm --version             → sigil-format version line
+#   realm --list-commands       → newline-separated subcommand names (for completion)
+#   realm completion bash|zsh   → emits completion script
+#
+# Everything else is delegated.
+
+set -euo pipefail
+
+# Resolve our own location and the repo root
+_self="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || realpath "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
+_scripts_dir="$(cd "$(dirname "$_self")" && pwd)"
+_repo_dir="$(cd "$_scripts_dir/.." && pwd)"
+_plugins_dir="$_repo_dir/plugins"
+
+# Default exec path is <repo>/scripts/cli, overridable via REALM_EXEC_PATH
+: "${REALM_EXEC_PATH:=$_scripts_dir/cli}"
+
+# Source the shared lib for colors and helpers (so the dispatcher itself
+# emits matching output)
+# shellcheck disable=SC1091
+source "$_scripts_dir/lib/realm-cli.sh"
+
+# Resolve a subcommand name to an executable path. Echos the path, returns 0
+# on hit; returns 1 on miss.
+realm::_resolve() {
+  local sub="$1"
+  local candidate
+
+  # 1. core executable in REALM_EXEC_PATH
+  for candidate in "$REALM_EXEC_PATH/realm-$sub" "$REALM_EXEC_PATH/realm-$sub.sh"; do
+    if [[ -x "$candidate" ]]; then
+      printf '%s' "$candidate"
+      return 0
+    fi
+  done
+
+  # 1b. existing top-level scripts/realm-*.sh (kept for backwards compat)
+  for candidate in "$_scripts_dir/realm-$sub.sh" "$_scripts_dir/realm-$sub"; do
+    if [[ -x "$candidate" ]]; then
+      printf '%s' "$candidate"
+      return 0
+    fi
+  done
+
+  # 2. plugin-provided cli
+  if [[ -x "$_plugins_dir/$sub/cli" ]]; then
+    printf '%s' "$_plugins_dir/$sub/cli"
+    return 0
+  fi
+
+  # 3. on $PATH
+  if candidate="$(command -v "realm-$sub" 2>/dev/null)"; then
+    printf '%s' "$candidate"
+    return 0
+  fi
+
+  return 1
+}
+
+# Enumerate every available subcommand name. Used by the index and completion.
+realm::_list_subcommands() {
+  local seen=""
+  local f sub
+
+  # Core dir
+  if [[ -d "$REALM_EXEC_PATH" ]]; then
+    for f in "$REALM_EXEC_PATH"/realm-*; do
+      [[ -x "$f" ]] || continue
+      sub="$(basename "$f")"
+      sub="${sub#realm-}"
+      sub="${sub%.sh}"
+      # Skip hidden / internal names
+      [[ "$sub" == ".realm-version" ]] && continue
+      [[ "$sub" == .* ]] && continue
+      if [[ "$seen" != *"|$sub|"* ]]; then
+        printf '%s\n' "$sub"
+        seen="$seen|$sub|"
+      fi
+    done
+  fi
+
+  # Top-level realm-*.sh (existing scripts)
+  for f in "$_scripts_dir"/realm-*.sh; do
+    [[ -x "$f" ]] || continue
+    sub="$(basename "$f")"
+    sub="${sub#realm-}"
+    sub="${sub%.sh}"
+    [[ "$sub" == .* ]] && continue
+    if [[ "$seen" != *"|$sub|"* ]]; then
+      printf '%s\n' "$sub"
+      seen="$seen|$sub|"
+    fi
+  done
+
+  # Plugin-provided CLI hooks
+  if [[ -d "$_plugins_dir" ]]; then
+    for f in "$_plugins_dir"/*/cli; do
+      [[ -x "$f" ]] || continue
+      sub="$(basename "$(dirname "$f")")"
+      if [[ "$seen" != *"|$sub|"* ]]; then
+        printf '%s\n' "$sub"
+        seen="$seen|$sub|"
+      fi
+    done
+  fi
+}
+
+# Fallback summaries for legacy scripts that don't yet implement
+# `--one-line-help`. As scripts get refactored, entries here can be deleted.
+realm::_legacy_summary() {
+  case "$1" in
+    health)  echo "Check realm services, ports, DB, env" ;;
+    update)  echo "Run plugin/system update flow" ;;
+    *)       echo "" ;;
+  esac
+}
+
+# Ask the subcommand for its one-line summary, with a short timeout and a
+# legacy fallback. Discards any multi-line output (legacy scripts that
+# misinterpret --one-line-help and run their main logic).
+realm::_summary_for() {
+  local sub="$1"
+  local path="$2"
+  local out
+  # 1s timeout so a slow / wrong script can't wedge the index
+  out="$(timeout 1 "$path" --one-line-help 2>/dev/null || true)"
+  # Single-line, reasonable length, not starting with whitespace garbage
+  if [[ -n "$out" ]] && [[ "$(printf '%s' "$out" | wc -l)" -le 1 ]] && [[ "${#out}" -lt 120 ]]; then
+    printf '%s' "$out"
+    return
+  fi
+  printf '%s' "$(realm::_legacy_summary "$sub")"
+}
+
+# Print the command index (used when `realm` is called with no args or with
+# `realm help` / `realm -h` / `realm --help`).
+realm::_index() {
+  printf '%srealm%s — unified CLI for realmwatch\n\n' "$W" "$N"
+  printf '%sUSAGE%s\n' "$W" "$N"
+  printf '  realm <command> [options] [args]\n  realm help <command>\n\n'
+
+  printf '%sCOMMANDS%s\n' "$W" "$N"
+
+  local sub path summary
+  while IFS= read -r sub; do
+    [[ -z "$sub" ]] && continue
+    if path="$(realm::_resolve "$sub")"; then
+      summary="$(realm::_summary_for "$sub" "$path")"
+      printf '  %s%-18s%s %s\n' "$C" "$sub" "$N" "$summary"
+    fi
+  done < <(realm::_list_subcommands | sort -u)
+
+  printf '\n%sGLOBAL FLAGS%s\n' "$W" "$N"
+  printf '  %s-h, --help%s         Show this help (or per-command help)\n' "$C" "$N"
+  printf '  %s    --version%s      Print version and exit\n' "$C" "$N"
+  printf '  %s    --json%s         Machine-readable JSON output\n' "$C" "$N"
+  printf '  %s    --no-color%s     Disable ANSI color\n' "$C" "$N"
+  printf '  %s-v, --verbose%s      Verbose output (curl invocations, etc.)\n' "$C" "$N"
+  printf '  %s-q, --quiet%s        Suppress informational output\n' "$C" "$N"
+  printf '  %s    --dry-run%s      Preview HTTP calls without sending\n' "$C" "$N"
+  printf '  %s    --host URL%s     Override $REALM_HOST (default: %s)\n' "$C" "$N" "$REALM_HOST"
+
+  printf '\n%sENVIRONMENT%s\n' "$W" "$N"
+  printf '  REALM_HOST          Base URL for the realm HTTP API (default http://localhost)\n'
+  printf '  REALM_EXEC_PATH     Where to find core realm-* executables\n'
+  printf '  NO_COLOR            If set, suppress ANSI color\n'
+
+  printf '\n%sEXAMPLES%s\n' "$W" "$N"
+  printf '  realm status\n  realm quest list\n  realm watch --filter discovery\n  realm discovery scan\n  realm fleet audit\n'
+}
+
+# Inline bash completion script. Used when realm-completion isn't installed.
+realm::_emit_completion_bash() {
+  cat <<'BASH'
+# realm bash completion — generated by `realm completion bash`
+# Install with:
+#   realm completion bash > ~/.local/share/bash-completion/completions/realm
+
+_realm_complete() {
+  local cur prev cword
+  COMPREPLY=()
+  cur="${COMP_WORDS[COMP_CWORD]}"
+  prev="${COMP_WORDS[COMP_CWORD-1]}"
+  cword=$COMP_CWORD
+
+  if [[ $cword -eq 1 ]]; then
+    local cmds
+    cmds=$(realm --list-commands 2>/dev/null)
+    COMPREPLY=( $(compgen -W "$cmds help --help --version --json --no-color --verbose --quiet --dry-run --host" -- "$cur") )
+    return 0
+  fi
+
+  # Per-subcommand completion: ask the subcommand if it knows
+  local sub="${COMP_WORDS[1]}"
+  if command -v "realm-$sub" >/dev/null 2>&1 || [[ -x "${REALM_EXEC_PATH:-}/realm-$sub" ]]; then
+    local subs
+    subs=$(realm "$sub" --list-subcommands 2>/dev/null) || subs=""
+    if [[ -n "$subs" ]]; then
+      COMPREPLY=( $(compgen -W "$subs --help --json --no-color --verbose --quiet --dry-run --host" -- "$cur") )
+      return 0
+    fi
+  fi
+
+  COMPREPLY=( $(compgen -W "--help --json --no-color --verbose --quiet --dry-run --host" -- "$cur") )
+}
+
+complete -F _realm_complete realm
+BASH
+}
+
+realm::_emit_completion_zsh() {
+  cat <<'ZSH'
+#compdef realm
+# realm zsh completion — generated by `realm completion zsh`
+# Install with:
+#   realm completion zsh > ~/.local/share/zsh/site-functions/_realm
+
+_realm() {
+  local -a cmds
+  if (( CURRENT == 2 )); then
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      local help_line
+      help_line="$(realm-$line --one-line-help 2>/dev/null || echo '')"
+      cmds+=("$line:$help_line")
+    done < <(realm --list-commands 2>/dev/null)
+    _describe -t commands 'realm commands' cmds
+    return
+  fi
+
+  local sub="${words[2]}"
+  local -a subs
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    subs+=("$line")
+  done < <(realm "$sub" --list-subcommands 2>/dev/null)
+  if (( ${#subs[@]} > 0 )); then
+    _describe -t subcommands "$sub subcommands" subs
+  fi
+}
+
+_realm "$@"
+ZSH
+}
+
+# ------------- main -------------
+
+# Special handling that must happen before delegation
+case "${1:-}" in
+  ""|help|-h|--help)
+    realm::_index
+    exit 0
+    ;;
+  --version)
+    realm::_print_version
+    exit 0
+    ;;
+  --list-commands)
+    realm::_list_subcommands | sort -u
+    exit 0
+    ;;
+  completion)
+    shift
+    case "${1:-bash}" in
+      bash) realm::_emit_completion_bash ;;
+      zsh)  realm::_emit_completion_zsh ;;
+      *)    realm::die "unknown shell: $1 (try: bash, zsh)" 2 ;;
+    esac
+    exit 0
+    ;;
+esac
+
+sub="$1"; shift
+
+# `realm help <sub>` — delegate to the subcommand's --help
+if [[ "$sub" = "help" ]]; then
+  if [[ $# -eq 0 ]]; then
+    realm::_index
+    exit 0
+  fi
+  sub="$1"; shift
+  if path="$(realm::_resolve "$sub")"; then
+    exec "$path" --help
+  fi
+  realm::die "no such command: $sub" 127
+fi
+
+if path="$(realm::_resolve "$sub")"; then
+  exec "$path" "$@"
+fi
+
+# Suggest closest match (best-effort; never fail the dispatcher if grep finds nothing)
+suggestion="$(realm::_list_subcommands 2>/dev/null | sort -u | grep -i "^${sub:0:2}" 2>/dev/null | head -3 | tr '\n' ' ' || true)"
+if [[ -n "$suggestion" ]]; then
+  printf '%s✘ realm:%s no such command: %s%s%s\n  did you mean: %s%s%s\n' \
+    "$R" "$N" "$C" "$sub" "$N" "$Y" "$suggestion" "$N" >&2
+else
+  printf '%s✘ realm:%s no such command: %s%s%s\n  try: %srealm%s for the index\n' \
+    "$R" "$N" "$C" "$sub" "$N" "$C" "$N" >&2
+fi
+exit 127
