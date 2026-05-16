@@ -15,4 +15,11 @@
 set -euo pipefail
 cd "$(dirname "$(realpath "$0")")/.."
 
-exec python3 plugins/system-updates/cli.py "$@"
+LOG_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/realm-update"
+mkdir -p "$LOG_DIR"
+LOG="$LOG_DIR/run-$(date +%Y%m%d-%H%M%S).log"
+( ls -1t "$LOG_DIR"/run-*.log 2>/dev/null | tail -n +11 | xargs -r rm -- ) || true
+
+# python3 -u keeps stdout unbuffered so streaming subprocess lines appear live
+# through the tee; pipefail (set above) propagates python's exit code.
+python3 -u plugins/system-updates/cli.py "$@" 2>&1 | tee "$LOG"
