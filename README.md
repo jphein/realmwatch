@@ -101,6 +101,13 @@ cd realmwatch
 
 make install      # pip install -r requirements.txt && npm install
 make build        # esbuild src/main.js → realm-map.js (minified IIFE)
+
+# Bootstrap your local-only inventory (gitignored — never committed)
+cp scripts/lib/fleet.sh.example scripts/lib/fleet.sh
+$EDITOR scripts/lib/fleet.sh    # plug in your APs / routers / switches
+cp realm-local.json.example realm-local.json
+$EDITOR realm-local.json        # per-node herald templates + future hooks
+
 make dev          # python3 map_server.py — foreground HTTP :80 + SSE + plugins
 
 # In another shell — install the CLI into ~/.local/bin
@@ -112,6 +119,23 @@ realm             # prints the command index
 realm status      # GET /status — colored table view
 realm watch       # tail SSE events live
 ```
+
+### Your private data stays local
+
+A few files are intentionally **gitignored** so each operator's realm-specific
+data never enters the public repo:
+
+| File | What you put in it |
+|------|-------------------|
+| `realm-local.json` | Per-node herald persona templates (loaded by `realm_herald.py` at import) |
+| `scripts/lib/fleet.sh` | Your APs / routers / switches inventory (sourced by `realm fleet …` and the `ap-*.sh` scripts) |
+| `personas.json` | Initial seed for the personas table — voices + system prompts (optional; UI can populate at runtime) |
+| `wifi-guide.html`, `report-card.html` | Family-facing pages served by realm-portal at LAN |
+| `.env` | API tokens (Azure AI, Notion, HA, Cloudflare, etc.) and any host-specific config |
+
+Bootstrap from the `.example` versions; the engine reads them lazily with
+empty defaults if missing. See `realm-local.json.example` and
+`scripts/lib/fleet.sh.example` for the schemas.
 
 Open `http://localhost/realm-map.html` — panels render from the bundled core,
 plugin panels load at runtime from `/plugins/<name>/panel.{html,js,css}`, SSE

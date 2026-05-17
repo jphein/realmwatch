@@ -38,6 +38,11 @@ cd realmwatch
 
 make install      # pip install -r requirements.txt && npm install
 make build        # esbuild → realm-map.js
+
+# Bootstrap your local realm-specific inventory (gitignored — never committed)
+cp scripts/lib/fleet.sh.example scripts/lib/fleet.sh
+cp realm-local.json.example realm-local.json
+
 make dev          # python3 map_server.py (foreground, :80)
 
 # In another shell
@@ -49,6 +54,20 @@ Python 3.12 is the target. Node is only needed for `esbuild` and the
 `winbox` runtime dependency. There is no pytest suite — see [Testing
 your change](#testing-your-change) below for the live-server validation
 flow.
+
+### Where local data goes
+
+If your contribution needs realm-specific data (host names, IP overrides,
+herald persona templates, AP inventory, etc.), put it in **realm-local.json**
+or **scripts/lib/fleet.sh** — both are gitignored. The code reads them with
+empty defaults; never bake realm-specific data into source files. The
+`.example` companions document the schema.
+
+If you find yourself wanting to hardcode a hostname in tracked code, that's
+a signal to either (a) extend `realm-local.json` with a new top-level key
+and a loader, or (b) use a node attribute (`node.os`, `node.tags`,
+`node._role`) that operators populate via the persona-editor panel or
+`POST /node`.
 
 ---
 
