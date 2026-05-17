@@ -1,0 +1,29 @@
+title: Realmwatch
+description: >-
+  A fantasy-themed homelab network monitor — interactive SVG realm map,
+  33 plugins, unified `realm` CLI, AI oracle, herald daemon, and a
+  Zabbix-class alerting pipeline. All from a single Linux box.
+theme: jekyll-theme-minimal
+
+# Repository metadata
+repository: jphein/realmwatch
+github:
+  repository_url: https://github.com/jphein/realmwatch
+
+# Build
+markdown: kramdown
+highlighter: rouge
+
+# Path hygiene — keep codex/runbooks/superpowers as raw browseable Markdown
+# but skip them from the navigation index so the landing page stays tidy.
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - vendor
+  - node_modules
+  - "*.gem"
+  - "*.gemspec"
+  - .sass-cache
+  - .jekyll-cache
+  - .jekyll-metadata
+  - superpowers
