@@ -41,6 +41,13 @@ class RouteTable:
             else:
                 priority = PRIORITY_NAMESPACED
 
+        # Exact-match patterns (no <param> segments) win over parameterized
+        # patterns at the same priority class. Otherwise /discovery/actions
+        # gets eaten by /discovery/<node_id>. Subtract 1 from the priority
+        # value so exact patterns sort first.
+        if "<" not in path:
+            priority -= 1
+
         # Convert path pattern to regex
         param_names = []
         regex_parts = []

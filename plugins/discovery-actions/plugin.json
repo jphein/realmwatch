@@ -1,0 +1,48 @@
+{
+  "name": "discovery-actions",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Declarative actions that run on newly discovered hosts: 'if OUI matches OpenWrt then role=ap'.",
+  "fantasy_name": "The Onboarding Sigils",
+  "icon": "🪄",
+
+  "python": {"module": "plugin", "entry": "setup"},
+
+  "depends_on": ["discovery"],
+
+  "cli": {
+    "summary": "Declarative actions that fire when new hosts are discovered",
+    "verbs": [
+      {
+        "name": "list",
+        "summary": "Show all configured discovery actions",
+        "method": "GET",
+        "path": "/discovery/actions",
+        "table": ".actions // [] | .[] | [.id, .name // \"-\", (if .enabled then \"yes\" else \"no\" end), (.priority // 0 | tostring), (.match_summary // \"-\")]",
+        "header": ["ID", "NAME", "ON", "PRIO", "MATCH"]
+      },
+      {
+        "name": "test",
+        "summary": "Preview what actions would fire against one node (no writes)",
+        "method": "GET",
+        "path": "/discovery/actions/test/<node>",
+        "args": ["node"]
+      },
+      {
+        "name": "apply",
+        "summary": "Re-run actions against an existing node (live writes)",
+        "method": "POST",
+        "path": "/discovery/actions/apply/<node>",
+        "args": ["node"],
+        "body": "{}"
+      },
+      {
+        "name": "delete",
+        "summary": "Remove an action by id",
+        "method": "DELETE",
+        "path": "/discovery/actions/<id>",
+        "args": ["id"]
+      }
+    ]
+  }
+}
