@@ -22,6 +22,7 @@ def _on_event(event):
     """Handle incoming realm events — evaluate rules and dispatch."""
     from .rule_engine import evaluate, detect_severity, CooldownTracker
     from . import channels
+    from . import dependencies
 
     if _cooldown is None:
         return
@@ -32,6 +33,21 @@ def _on_event(event):
 
     if not rule:
         return
+
+    # Trigger dependencies (Zabbix-inspired, issue #5): suppress child alerts
+    # when an upstream node is in problem state. Only applies to critical/
+    # warning alerts on real nodes — info-level events and node-less events
+    # (e.g. system-updates run_complete) flow through unaffected.
+    node_id = event.get("node", "")
+    if node_id and severity in ("critical", "warning"):
+        blocking = dependencies.find_blocking_ancestor(_db, node_id)
+        dependencies._record_decision(node_id, blocking, event.get("type", ""), severity)
+        if blocking:
+            _log_alert(event, severity, rule.get("name", ""),
+                       "all", "suppressed_by_parent", blocking)
+            log.info("Suppressed alert for %s: blocking ancestor %s is in problem state",
+                     node_id, blocking)
+            return
 
     # Filter channels by cooldown and enablement
     active_channels = []
@@ -299,6 +315,29 @@ def _h_get_status(req, params):
     })
 
 
+# ── Trigger Dependencies (Zabbix-inspired, issue #5) ──
+
+def _h_get_dependencies(req, params):
+    """GET /alerting/dependencies — recent suppression decisions (audit trail)."""
+    from . import dependencies
+    limit = int(req.query_params.get("limit", "50"))
+    window = int(req.query_params.get("window_s", "3600"))
+    return req.respond({
+        "decisions": dependencies.get_recent_decisions(limit, window),
+        "window_s": window,
+    })
+
+
+def _h_get_dependencies_why(req, params):
+    """GET /alerting/dependencies/why?node=<id> — explain suppression for one node."""
+    from . import dependencies
+    node = req.query_params.get("node", "")
+    if not node:
+        return req.respond({"error": "missing ?node=<id>"}, status=400)
+    lookback = int(req.query_params.get("lookback_seconds", "120"))
+    return req.respond(dependencies.explain(_db, node, lookback))
+
+
 # ── Cleanup Thread ──
 
 def _cleanup_loop():
@@ -364,6 +403,8 @@ def setup(ctx):
     ctx.register_endpoint("GET", "/alerting/history", _h_get_history, raw_path=True)
     ctx.register_endpoint("DELETE", "/alerting/history", _h_delete_history, raw_path=True)
     ctx.register_endpoint("GET", "/alerting/status", _h_get_status, raw_path=True)
+    ctx.register_endpoint("GET", "/alerting/dependencies", _h_get_dependencies, raw_path=True)
+    ctx.register_endpoint("GET", "/alerting/dependencies/why", _h_get_dependencies_why, raw_path=True)
 
     # Status provider
     def _status_provider():

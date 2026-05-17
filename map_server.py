@@ -166,7 +166,24 @@ def _save_personas(data):
 
 
 def push_event(event):
-    return realm_db.push_event(event)
+    """Store an event, then dispatch to subscribed plugin handlers.
+
+    The store-then-notify split is intentional: every event is persisted first
+    (so SSE consumers and history queries see it consistently), then plugins
+    that registered via ctx.on_event() get called. Handler errors are caught
+    by fire_event so one misbehaving plugin can't break the pipeline.
+    """
+    stored = realm_db.push_event(event)
+    if _plugin_registry is not None:
+        try:
+            etype = stored.get("type", "")
+            if etype:
+                _plugin_registry.fire_event(etype, stored)
+        except Exception:
+            # Defense in depth — fire_event already catches per-handler errors;
+            # this is for any registry-level surprise.
+            pass
+    return stored
 
 
 def get_events_since(since_ts):

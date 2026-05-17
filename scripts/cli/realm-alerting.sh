@@ -17,19 +17,26 @@ SUBCOMMANDS:
   rules                   List alert rules
   history                 Show recent alert deliveries
   history clear           Clear alert history
+  why <node>              Explain why <node>'s alerts are or aren't firing
+                          (Zabbix-style trigger dependency walk)
+  dependencies            Show recent suppression decisions (audit trail)
 
 EXAMPLES:
   realm alerting status
   realm alerting channels
   realm alerting channels test desktop
   realm alerting rules
+  realm alerting why familiar         # walks upstream, shows the chain
+  realm alerting dependencies         # last hour's suppressions
 EOF
 }
 
 REALM_SUBCOMMANDS="status
 channels
 rules
-history"
+history
+why
+dependencies"
 
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/realm-cli.sh"
 realm::parse_common "$@"
@@ -94,6 +101,46 @@ case "$sub" in
         realm::die "unknown history subcommand: $hsub" 2
         ;;
     esac
+    ;;
+  why)
+    [[ $# -ge 1 ]] || realm::die "usage: realm alerting why <node>" 2
+    response=$(realm::api_get "/alerting/dependencies/why" "?node=$1")
+    if [[ "$REALM_OUTPUT" = "json" ]]; then
+      printf '%s\n' "$response"
+    else
+      printf '%s\n' "$response" | jq -r '
+        . as $r |
+        "Node: \(.node) (self_in_problem: \(.self_in_problem))",
+        "Lookback: \(.lookback_seconds)s",
+        (if .would_suppress
+          then "VERDICT: alerts WOULD be suppressed; blocking ancestor = \(.blocking_ancestor)"
+          else "VERDICT: alerts would fire (no ancestor in problem state)"
+         end),
+        "",
+        "Upstream chain:",
+        (if (.upstream_chain | length) == 0
+          then "  (no upstream connections found in topology)"
+          else (.upstream_chain[] | "  \(if .in_problem then "✘" else "✓" end) \(.node)")
+         end)
+      ' 2>/dev/null
+    fi
+    ;;
+  dependencies)
+    realm::api_get /alerting/dependencies \
+      | realm::fmt_table '
+          (.decisions // [])
+          | (["TIME","NODE","EVENT_TYPE","SEVERITY","SUPPRESSED","BLOCKING"] | @tsv),
+            (.[]
+              | [
+                  (.ts | strftime("%H:%M:%S")),
+                  .node // "-",
+                  .event_type // "-",
+                  .severity // "-",
+                  (.suppressed | tostring),
+                  .blocking_ancestor // "-"
+                ]
+              | @tsv)
+        '
     ;;
   *)
     realm::die "unknown subcommand: $sub" 2
