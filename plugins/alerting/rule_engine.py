@@ -113,7 +113,18 @@ DEFAULT_RULES = [
 
 
 def match_rule(event, rule, severity):
-    """Check if an event matches a rule's conditions."""
+    """Check if an event matches a rule's conditions.
+
+    Supported conditions:
+      event_types: list of event type strings, or ["*"] for any
+      severity:    list of severity strings, or ["*"] for any
+      node_pattern: fnmatch glob against event.node ("*" = any)
+      roles:        list of role names; matches if event.node's role is in
+                    the list (Zabbix-inspired, issue #3). Falls back to
+                    node_pattern when the role registry isn't available.
+      tags:         list of tag strings; matches if event.node carries any
+                    of these tags
+    """
     if not rule.get("enabled", True):
         return False
 
@@ -135,6 +146,45 @@ def match_rule(event, rule, severity):
         node = event.get("node", "")
         if not fnmatch.fnmatch(node, node_pattern):
             return False
+
+    # Role match (Zabbix-inspired, issue #3): rule fires only on hosts with
+    # one of the listed roles. Role lookup uses node_roles which consults
+    # node.data.os, _role, OUI hints, etc.
+    roles = cond.get("roles", [])
+    if roles:
+        node_id = event.get("node", "")
+        if not node_id:
+            return False
+        try:
+            import node_roles
+            import realm_db
+            # Need the node's full data dict, not just the id, so role
+            # inference can use OS/type/MAC. realm_db.get_nodes() is cached
+            # via the WAL-mode SQLite layer; this isn't a hot loop.
+            nodes_by_id = {n.get("id", ""): n for n in realm_db.get_nodes()}
+            node_data = nodes_by_id.get(node_id, {"id": node_id})
+            actual_role = node_roles.get_role(node_id, node_data)
+            if actual_role not in roles:
+                return False
+        except Exception:
+            # If anything goes wrong looking up the role, fail open: match
+            # rather than silently drop alerts. Failures get logged elsewhere.
+            log.warning("role lookup failed for %s; matching rule conservatively", node_id)
+
+    # Tag match: rule fires if the node carries any of the listed tags
+    tags = cond.get("tags", [])
+    if tags:
+        node_id = event.get("node", "")
+        if not node_id:
+            return False
+        try:
+            import realm_db
+            nodes_by_id = {n.get("id", ""): n for n in realm_db.get_nodes()}
+            node_tags = nodes_by_id.get(node_id, {}).get("tags", []) or []
+            if not any(t in node_tags for t in tags):
+                return False
+        except Exception:
+            log.warning("tag lookup failed for %s; matching rule conservatively", node_id)
 
     return True
 

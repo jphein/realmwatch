@@ -575,8 +575,118 @@ def get_role_info(node_id, node_data=None):
 
 
 def get_all_roles():
-    """Get all role definitions."""
-    return ROLES
+    """Get all role definitions, merging in any template data."""
+    out = {}
+    for name, role in ROLES.items():
+        merged = dict(role)
+        if name in ROLE_TEMPLATES:
+            merged["template"] = ROLE_TEMPLATES[name]
+        out[name] = merged
+    return out
+
+
+def get_role_template(role_name):
+    """Return the template block for a role, or {} if none defined.
+
+    The template carries the operational binding for a role:
+      - alert_rules: rule IDs that should fire for this role (informational
+        for now; future: realm role apply instantiates them)
+      - discovery_providers: which scanners run on hosts with this role
+        (mirrors ROLE_PROVIDERS in discovery_engine for consistency)
+      - default_tags: tags auto-attached to any host of this role
+      - sublabel_format: jinja-style template for the SVG map sublabel
+
+    Templates are intentionally code-defined for now (no DB schema). If
+    per-host override becomes useful, add a node_role_overrides settings ns.
+    """
+    return dict(ROLE_TEMPLATES.get(role_name, {}))
+
+
+# ── Role Templates (Zabbix-inspired, issue #3) ──
+#
+# Each template binds a role to: alerting rules that apply, discovery
+# providers that should run, default tags, and a sublabel format. Not every
+# role needs a template — roles without one fall through to the legacy
+# behaviour (no rule binding, ROLE_PROVIDERS from discovery_engine.py).
+
+ROLE_TEMPLATES = {
+    "router": {
+        "alert_rules": ["latency-spike", "dhcp-overflow", "high-load"],
+        "discovery_providers": ["snmp", "netdata"],
+        "default_tags": ["network", "infrastructure", "critical"],
+        "sublabel_format": "{load} • {wan_state}",
+    },
+    "ap": {
+        "alert_rules": ["wifi-client-flap", "high-load"],
+        "discovery_providers": ["snmp"],
+        "default_tags": ["network", "wifi"],
+        "sublabel_format": "{clients} clients • {channel}",
+    },
+    "switch": {
+        "alert_rules": ["port-down", "loop-detected"],
+        "discovery_providers": ["snmp"],
+        "default_tags": ["network", "infrastructure"],
+        "sublabel_format": "{ports_up}/{ports_total} ports",
+    },
+    "bridge": {
+        "alert_rules": ["link-down"],
+        "discovery_providers": ["snmp"],
+        "default_tags": ["network"],
+    },
+    "server": {
+        "alert_rules": ["linux-disk-full", "linux-load-high", "linux-mem-pressure"],
+        "discovery_providers": ["docker", "systemd", "netdata"],
+        "default_tags": ["linux", "infrastructure"],
+        "sublabel_format": "{cpu_pct}% • {disk_pct}% • {mem_pct}%",
+    },
+    "nas": {
+        "alert_rules": ["linux-disk-full", "raid-degraded"],
+        "discovery_providers": ["docker", "systemd", "netdata", "snmp"],
+        "default_tags": ["storage", "linux"],
+    },
+    "vm": {
+        "alert_rules": ["linux-disk-full", "linux-load-high"],
+        "discovery_providers": ["systemd", "netdata"],
+        "default_tags": ["linux", "virtual"],
+    },
+    "hypervisor": {
+        "alert_rules": ["host-load-high", "vm-failure"],
+        "discovery_providers": ["docker", "kvm", "systemd", "netdata"],
+        "default_tags": ["linux", "virtual", "infrastructure"],
+    },
+    "desktop": {
+        "alert_rules": ["linux-disk-full"],
+        "discovery_providers": ["systemd", "netdata"],
+        "default_tags": ["linux", "desktop"],
+    },
+    "laptop": {
+        "alert_rules": ["battery-low"],
+        "discovery_providers": ["netdata"],
+        "default_tags": ["linux", "mobile"],
+    },
+    "camera": {
+        "alert_rules": ["camera-offline", "motion-event"],
+        "default_tags": ["security", "ha"],
+    },
+    "wled": {
+        "alert_rules": ["wled-offline"],
+        "default_tags": ["lighting"],
+    },
+    "sensor": {
+        "alert_rules": ["sensor-stale"],
+        "default_tags": ["iot"],
+    },
+    "ups": {
+        "alert_rules": ["ups-on-battery", "ups-low-battery", "ups-critical"],
+        "discovery_providers": ["snmp"],
+        "default_tags": ["power", "infrastructure", "critical"],
+    },
+    "printer": {
+        "alert_rules": ["printer-error", "printer-low-toner"],
+        "discovery_providers": ["snmp"],
+        "default_tags": ["peripheral"],
+    },
+}
 
 
 def get_nodes_by_role():

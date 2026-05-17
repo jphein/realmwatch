@@ -168,21 +168,30 @@ def _save_personas(data):
 def push_event(event):
     """Store an event, then dispatch to subscribed plugin handlers.
 
-    The store-then-notify split is intentional: every event is persisted first
-    (so SSE consumers and history queries see it consistently), then plugins
-    that registered via ctx.on_event() get called. Handler errors are caught
-    by fire_event so one misbehaving plugin can't break the pipeline.
+    When `python map_server.py` is run directly, this module is loaded as
+    `__main__` and assigns `_plugin_registry` in the bottom-of-file block.
+    But if anything later does `import map_server`, Python creates a SECOND
+    module object with `_plugin_registry = None` (the default). To survive
+    that case, look up the registry on whichever module instance actually
+    holds the loaded plugins.
     """
     stored = realm_db.push_event(event)
-    if _plugin_registry is not None:
-        try:
-            etype = stored.get("type", "")
-            if etype:
-                _plugin_registry.fire_event(etype, stored)
-        except Exception:
-            # Defense in depth — fire_event already catches per-handler errors;
-            # this is for any registry-level surprise.
-            pass
+    registry = _plugin_registry
+    if registry is None:
+        # Fall back to whichever copy of this module has the registry set.
+        import sys
+        for mod_name in ("__main__", "map_server"):
+            mod = sys.modules.get(mod_name)
+            if mod is not None and getattr(mod, "_plugin_registry", None) is not None:
+                registry = mod._plugin_registry
+                break
+    if registry is not None:
+        etype = stored.get("type", "")
+        if etype:
+            try:
+                registry.fire_event(etype, stored)
+            except Exception as e:
+                print(f"[push_event] fire_event failed for type={etype}: {e}", flush=True)
     return stored
 
 
@@ -417,6 +426,37 @@ def _h_post_event_close(req, params):
     if not updated:
         return {"error": "event not found or already closed"}
     return updated
+
+
+def _h_get_roles(req, params):
+    """GET /roles — every role definition + template + which nodes are in it."""
+    import node_roles
+    roles = node_roles.get_all_roles()
+    by_role = node_roles.get_nodes_by_role()
+    out = {}
+    for name, role in roles.items():
+        out[name] = {
+            **role,
+            "nodes": by_role.get(name, []),
+            "node_count": len(by_role.get(name, [])),
+        }
+    return out
+
+
+def _h_get_role_by_name(req, params):
+    """GET /roles/<name> — one role with template + member nodes."""
+    import node_roles
+    name = params.get("name", "")
+    roles = node_roles.get_all_roles()
+    if name not in roles:
+        return {"error": f"no such role: {name}"}
+    by_role = node_roles.get_nodes_by_role()
+    return {
+        **roles[name],
+        "name": name,
+        "nodes": by_role.get(name, []),
+        "node_count": len(by_role.get(name, [])),
+    }
 
 def _h_get_personas(req, params):
     return _load_personas()
@@ -1552,6 +1592,8 @@ _route_table.add("GET", "/api/quests", _h_get_api_quests)
 _route_table.add("GET", "/events", _h_get_events)
 _route_table.add("POST", "/events/<id>/ack", _h_post_event_ack)
 _route_table.add("POST", "/events/<id>/close", _h_post_event_close)
+_route_table.add("GET", "/roles", _h_get_roles)
+_route_table.add("GET", "/roles/<name>", _h_get_role_by_name)
 _route_table.add("GET", "/personas", _h_get_personas)
 _route_table.add("GET", "/topology", _h_get_topology)
 _route_table.add("GET", "/ping/<ip>", _h_get_ping_ip)
