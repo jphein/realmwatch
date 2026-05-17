@@ -192,15 +192,36 @@ def match_rule(event, rule, severity):
 def evaluate(event, rules):
     """Evaluate event against rules. Returns (matched_rule, channels, cooldown) or (None, [], 0).
 
-    First-match-wins on the sorted rule list.
+    First-match-wins on the sorted rule list. Each rule is macro-expanded
+    against the event's node scope before matching, so {$NAME} tokens in
+    rule conditions resolve to per-node / per-role / global values.
     """
     severity = detect_severity(event)
 
     # Sort by priority (lower = higher priority)
     sorted_rules = sorted(rules, key=lambda r: r.get("priority", 999))
 
+    # Look up the event's role once for macro resolution
+    node_id = event.get("node", "")
+    role = ""
+    if node_id:
+        try:
+            import node_roles
+            import realm_db
+            nodes_by_id = {n.get("id", ""): n for n in realm_db.get_nodes()}
+            role = node_roles.get_role(node_id, nodes_by_id.get(node_id, {}))
+        except Exception:
+            pass
+
     for rule in sorted_rules:
-        if match_rule(event, rule, severity):
-            return rule, rule.get("channels", []), rule.get("cooldown", 300)
+        # Expand {$MACRO} tokens against this event's scope. Cheap when no
+        # macros are present (expand() short-circuits on no `{$`).
+        try:
+            from . import macros
+            expanded = macros.expand_dict(rule, node_id=node_id, role=role)
+        except Exception:
+            expanded = rule
+        if match_rule(event, expanded, severity):
+            return expanded, expanded.get("channels", []), expanded.get("cooldown", 300)
 
     return None, [], 0

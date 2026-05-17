@@ -458,6 +458,60 @@ def _h_get_role_by_name(req, params):
         "node_count": len(by_role.get(name, [])),
     }
 
+
+def _h_get_macros(req, params):
+    """GET /macros?node=<id>&role=<r>&scope=<all|host|role|global>."""
+    from plugins.alerting import macros
+    qp = req.query_params
+    return macros.list_macros(
+        scope=qp.get("scope", "all"),
+        node_id=qp.get("node", ""),
+        role=qp.get("role", ""),
+    )
+
+
+def _h_get_macro_explain(req, params):
+    """GET /macros/<name>/explain?node=<id>&role=<r>."""
+    from plugins.alerting import macros
+    name = params.get("name", "")
+    qp = req.query_params
+    return macros.explain(name, node_id=qp.get("node", ""), role=qp.get("role", ""))
+
+
+def _h_post_macro(req, params):
+    """POST /macros/<name> body={value, scope, node?, role?}."""
+    from plugins.alerting import macros
+    name = params.get("name", "")
+    body = req.json() or {}
+    try:
+        macros.set_macro(
+            name,
+            body.get("value"),
+            scope=body.get("scope", "global"),
+            node_id=body.get("node", ""),
+            role=body.get("role", ""),
+        )
+        return {"ok": True, "name": name}
+    except ValueError as e:
+        return {"error": str(e)}
+
+
+def _h_delete_macro(req, params):
+    """DELETE /macros/<name>?scope=<>&node=<>&role=<>."""
+    from plugins.alerting import macros
+    name = params.get("name", "")
+    qp = req.query_params
+    try:
+        macros.delete_macro(
+            name,
+            scope=qp.get("scope", "global"),
+            node_id=qp.get("node", ""),
+            role=qp.get("role", ""),
+        )
+        return {"ok": True}
+    except ValueError as e:
+        return {"error": str(e)}
+
 def _h_get_personas(req, params):
     return _load_personas()
 
@@ -1594,6 +1648,10 @@ _route_table.add("POST", "/events/<id>/ack", _h_post_event_ack)
 _route_table.add("POST", "/events/<id>/close", _h_post_event_close)
 _route_table.add("GET", "/roles", _h_get_roles)
 _route_table.add("GET", "/roles/<name>", _h_get_role_by_name)
+_route_table.add("GET", "/macros", _h_get_macros)
+_route_table.add("GET", "/macros/<name>/explain", _h_get_macro_explain)
+_route_table.add("POST", "/macros/<name>", _h_post_macro)
+_route_table.add("DELETE", "/macros/<name>", _h_delete_macro)
 _route_table.add("GET", "/personas", _h_get_personas)
 _route_table.add("GET", "/topology", _h_get_topology)
 _route_table.add("GET", "/ping/<ip>", _h_get_ping_ip)
