@@ -38,15 +38,24 @@ rendering engine. Everything interesting is a plugin.
 
 ## Screenshots
 
-> **TODO** — JP, add screenshots here. The SVG map is the visual hook.
-> Recommended shots:
->
-> - The full realm map at zoom-out (the treasure-map view)
-> - A node detail panel with stats / persona / SSH terminal
-> - The Survey Glass scan panel mid-discovery
-> - `realm watch` tailing live SSE events in a terminal
-> - `realm topology` and `realm tags list` table output
-> - The Scroll of Patch Runes panel mid-update
+Captured by `make screenshots` (Playwright against a running
+`map_server.py` — see [`docs/screenshots/README.md`](docs/screenshots/README.md)
+for prereqs).
+
+<table>
+<tr>
+<td><img src="docs/screenshots/01-realm-map-full.png" alt="The full realm map at zoom-out — the treasure-map view"></td>
+<td><img src="docs/screenshots/02-realm-map-zoom.png" alt="Mid-zoom showing nodes, regions, traffic ley lines"></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/03-node-panel.png" alt="Node detail panel — stats, persona, controls"></td>
+<td><img src="docs/screenshots/04-scan-panel.png" alt="Survey Glass scan panel mid-discovery"></td>
+</tr>
+</table>
+
+> The map auto-arranges via a force-directed worker on first load; biome
+> regions and contours are stamped by a separate heightmap worker. Both
+> are pure ES module workers — no bundler magic.
 
 ---
 
@@ -524,11 +533,11 @@ expectations.
 Open issues tagged `zabbix-inspired` and `public-release` track the active
 roadmap. Already shipped in v0.4.0: trigger dependencies, event
 acknowledgement, role templates, user macros, `node.tags`, maintenance
-windows, agent self-registration, and discovery actions.
+windows, agent self-registration, discovery actions, and Low-Level
+Discovery prototypes.
 
 Still open:
 
-- **Low-Level Discovery — auto-create sub-entities/sublabels** ([#6](https://github.com/jphein/realmwatch/issues/6))
 - **Ubuntu major release upgrades via realm CLI** ([#11](https://github.com/jphein/realmwatch/issues/11))
 - **Screenshots in README + landing page** ([#13](https://github.com/jphein/realmwatch/issues/13))
 

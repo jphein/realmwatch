@@ -304,6 +304,37 @@ Together: a host runs one curl, lands in `nodes` with the right `role` and
 
 ---
 
+## Low-Level Discovery (discovery prototypes)
+
+Closing the loop on the discovery engine: plugins declare prototypes in
+`plugin.json` once, and `plugin_registry.get_discovery_prototypes()`
+aggregates them across the fleet. A prototype is a template — sublabel,
+fantasy text, alert clauses — with `{{#MACRO}}` placeholders that resolve
+per discovered instance.
+
+```jsonc
+// plugins/docker-discovery/plugin.json
+"discovery_prototypes": [{
+  "entity_type": "container",
+  "sublabel":    "{{#NAME}} • {{#STATE}}",
+  "fantasy_template": "Iron Golem '{{#NAME}}'",
+  "alert_on": [
+    {"when": "{{#STATE}} in ['exited','dead']",
+     "severity": "warning",
+     "text_template": "The Iron Golem '{{#NAME}}' has fallen silent in {{#HOST}}"},
+    {"when": "{{#STATE}} == 'restarting' and {{#RESTART_COUNT}} > 5",
+     "severity": "critical",
+     "text_template": "The Iron Golem '{{#NAME}}' shudders and crashes in {{#HOST}} ({{#RESTART_COUNT}} restarts)"}
+  ]
+}]
+```
+
+Shipped pilots: `docker-discovery` (containers) and `netdata` (netdata
+hosts). Exposed as `GET /discovery/prototypes` and surfaced through
+`realm discovery prototypes`.
+
+---
+
 ## Database
 
 `realm.db` (SQLite WAL). 12 tables:

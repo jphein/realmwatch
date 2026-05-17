@@ -128,15 +128,25 @@ Manage tags on topology nodes (heuristic-friendly labels).
 (`ubuntu`, `linux`, `debian-family`, `apt`). Lets fleet queries say "every
 host with `apt`" or "every `debian-family` box."
 
-### `realm discovery list|providers|scan`
+### `realm discovery list|providers|scan|prototypes|entities|link|unlink`
 
 ```text
-List discovered entities, providers, links; trigger scans.
+List discovered entities, providers, links, prototypes; trigger scans.
 ```
 
 Discovery engine controls. `scan <provider>` triggers a one-shot scan.
 `providers` lists what's registered. `list` shows `sub_entities` with their
-parent topology node.
+parent topology node. **`prototypes`** lists every discovery prototype
+declared across plugin manifests — these are the Low-Level-Discovery
+templates that materialize per-entity (sublabel, fantasy text, alert
+clauses with `{{#MACRO}}` placeholders). **`entities --type T`** filters
+the discovered set by type.
+
+```bash
+realm discovery prototypes                       # all LLD templates
+realm discovery entities --type netdata_host
+realm discovery entities --type container        # docker-discovery output
+```
 
 ### `realm alerting status|channels|rules|why`
 
@@ -316,6 +326,30 @@ realm 0.4.2 (forge: stormcaller-9d7e4f1, built 2026-05-16T14:22:03Z)
 
 `--all` rolls up the local server's `/api/version` plus sibling services
 (oracle, coin, portal, status, deploy) if configured.
+
+### `realm update [list|check|run]`
+
+```text
+Manual update runner (offline; talks directly to the system-updates CLI).
+```
+
+Thin Bash wrapper around `plugins/system-updates/cli.py`. Reuses the same
+source definitions, commands, parsers, and lock groups as the web panel,
+so CLI and browser stay in sync. Works **without** `map_server.py` running
+— useful when patching the realm server itself.
+
+```bash
+realm update                  # interactive: check all, prompt to upgrade
+realm update list             # list known sources
+realm update check [src]      # check all, or one source
+realm update run   [src]      # upgrade all, or one source (no prompt)
+```
+
+Logs go to `$XDG_STATE_HOME/realm-update/run-<YYYYMMDD-HHMMSS>.log` and
+the runner keeps the most recent ten.
+
+For server-mediated control (queued runs, history, approval workflow) use
+`realm system-updates` (the HTTP plugin) instead.
 
 ### `realm completion bash|zsh`
 

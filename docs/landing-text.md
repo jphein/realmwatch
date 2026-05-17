@@ -71,7 +71,18 @@ Underneath the theming sits a serious operational toolkit:
 
 ## Screenshots
 
-> **TODO** — screenshots pending. The SVG map is the visual hook.
+The SVG map is the visual hook. Captured by `make screenshots` (Playwright
+against a running `map_server.py` — see
+[`docs/screenshots/`](https://github.com/jphein/realmwatch/tree/master/docs/screenshots)
+for prereqs).
+
+| File | What it shows |
+|---|---|
+| `01-realm-map-full.png` | Full realm map at zoom-out — the treasure-map view |
+| `02-realm-map-zoom.png` | Mid-zoom showing nodes, regions, traffic ley lines |
+| `03-node-panel.png` | Node detail panel — stats, persona, controls |
+| `04-scan-panel.png` | Survey Glass scan panel mid-discovery |
+| `05-system-updates.png` | Scroll of Patch Runes — pending updates per source |
 
 ---
 

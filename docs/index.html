@@ -815,9 +815,9 @@
       <div class="feature">
         <div class="rune">✧</div>
         <div class="fname">The Familiar Constellations</div>
-        <div class="tname">sub-entity discovery</div>
-        <p>Every interface, every container, every disk becomes its own minor entity — discovered by per-role providers, linked back to its parent node, surfaced as a Vassal in the node panel. Full Low-Level-Discovery prototypes still on the roadmap.</p>
-        <div class="depth">discovery_engine.py · sub_entities + discovery_links tables · per-provider capabilities</div>
+        <div class="tname">low-level discovery</div>
+        <p>Every interface, every container, every disk becomes its own minor entity. Plugins declare discovery prototypes once (sublabel, fantasy template, alert clauses with <code>{{#MACRO}}</code> placeholders) and the engine materializes one rule per discovered instance — auto-created, auto-linked, auto-cleaned-up when it vanishes.</p>
+        <div class="depth">discovery_engine.py · sub_entities + discovery_links + discovery_prototypes · <code>realm discovery prototypes</code></div>
       </div>
 
       <div class="feature">

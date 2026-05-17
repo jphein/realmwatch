@@ -1,4 +1,4 @@
-.PHONY: build dev oracle herald health install clean watch deploy cli-install cli-uninstall cli-doctor update-all-install update-all-uninstall
+.PHONY: build dev oracle herald health install clean watch deploy cli-install cli-uninstall cli-doctor update-all-install update-all-uninstall screenshots
 
 build:
 	npm run build
@@ -26,6 +26,9 @@ clean:
 
 watch:
 	npm run watch
+
+screenshots:
+	@./scripts/capture-shots.py
 
 # Private LAN-only family-facing pages live locally (gitignored). They get
 # copied to realm-portal/static at deploy time. The list of files to copy is

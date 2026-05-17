@@ -11,21 +11,30 @@ by feature epoch using commit author dates.
 
 ## [Unreleased]
 
-Most recent work since the v0.4 epoch. Items here will fold into the next
-tagged release.
+Most recent work since v0.4.0. Items here will fold into the next tagged
+release.
 
-- Documentation polish for the unified `realm` CLI and the plugin system.
-- Public-release docs scaffold: `README.md`, `CHANGELOG.md`,
-  `CONTRIBUTING.md`, GitHub Pages site under `docs/`.
+- Doc-coverage sweep: `README.md`, `docs/index.html`, `docs/plugins.md`,
+  `docs/cli.md`, `docs/architecture.md`, `docs/landing-text.md`,
+  `docs/getting-started.md`, `docs/_config.yml`, `CONTRIBUTING.md`,
+  `plugins/README.md` all updated to reflect 36 plugins, the four new
+  Zabbix-class plugins, the LLD prototypes mechanism, and the GPL-3.0
+  license.
+- GitHub Wiki populated with 8 pages: Home, Quick Start, Architecture
+  Overview, Plugin Catalog, CLI Cheatsheet, Plugin Authoring,
+  Troubleshooting, FAQ — plus `_Sidebar` and `_Footer` navigation.
+- `realm update` (Bash wrapper around `plugins/system-updates/cli.py`)
+  documented in `docs/cli.md` for offline use without `map_server.py`.
 
 ---
 
 ## [0.4.0] — Zabbix-class operations (2026-05-16)
 
-The "stop getting paged for the same outage twice" epoch. Trigger
-dependencies, event acknowledgement, role templates, user macros, and the
-`node.tags` primitive — most gated by closed issues from the
-`zabbix-inspired` label.
+The "stop getting paged for the same outage twice" epoch. Eight closed
+`zabbix-inspired` issues in one weekend. Trigger dependencies, event
+acknowledgement, role templates, user macros, `node.tags`, maintenance
+windows, agent self-registration, discovery actions, and Low-Level
+Discovery prototypes.
 
 ### Added
 
@@ -62,6 +71,38 @@ dependencies, event acknowledgement, role templates, user macros, and the
   set on every successful probe (`ubuntu`, `linux`, `debian-family`, `apt`,
   …). Powers fleet-wide queries like "every host with apt" or "every
   debian-family box." New `realm tags` subcommand for CRUD.
+- **Maintenance windows — Veiled Hours** (`fe68fa4`, closes #4). New
+  `plugins/maintenance/` registers scheduled windows that mute downstream
+  consumers of realm events. While a window is active for a node, the
+  alerting plugin drops matching events (`status='maintenance_suppressed'`)
+  and the herald daemon skips that node when picking voices. Recurring,
+  one-shot, or pattern-based (`*-router`, `ap-*`). Endpoints
+  `POST /maintenance/windows`, `GET /maintenance/active`,
+  `GET /maintenance/check/<node>`, `DELETE /maintenance/windows/<id>`;
+  CLI `realm maintenance list|active|check|cancel`.
+- **Active agent self-registration — The Heralds' Gate** (`d2e0bb3`,
+  closes #9). New `plugins/agent-register/`. New hosts run a one-line
+  install script (`GET /register/install.sh`) that registers themselves
+  via `POST /register/agents` and starts a periodic heartbeat
+  (`POST /register/heartbeat`). Metadata (hostname, IP, OS, OUI) is
+  durable in `realm.db`; last-seen drives the liveness signal. CLI
+  `realm agent-register list|show|install-script|forget`.
+- **Discovery actions — The Onboarding Sigils** (`d49a278`, closes #10).
+  New `plugins/discovery-actions/`. Declarative match-then-act rules:
+  *if OUI matches OpenWrt then role=ap, add tag wireless.* Rules fire at
+  discovery time (regardless of whether the source is `agent-register`,
+  an nmap sweep, or a manual entry). `realm discovery-actions test
+  <node>` previews matches without writing. CLI
+  `realm discovery-actions list|test|apply|delete`.
+- **Low-Level Discovery prototypes** (`6c5c441`, closes #6). Plugins
+  declare `discovery_prototypes` in `plugin.json` once — sublabel,
+  fantasy template, alert clauses with `{{#MACRO}}` placeholders. The
+  engine materializes one rule per discovered instance (auto-created,
+  auto-linked, auto-cleaned-up). New
+  `plugin_registry.get_discovery_prototypes()`,
+  `GET /discovery/prototypes`, `realm discovery prototypes` (table),
+  `realm discovery entities --type T` (filter). Shipped pilots:
+  `docker-discovery` (containers) and `netdata` (netdata hosts).
 - **Desktop / laptop Netdata coverage** — discovery now treats workstation-
   and laptop-class roles as Netdata candidates.
 
