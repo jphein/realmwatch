@@ -55,3 +55,6 @@ access-to-power.pdf
 # Private content — JP's specific realm narrative + voice configs
 docs/codex/
 personas.json
+
+# Realm-local config (JP-specific data: herald templates, node overrides, layout buildings)
+realm-local.json

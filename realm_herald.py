@@ -24,108 +24,20 @@ MAP_URL = "http://localhost"
 # Each node has themed report templates using {placeholders} filled from collectd data.
 # Templates are randomly selected; nodes only speak when they have interesting data.
 
-NODE_TEMPLATES = {
-    "gatekeeper": {
-        "name": "The Gatekeeper",
-        "color": "rgba(96,128,192,0.6)",
-        "templates": [
-            "The gates hold. {conntrack} connections tracked through my domain. Memory at {mem_pct}%.",
-            "{dhcp_leases} souls granted passage into the realm. Load: {load}.",
-            "I have stood vigil for {uptime}. The perimeter holds. {iface_summary}",
-            "Temperature at {temp}\u00B0C. {conntrack} active threads weave through my gates.",
-            "The outer darkness probes, but {conntrack} connections are accounted for. All orderly.",
-        ],
-    },
-    "ap-east-1": {
-        "name": "<REDACTED>",
-        "color": "rgba(192,144,96,0.5)",
-        "templates": [
-            "My beacon burns steady. Load: {load}. Uptime: {uptime}.",
-            "Memory holds at {mem_pct}%. The signal reaches true.",
-            "Standing watch at {temp}\u00B0C. {iface_summary}",
-        ],
-    },
-    "center": {
-        "name": "The Scribe's Alcove",
-        "color": "rgba(192,144,96,0.5)",
-        "templates": [
-            "The scriptorium hums. Load: {load}. Memory: {mem_pct}%.",
-            "Uptime: {uptime}. My signal guides the scribes. {iface_summary}",
-        ],
-    },
-    "ap-closet": {
-        "name": "The Hidden Chamber",
-        "color": "rgba(192,144,96,0.5)",
-        "templates": [
-            "I dwell unseen, but my signal pervades. Load: {load}.",
-            "The hidden currents flow — {iface_summary}. Memory: {mem_pct}%.",
-        ],
-    },
-    "ap-shed": {
-        "name": "The Woodshed Watch",
-        "color": "rgba(192,144,96,0.5)",
-        "templates": [
-            "Out here in the wild reaches, my beacon holds. Load: {load}.",
-            "The shed stands. Uptime: {uptime}. {iface_summary}",
-        ],
-    },
-    "ap-pump": {
-        "name": "The Pumphouse Keep",
-        "color": "rgba(192,144,96,0.5)",
-        "templates": [
-            "Water and signal flow together. Load: {load}. Memory: {mem_pct}%.",
-            "The deep keep holds. Uptime: {uptime}. My reach extends outward.",
-        ],
-    },
-    "ap-path": {
-        "name": "The Great Hall",
-        "color": "rgba(192,144,96,0.5)",
-        "templates": [
-            "The Great Hall buzzes with life. Load: {load}. {iface_summary}",
-            "Many souls gather here. Memory: {mem_pct}%. Temperature: {temp}\u00B0C.",
-        ],
-    },
-    "ap-cabin": {
-        "name": "The Citadel Beacon",
-        "color": "rgba(192,144,96,0.5)",
-        "templates": [
-            "My beacon burns atop the Citadel. Load: {load}.",
-            "From here I see all approaches. Memory: {mem_pct}%. {iface_summary}",
-        ],
-    },
-    "ap-deck": {
-        "name": "The Sentinel",
-        "color": "rgba(192,144,96,0.5)",
-        "templates": [
-            "I stand in the open air, my signal unshielded. Load: {load}.",
-            "The outdoor watch continues. Uptime: {uptime}. Memory: {mem_pct}%.",
-        ],
-    },
-    "ap-south-1": {
-        "name": "The Inner Ward",
-        "color": "rgba(192,144,96,0.5)",
-        "templates": [
-            "The inner defenses hold firm. Load: {load}. {iface_summary}",
-            "Memory: {mem_pct}%. I guard the family's corridors.",
-        ],
-    },
-    "ap-east-2": {
-        "name": "The Family Hearth",
-        "color": "rgba(192,144,96,0.5)",
-        "templates": [
-            "The hearth glows warm. Load: {load}. Memory: {mem_pct}%.",
-            "Uptime: {uptime}. All gather 'round my signal.",
-        ],
-    },
-    "ap-north-1": {
-        "name": "The Dreamer's Rest",
-        "color": "rgba(192,144,96,0.5)",
-        "templates": [
-            "The dreamers slumber, but I remain awake. Load: {load}.",
-            "A quiet watch. Memory: {mem_pct}%. Uptime: {uptime}.",
-        ],
-    },
-}
+# NODE_TEMPLATES — per-node persona templates for the herald.
+# JP-specific data lives in realm-local.json (gitignored). On a fresh
+# clone the dict is empty and the herald speaks generic lines until a
+# realm-local.json is populated. See realm-local.json.example.
+def _load_node_templates():
+    try:
+        import json, os
+        path = os.path.join(os.path.dirname(__file__), 'realm-local.json')
+        with open(path) as f:
+            return json.load(f).get('herald_node_templates', {})
+    except (FileNotFoundError, OSError, json.JSONDecodeError):
+        return {}
+
+NODE_TEMPLATES = _load_node_templates()
 
 # Track recent speakers to avoid repetition
 _recent_speakers = []

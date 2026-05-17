@@ -27,7 +27,7 @@ NOTES:
 EXAMPLES:
   realm fleet list
   realm fleet audit
-  realm fleet add-vlan --ap ap-shed --vlan 11 --name family --dry-run
+  realm fleet add-vlan --ap your-ap --vlan 11 --name family --dry-run
   realm fleet migrate-ssid --ssid realm-family --network family --dry-run
 EOF
 }

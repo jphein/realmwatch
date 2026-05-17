@@ -411,7 +411,7 @@ def get_role(node_id, node_data=None):
     nid = node_id.lower()
     if nid.startswith("wled"):
         return "wled"
-    if nid.startswith("onhub") or nid.startswith("eap") or nid.startswith("ap-woodshed"):
+    if nid.startswith("onhub") or nid.startswith("eap"):
         return "ap"
     if nid.startswith("ts-"):
         return "tailscale"

@@ -1,0 +1,14 @@
+{
+  "_comment": "Realm-local config — JP-specific data lives here, gitignored. Copy this file to realm-local.json and fill in your own data. Code loads it lazily; empty/missing → safe defaults.",
+  "herald_node_templates": {
+    "_doc": "Per-node persona templates used by the herald daemon. Key = topology node_id. Value = {name, color, templates: list of f-string templates using {load}, {mem_pct}, {temp}, {uptime}, {iface_summary}}.",
+    "_example_node_id": {
+      "name": "The Citadel Tower",
+      "color": "rgba(192,144,96,0.5)",
+      "templates": [
+        "I stand watch. Load: {load}. Memory: {mem_pct}%.",
+        "Uptime: {uptime}. {iface_summary}"
+      ]
+    }
+  }
+}

@@ -38,7 +38,7 @@ The central fortress. Houses the rulers, their personal artifacts, and defensive
 **Personal Artifacts (Admin devices):**
 | Node | Label | Owner/Role |
 |------|-------|------------|
-| `s24-ultra` | **<REDACTED>** | S24 Ultra — primary phone |
+| `s24-ultra` | **<Owner>'s Blade** | S24 Ultra — primary phone |
 | `flip3` | **The Messenger** | Z Flip3 |
 | `flip3-5g` | **The Wanderer** | Z Flip3 5G |
 | `iphone` | **The Apple Shard** | iPhone |
@@ -156,7 +156,7 @@ The magical towers that broadcast connectivity. All on VLAN 6 (Admin).
 | `woodshed` | **The Timber Keep** | Woodshed (secondary) |
 | `wrt1900ac-family` | **The Great Hall** | Family area (extended) |
 | `ea6350v3-family` | **The Inner Ward** | Family area (inner) |
-| `mr8300-host` | **<REDACTED>** | <Owner>'s area |
+|  **[Name]'s Bastion** | **<Owner>'s Bastion** | Owner's area |
 
 **Sky Bridges (point-to-point):**
 | Bridge | Label | Role |
@@ -207,7 +207,7 @@ The magical towers that broadcast connectivity. All on VLAN 6 (Admin).
 |---------|----------|---------|
 | **The [Noun]** | Infrastructure, servers | The Gatekeeper, The Iron Spine |
 | **The [Adjective] [Noun]** | Descriptive devices | The Wandering Codex, The Hidden Chamber |
-| **[Name]'s [Role]** | Personal/owned devices | <REDACTED>, <REDACTED> |
+| **[Name]'s [Role]** | Personal/owned devices | <Owner>'s <Role> |
 | **[Archetype] [Roman]** | Cluster members | Kasa Spirit IV, Hearth Keeper II |
 | **The [Mythical Name]** | Unique notable devices | The Groundseer, The Floodlight |
 

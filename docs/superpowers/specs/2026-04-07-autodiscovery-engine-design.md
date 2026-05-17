@@ -953,12 +953,12 @@ Metadata that enriches the map but isn't discoverable — ownership, purpose, gr
 {
     "id": "manual:annotation:glenns-gear",
     "type": "annotation",
-    "name": "<Owner>'s Equipment",
+    "name": "Owner-X's Equipment",
     "host_node_id": "glenns-bastion",
     "status": "active",
     "metadata": {
         "owner": "glenn",
-        "notes": "<Owner> manages his own router and AP configs",
+        "notes": "Owner-X manages their own router and AP configs",
         "members": ["glenns-bastion", "the-hidden-chamber"]
     }
 }

@@ -1109,26 +1109,27 @@ self.onmessage = function(e) {
   function layoutPhysicalRealm() {
     // ── 1. Classify nodes into physical buildings ──
     // Uses hostname patterns (north-*, south-*, east-*) and known device mappings
+    // Generic cardinal-direction prefix rules. Realmwatch operators that
+    // adopt the north-/south-/east- naming convention get auto-grouping
+    // for free. For per-node overrides beyond prefixes, set node.building
+    // on the topology row (read below by `node.building || …`).
     const BUILDING_RULES = [
-      // New hostnames (north-*/south-*/east-*)
-      { match: id => /^north-/.test(id), building: 'center' },
+      { match: id => /^north-/.test(id), building: 'north' },
       { match: id => /^south-/.test(id), building: 'south' },
-      { match: id => /^east-/.test(id), building: 'east' },
-      // Known infrastructure → building mapping
-      { match: id => ['gatekeeper','hp-switch','katana','oracle','ha','game','gpu','poe-switch','nodered'].includes(id), building: 'center' },
-      { match: id => ['forge','mana','essence','void','wan'].includes(id), building: 'center' }, // katana resources
-      { match: id => ['shed-switch','disks'].includes(id), building: 'ap-shed' },
-      { match: id => ['cpe710-ap','gigabeam0'].includes(id), building: 'north-outdoor' },
-      { match: id => ['cpe710-client'].includes(id), building: 'south' },
-      { match: id => ['gigabeam1','gs308t'].includes(id), building: 'east' },
+      { match: id => /^east-/.test(id),  building: 'east'  },
+      { match: id => /^west-/.test(id),  building: 'west'  },
     ];
 
     const buildingOf = {};
     for (let i = 0; i < N; i++) {
       const id = nodes[i].id;
-      let assigned = null;
-      for (const rule of BUILDING_RULES) {
-        if (rule.match(id)) { assigned = rule.building; break; }
+      // Per-node `building` field on the topology row wins over patterns —
+      // set it in realm-local config or via POST /node for per-host overrides.
+      let assigned = nodes[i].building || null;
+      if (!assigned) {
+        for (const rule of BUILDING_RULES) {
+          if (rule.match(id)) { assigned = rule.building; break; }
+        }
       }
       // WiFi clients inherit their AP's building
       if (!assigned && _isWifi(i) && wifiMap) {
@@ -1168,11 +1169,11 @@ self.onmessage = function(e) {
     // Triangle layout: North at top, South bottom-left, East bottom-right
     // Use latency between bridge endpoints to scale distances
     // Property layout based on real distances:
-    // Office = center, Shed = ~100ft SE, East (Mom's) = ~800ft E, South (Dad's) = via CPE710
+    // Center / north / south / east buildings — positions are relative units, not real coords
     // Scale: 800ft span → use proportional spacing
     const buildingCenters = {
       'center':  { x: CX * 0.5,      y: CY * 0.55 },
-      'ap-shed':    { x: CX * 0.6,      y: CY * 0.7 },   // ~100ft SE of office
+      'shed':    { x: CX * 0.6,      y: CY * 0.7 },   // ~100ft SE of center
       'north-outdoor': { x: CX * 0.55,     y: CY * 0.8 },   // around office/shed area
       'south':         { x: CX * 0.45,     y: CY * 1.1 },   // ~200ft south of office
       'east':          { x: CX * 1.65,     y: CY * 0.6 },   // ~800ft east via Gigabeam

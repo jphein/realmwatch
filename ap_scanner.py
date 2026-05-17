@@ -672,7 +672,7 @@ def _get_lldp_neighbors(ap_ip):
             port = entry.get("port", {})
             via = entry.get("via", "LLDP")
 
-            # Chassis dict key is the remote hostname (e.g., "ap-woodshed", "CPE710")
+            # Chassis dict key is the remote hostname (e.g., "ap-shed", "CPE710")
             remote_name = ""
             remote_mac = ""
             remote_ip = ""

@@ -4,7 +4,7 @@
 # Usage:
 #   ./scripts/ap-add-vlan.sh --ap ap-closet --vlan 11 --name family
 #   ./scripts/ap-add-vlan.sh --ap ap-shed --vlan 11 --name family
-#   ./scripts/ap-add-vlan.sh --dry-run --ap ap-north-1 --vlan 11 --name family
+#   ./scripts/ap-add-vlan.sh --dry-run --ap ap-bedroom --vlan 11 --name family
 #
 # Description:
 #   Detects whether the AP uses DSA (bridge-vlan) or swconfig (switch_vlan)
@@ -35,7 +35,7 @@ unset _FLEET
 # during 2026-04-28 iot-SSID rollout). ap-shed and ap-east-2
 # remain swconfig.
 declare -A SWCONFIG_ETH=(
-  [center]="eth1"
+  [ap-office]="eth1"
   [ap-east-2]="eth1"
   [ap-shed]="eth0"
 )
@@ -63,7 +63,7 @@ if [ -z "$AP" ] || [ -z "$VLAN" ] || [ -z "$IFNAME" ]; then
   echo "Examples:"
   echo "  $0 --ap ap-closet --vlan 11 --name family"
   echo "  $0 --ap ap-shed --vlan 11 --name family"
-  echo "  $0 --dry-run --ap ap-north-1 --vlan 11 --name family"
+  echo "  $0 --dry-run --ap ap-bedroom --vlan 11 --name family"
   exit 1
 fi
 
