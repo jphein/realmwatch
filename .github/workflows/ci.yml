@@ -1,0 +1,57 @@
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  shell:
+    runs-on: ubuntu-latest
+    name: shell — bash -n sweep
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bash syntax check every script
+        run: |
+          fail=0
+          for f in $(find scripts -name '*.sh' -type f); do
+            if ! bash -n "$f"; then
+              echo "::error file=$f::bash syntax check failed"
+              fail=1
+            fi
+          done
+          exit $fail
+
+  python:
+    runs-on: ubuntu-latest
+    name: python — compile + plugin manifest validation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile every .py file
+        run: python -m compileall -q -f .
+      - name: Validate plugin manifests
+        run: python .github/workflows/validate_manifests.py
+
+  cli:
+    runs-on: ubuntu-latest
+    name: realm cli — dispatcher smoke
+    steps:
+      - uses: actions/checkout@v4
+      - name: Make scripts executable
+        run: chmod +x scripts/realm scripts/cli/*.sh scripts/lib/*.sh
+      - name: realm --help renders
+        run: scripts/realm --help | head -30
+      - name: realm --list-commands enumerates
+        run: |
+          cmds=$(scripts/realm --list-commands)
+          count=$(echo "$cmds" | wc -l)
+          if [ "$count" -lt 10 ]; then
+            echo "::error::expected at least 10 subcommands, got $count"
+            exit 1
+          fi
+          echo "Found $count subcommands"
+      - name: realm completion bash emits a script
+        run: scripts/realm completion bash | head -5 | grep -q '_realm_complete'

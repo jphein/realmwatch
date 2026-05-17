@@ -4,10 +4,13 @@
 # the log (which would confuse multi-tempmon).
 #
 # Usage: switch-tempmon-feed.sh [interval_seconds]    default 30
+#
+# State dir: $XDG_STATE_HOME/realm/switch-fan/  (override via $REALM_STATE_DIR)
 
 set -u
 INTERVAL="${1:-30}"
-LOG_DIR="$HOME/.claude/projects/-home-jp/scratch/switch-fan"
+SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
+LOG_DIR="${REALM_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/realm}/switch-fan"
 LOG="$LOG_DIR/tempmon.log"
 PIDFILE="$LOG_DIR/feed.pid"
 mkdir -p "$LOG_DIR"
@@ -25,4 +28,4 @@ echo $$ > "$PIDFILE"
 cleanup() { rm -f "$PIDFILE"; }
 trap cleanup EXIT INT TERM
 
-exec /home/jp/Projects/realmwatch/scripts/switch/switch-tempmon.exp "$INTERVAL" >> "$LOG" 2>&1
+exec "$SELF_DIR/switch-tempmon.exp" "$INTERVAL" >> "$LOG" 2>&1

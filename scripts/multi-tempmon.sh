@@ -9,10 +9,11 @@
 set -u
 INTERVAL="${1:-30}"
 
-LOG_DIR="$HOME/.claude/projects/-home-jp/scratch/multi-tempmon"
+_REALM_STATE="${REALM_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/realm}"
+LOG_DIR="$_REALM_STATE/multi-tempmon"
 LOG="$LOG_DIR/tempmon.log"
 PIDFILE="$LOG_DIR/multi-tempmon.pid"
-SWITCH_LOG="$HOME/.claude/projects/-home-jp/scratch/switch-fan/tempmon.log"
+SWITCH_LOG="$_REALM_STATE/switch-fan/tempmon.log"
 mkdir -p "$LOG_DIR"
 
 # Kill any existing instance via pid file (prevents duplicate toasts)

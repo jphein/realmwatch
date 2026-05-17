@@ -6,7 +6,7 @@
 #
 # Wraps switch-tempmon.exp (persistent SSH+cmdline session) and:
 #  - pretty-prints each poll with color-coded temperature
-#  - logs every line to ~/.claude/projects/-home-jp/scratch/switch-fan/tempmon.log
+#  - logs every line to $XDG_STATE_HOME/realm/switch-fan/tempmon.log
 #  - fires notify-send + spd-say when:
 #      * temp crosses 70°C / 80°C / 85°C(warn) / 90°C / 95°C(alarm)
 #      * fan state leaves 'Normal'
@@ -18,7 +18,7 @@ set -u
 INTERVAL="${1:-30}"
 
 EXP="$(dirname "$0")/switch-tempmon.exp"
-LOG_DIR="$HOME/.claude/projects/-home-jp/scratch/switch-fan"
+LOG_DIR="${REALM_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/realm}/switch-fan"
 LOG="$LOG_DIR/tempmon.log"
 mkdir -p "$LOG_DIR"
 
