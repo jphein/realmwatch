@@ -67,7 +67,7 @@ Everything below explains how those two rules play out.
 
 ## The plugin system
 
-The structural truth of realmwatch. 33 plugins today. Every domain feature
+The structural truth of realmwatch. 36 plugins today. Every domain feature
 is one.
 
 ### Lifecycle
@@ -252,6 +252,55 @@ POST /events/<id>/close  {"by":"jp"}
 POST /events/<id>/comment {"by":"jp","text":"…"}
 GET  /events?ack=false
 ```
+
+---
+
+## Maintenance windows
+
+`plugins/maintenance/` registers scheduled windows that mute downstream
+consumers of realm events. While a window is active for a node, the
+alerting plugin drops matching events (`status='maintenance_suppressed'`)
+and the herald daemon skips that node when picking voices. Recurring,
+one-shot, or pattern-based (`*-router`, `ap-*`).
+
+```
+POST /maintenance/windows  {"name":"kernel reboot","node_pattern":"katana","starts_at":…,"ends_at":…,"recur":"once"}
+GET  /maintenance/active
+GET  /maintenance/check/<node>
+```
+
+---
+
+## Onboarding pipeline
+
+Two plugins introduced in v0.4 form an opt-in onboarding pipeline for hosts
+that aren't already in `topology.json`.
+
+1. **`agent-register`** — The Heralds' Gate. A new host runs a one-line
+   install script (`GET /register/install.sh`) that:
+   - registers itself (`POST /register/agents` with hostname, IP, OS, OUI),
+   - starts a periodic heartbeat (`POST /register/heartbeat`).
+   The registration is durable in `realm.db`; last-seen time drives the
+   liveness signal.
+
+2. **`discovery-actions`** — The Onboarding Sigils. A list of declarative
+   match-then-act rules:
+
+   ```yaml
+   - id: openwrt-ap
+     match:
+       oui_prefix: ["00:90:4C", "C4:6E:1F"]   # Belkin / Linksys OUIs
+     act:
+       role: ap
+       tags: [wireless, openwrt, infra]
+   ```
+
+   Rules fire at discovery time (whether the source is `agent-register`, an
+   nmap sweep, or a manual entry). `realm discovery-actions test <node>`
+   previews matches without writing.
+
+Together: a host runs one curl, lands in `nodes` with the right `role` and
+`tags`, and the discovery engine picks the matching providers automatically.
 
 ---
 

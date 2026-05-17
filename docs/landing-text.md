@@ -9,7 +9,7 @@ A fantasy-themed homelab network monitor that turns your infrastructure into a
 hand-painted realm map. Every host is a node on the SVG canvas with a fantasy
 name, a persona, and a voice.
 
-> 12 VLANs · 130+ nodes · 33 plugins · one unified CLI · an AI oracle ·
+> 12 VLANs · 130+ nodes · 36 plugins · one unified CLI · an AI oracle ·
 > a herald daemon · a Zabbix-class alerting pipeline — all from a single
 > Linux box.
 
@@ -33,7 +33,7 @@ Underneath the theming sits a serious operational toolkit:
 - **Live SVG topology** — pan/zoom canvas, animated traffic, terrain
   contours, biome regions, drag-to-arrange layout. Web workers offload
   the heavy work.
-- **Plugin system** — 33 plugins under `plugins/<name>/`, each with a
+- **Plugin system** — 36 plugins under `plugins/<name>/`, each with a
   `plugin.json` manifest. Drop-in. Topological-sorted dependencies. Hooks
   for endpoints, SSE sources, node enrichers, discovery providers, and CLI
   verbs.
@@ -48,6 +48,21 @@ Underneath the theming sits a serious operational toolkit:
   dispatch time. No more alert storms.
 - **Event acknowledgement workflow** — ack / close / comment. Subsequent
   matching alerts are suppressed while a human owns the problem.
+- **Maintenance windows** — schedule a Veiled Hour and both the alerting
+  pipeline and the herald daemon fall silent for the matching nodes.
+  Recurring, one-shot, or by pattern.
+- **Active agent registration** — new hosts run a one-line install script,
+  announce themselves to the realm, and heartbeat thereafter. Discovery
+  actions auto-classify them on arrival.
+- **Discovery actions** — declarative *if OUI matches OpenWrt then role=ap*
+  rules that fire at discovery time. New hosts walk into the realm and
+  emerge already classified.
+- **User macros** — `{$DISK_FULL_PCT}` tokens in alerting rules resolve
+  per-event against a host → role → global scope chain. One template,
+  per-host overrides.
+- **Role templates** — 30+ typed node roles with default discovery
+  providers, default sublabel format, and default tag set bundled together.
+  New hosts inherit the right treatment automatically.
 - **AI oracle** — Azure o4-mini. Polls the events table for queries, posts
   responses back. Optional Azure TTS for voice. Sister herald daemon
   narrates interesting nodes with themed personas.

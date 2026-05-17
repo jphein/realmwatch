@@ -320,14 +320,13 @@ useful issue.
 
 ## Code of conduct
 
-> **TODO** — a `CODE_OF_CONDUCT.md` (Contributor Covenant) is on the
-> public-release todo list. Until then: be kind, assume good faith, leave
-> the realm better than you found it.
+Realmwatch follows the Contributor Covenant v2.1 — see
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). In short: be kind, assume good
+faith, leave the realm better than you found it.
 
 ---
 
 ## License
 
-> **TODO** — no `LICENSE` file yet. Until one is added, "all rights
-> reserved" applies. Recommended additions are MIT (simple, permissive,
-> homelab-friendly) or Apache-2.0 (if patent grants matter).
+Realmwatch is licensed under [GPL-3.0](LICENSE). By submitting a pull
+request you agree your contribution is offered under the same terms.

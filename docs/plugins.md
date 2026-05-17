@@ -5,7 +5,7 @@ title: Plugin catalog
 
 # Plugin catalog
 
-33 plugins. Every domain feature in realmwatch is one. Each lives under
+36 plugins. Every domain feature in realmwatch is one. Each lives under
 `plugins/<name>/` with a `plugin.json` manifest. The loader topologically
 sorts on `depends_on` and calls `setup(ctx)` for every integrated plugin.
 
@@ -100,6 +100,19 @@ A new node gets the right discovery treatment automatically based on its role.
 
 ---
 
+## Infrastructure / operations
+
+The freshly-bound Zabbix-class spells. Each shipped in v0.4 and slots into
+the alerting + discovery pipelines.
+
+| Plugin | Fantasy name | Icon | What it does |
+|---|---|:--:|---|
+| `maintenance` | Veiled Hours | 🔨 | Scheduled maintenance windows. While a window is active, both the alerting pipeline and the herald daemon fall silent for the matching nodes. Recurring, one-shot, by node pattern or by role. |
+| `agent-register` | The Heralds' Gate | 🚪 | Active agent self-registration. New hosts run a one-line install script that announces themselves and starts a heartbeat. Metadata (OS, OUI, hostname) drives automatic role and tag assignment. |
+| `discovery-actions` | The Onboarding Sigils | 🪄 | Declarative auto-classification rules. *If OUI matches OpenWrt, then role=ap, then add tag wireless.* Evaluated at discovery time. Preview-only test mode (`realm discovery-actions test`) before live writes. |
+
+---
+
 ## Plugins with declarative CLI verbs (Method B)
 
 The CLI dispatcher reads `cli.verbs` from `plugin.json` and proxies HTTP
@@ -118,6 +131,9 @@ command without any per-plugin CLI code.
 | `herald` | `status` |
 | `notion` | `sync`, `complete` |
 | `system-updates` | `list`, `inventory`, `history`, `check`, `check-one`, `run`, `run-one`, `cancel`, `approve`, `skip` |
+| `maintenance` | `list`, `active`, `check`, `cancel` |
+| `agent-register` | `list`, `show`, `install-script`, `forget` |
+| `discovery-actions` | `list`, `test`, `apply`, `delete` |
 
 ---
 

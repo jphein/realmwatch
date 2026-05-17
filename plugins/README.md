@@ -19,7 +19,7 @@ plugins/
 ## Plugin Types
 
 - **integrated** — runs inside map_server process (background threads, SSE, enrichment).
-  This is the only lifecycle exercised today; all 33 current plugins are integrated.
+  This is the only lifecycle exercised today; all 36 current plugins are integrated.
 - **standalone** *(spec only)* — separate systemd process, communicates via HTTP API.
   Reserved in the manifest schema; no plugin uses this type yet.
 - **on-demand** *(spec only)* — invoked by user action, runs as subprocess.
@@ -35,6 +35,26 @@ plugins/
 ## No Hot Reload
 
 Plugin changes require a server restart. No hot reload is supported.
+
+## CLI: Method A vs Method B
+
+A plugin can expose `realm` subcommands two ways. Pick whichever fits.
+
+- **Method A — drop an executable** at `plugins/<name>/cli`. Any language.
+  Must respond to `--one-line-help`, `--list-subcommands`, `--help`. The
+  dispatcher execs it with the remaining args. Use when your CLI needs
+  logic beyond HTTP pass-through.
+- **Method B — declare verbs in `plugin.json`**. Add a `cli.verbs[]` array
+  with `name`, `method`, `path`, optional `args`, `body`. The generic
+  `realm-plugin.sh` handler reads the manifest and proxies HTTP through
+  `scripts/lib/http.sh`. Zero per-plugin code. Used by `agent-register`,
+  `ansible`, `chat`, `collectd`, `discovery-actions`, `firewall`, `ha`,
+  `herald`, `latency`, `maintenance`, `notion`, `system-updates`, `wifi`.
+
+If both exist for the same plugin, Method A wins.
+
+See [`CONTRIBUTING.md`](../CONTRIBUTING.md#add-a-realm-cli-subcommand) for
+the full guide.
 
 ## Specs Not Yet Implemented
 

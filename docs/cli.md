@@ -335,6 +335,69 @@ runtime — adding a new `realm-foo` requires zero completion regeneration.
 
 ---
 
+## Plugin-shipped verbs
+
+These verbs come from `cli.verbs` blocks inside `plugins/<name>/plugin.json`.
+The dispatcher reads the manifest at request time and proxies HTTP through
+`scripts/lib/http.sh`. No per-plugin Bash needed.
+
+### `realm maintenance list|active|check|cancel`
+
+```text
+Manage scheduled maintenance windows.
+```
+
+`plugins/maintenance/` — Veiled Hours. While a window is active, alerting and
+the herald daemon ignore events for the matching nodes. Useful for planned
+downtime, kernel reboots, fleet upgrades.
+
+```bash
+realm maintenance list                    # every window, past and future
+realm maintenance active                  # only windows currently muting
+realm maintenance check oracle            # is this node in a window now?
+realm maintenance cancel 7                # delete window id 7
+```
+
+Backed by `GET /maintenance/windows`, `GET /maintenance/active`,
+`GET /maintenance/check/<node>`, `DELETE /maintenance/windows/<id>`.
+
+### `realm agent-register list|show|install-script|forget`
+
+```text
+View self-registered agents and the install-script one-liner.
+```
+
+`plugins/agent-register/` — The Heralds' Gate. New hosts curl the
+`install-script` endpoint and announce themselves with a heartbeat. Metadata
+(OS, OUI, hostname) feeds the discovery-actions pipeline for automatic role
+and tag assignment.
+
+```bash
+realm agent-register list                 # every agent, last-seen, role, tags
+realm agent-register show familiar        # full metadata for one host
+realm agent-register install-script       # prints the one-liner
+realm agent-register forget familiar      # remove the registration
+```
+
+### `realm discovery-actions list|test|apply|delete`
+
+```text
+Manage declarative auto-classification rules for newly discovered hosts.
+```
+
+`plugins/discovery-actions/` — The Onboarding Sigils. Rules like *"if OUI
+matches the OpenWrt range, then set role=ap and add tag wireless"* run at
+discovery time. The `test` verb is a dry-run preview — no DB writes.
+
+```bash
+realm discovery-actions list              # all configured actions
+realm discovery-actions test familiar     # preview what would fire
+realm discovery-actions apply familiar    # re-run actions, live writes
+realm discovery-actions delete openwrt-ap # remove an action by id
+```
+
+---
+
 ## Fleet + update orchestration
 
 ### `realm discover-os`

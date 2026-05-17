@@ -5,7 +5,7 @@
 **A fantasy-themed homelab network monitor that turns your infrastructure into a hand-painted realm map.**
 
 *Every host is a node on the SVG canvas with a fantasy name, a persona, and a voice.
-12 VLANs, 130+ nodes, 33 plugins, one unified CLI, an AI oracle, a herald daemon,
+12 VLANs, 130+ nodes, 36 plugins, one unified CLI, an AI oracle, a herald daemon,
 and a Zabbix-class alerting pipeline — all running from a single Linux box.*
 
 [Quick start](#quick-start) · [Architecture](#architecture) · [Plugins](#plugin-catalog)
@@ -28,7 +28,7 @@ and a unified `realm` CLI that exposes every capability via a single, ergonomic,
 git-style command.
 
 It is opinionated and personal — built around one user's homelab — but the
-architecture is deliberately decoupled. The 33 plugins under `plugins/` each
+architecture is deliberately decoupled. The 36 plugins under `plugins/` each
 live in their own directory with a `plugin.json` manifest, register themselves
 with the server through a `setup(ctx)` hook, and can ship HTTP endpoints, SSE
 sources, frontend panels, discovery providers, and CLI verbs. The core is a
@@ -56,8 +56,9 @@ rendering engine. Everything interesting is a plugin.
   VLANs, animated traffic ley lines, terrain contours, biome regions, and
   drag-to-arrange layout. Web workers handle force-directed layout and
   heightmap stamping; pre-computed sublabels stream over SSE.
-- **33 plugins.** Every domain feature — census, latency, firewall, WiFi
-  scan, system updates, herald, chat, debug, discovery, alerting — lives as
+- **36 plugins.** Every domain feature — census, latency, firewall, WiFi
+  scan, system updates, herald, chat, debug, discovery, alerting,
+  maintenance windows, agent registration, discovery actions — lives as
   a plugin under `plugins/<name>/`. Drop-in. No registry.
 - **Unified `realm` CLI.** Git-style dispatcher that resolves `realm <verb>`
   against `scripts/cli/`, `plugins/<name>/cli`, and `$PATH`. 36+ subcommands
@@ -235,7 +236,7 @@ once enabled in repo settings).
 
 ## Plugin catalog
 
-33 plugins across UI, data bridges, discovery, and effects.
+36 plugins across UI, data bridges, discovery, infrastructure, and effects.
 
 ### UI panels
 
@@ -283,6 +284,14 @@ nodes through `discovery_links`.
 | `github` | Repos, CI status, PRs via `gh` CLI |
 | `projects` | Local `~/Projects/` inventory, git status, stack detection |
 | `manual` | Static infrastructure entries, relationships, tags, bookmarks |
+
+### Infrastructure / operations
+
+| Plugin | Fantasy name | Icon | Role |
+|---|---|---|---|
+| `maintenance` | Veiled Hours | 🔨 | Scheduled maintenance windows that suppress alerts and herald speech for planned downtime |
+| `agent-register` | The Heralds' Gate | 🚪 | Active agent auto-registration — hosts self-announce + heartbeat; metadata feeds the discovery-actions pipeline |
+| `discovery-actions` | The Onboarding Sigils | 🪄 | Declarative auto-classification: *if OUI matches OpenWrt then role=ap*. YAML rules evaluated at discovery time |
 
 ### Daemons / effects / services
 
@@ -365,6 +374,9 @@ The dispatcher reads `cli.verbs` directly from `plugin.json` and pipes through
 | `herald` | `status` |
 | `notion` | `sync`, `complete` |
 | `system-updates` | `list`, `inventory`, `history`, `check`, `check-one`, `run`, `run-one`, `cancel`, `approve`, `skip` |
+| `maintenance` | `list`, `active`, `check`, `cancel` |
+| `agent-register` | `list`, `show`, `install-script`, `forget` |
+| `discovery-actions` | `list`, `test`, `apply`, `delete` |
 
 ### CLI conventions (clig.dev)
 
@@ -500,25 +512,25 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide. Quick version:
 
 ## License
 
-> **TODO** — no license file yet. Recommended: MIT (simple, homelab-friendly,
-> permissive) or Apache-2.0 (if patent grants matter). Until a license is
-> added, the default is "all rights reserved" — fine for browsing, hostile
-> to forking. Issue: [Add LICENSE file](https://github.com/jphein/realmwatch/issues).
+Realmwatch is licensed under the [GNU General Public License v3.0](LICENSE)
+— a copyleft license that keeps forks open. Contributions are accepted under
+the same terms. See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community
+expectations.
 
 ---
 
 ## Roadmap
 
 Open issues tagged `zabbix-inspired` and `public-release` track the active
-roadmap. Highlights:
+roadmap. Already shipped in v0.4.0: trigger dependencies, event
+acknowledgement, role templates, user macros, `node.tags`, maintenance
+windows, agent self-registration, and discovery actions.
 
-- **Active agent auto-registration** ([#9](https://github.com/jphein/realmwatch/issues/9))
-- **Network discovery with auto-actions** ([#10](https://github.com/jphein/realmwatch/issues/10))
-- **User macros / per-node parameters** ([#7](https://github.com/jphein/realmwatch/issues/7))
+Still open:
+
 - **Low-Level Discovery — auto-create sub-entities/sublabels** ([#6](https://github.com/jphein/realmwatch/issues/6))
-- **Maintenance windows** ([#4](https://github.com/jphein/realmwatch/issues/4))
-- **Role templates → first-class entries in `node_roles`** ([#3](https://github.com/jphein/realmwatch/issues/3))
 - **Ubuntu major release upgrades via realm CLI** ([#11](https://github.com/jphein/realmwatch/issues/11))
+- **Screenshots in README + landing page** ([#13](https://github.com/jphein/realmwatch/issues/13))
 
 ---
 
