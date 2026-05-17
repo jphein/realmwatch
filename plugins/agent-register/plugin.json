@@ -1,0 +1,44 @@
+{
+  "name": "agent-register",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Active agent auto-registration — hosts self-announce + heartbeat; metadata drives role/tag assignment.",
+  "fantasy_name": "The Heralds' Gate",
+  "icon": "🚪",
+
+  "python": {"module": "plugin", "entry": "setup"},
+
+  "cli": {
+    "summary": "Manage host self-registrations + install-script for new agents",
+    "verbs": [
+      {
+        "name": "list",
+        "summary": "List every registered agent and its last-seen state",
+        "method": "GET",
+        "path": "/register/agents",
+        "table": "(.agents // .) | (if type==\"array\" then . else [] end) | sort_by(.hostname) | .[] | [.hostname // \"-\", .ip // \"-\", .role // \"-\", .status // \"-\", (.last_seen | strftime(\"%H:%M:%S\")), ((.metadata.tags // []) | join(\",\"))]",
+        "header": ["HOSTNAME", "IP", "ROLE", "STATUS", "LAST_SEEN", "TAGS"]
+      },
+      {
+        "name": "show",
+        "summary": "Show one agent's full metadata",
+        "method": "GET",
+        "path": "/register/agents/<hostname>",
+        "args": ["hostname"]
+      },
+      {
+        "name": "install-script",
+        "summary": "Print the one-liner shell installer a new host runs",
+        "method": "GET",
+        "path": "/register/install.sh"
+      },
+      {
+        "name": "forget",
+        "summary": "Remove an agent registration (host stops being tracked)",
+        "method": "DELETE",
+        "path": "/register/agents/<hostname>",
+        "args": ["hostname"]
+      }
+    ]
+  }
+}
