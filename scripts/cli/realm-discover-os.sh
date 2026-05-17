@@ -188,13 +188,27 @@ while IFS=$'\t' read -r status id ip os_id os_ver os_pretty; do
   if [[ "$status" = "OK" ]]; then
     ok_count=$((ok_count+1))
     [[ "$os_id" = "ubuntu" ]] && ubuntu_hosts+=("$id") || other_hosts+=("$id ($os_id)")
+    # Build heuristic-friendly tag set alongside the typed os field.
+    # Tags are additive, lowercase, kebab-case — meant for `realm` filters and
+    # plugin heuristics. Fantasy `label` stays untouched for display.
+    declare -a node_tags=("$os_id" "linux")
+    [[ -n "$os_ver" ]] && node_tags+=("$os_id-$os_ver")
+    # Family tags so future filters like "all debian-family hosts" are cheap
+    case "$os_id" in
+      ubuntu|debian|mint|pop) node_tags+=("debian-family" "apt") ;;
+      rhel|centos|rocky|alma|fedora) node_tags+=("redhat-family" "dnf") ;;
+      alpine) node_tags+=("alpine-family" "apk") ;;
+      openwrt) node_tags+=("openwrt-family" "opkg") ;;
+    esac
+    tags_json=$(printf '%s\n' "${node_tags[@]}" | jq -R . | jq -s . -c)
     # POST back to topology
     body=$(jq -n \
       --arg id "$id" \
       --arg os "$os_id" \
       --arg ver "$os_ver" \
       --arg pretty "$os_pretty" \
-      '{id:$id, os:$os, os_version:$ver, os_pretty:$pretty}')
+      --argjson tags "$tags_json" \
+      '{id:$id, os:$os, os_version:$ver, os_pretty:$pretty, tags:$tags}')
     realm::api_post /node "$body" > /dev/null 2>&1 || realm::warn "POST /node failed for $id"
     if [[ "$REALM_OUTPUT" = "json" ]]; then
       printf '%s\n' "$body" >> "$jq_results"

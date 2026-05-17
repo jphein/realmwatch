@@ -20,14 +20,14 @@ log = logging.getLogger(__name__)
 # ── Role-based provider defaults ──
 ROLE_PROVIDERS = {
     "server": ["docker", "systemd", "netdata"],
-    "nas": ["docker", "systemd"],
+    "nas": ["docker", "systemd", "netdata"],
     "vm": ["systemd", "netdata"],
     "hypervisor": ["docker", "kvm", "systemd", "netdata"],
     "router": ["snmp", "netdata"],
     "switch": ["snmp"],
     "ap": ["snmp"],
-    "desktop": ["systemd"],
-    "laptop": [],
+    "desktop": ["systemd", "netdata"],   # any modern desktop can run netdata; cheap probe
+    "laptop": ["netdata"],
     "ups": ["snmp"],
     "printer": ["snmp"],
     "bridge": ["snmp"],
