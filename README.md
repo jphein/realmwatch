@@ -1,319 +1,139 @@
+<div align="center">
+
 # Realmwatch
 
-A live, interactive fantasy-themed monitor for a homelab. Hardware sensors,
-network nodes, system metrics, firewall zones, WiFi roaming, Home Assistant
-devices, and energy data are mapped to high-fantasy archetypes on a hand-painted
-SVG realm map. An AI oracle, voice herald, and per-node personas give every
-device a name, a role, and a voice.
+**A fantasy-themed homelab network monitor that turns your infrastructure into a hand-painted realm map.**
 
-- **Map**: pan/zoom SVG canvas with ~130 nodes across 12 VLANs, animated
-  traffic, terrain contours, biome regions, and drag-to-arrange layout.
-- **Panels**: 30+ dockable/conjurable panels (census, latency, firewall, WiFi,
-  scan, spellbook, quest log, codex, chat, debug) — all delivered by plugins.
-- **Voice**: Azure AI oracle for node Q&A; a herald daemon narrates interesting
-  events through Azure TTS personas.
-- **Plugins**: the whole feature surface is a plugin system. 33 plugins today,
-  covering data sources, UI panels, discovery providers, and integrations.
-- **Desktop themes**: the Gem Treasury palette extends beyond the web app to
-  theme the full GNOME desktop (shell, GTK, terminals, dock, extensions).
+*Every host is a node on the SVG canvas with a fantasy name, a persona, and a voice.
+12 VLANs, 130+ nodes, 33 plugins, one unified CLI, an AI oracle, a herald daemon,
+and a Zabbix-class alerting pipeline — all running from a single Linux box.*
+
+[Quick start](#quick-start) · [Architecture](#architecture) · [Plugins](#plugin-catalog)
+· [CLI](#the-realm-cli) · [Configuration](#configuration) · [Contributing](CONTRIBUTING.md)
+· [Changelog](CHANGELOG.md)
+
+</div>
 
 ---
 
-## Architecture
+Realmwatch is a hands-on, plugin-driven monitor for homelabs. It speaks fluent
+collectd, Netdata, SNMP, nftables, Home Assistant, fwupd, fping, Docker, KVM,
+LLDP, Tailscale, and Notion — but where most monitors render that into spark
+lines, realmwatch renders it into a treasure map. A failing UPS becomes a Ward
+losing its sigil. A roaming phone becomes a familiar slipping between towers. A
+firewall counter becomes a dragon at the gate. Underneath the theming sits a
+serious operational toolkit: live SVG topology, server-sent events, role-based
+auto-discovery, trigger-dependency alert suppression, event acknowledgement,
+and a unified `realm` CLI that exposes every capability via a single, ergonomic,
+git-style command.
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│ Browser — realm-map.html (SVG canvas, 30+ panels, SSE consumer)     │
-│   src/*.js → esbuild IIFE bundle → realm-map.js                     │
-│   plugins/<name>/panel.{js,html,css} loaded at runtime              │
-└─────────────────────────────────────────────────────────────────────┘
-                                │ HTTP + SSE
-                                ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ map_server.py :80    (stdlib http.server + ThreadingMixIn)          │
-│   ├── Static:  / (splash)  /realm-map.html  /codex/  /plugins/<…>   │
-│   ├── API:     /status /topology /personas /settings /events …      │
-│   ├── SSE:     /sse  (status, traffic, energy, latency, firewall,   │
-│   │                   wifi, topology, plugin-broadcast, events)     │
-│   ├── Core:    engine.py  realm_db.py  sse_broker.py                │
-│   │            discovery_engine.py  route_table.py  node_roles.py   │
-│   └── Plugins: plugin_loader.py  plugin_registry.py  plugin_context │
-│                ↓  topological sort on depends_on                    │
-│                ↓  setup(ctx) for every integrated plugin            │
-│                ↓  hooks: endpoints, SSE sources, enrichers,         │
-│                   discovery providers, background threads           │
-└─────────────────────────────────────────────────────────────────────┘
-                │                              │
-                ▼                              ▼
-   Independent daemons               Discovery providers
-   (separate processes)              (pluggable, per-host)
-   ─────────────────────             ────────────────────
-   oracle_daemon.py                  netdata · snmp · docker
-   realm_herald.py                   kvm · systemd · nmap
-   realm_launcher.py :8899           ha · caddy · github · …
-```
-
-**Core principle — "thin core, fat plugins":** the bundled frontend is a
-rendering engine (panel-manager, map-view, topology, terrain, effects, traffic,
-quest-log, spellbook, SVG globe). Every domain panel — census, latency,
-firewall, WiFi scan, skills, debug, herald, chat — is a plugin that registers
-itself at server start.
-
-**Core principle — "engine.py is the single source of truth":** all realm logic
-(sensor readings, Tailscale mesh, nft counters, fantasy translations) lives in
-`engine.py`. Other files may call into it, never duplicate it.
+It is opinionated and personal — built around one user's homelab — but the
+architecture is deliberately decoupled. The 33 plugins under `plugins/` each
+live in their own directory with a `plugin.json` manifest, register themselves
+with the server through a `setup(ctx)` hook, and can ship HTTP endpoints, SSE
+sources, frontend panels, discovery providers, and CLI verbs. The core is a
+rendering engine. Everything interesting is a plugin.
 
 ---
 
-## Plugin System
+## Screenshots
 
-The whole backend + UI feature surface is a plugin ecosystem. Plugins live under
-`plugins/<name>/` with a `plugin.json` manifest and optional Python, HTML, CSS,
-JS, and systemd files.
-
-### Plugin Types
-
-| Type | Lifecycle | Use for |
-|------|-----------|---------|
-| `integrated` | Loaded in-process by `plugin_loader.py`; `setup(ctx)` called at boot | Data bridges, background scanners, UI panels, discovery providers |
-| `standalone` | Separate systemd process; communicates via HTTP | Services that must survive a map_server restart |
-| `on-demand` | Invoked by user action as a subprocess | One-shot tools, scripted workflows |
-
-### Loader Contract
-
-`plugin_loader.py` scans `plugins/`, validates each manifest (required fields:
-`name`, `version`, `type`; name must match directory), resolves `depends_on` via
-topological sort, imports `plugin.py`, and calls `setup(ctx)` with a
-`PluginContext`. The context exposes: endpoint registration, SSE source
-registration, node enricher hooks, discovery provider registration, shared DB
-access, and a per-plugin logger.
-
-### Current Plugins (33)
-
-**UI panels**
-
-| Plugin | Name | Role |
-|--------|------|------|
-| `census` | Realm Census | Grouped node list with live online/offline status from SSE |
-| `chat` | Arcane Dialogue | Session-based Azure AI chat, context-aware node discussions |
-| `codex` | Codex | Notion-synced lore wiki served at `/codex/` |
-| `debug` | Arcane Mirror + Grimoire + Scrying Terminal | Debug panel, API catalogue, command interface |
-| `plugin-manager` | Enchantment Registry | Lists loaded plugins, endpoints, SSE sources, panels |
-| `scan` | Survey Glass | On-demand WiFi/LLDP/firewall/oracle triggers |
-| `skills` | Inscription Codex | Browse and edit Skills, CLAUDE.md, Hooks, Agents |
-| `system-updates` | Scroll of Patch Runes | APT · Snap · Flatpak · mise · brew · npm · pip · firmware · AI CLIs |
-
-**Data bridges**
-
-| Plugin | Role |
-|--------|------|
-| `collectd` | RRD reader + UDP listener for per-host metric summaries |
-| `firewall` | nftables JSON parser — gatekeeper zones, VLAN mapping, counters |
-| `ha` | Home Assistant REST poll — entity states, device enrichment, energy |
-| `latency` | fping batch prober for wired nodes (30s) |
-| `wifi` | SSH to APs — iwinfo clients, DHCP identity, LLDP topology |
-| `wled` | WLED HTTP polling + control |
-| `notion` | Today todos → quests; archive completed |
-| `netdata` | Netdata agent REST — info, charts, alarms, collectors |
-| `caddy` | Reverse proxy discovery — Caddyfile / admin API |
-| `health` | HTTP/TCP/TLS expiry checks + realm-sigil version probes |
-| `alerting` | Realm Herald's Watch — routes events to notification channels |
-
-**Discovery providers** (feed the discovery engine)
-
-| Plugin | Scans |
-|--------|-------|
-| `discovery` | Companion — registers the engine's API, SSE source, enricher |
-| `docker-discovery` | Containers on hosts via SSH |
-| `kvm` | KVM/libvirt VMs on hypervisors via `virsh` |
-| `systemd` | Interesting services via SSH or local D-Bus |
-| `snmp` | Switch ports, interfaces, MAC tables |
-| `nmap` | Open ports, service versions, OS fingerprinting |
-| `github` | Repos, CI status, PRs via `gh` |
-| `projects` | Local `~/Projects/` inventory, git status, stack |
-| `manual` | Static infrastructure entries, relationships, tags, bookmarks |
-
-**Daemons / effects / services**
-
-| Plugin | Role |
-|--------|------|
-| `herald` | Manages the realm-herald subprocess |
-| `events` | Threshold monitor — collectd/HA → fantasy-themed alerts |
-| `ansible` | Playbook execution / infrastructure management |
-| `forest-theme` | Enchanted Forest ambient particle system on the map |
-| `game-servers` | Minecraft Bedrock UDP ping, Terraria TCP check |
-
-New features should be plugins. The core bundle should only grow for rendering
-or infrastructure changes.
-
-### Specs not yet implemented
-
-A few things are documented as part of the plugin contract but no plugin
-currently exercises them. Don't assume "documented" means "battle-tested":
-
-| Spec | Status | Notes |
-|------|--------|-------|
-| `<plugin>/<name>.service` systemd unit (per `plugins/README.md`) | unused | The plugin file structure allows shipping a unit file; no plugin does today. The 5 unit files in `systemd/` are core, not plugin-shipped. |
-| `standalone` plugin type | spec only | Defined in the type table; the integrated lifecycle is what's actually exercised. |
-| `on-demand` plugin type | spec only | Same — type is reserved but no plugin uses it. |
-| Migrating per-plugin backends into plugin dirs | in progress | Files like `ha_bridge.py`, `ap_scanner.py`, etc. still live at repo root and are imported by their plugins from there. |
+> **TODO** — JP, add screenshots here. The SVG map is the visual hook.
+> Recommended shots:
+>
+> - The full realm map at zoom-out (the treasure-map view)
+> - A node detail panel with stats / persona / SSH terminal
+> - The Survey Glass scan panel mid-discovery
+> - `realm watch` tailing live SSE events in a terminal
+> - `realm topology` and `realm tags list` table output
+> - The Scroll of Patch Runes panel mid-update
 
 ---
 
-## Source Tree
+## What you get out of the box
 
-### Python — core (not a plugin)
-
-| File | Lines | Role |
-|------|------:|------|
-| `map_server.py` | 1827 | HTTP :80, endpoint router, plugin wiring, SSE broker, static files |
-| `realm_db.py` | 1088 | SQLite — settings, events, personas, nodes, connections, regions, quests, scans, player |
-| `engine.py` | 454 | RealmEngine — sensors, Tailscale mesh, nft counters, fantasy translations |
-| `plugin_loader.py` | 374 | Discovery, manifest validation, dependency sort, lifecycle |
-| `plugin_context.py` | 357 | The `PluginContext` API exposed to `setup(ctx)` |
-| `plugin_registry.py` | 198 | Registry of loaded plugins, panels, endpoints |
-| `sse_broker.py` | 316 | Hash-deduped SSE fanout + burst replay on connect |
-| `node_roles.py` | 946 | 30+ role definitions, 6-signal enrichment pipeline, OUI lookup |
-| `realm_launcher.py` | 1187 | Port 8899 — branch-switching portal and map_server restart |
-| `oracle_daemon.py` | 303 | Polls events for `oracle_query`, calls Azure AI, posts responses |
-| `realm_herald.py` | 315 | Picks interesting nodes, themed templates, speech events |
-| `route_table.py` | 141 | Path → handler table |
-| `chat_bridge.py` | 290 | Azure AI chat, session-based, shared DB with cloud-chat-assistant |
-| `discovery_engine.py` | 658 | Provider registry, scan orchestration, sub-entity linking |
-
-Per-plugin backends (e.g. `ha_bridge.py`, `ap_scanner.py`, `collectd_reader.py`,
-`collectd_listener.py`, `firewall_parser.py`, `latency_prober.py`,
-`event_generator.py`, `notion_sync.py`, `codex_sync.py`, `wled_bridge.py`,
-`traffic_precompute.py`) live at the repo root for now and are invoked by their
-respective plugins. The intent is to migrate them into each plugin's directory.
-
-### Frontend — bundled core (`src/`, ~14k lines)
-
-| File | Lines | Role |
-|------|------:|------|
-| `panel-manager.js` | 2593 | Panel system — dock, anchored, conjured, hidden-seal, drag, formations |
-| `map-view.js` | 1357 | Pan/zoom, touch, node drag, deferred rendering, globe Z-index |
-| `layout.js` | 912 | Panel layout/settings, save/restore, formations |
-| `quest-log.js` | 906 | Speech bubbles, event rendering, bubble positions |
-| `node-controls.js` | 1075 | SSH terminal, WoL, WLED, per-node shell / chat / controls |
-| `spellbook.js` | 761 | Search index, filter, enchant tab |
-| `topology.js` | 744 | Node/connection SVG rendering, SSE-driven refresh |
-| `persona-editor.js` | 526 | Properties / stats tabs, voice selector |
-| `app.js` | 553 | Coordinator — SSE dispatch (including `plugin-broadcast`), module wiring |
-| `effects.js` | 510 | Motes, sparkles, FPS loop |
-| `terrain.js` | 488 | Biome terrain / heightmap contour rendering (worker offload) |
-| `node-status.js` | 452 | Tooltip content, node sublabels, status update cycle |
-| `traffic.js` | 331 | Connection SVG dash animation |
-| `winbox-wm.js` | 312 | WinBox window manager integration |
-| `plugin-api.js` | 205 | `window.RealmAPI` — plugin hooks for SSE, panels, events |
-| `main.js` | 90 | Entry point, loading stages |
-| `panels.js` | 50 | Gauges (leftover after plugin extraction) |
-| `utils.js` / `config.js` | 34 / 37 | Helpers, constants (world 4800×3300) |
-
-### Workers (not bundled — edit directly)
-
-- `layout-worker.js` — force-directed + BFS tree + VLAN cluster layout
-- `topo-worker.js` — heightmap stamping, marching squares → SVG contours
-
-### HTML / CSS
-
-- `realm-map.html` (1552) — SVG canvas, panel templates, spellbook
-- `realm-map.css` (7349) — panel themes, seal modes, animations
-- `splash.html`, `wifi-guide.html`, `report-card.html` — public pages
-
-### Dependencies
-
-- **Python**: stdlib `http.server`, `psutil`, `openai` (Azure AI),
-  `notion-client`, `httpx`, `python-dotenv` — pinned in `requirements.txt`
-- **JS**: `esbuild` (dev), `winbox` (runtime window manager) — see `package.json`
+- **Interactive SVG realm map.** Pan/zoom canvas with ~130 nodes across 12+
+  VLANs, animated traffic ley lines, terrain contours, biome regions, and
+  drag-to-arrange layout. Web workers handle force-directed layout and
+  heightmap stamping; pre-computed sublabels stream over SSE.
+- **33 plugins.** Every domain feature — census, latency, firewall, WiFi
+  scan, system updates, herald, chat, debug, discovery, alerting — lives as
+  a plugin under `plugins/<name>/`. Drop-in. No registry.
+- **Unified `realm` CLI.** Git-style dispatcher that resolves `realm <verb>`
+  against `scripts/cli/`, `plugins/<name>/cli`, and `$PATH`. 36+ subcommands
+  today, including a generic Method-B handler that reads `cli.verbs` from any
+  plugin's `plugin.json`. Bash + zsh completion. `make cli-install` to
+  symlink into `~/.local/bin/`.
+- **Auto-OS discovery and Netdata fleet rollout.** `realm discover-os`
+  concurrently SSHes every reachable host, captures `/etc/os-release`, and
+  writes `os` / `os_version` / `tags` back to topology.
+  `realm netdata-install` runs the official kickstart playbook against every
+  Ubuntu host. `realm ansible-update` runs apt + DKMS + fwupd safely across
+  the fleet.
+- **Trigger-dependency alert suppression.** Zabbix-style. When a node's
+  upstream gateway is already in a problem state, child-node alerts are
+  suppressed at dispatch time. Eliminates the classic alert storm. Full
+  audit trail in the alerting plugin.
+- **Event acknowledgement workflow.** `realm event ack <id>` /
+  `realm event close <id>` / `realm event comment`. Subsequent matching
+  alerts are dropped while a human owns the problem.
+- **Role templates.** 30+ typed node roles (gateway, router, switch, ap,
+  server, nas, vm, hypervisor, desktop, …), each with default discovery
+  providers, default sublabel format, and default tag set. New nodes get
+  the right discovery treatment automatically.
+- **AI oracle (Azure o4-mini).** Polls the events table for `oracle_query`
+  events, calls Azure AI, posts responses back as realm events. Optional
+  Azure TTS for voice. Sister daemon (`realm_herald.py`) narrates
+  interesting nodes with themed personas.
+- **Home Assistant + collectd + SNMP + nftables + WLED + fwupd + Docker +
+  KVM + Notion.** Every bridge is a plugin. Each is replaceable.
+- **No build dependencies beyond Python 3.12 and Node for esbuild.** No
+  framework. No bundler config to learn. SQLite for state. stdlib
+  `http.server` with ThreadingMixIn. SSE for live updates.
 
 ---
 
-## HTTP API (:80)
-
-Full endpoint list in `CLAUDE.md`. Highlights:
-
-**GET** `/`, `/realm-map.html`, `/codex/`, `/plugins/<name>/panel.*` (static);
-`/status`, `/topology`, `/config`, `/settings`, `/personas`, `/energy`,
-`/latency`, `/firewall`, `/quests`, `/events`, `/collectd`, `/observation`,
-`/player`, `/debug`, `/scan`, `/scan/status`, `/scan/lldp`, `/scan/wifi`,
-`/wifi/aps`, `/ping/<ip>`, `/server-info`, `/notion-sync`, `/codex-sync`,
-`/herald`, `/chat/sessions`, `/chat/history`, `/scripts`, `/skills`,
-`/claude-md`, `/agents`, `/hooks`, `/resolve-url`, `/reset`, `/sse`.
-
-**POST** `/chat`, `/chat/clear`, `/event`, `/personas`, `/config`, `/settings`,
-`/node`, `/connections`, `/topology`, `/quest-create`, `/quest-update`,
-`/quest-delete`, `/player/reward`, `/notion-complete`, `/ssh`, `/wol`,
-`/wled/<node_id>/state`, `/skills`, `/claude-md`.
-
-Plugins register additional endpoints at load time.
-
-### SSE event stream (`/sse`)
-
-| Event | Frequency | Content |
-|-------|-----------|---------|
-| `status` | 10s | Sensors, collectd, WiFi, HA, sublabels |
-| `traffic` | 5s | Per-node traffic intensity (log scale) |
-| `topology` | 60s | Full topology (nodes + connections + regions) |
-| `energy` | 30s | Solar, battery, grid (HA) |
-| `latency` | 30s | Pre-grouped latency by VLAN |
-| `firewall` | 60s | Parsed nftables (cached) |
-| `wifi` | 120s | AP client lists, signal data |
-| `plugin-broadcast` | live | Plugin-dispatched events (routed in `dispatchPluginSSE`) |
-| `realm-event` | live | Individual realm events (speech, alert, highlight, quest) |
-
-Initial burst on connect: `topology → traffic → energy → latency → recent
-events → status`. Broker uses hash-based dedup — only pushes on change.
-
----
-
-## Discovery Engine
-
-`discovery_engine.py` orchestrates plugin-registered providers to autodiscover
-sub-entities per host.
-
-Role-based provider defaults:
-
-| Role | Providers |
-|------|-----------|
-| `server` | docker, systemd, netdata |
-| `nas` | docker, systemd |
-| `vm` | systemd, netdata |
-| `hypervisor` | docker, kvm, systemd, netdata |
-| `router` | snmp, netdata |
-| `switch` / `ap` | snmp |
-| `desktop` | systemd |
-
-Discovered sub-entities link back to topology nodes, persist to `realm.db`, and
-flow through SSE. The WiFi scanner's unknown-node flow was migrated to the
-SubEntity model in `e360baf`.
-
----
-
-## Quick Start
+## Quick start
 
 ```bash
-make install              # pip + npm
-make build                # esbuild src/main.js → realm-map.js (minified IIFE)
-make dev                  # python3 map_server.py (starts all plugins)
+git clone https://github.com/jphein/realmwatch.git
+cd realmwatch
 
-# Optional daemons
-make oracle               # python3 oracle_daemon.py --no-voice
-make herald               # python3 realm_herald.py
+make install      # pip install -r requirements.txt && npm install
+make build        # esbuild src/main.js → realm-map.js (minified IIFE)
+make dev          # python3 map_server.py — foreground HTTP :80 + SSE + plugins
 
-# Dev loop
-npm run watch             # esbuild watch mode (non-minified)
-make health               # color-coded health check
-make clean                # drop __pycache__, .pyc, npm cache
+# In another shell — install the CLI into ~/.local/bin
+make cli-install  # symlinks realm + every realm-* subcommand, no sudo
 
-# Public pages → realm-portal
-make deploy               # copies wifi-guide.html, report-card.html
+# Sanity check
+make cli-doctor   # verifies PATH, completion, jq/curl/column, server reach
+realm             # prints the command index
+realm status      # GET /status — colored table view
+realm watch       # tail SSE events live
 ```
 
-### systemd (optional, opt-in)
+Open `http://localhost/realm-map.html` — panels render from the bundled core,
+plugin panels load at runtime from `/plugins/<name>/panel.{html,js,css}`, SSE
+streams `status / traffic / topology / energy / latency / firewall / wifi /
+plugin-broadcast / realm-event` events. No hot reload — plugin changes need a
+server restart.
 
-The default development path is foreground (`make dev`). systemd is opt-in
-for unattended operation — none of the realmwatch services run by default.
+> **Port 80** — `map_server.py` binds to `:80` by default. On Linux this
+> needs `CAP_NET_BIND_SERVICE` on the Python interpreter (one-time, via
+> `scripts/enable-port80.sh`) or you can run on a different port with
+> `REALM_PORT=8080 make dev`.
+
+### Optional daemons
+
+All daemons are **off by default**. Opt in per-service:
+
+```bash
+make oracle       # python3 oracle_daemon.py --no-voice
+make herald       # python3 realm_herald.py
+```
+
+For unattended operation, copy the systemd units:
 
 ```bash
 cp systemd/*.service ~/.config/systemd/user/
@@ -321,24 +141,228 @@ systemctl --user daemon-reload
 systemctl --user enable --now realm-map-server   # opt in per-unit
 ```
 
-Five unit files ship in `systemd/`: `realm-map-server`, `oracle-daemon`,
-`realm-herald`, `realm-launcher`, `realm-theme-watcher`. Of these, only
-`realm-theme-watcher` is enabled by default on the dev host (it watches
-`desktop-themes/` and redeploys on dark/light switch — independent of the
-map server).
+Five user units ship in `systemd/`: `realm-map-server`, `oracle-daemon`,
+`realm-herald`, `realm-launcher`, `realm-theme-watcher`.
 
-Other realm-* units you may see in `~/.config/systemd/user/` (`realm-ingest`,
-`realm-sse-ingest`, `realm-optimizer`, `realm-daily-rite`,
-`realm-system-updates-check` and their timers) come from sibling projects
-(`realm-optimizer`, the system-updates plugin's deploy step, etc.) — not from
-this repo's `systemd/` directory.
+### Daily update orchestration (optional)
 
-### Environment
+```bash
+make update-all-install     # ~03:00 daily timer, no sudo
+make update-all-uninstall   # remove
+```
 
-Copy `.env.example` → `.env`. `map_server.py` auto-loads it.
+Runs `realm update-all` — two-stage: katana host via the system-updates plugin,
+then every Ubuntu host in the realm via Ansible. DKMS state verified after
+apt upgrade. fwupd metadata synced. Reboot-required flags surfaced.
+
+---
+
+## Architecture
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│ Browser — realm-map.html (SVG canvas, dockable panels, SSE consumer)   │
+│   src/*.js → esbuild IIFE bundle → realm-map.js                        │
+│   plugins/<name>/panel.{js,html,css} loaded at runtime, no bundling    │
+└────────────────────────────────────────────────────────────────────────┘
+                                 │ HTTP + SSE
+                                 ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ map_server.py :80   (stdlib http.server + ThreadingMixIn)              │
+│   ├── Static:  / (splash)  /realm-map.html  /codex/  /plugins/<…>      │
+│   ├── API:     /status /topology /personas /settings /events /node …   │
+│   ├── SSE:     /sse  (status, traffic, energy, latency, firewall,      │
+│   │                   wifi, topology, plugin-broadcast, realm-event)   │
+│   ├── Core:    engine.py · realm_db.py · sse_broker.py                 │
+│   │            discovery_engine.py · route_table.py · node_roles.py    │
+│   └── Plugins: plugin_loader.py · plugin_registry.py · plugin_context  │
+│                ↓  scans plugins/, validates manifests                  │
+│                ↓  topological sort on depends_on                       │
+│                ↓  setup(ctx) for every integrated plugin               │
+│                ↓  hooks: endpoints / SSE sources / enrichers /         │
+│                          discovery providers / background threads     │
+└────────────────────────────────────────────────────────────────────────┘
+                 │                                  │
+                 ▼                                  ▼
+   Independent daemons                  Discovery providers
+   (separate processes)                  (per-host, pluggable)
+   ─────────────────────                 ────────────────────
+   oracle_daemon.py                      netdata · snmp · docker
+   realm_herald.py                       kvm · systemd · nmap
+   realm_launcher.py :8899               ha · caddy · github · …
+```
+
+**Two design rules carry most of the weight:**
+
+1. **Thin core, fat plugins.** The bundled frontend is a rendering engine —
+   panel system, SVG canvas, terrain compositor, traffic animator, SSE
+   dispatch. Every domain panel is a plugin that registers itself at server
+   start. New features should be plugins. The core grows only for rendering
+   or infrastructure changes.
+
+2. **`engine.py` is the single source of truth.** All realm logic — sensor
+   readings, Tailscale mesh, nft counters, fantasy translations — lives
+   in `engine.py`. Other files may call into it; never duplicate it.
+
+Deeper architecture writeup: [`docs/`](docs/) (browseable as GitHub Pages
+once enabled in repo settings).
+
+---
+
+## Plugin catalog
+
+33 plugins across UI, data bridges, discovery, and effects.
+
+### UI panels
+
+| Plugin | Fantasy name | Icon | Role |
+|---|---|---|---|
+| `census` | Realm Census | ⚑ | Grouped node list with live online/offline status from SSE |
+| `chat` | Oracle Link | 💬 | Session-based Azure AI chat, context-aware node discussions (o4-mini) |
+| `codex` | Lore Archives | 📚 | Notion-synced lore wiki served at `/codex/` |
+| `debug` | Arcane Mirror | 🔮 | Debug panel, API catalogue, Scrying Terminal command interface |
+| `plugin-manager` | Enchantment Registry | 📜 | Lists loaded plugins, endpoints, SSE sources, panels |
+| `scan` | Survey Glass | 🔭 | On-demand WiFi/LLDP/firewall/oracle/discovery triggers |
+| `skills` | Inscription Codex | ✎ | Browse and edit Skills, CLAUDE.md, Hooks, Agents |
+| `system-updates` | Scroll of Patch Runes | 📜 | APT, Snap, Flatpak, mise, brew, npm, pip, firmware, AI CLIs |
+| `projects` | The Scholar's Archive | 📚 | Local `~/Projects/` inventory, git status, stack detection |
+
+### Data bridges
+
+| Plugin | Fantasy name | Icon | Role |
+|---|---|---|---|
+| `collectd` | Scrying Stones | 📊 | Collectd RRD reader + live UDP listener + Realm Census panel |
+| `firewall` | Ward Stones | 🛡️ | nftables JSON parser — zones, VLAN mapping, suggestions, counters |
+| `ha` | Crystal Bridge | 🏠 | Home Assistant REST poll — entity states, device enrichment, energy |
+| `latency` | Arcane Pulse | 🏸 | fping batch prober for wired nodes (30s), RTT grouped by VLAN |
+| `wifi` | Aether Towers | 📡 | SSH to APs — iwinfo clients, DHCP identity, LLDP topology |
+| `wled` | Prismatic Lights | 💡 | WLED HTTP polling + control |
+| `notion` | Quest Portals | 📜 | Today todos → quests; archive completed; codex sync |
+| `netdata` | Oracle Sight | 🕮 | Netdata agent REST — info, charts, alarms, collectors |
+| `caddy` | Gate Warden | 🚧 | Reverse proxy discovery — Caddyfile / admin API |
+| `health` | Watchtower Beacon | 🚨 | HTTP/TCP/TLS expiry + realm-sigil version probes |
+| `alerting` | Herald's Watch | 📢 | Routes realm events to channels; trigger-dependency suppression |
+
+### Discovery providers
+
+Feed the discovery engine. Each emits sub-entities that link back to topology
+nodes through `discovery_links`.
+
+| Plugin | Scans |
+|---|---|
+| `discovery` | Companion plugin — registers the engine's API, SSE source, enricher |
+| `docker-discovery` | Containers on hosts via SSH |
+| `kvm` | KVM/libvirt VMs on hypervisors via `virsh` |
+| `systemd` | Interesting services via SSH or local D-Bus |
+| `snmp` | Switch ports, interfaces, MAC tables; SNMPv2c + SNMPv3 (auth+priv) |
+| `nmap` | Open ports, service versions, OS fingerprinting |
+| `github` | Repos, CI status, PRs via `gh` CLI |
+| `projects` | Local `~/Projects/` inventory, git status, stack detection |
+| `manual` | Static infrastructure entries, relationships, tags, bookmarks |
+
+### Daemons / effects / services
+
+| Plugin | Fantasy name | Icon | Role |
+|---|---|---|---|
+| `herald` | Town Crier | 📯 | Manages the realm-herald subprocess (themed node speech) |
+| `events` | Sentinel Wards | ⚡ | Threshold monitor — collectd/HA → fantasy-themed alerts |
+| `ansible` | War Room | ⚔️ | Ansible playbook execution + AI-assisted infrastructure ops |
+| `forest-theme` | Enchanted Canopy | 🌿 | Ambient particles — wisps, butterflies, fireflies, leaves, fog |
+| `game-servers` | Arena Watcher | 🎮 | Minecraft Bedrock UDP ping, Terraria TCP check |
+
+---
+
+## The `realm` CLI
+
+A git-style dispatcher. Type `realm <verb>`. The dispatcher resolves the verb
+in this order and execs the first match:
+
+1. `scripts/cli/realm-<verb>` — core hand-written subcommand.
+2. `plugins/<verb>/cli` — Method-A plugin executable (any language).
+3. `plugins/<verb>/plugin.json` with `cli.verbs` — Method-B declarative pass-through.
+4. `realm-<verb>` anywhere on `$PATH` — third-party / personal extension.
+
+No registry. Adding a new command means dropping a file. Bash + zsh completion
+queries the live filesystem.
+
+### Core subcommands
+
+| Command | Summary |
+|---|---|
+| `realm status` | Show full realm system status |
+| `realm watch [--filter TYPE]` | Tail realm events from `/sse` (live) |
+| `realm topology` | Show network topology (nodes and connections) |
+| `realm quest list\|create\|complete\|delete` | Quest CRUD |
+| `realm persona list\|get\|set` | Node persona CRUD |
+| `realm tags list\|get\|add\|remove` | Manage tags on topology nodes |
+| `realm discovery list\|providers\|scan` | Discovery engine controls |
+| `realm alerting status\|channels\|rules\|why` | Alerting + dependency explain |
+| `realm event list\|post\|ack\|close\|comment` | Event log + ack workflow |
+| `realm plugins list\|toggle` | Plugin management |
+| `realm config get\|set` | Realm server-side config |
+| `realm settings get\|set\|unset` | Per-plugin settings stored in `realm.db` |
+| `realm ping <host>` | Ping a host through the realm server |
+| `realm wol <node>` | Send Wake-on-LAN packet to a node |
+| `realm ssh <node> <cmd>` | Run a command via the realm SSH endpoint |
+| `realm resolve <url>` | Resolve a URL through the realm |
+| `realm player` | Show player state or award rewards |
+| `realm debug` | Dump tables, endpoints, plugin state |
+| `realm health` | Local + sibling-service `/api/version` health |
+| `realm api <method> <path> [body]` | Generic HTTP escape hatch |
+| `realm fleet audit\|migrate-ssid\|add-vlan\|firewall-check` | OpenWrt fleet ops |
+| `realm version [--all]` | CLI version + (with `--all`) sibling services |
+| `realm completion bash\|zsh` | Emit shell completion script |
+
+### Fleet + update orchestration
+
+| Command | Summary |
+|---|---|
+| `realm discover-os` | Concurrent SSH probe — write OS info back to topology |
+| `realm netdata-install` | Install Netdata agent on every Ubuntu host (idempotent) |
+| `realm ansible-update` | Run apt+DKMS+fwupd playbook on every Ubuntu host |
+| `realm update-all` | Two-stage: katana (system-updates) + Ubuntu fleet (ansible) |
+
+### Plugins with declarative CLI verbs (Method B)
+
+The dispatcher reads `cli.verbs` directly from `plugin.json` and pipes through
+`scripts/lib/http.sh`. No per-plugin code required.
+
+| Plugin | Verbs |
+|---|---|
+| `wifi` | `aps`, `clients`, `lldp`, `status`, `scan` |
+| `ansible` | `inventory`, `playbooks`, `runs`, `run`, `run-check`, `ai` |
+| `chat` | `ask`, `sessions`, `history`, `clear` |
+| `collectd` | `show` |
+| `latency` | `show` |
+| `firewall` | `show` |
+| `ha` | `energy` |
+| `herald` | `status` |
+| `notion` | `sync`, `complete` |
+| `system-updates` | `list`, `inventory`, `history`, `check`, `check-one`, `run`, `run-one`, `cancel`, `approve`, `skip` |
+
+### CLI conventions (clig.dev)
+
+- **stdout = data**, **stderr = chatter**. Pipeable.
+- **`--json` for machine output.** Default is human-friendly tables / kv.
+- **`NO_COLOR`, `--no-color`, isatty detection** — color off when piped.
+- **Exit codes**: 0 success, 1 general, 2 usage, 3 network, 4 config/auth,
+  5 server-side, 127 unknown subcommand.
+- **Common flags** (handled centrally in `scripts/lib/args.sh`): `-h`,
+  `--help`, `--version`, `-v`/`--verbose`, `-q`/`--quiet`, `--no-color`,
+  `--json`, `--dry-run`, `--host URL`.
+
+Full design spec: [`docs/superpowers/specs/2026-05-16-realm-cli-first-rate-design.md`](docs/superpowers/specs/2026-05-16-realm-cli-first-rate-design.md).
+
+---
+
+## Configuration
+
+### Environment variables
+
+Copy `.env.example` → `.env`. `map_server.py` auto-loads it on startup.
 
 | Variable | Required for | Default |
-|----------|--------------|---------|
+|---|---|---|
 | `HA_TOKEN` | Home Assistant bridge | — |
 | `HA_URL` | — | `https://10.0.6.108:8123` |
 | `NOTION_TOKEN` | Quest + codex sync | — |
@@ -348,19 +372,50 @@ Copy `.env.example` → `.env`. `map_server.py` auto-loads it.
 | `AZURE_SPEECH_KEY` / `_REGION` | Oracle TTS | — |
 | `REALM_PORT` | — | `80` |
 | `REALM_DOMAIN` | — | — |
+| `KATANA_IP` / `ROUTER_IP` / `UBOX_IP` | Override built-in defaults | per `engine.py` |
+| `SWITCH_*_SNMP_AUTH` / `_PRIV` | SNMPv3 discovery | — |
+
+### XDG directories (CLI)
+
+The `realm` CLI follows XDG:
+
+- Config: `$XDG_CONFIG_HOME/realm/` → `~/.config/realm/`
+- State: `$XDG_STATE_HOME/realm/` → `~/.local/state/realm/`
+- Cache: `$XDG_CACHE_HOME/realm/` → `~/.cache/realm/`
+
+Optional `~/.config/realm/config.sh` can set `REALM_HOST`, `REALM_PORT`, etc.
+A project-local `.realm.conf` overrides per-directory.
+
+### Secrets
+
+This repo never commits secrets. Recommended pattern: keep them in a password
+vault (the author uses [Vaultwarden](https://github.com/dani-garcia/vaultwarden)
+via the `bw` CLI) and populate `.env` from there:
+
+```bash
+bw get password "Home Assistant LLT" > /dev/null  # primes the session
+echo "HA_TOKEN=$(bw get password 'Home Assistant LLT')" >> .env
+echo "NOTION_TOKEN=$(bw get item Notion | jq -r '.fields[] | select(.name=="api_token") | .value')" >> .env
+```
+
+`.env` and `.mcp.json` are in `.gitignore`. SNMPv3 passwords are read from
+named env vars referenced from the per-node discovery config — never stored in
+`realm.db` or `topology.json`.
 
 ---
 
 ## Database (`realm.db`, SQLite WAL)
 
+12 tables; live data; never drop or truncate.
+
 | Table | Purpose |
-|-------|---------|
+|---|---|
 | `settings` | Key-value per namespace |
-| `events` | Timestamped realm events |
+| `events` | Timestamped realm events (plus ack/close columns since v0.4) |
 | `personas` | Per-node persona data |
-| `nodes` | Topology nodes with positions |
+| `nodes` | Topology nodes with positions, `os`, `os_version`, `tags` |
 | `connections` | Node-to-node connections |
-| `regions` | 7 biome map regions |
+| `regions` | Biome map regions |
 | `quests` | Quest log |
 | `notion_synced` | Notion sync state |
 | `wifi_scans` | WiFi scan history |
@@ -368,179 +423,96 @@ Copy `.env.example` → `.env`. `map_server.py` auto-loads it.
 | `discovery_links` | Edges between sub-entities and topology nodes |
 | `discovery_capabilities` | Provider capability declarations |
 
----
-
-## Scripts
-
-### Infrastructure setup
-
-| Script | What it does |
-|--------|--------------|
-| `scripts/setup-collectd-openwrt.sh` | Install collectd + lldpd on OpenWrt APs (`--all`) |
-| `scripts/setup-collectd.sh` | Install collectd on Ubuntu/Debian hosts |
-| `scripts/setup-collectd-katana.sh` | Configure collectd on the katana host |
-| `setup-collectd-ap.sh` | Deploy WiFi client exec plugin to APs |
-| `collectd-wifi-clients.sh` | The exec plugin itself (installed to `/usr/local/bin`) |
-| `scripts/setup-ssl-certs.sh` | Generate and install certs |
-| `scripts/enable-port80.sh` | Grant Python `cap_net_bind_service` for port 80 |
-
-### AP operations
-
-| Script | What it does |
-|--------|--------------|
-| `scripts/ap-audit.sh` | Dump SSIDs, VLANs, interfaces, collectd status for all APs |
-| `scripts/ap-migrate-ssid.sh` | Move an SSID to a different network across all APs (`--dry-run`) |
-| `scripts/ap-add-vlan.sh` | Add a VLAN to one AP — auto-detects DSA vs swconfig |
-| `scripts/ap-firewall-check.sh` | Audit gatekeeper fw4 zones, forwarding, custom rules |
-
-### Switch operations (HP V1910)
-
-Comware 5 needs a hidden cmdline-mode unlock and old SSH ciphers — these
-expect-driven scripts handle both. Requires `expect` and `sshpass`. See
-`docs/runbooks/hp-v1910.md` for the full guide.
-
-| Script | What it does |
-|--------|--------------|
-| `scripts/switch/switch-audit.exp` | Read-only state capture: VLANs, port hybrid matrix, MAC table, LLDP neighbors, full running-config |
-| `scripts/switch/switch-apply-vlan-normalize.exp` | Normalize ports GE1/0/15-28 to PVID=1, VLAN1 untagged, all real VLANs (3-12, 20, 38) tagged; `save force` |
-| `scripts/switch/switch-enable-lldp.exp` | Enable LLDP globally and save (idempotent) |
-
-### Claude Code providers
-
-| Script | What it does |
-|--------|--------------|
-| `scripts/setup-bedrock.sh` | One-time AWS Bedrock auth + env setup |
-| `scripts/setup-vertex.sh` | One-time GCP Vertex AI auth + project select |
-| `scripts/claude-provider.sh` | Source to switch between `bedrock` / `vertex` / `direct` |
-
-### Utilities
-
-| Script | What it does |
-|--------|--------------|
-| `scripts/realm-health.sh` | Color-coded status: processes, :80, realm.db, env tokens |
-| `scripts/realm-update.sh` | CLI for the Scroll of Patch Runes plugin — APT/Snap/Flatpak/brew/mise/npm/pip/firmware/AI CLIs |
-| `scripts/deploy-realm-theme.sh` | Desktop theme deploy helper |
-| `scripts/fix-chrome-ssl.sh` | Drop local CA into Chrome's NSS DB |
-| `scripts/reset-camera.sh` | USB reset for Razer Kiyo Pro (UVC -71/-110) |
+`topology.json` is a downstream artifact regenerated from `nodes` /
+`connections`. It is gitignored — query via the HTTP API
+(`curl -s http://localhost/topology`), don't read it directly.
 
 ---
 
-## Desktop Themes (`desktop-themes/`)
+## SSE event stream (`/sse`)
 
-The Gem Treasury palette extends beyond the web app to the full GNOME desktop.
+| Event | Frequency | Content |
+|---|---|---|
+| `status` | 10s | Sensors, collectd, WiFi, HA, sublabels |
+| `traffic` | 5s | Per-node traffic intensity (log scale) |
+| `topology` | 60s | Full topology (nodes + connections + regions) |
+| `energy` | 30s | Solar, battery, grid (HA) |
+| `latency` | 30s | Pre-grouped latency by VLAN |
+| `firewall` | 60s | Parsed nftables (cached) |
+| `wifi` | 120s | AP client lists, signal data |
+| `plugin-broadcast` | live | Plugin-dispatched events |
+| `realm-event` | live | Individual realm events (speech, alert, highlight, quest) |
 
-```bash
-./desktop-themes/deploy.sh all           # deploy everything
-./desktop-themes/deploy.sh gnome         # shell theme only
-./desktop-themes/deploy.sh gtk           # GTK4 + GTK3
-./desktop-themes/deploy.sh kitty|ghostty # terminals
-```
-
-| Component | Source | Target |
-|-----------|--------|--------|
-| GNOME Shell (dark + light) | `gnome-shell/` | `~/.local/share/themes/Realm{,-Light}/` |
-| Extension manifest + settings | `gnome-extensions/` | dconf |
-| GTK4 / libadwaita | `gtk4/` | `~/.config/gtk-4.0/gtk.css` |
-| GTK3 | `gtk3/` | `~/.config/gtk-3.0/gtk.css` |
-| Text Editor (GtkSourceView 5) | `gnome-text-editor/` | `~/.local/share/gtksourceview-5/styles/` |
-| Kitty | `kitty/` | `~/.config/kitty/kitty.conf` |
-| Ghostty + glow shader | `ghostty/` | `~/.config/ghostty/` |
-| Brave browser theme | `brave/` | Brave user data |
-| Navidrome | `navidrome/` | CSS overlay |
-
-`realm-theme-watcher.service` watches the source dirs and redeploys on change.
+Initial burst on connect: `topology → traffic → energy → latency → recent
+events → status`. The broker hash-dedupes — only pushes on change.
 
 ---
 
-## Network
+## Contributing
 
-- **OpenWrt everywhere** — all 12 APs, firewall, backup router (exception: one
-  HP managed switch, two bridges running vendor firmware)
-- **Gatekeeper** at `10.0.6.3` (OpenWrt 25.12.2, VRRP master — VIP `10.0.6.1`
-  via keepalived). Backup router at `10.0.6.4`.
-- **Katana** at `10.0.6.129` — this machine, hosts all realm services
-- **HP V1910-24G** at `10.0.6.103` — the realm's only Comware-firmware switch.
-  24× Gig + 4× SFP, all ports `link-type hybrid`. Ports GE1/0/15-28 are AP/host
-  trunks (PVID=1, VLAN1 untagged dead-end, VLANs 3-12, 20, 38 all tagged) per
-  the 2026-04-28 normalization. SSH access requires a hidden cmdline-mode
-  unlock — see `docs/runbooks/hp-v1910.md` and `scripts/switch/`.
-- **13 VLANs** carried across the switch fabric (1, 3-12, 20, 38) — see
-  registry below. fw4 zone names on gatekeeper are counterintuitive
-  (`lan` = legacy IoT/VLAN 10, `iot` = Guest+IoT/VLAN 8 after the
-  2026-04-27 device migration).
-- **Tailscale mesh** for remote-node visibility
-- **Netdata** is replacing collectd: full agent on Ubuntu + gatekeeper, SNMP
-  polling from the Netdata parent for smaller OpenWrt APs
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide. Quick version:
 
-### VLAN Registry
-
-Source of truth: HP V1910 `display vlan all` (capture via
-`scripts/switch/switch-audit.exp`).
-
-| VLAN | Label | fw4 Zone | Status | Description |
-|-----:|-------|----------|--------|-------------|
-| 1 | Default | — | active | Untagged dead-end on every AP/host trunk; safe drop |
-| 3 | DSL | — | standby | Backup WAN (DSL/cellular) |
-| 4 | Fiber | — | active | Fiber WAN |
-| 5 | Mesh | — | active | Mesh uplink |
-| 6 | Admin | admin | active | Servers, management, infrastructure (`10.0.6.0/24`) |
-| 7 | Test Lab | — | active | Testing and experimentation |
-| 8 | Guest/IoT | iot* | active | Guest + smart-device WiFi (post 2026-04-27 IoT migration) |
-| 9 | VPN Exit | vpn | planned | WireGuard tunnel to gig exit node |
-| 10 | newlan (legacy IoT) | lan* | drained | Mostly empty after IoT migration to VLAN 8 |
-| 11 | Family | family | active | Personal devices |
-| 12 | Oasisfiber | — | active | Secondary fiber/peering |
-| 20 | Attfiber | — | active | AT&T fiber WAN |
-| 38 | Treelink WAN | wan | active | Primary internet — fiber + WiFi backup |
+- **New plugin.** Make `plugins/<name>/plugin.json` + `plugin.py` with a
+  `setup(ctx)` function. The `PluginContext` exposes endpoint registration,
+  SSE source registration, node enricher hooks, discovery provider
+  registration, shared DB access, and a per-plugin logger. Drop a
+  `panel.html/js/css` to add a frontend panel. Restart `map_server.py` (no
+  hot reload).
+- **New CLI subcommand.** Method A — drop an executable at
+  `plugins/<name>/cli` that responds to `--one-line-help` /
+  `--list-subcommands` / `--help`. Method B — add a `cli.verbs` block to
+  `plugin.json` and let the generic handler proxy HTTP for you.
+- **PR flow.** Branch from `master`, run `make build` after touching
+  `src/*.js`, run `make cli-doctor` if you touched the CLI, commit in
+  conventional-commit style (`feat:`, `fix:`, `refactor:`, `docs:`, `chore:`),
+  open a PR.
+- **Issues.** [GitHub issues](https://github.com/jphein/realmwatch/issues).
+  Labels: `enhancement`, `ux`, `zabbix-inspired`, `public-release`. Roadmap
+  lives in the open issues — pick one and dig in.
 
 ---
 
-## Associated Projects
+## License
 
-Realmwatch is the flagship of a family of projects under `~/Projects/`. Each
-lives in its own repo; pointers here for discoverability.
-
-| Project | Relationship | Notes |
-|---------|-------------|-------|
-| **os.realm.watch** | RPG layer over realmwatch — 5 FastMCP game servers | `github.com/jphein/os.realm.watch` |
-| **realm-portal** | Front door at `realm.watch` — proxies public pages (`wifi-guide.html`, `report-card.html`) | `make deploy` pushes to `~/Projects/realm-portal/static/` |
-| **realm-sigil** | Unified `/api/version` + `version.json` for every realm service | Go / Python / JS; realmwatch emits its sigil from `package.json` + git |
-| **status.realm.watch** | Status page that pings each realm service's sigil endpoint | Entries added via `checks.json` |
-| **realm-optimizer** | AI optimization advisor — surfaces suggestions as realm quests in realmwatch | Writes to `/quest-create` |
-| **realmcoin** | Homelab currency with YNAB integration | Shares the fantasy economy |
-| **oracle** (Oracle Sanctum) | Standalone voice-first AI oracle — sister project to the in-realm oracle | Shares Azure AI credentials |
-| **gnome-speaks** | D-Bus TTS service used by the herald | Python |
-| **speech-to-cli** | MCP speech server used by oracle + herald | Azure TTS/STT |
-| **disks** | NAS at `10.0.6.120` — Immich, Jellyfin, Navidrome, Vaultwarden | Appears as realm nodes |
+> **TODO** — no license file yet. Recommended: MIT (simple, homelab-friendly,
+> permissive) or Apache-2.0 (if patent grants matter). Until a license is
+> added, the default is "all rights reserved" — fine for browsing, hostile
+> to forking. Issue: [Add LICENSE file](https://github.com/jphein/realmwatch/issues).
 
 ---
 
-## Testing & Validation
+## Roadmap
 
-No test framework. Validate by:
+Open issues tagged `zabbix-inspired` and `public-release` track the active
+roadmap. Highlights:
 
-1. `python3 map_server.py` — check for import / startup errors, plugin load log
-2. Open `http://localhost/realm-map.html` — panels render, SSE stream live,
-   interactions work
-3. `curl -s http://localhost/status | python3 -m json.tool`
-4. `make health` — quick health check
-5. `curl -s http://localhost/plugins/plugin-manager/panel.html` — plugin
-   manifest sanity
+- **Active agent auto-registration** ([#9](https://github.com/jphein/realmwatch/issues/9))
+- **Network discovery with auto-actions** ([#10](https://github.com/jphein/realmwatch/issues/10))
+- **User macros / per-node parameters** ([#7](https://github.com/jphein/realmwatch/issues/7))
+- **Low-Level Discovery — auto-create sub-entities/sublabels** ([#6](https://github.com/jphein/realmwatch/issues/6))
+- **Maintenance windows** ([#4](https://github.com/jphein/realmwatch/issues/4))
+- **Role templates → first-class entries in `node_roles`** ([#3](https://github.com/jphein/realmwatch/issues/3))
+- **Ubuntu major release upgrades via realm CLI** ([#11](https://github.com/jphein/realmwatch/issues/11))
 
 ---
 
-## Key Design Decisions
+## Acknowledgements
 
-- **Thin core, fat plugins.** Every domain feature is a plugin.
-- **`engine.py` is the single source of truth.** Never duplicate its logic.
-- **Server-side sublabels.** Pre-computed in `map_server.py`; browser renders
-  ready-made strings.
-- **Hash-based SSE dedup.** Only broadcasts on change.
-- **Topology refresh is SSE-driven**, not timer-based.
-- **Web workers** for layout and terrain contour computation.
-- **6-signal enrichment pipeline** identifies unknown devices via OUI, port
-  probe, HA device_tracker, LLDP, DHCP, and hostname heuristics.
-- **Write-through** for personas and config — DB + JSON files.
-- **Fantasy theming is core.** Maintain the aesthetic when touching anything
-  user-facing.
-- **No MCP server in this project.** MCP-related code belongs to `os.realm.watch`.
+Realmwatch sits on the shoulders of giants. None of these are vendored — the
+repo just talks to them — but the project would be unrecognisable without:
+
+[Netdata](https://github.com/netdata/netdata) ·
+[collectd](https://www.collectd.org/) ·
+[Home Assistant](https://www.home-assistant.io/) ·
+[OpenWrt](https://openwrt.org/) ·
+[esbuild](https://esbuild.github.io/) ·
+[WinBox](https://github.com/nextapps-de/winbox) ·
+[fping](https://fping.org/) ·
+[nftables](https://www.nftables.org/) ·
+[fwupd](https://fwupd.org/) ·
+[Ansible](https://www.ansible.com/) ·
+[Notion API](https://developers.notion.com/) ·
+[Azure AI](https://azure.microsoft.com/en-us/products/ai-services).
+
+And to [Zabbix](https://www.zabbix.com/) — half the roadmap is unashamedly
+inspired by what they got right two decades ago.
