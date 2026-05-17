@@ -13,7 +13,13 @@ CERT_DAYS=825 # ~2.25 years (Chrome max)
 
 # Fleet definitions: OPENWRT_FLEET (uhttpd-capable) + SWITCHES_VENDOR_VENDOR (manual upload).
 # shellcheck source=lib/fleet.sh
-source "$(dirname "$0")/lib/fleet.sh"
+_FLEET="$(dirname "$0")/lib/fleet.sh"
+if [[ ! -f "$_FLEET" ]]; then
+  echo "ERROR: $_FLEET missing — copy lib/fleet.sh.example and edit with your inventory" >&2
+  exit 4
+fi
+source "$_FLEET"
+unset _FLEET
 
 SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes"
 

@@ -1,0 +1,54 @@
+# scripts/lib/fleet.sh.example
+#
+# Template for your local scripts/lib/fleet.sh (which is gitignored — never
+# committed). Six scripts source fleet.sh:
+#   scripts/ap-audit.sh
+#   scripts/ap-add-vlan.sh
+#   scripts/ap-migrate-ssid.sh
+#   scripts/deploy-realm-theme.sh
+#   scripts/setup-collectd-openwrt.sh
+#   scripts/setup-ssl-certs.sh
+#
+# Each one fails with a clear error if fleet.sh is missing. Bootstrap:
+#   cp scripts/lib/fleet.sh.example scripts/lib/fleet.sh
+#   $EDITOR scripts/lib/fleet.sh   # fill in your APs / routers / switches
+#
+# Provides five associative arrays:
+#   APS               — OpenWrt access points (location-name → IP)
+#   ROUTERS           — gateway/VRRP routers
+#   SWITCHES_OPENWRT  — managed switches running OpenWrt
+#   SWITCHES_VENDOR   — managed switches NOT running OpenWrt (Comware/etc.)
+#   OPENWRT_FLEET     — union of APS + ROUTERS + SWITCHES_OPENWRT (every host
+#                       reachable via SSH key auth + UCI)
+#
+# Naming convention: lowercase, hyphenated. AP keys should match the device's
+# /etc/config/system hostname so `realm fleet …` commands can match by name.
+
+declare -A APS=(
+  # [hostname]="IP"                    # vendor + model
+  # [ap-living-room]="10.0.0.101"     # linksys mr8300
+  # [ap-office]="10.0.0.102"          # tplink onhub
+  # [ap-garage]="10.0.0.103"          # tplink eap225-outdoor-v1
+)
+
+# VRRP pair — VIP floats between these via keepalived (if you run a pair).
+declare -A ROUTERS=(
+  # [gatekeeper]="10.0.0.1"
+  # [gatekeeper-vm]="10.0.0.2"
+)
+
+declare -A SWITCHES_OPENWRT=(
+  # [switch-rack]="10.0.0.10"          # e.g. netgear gs308t v1 with OpenWrt
+)
+
+declare -A SWITCHES_VENDOR=(
+  # [hp]="10.0.0.20"                   # e.g. hp v1910-24g (comware 5)
+)
+
+# Union — every OpenWrt host reachable via SSH key auth + UCI. Fleet-wide ops
+# use this. Leave the loop as-is; it builds OPENWRT_FLEET from the above.
+declare -A OPENWRT_FLEET
+for _k in "${!APS[@]}";              do OPENWRT_FLEET[$_k]="${APS[$_k]}";              done
+for _k in "${!ROUTERS[@]}";          do OPENWRT_FLEET[$_k]="${ROUTERS[$_k]}";          done
+for _k in "${!SWITCHES_OPENWRT[@]}"; do OPENWRT_FLEET[$_k]="${SWITCHES_OPENWRT[$_k]}"; done
+unset _k

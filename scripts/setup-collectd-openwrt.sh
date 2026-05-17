@@ -32,7 +32,13 @@ COLLECTD_PORT="25826"
 INTERVAL="30"
 
 # shellcheck source=lib/fleet.sh
-source "$(dirname "$0")/lib/fleet.sh"
+_FLEET="$(dirname "$0")/lib/fleet.sh"
+if [[ ! -f "$_FLEET" ]]; then
+  echo "ERROR: $_FLEET missing — copy lib/fleet.sh.example and edit with your inventory" >&2
+  exit 4
+fi
+source "$_FLEET"
+unset _FLEET
 
 setup_ap() {
   local name="$1" ip="$2"

@@ -28,6 +28,13 @@ wifi-guide-*.png
 .env
 .mcp.json
 
+# Per-realm private inventory + family-facing pages — never committed.
+# See scripts/lib/fleet.sh.example for the template you copy locally to
+# scripts/lib/fleet.sh with your own infrastructure.
+scripts/lib/fleet.sh
+wifi-guide.html
+report-card.html
+
 # Large files
 access-to-power.pdf
 

@@ -13,7 +13,13 @@ SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=8 -o BatchMode=yes"
 G='\033[1;32m'; R='\033[1;31m'; Y='\033[1;33m'; C='\033[0;36m'; N='\033[0m'
 
 # shellcheck source=lib/fleet.sh
-source "$(dirname "$0")/lib/fleet.sh"
+_FLEET="$(dirname "$0")/lib/fleet.sh"
+if [[ ! -f "$_FLEET" ]]; then
+  echo "ERROR: $_FLEET missing — copy lib/fleet.sh.example and edit with your inventory" >&2
+  exit 4
+fi
+source "$_FLEET"
+unset _FLEET
 
 # Remote paths
 CSS_DIR="/www/luci-static/realm"

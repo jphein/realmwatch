@@ -20,7 +20,13 @@ set -euo pipefail
 G='\033[0;32m'; R='\033[0;31m'; Y='\033[0;33m'; C='\033[0;36m'; N='\033[0m'
 
 # shellcheck source=lib/fleet.sh
-source "$(dirname "$0")/lib/fleet.sh"
+_FLEET="$(dirname "$0")/lib/fleet.sh"
+if [[ ! -f "$_FLEET" ]]; then
+  echo "ERROR: $_FLEET missing — copy lib/fleet.sh.example and edit with your inventory" >&2
+  exit 4
+fi
+source "$_FLEET"
+unset _FLEET
 
 SSID=""
 NETWORK=""
