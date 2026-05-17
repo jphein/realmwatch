@@ -51,3 +51,7 @@ access-to-power.pdf
 .claude/*
 !.claude/skills/
 !.claude/skills/**
+
+# Private content — JP's specific realm narrative + voice configs
+docs/codex/
+personas.json

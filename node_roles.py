@@ -157,140 +157,18 @@ _SEED_OUI = {
 # ── Seed data: Node→Role mappings (migration only) ──
 # After migrate_to_db(), roles stored as _role field on each node in DB.
 _SEED_NODE_ROLES = {
-    # Routers
-    "gatekeeper": "router", "ap-east-1": "router",
-    "ap-path": "router", "ap-south-1": "router",
-    "ap-cabin": "router", "ap-shed": "router",
-    # Access Points
-    "ap-closet": "ap", "ap-north-1": "ap", "center": "ap",
-    "ap-pump": "ap", "ap-east-2": "ap", "ap-deck": "ap",
-    # Switches
-    "hp-switch": "switch", "gs308t": "switch",
-    # Bridges
-    "gigabeam0": "bridge", "gigabeam1": "bridge",
-    "cpe710-ap": "bridge", "cpe710-client": "bridge",
-    # Servers
-    "ap-woodshed": "ap",
-    "katana": "server", "oracle": "server", "ha": "server",
-    "nodered": "server", "family-vm": "vm",
-    # WLED
-    "wled-main": "wled", "wled-aqi": "wled",
-    # Thermostats
-    "nest-circle": "thermostat",
-    "_unknown_14c14e61276c": "thermostat", "_unknown_14c14e6d333f": "thermostat",
-    "_unknown_ac678428b56d": "thermostat", "_unknown_d8eb466182d1": "thermostat",
-    "_unknown_14c14e2616b5": "thermostat",
-    # Cameras
-    "watchers": "camera", "hikcams": "camera",
-    # Speakers
-    "voice-stones": "speaker", "google-home": "speaker", "echo": "speaker",
-    # Smart Plugs
-    "kasa-spirits": "plug", "smart-plugs": "plug", "smart-hubs": "plug",
-    # Sensors
-    "esp-swarm": "sensor", "esp-office": "sensor", "esp-outdoor": "sensor",
-    "esp32-bed1": "sensor", "esp32-bed2": "sensor", "esp32-bed3": "sensor",
-    "esp32-a90c10": "sensor", "shed-ble": "sensor",
-    "_unknown_f0f5bdfd3504": "sensor", "_unknown_b4e84212e7ac": "sensor",
-    "_unknown_b43a31d1771e": "sensor",
-    # Appliances
-    "lg-washer": "appliance", "lg-dryer": "appliance", "bed-air": "appliance",
-    "iot-closet": "appliance", "iot-pumphouse": "appliance",
-    # Vacuums
-    "roomba": "vacuum", "irobot": "vacuum", "wandering-golems": "vacuum",
-    # Power
-    "goodwe": "inverter", "apcupsmini1": "ups", "mobileups": "ups",
-    "neocharge": "ev_charger",
-    # Phones
-    "flip3": "phone", "flip3-5g": "phone", "s24-ultra": "phone",
-    "pixel-7": "phone", "pixel-4": "phone", "iphone": "phone",
-    # Tablets
-    "tab-s5e": "tablet", "ipad": "tablet", "kindle": "tablet",
-    "_unknown_f24a37407ca1": "tablet",
-    # Laptops
-    "latitude-5490": "laptop", "latitude-7390": "laptop",
-    "users-air": "laptop", "wolf-creek": "laptop",
-    # Desktops
-    "game": "desktop",
-    # TV/Media
-    "roku": "tv", "ts-android": "tv", "ts-android2": "tv",
-    # Tailscale
-    "ts-instance": "tailscale", "ts-iperf": "tailscale", "ts-terra": "tailscale",
-    "ts-openclaw": "tailscale", "ts-pikvm": "tailscale", "ts-nitro": "tailscale",
-    "ts-gig": "tailscale", "ts-7050": "tailscale",
-    # Unknown → Plugs
-    "_unknown_909a4a474ca9": "plug", "_unknown_e848b8aa3933": "plug",
-    "_unknown_b0a7b9933d17": "plug", "_unknown_68c63ad2b03d": "plug",
-    "_unknown_ca2c4fac00a1": "plug", "_unknown_ca2c4fad7ef5": "plug",
-    "_unknown_fc584a862e9e": "plug", "_unknown_c006c3f658f5": "plug",
-    # Unknown → Sensors
-    "_unknown_e868e7d50978": "sensor", "_unknown_600194a441c1": "sensor",
-    "_unknown_bcddc282ed19": "sensor", "_unknown_bcddc282eff7": "sensor",
-    "_unknown_e868e7cfaa92": "sensor", "_unknown_24a160393fb0": "sensor",
-    "_unknown_ac67b2d1f2e4": "sensor", "_unknown_483fda6a0ea8": "sensor",
-    "_unknown_2cf43208cff0": "sensor", "_unknown_b4e62d79b610": "sensor",
-    "_unknown_18de50775aff": "sensor", "_unknown_b8060d2b4a5d": "sensor",
-    # Abstract/UI nodes
-    "forge": "server", "mana": "server", "essence": "ups",
-    "void": "router", "wan": "router", "gpu": "desktop",
-    "scrying-pool": "server", "notion-portal": "server", "steam-works": "server",
+    # Populated by JP's local install via the persona-editor / realm CLI.
+    # Mappings are stored on each node's _role field in realm.db.
+    # Add your own per-host role assignments here OR edit via the UI.
 }
 
 # ── Seed data: HA entity→node mappings (migration only) ──
 # After migrate_to_db(), stored in settings table.
 _SEED_HA_MAP = {
-    "nest-circle": {"fn": "climate_cluster", "entities": [
-        "climate.kitchen_thermostat", "climate.bedroom_thermostat",
-        "climate.bathroom_thermostat", "climate.laundry_thermostat_2",
-        "climate.pumphouse_thermostat",
-    ]},
-    "goodwe": {"fn": "solar", "entities": {
-        "kw": "sensor.goodwe_kw",
-        "grid_in": "sensor.6000w_inverter_grid_watts_in",
-        "w_out": "sensor.6000winverter_geninverter_watts_out",
-        "batt_v": "sensor.6000w_inverter_battery_voltage",
-    }},
-    "watchers": {"fn": "camera_cluster", "entities": [
-        "camera.uproad", "camera.car", "camera.nap",
-        "camera.10_0_10_88", "camera.10_0_10_133", "camera.10_0_8_106",
-    ], "also": ["hikcams"]},
-    "voice-stones": {"fn": "speaker_cluster", "entities": [
-        "media_player.nesthuba011", "media_player.nesthub0db6",
-        "media_player.shed_speaker", "media_player.bed_speaker",
-        "media_player.pumphouse_speaker", "media_player.counter",
-        "media_player.kitchen_stereo", "media_player.bathroom_speaker",
-        "media_player.laundry_speaker",
-    ], "also": ["google-home"]},
-    "kasa-spirits": {"fn": "switch_cluster", "entities": [
-        "switch.computer", "switch.clamp_construction_light",
-        "switch.construction_light_1", "switch.kitchen_christmas_lights",
-        "switch.christmas_tree_socket_1", "switch.christmas_tree_socket_1_2",
-        "switch.color_christmas_lights_switch_1", "switch.treelink_socket",
-        "switch.bathroom_night_light_socket", "switch.shed_light_socket_1",
-        "switch.shed_light_socket_1_2", "switch.outside_fan_socket_1",
-    ], "also": ["smart-plugs"]},
-    "wled-main": {"fn": "wled", "entity": "light.mamastrip"},
-    "wled-aqi": {"fn": "wled", "entity": "light.claqi"},
-    "bed-air": {"fn": "fan", "entity": "fan.air_purifier", "prefix": "Purifier"},
-    "roomba": {"fn": "vacuum", "entity": "vacuum.roomba", "also": ["irobot"]},
-    "apcupsmini1": {"fn": "ups", "prefix": "apcupsmini1"},
-    "mobileups": {"fn": "ups", "prefix": "mobileups"},
-    "iot-closet": {"fn": "dehumidifier", "entity": "fan.bathroom_dehumidifier", "prefix": "Dehumidifier"},
-    "iot-pumphouse": {"fn": "dehumidifier", "entity": "fan.laundry_dehumidifier", "prefix": "Dehumidifier"},
-    "flip3": {"fn": "phone", "prefix": "flipz3"},
-    "roku": {"fn": "media_state", "entity": "media_player.roku"},
-    "echo": {"fn": "echo", "entity": "select.m5stack_atom_echo_a14320_wake_word"},
-    "ha": {"fn": "ha_self"},
-    "_unknown_f0f5bdfd3504": {"fn": "radar", "prefix": "pumphouse_radar"},
-    "lg-dryer": {"fn": "lg_appliance", "prefix": "dryer", "name": "Dryer"},
-    "lg-washer": {"fn": "lg_appliance", "prefix": "washer", "name": "Washer"},
-    "_unknown_b43a31d1771e": {"fn": "humidifier", "entity": "humidifier.humidifier"},
-    "_unknown_b4e84212e7ac": {"fn": "rgb", "entity": "light.controller_rgb_ir_12e7ac"},
-    "_unknown_fc584a862e9e": {"fn": "smart_bulb", "entity": "light.smart_bulb_2"},
-    "_unknown_14c14e61276c": {"fn": "thermostat_single", "entity": "climate.kitchen_thermostat"},
-    "_unknown_14c14e6d333f": {"fn": "thermostat_single", "entity": "climate.bedroom_thermostat"},
-    "_unknown_ac678428b56d": {"fn": "thermostat_single", "entity": "climate.bathroom_thermostat"},
-    "_unknown_d8eb466182d1": {"fn": "thermostat_single", "entity": "climate.laundry_thermostat_2"},
-    "_unknown_14c14e2616b5": {"fn": "thermostat_single", "entity": "climate.pumphouse_thermostat"},
+    # Populated by your local install. Each entry maps a topology node id
+    # to one or more Home Assistant entities, optionally with a function
+    # name (climate_cluster, solar, camera_cluster, etc.) the HA bridge
+    # uses to render sublabels. See plugins/ha/ for the consumer.
 }
 
 # ── In-memory cache (loaded from DB on first use) ──
