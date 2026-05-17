@@ -27,13 +27,26 @@ clean:
 watch:
 	npm run watch
 
-# Public files served at realm.watch via realm-portal
+# Public files served at portal.realm.watch via realm-portal
 PORTAL_STATIC := $(HOME)/Projects/realm-portal/static
 PUBLIC_HTML := wifi-guide.html report-card.html
 
+# wifi-guide.html lives in source with `{{WIFI_PSK}}` placeholder — the actual
+# passphrase is in the local (gitignored) .env file and substituted at deploy.
+# This keeps the PSK out of the public repo.
 deploy:
-	@for f in $(PUBLIC_HTML); do \
-		cp $$f $(PORTAL_STATIC)/$$f && echo "  $$f → realm-portal/static/"; \
+	@if [ ! -f .env ] || ! grep -q '^WIFI_PSK=' .env; then \
+		echo "  ✘ .env is missing WIFI_PSK=… — wifi-guide.html will deploy with literal {{WIFI_PSK}}"; \
+		echo "  Add to .env:  WIFI_PSK=<your-passphrase>"; \
+	fi
+	@WIFI_PSK=$$(grep '^WIFI_PSK=' .env 2>/dev/null | cut -d= -f2- | tr -d '"' | head -1); \
+	for f in $(PUBLIC_HTML); do \
+		if [ -n "$$WIFI_PSK" ] && grep -q '{{WIFI_PSK}}' $$f; then \
+			sed "s|{{WIFI_PSK}}|$$WIFI_PSK|g" $$f > $(PORTAL_STATIC)/$$f && \
+				echo "  $$f → realm-portal/static/$$f  (PSK substituted)"; \
+		else \
+			cp $$f $(PORTAL_STATIC)/$$f && echo "  $$f → realm-portal/static/$$f"; \
+		fi \
 	done
 	@echo "Now run: cd ~/Projects/realm-portal && make deploy"
 
