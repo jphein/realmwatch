@@ -1,0 +1,46 @@
+{
+  "name": "maintenance",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Scheduled maintenance windows that suppress alerts and herald speech for planned downtime.",
+  "fantasy_name": "Veiled Hours",
+  "icon": "🔨",
+
+  "python": {"module": "plugin", "entry": "setup"},
+
+  "cli": {
+    "summary": "Schedule maintenance windows that mute alerts/herald per node or role",
+    "verbs": [
+      {
+        "name": "list",
+        "summary": "Show all scheduled maintenance windows",
+        "method": "GET",
+        "path": "/maintenance/windows",
+        "table": "(.windows // .) | (if type==\"array\" then . else [] end) | .[] | [.id, .name // \"-\", .node_pattern // \"*\", (.starts_at | strftime(\"%Y-%m-%d %H:%M\")), (.ends_at | strftime(\"%Y-%m-%d %H:%M\")), .recur // \"once\", ((.enabled // true) | tostring)]",
+        "header": ["ID", "NAME", "PATTERN", "STARTS", "ENDS", "RECUR", "ON"]
+      },
+      {
+        "name": "active",
+        "summary": "Show windows currently active (now-suppressing)",
+        "method": "GET",
+        "path": "/maintenance/active",
+        "table": "(. // []) | (if type==\"array\" then . else [] end) | .[] | [.id, .name // \"-\", .node_pattern // \"*\", (.ends_at | strftime(\"%H:%M\"))]",
+        "header": ["ID", "NAME", "PATTERN", "ENDS"]
+      },
+      {
+        "name": "check",
+        "summary": "Is a given node currently in any maintenance window?",
+        "method": "GET",
+        "path": "/maintenance/check/<node>",
+        "args": ["node"]
+      },
+      {
+        "name": "cancel",
+        "summary": "Delete a maintenance window by id",
+        "method": "DELETE",
+        "path": "/maintenance/windows/<id>",
+        "args": ["id"]
+      }
+    ]
+  }
+}

@@ -65,6 +65,22 @@ def _on_event(event):
                      node_id, prior.get("id"), prior.get("ack_by", "?"))
             return
 
+    # Maintenance-window suppression (Zabbix-inspired, issue #4): if the node
+    # is in an active maintenance window, mute all severities, not just
+    # critical/warning. Planned downtime should silence the whole stream.
+    if node_id:
+        try:
+            from plugins.maintenance import plugin as maintenance_plugin
+            window = maintenance_plugin.is_in_maintenance(node_id)
+        except Exception:
+            window = None
+        if window:
+            _log_alert(event, severity, rule.get("name", ""),
+                       "all", "maintenance_suppressed", f"window:{window['id']}")
+            log.info("Suppressed alert for %s: maintenance window '%s' is active",
+                     node_id, window.get("name") or window.get("id"))
+            return
+
     # Filter channels by cooldown and enablement
     active_channels = []
     for ch_name in channel_names:
