@@ -23,8 +23,9 @@ tagged release.
 ## [0.4.0] — Zabbix-class operations (2026-05-16)
 
 The "stop getting paged for the same outage twice" epoch. Trigger
-dependencies, event acknowledgement, and the `node.tags` primitive — all
-gated by closed issues.
+dependencies, event acknowledgement, role templates, user macros, and the
+`node.tags` primitive — most gated by closed issues from the
+`zabbix-inspired` label.
 
 ### Added
 
@@ -44,6 +45,18 @@ gated by closed issues.
   in event history). Four idempotent `ALTER TABLE` columns added:
   `ack_at`, `ack_by`, `ack_note`, `closed_at`. Exposed via
   `realm event ack | close | comment | list --open-unacked`.
+- **Role templates** (`a26f1a8`, closes #3). Roles become typed bundles in
+  `node_roles.ROLE_TEMPLATES` that bind alerting rules, discovery providers,
+  default tags, and sublabel formats. Alerting rule conditions gain `roles`
+  and `tags` — rules now match on role or tag in addition to event type,
+  severity, and node pattern. Templates ship for router, ap, switch, bridge,
+  server, nas, vm, hypervisor, desktop, laptop, camera, wled, sensor, ups,
+  printer.
+- **User macros** (`a50b6ce`, closes #7). Alerting rule values can carry
+  `{$NAME}` tokens that resolve per-event against a host → role → global
+  scope chain. One template, per-host overrides, no rule duplication. New
+  `plugins/alerting/macros.py`, new `realm macro set|get|delete|list|explain`
+  subcommand.
 - **`node.tags` primitive** (`bd913d4`). Additive lowercase-kebab-case
   string array stored alongside `os`. `discover-os` writes a derived tag
   set on every successful probe (`ubuntu`, `linux`, `debian-family`, `apt`,

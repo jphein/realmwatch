@@ -169,6 +169,41 @@ realm event comment 42 "rebooted; will monitor"     # POST /events/42/comment
 
 A matching alert arriving after an ack is dropped (`status='ack_suppressed'`).
 
+### `realm role list|show|nodes`
+
+```text
+Browse role registry: list, show templates, list nodes per role.
+```
+
+Role templates bind alerting rules, discovery providers, default tags, and
+sublabel formats per node role. Templates ship for router, ap, switch,
+bridge, server, nas, vm, hypervisor, desktop, laptop, camera, wled,
+sensor, ups, printer.
+
+```bash
+realm role list                 # all roles + node counts
+realm role show server          # template details: rules, providers, tags
+realm role nodes server         # every node assigned this role
+```
+
+### `realm macro set|get|delete|list|explain`
+
+```text
+Manage user macros for alerting rule parameterization.
+```
+
+Alerting rule values can carry `{$NAME}` tokens that resolve per-event
+against a host → role → global scope chain. One template, per-host
+overrides, no rule duplication.
+
+```bash
+realm macro set DISK_FULL_PCT 80                            # global
+realm macro set DISK_FULL_PCT 95 --scope host --node familiar
+realm macro set LOAD_HIGH 4.0 --scope role --role server
+realm macro explain DISK_FULL_PCT --node familiar           → 95 (host)
+realm macro explain DISK_FULL_PCT --node gatekeeper         → 80 (global)
+```
+
 ### `realm plugins list|toggle`
 
 ```text

@@ -298,6 +298,8 @@ queries the live filesystem.
 | `realm discovery list\|providers\|scan` | Discovery engine controls |
 | `realm alerting status\|channels\|rules\|why` | Alerting + dependency explain |
 | `realm event list\|post\|ack\|close\|comment` | Event log + ack workflow |
+| `realm role list\|show\|nodes` | Browse role registry + templates |
+| `realm macro set\|get\|delete\|list\|explain` | User macros for alerting rule values |
 | `realm plugins list\|toggle` | Plugin management |
 | `realm config get\|set` | Realm server-side config |
 | `realm settings get\|set\|unset` | Per-plugin settings stored in `realm.db` |
