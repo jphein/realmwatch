@@ -49,6 +49,22 @@ def _on_event(event):
                      node_id, blocking)
             return
 
+    # Acknowledgement suppression (Zabbix-inspired, issue #8): if a matching
+    # event from the same (type, node, text-prefix) was already acked and not
+    # closed, the human is on it — don't re-page. Both alerts and discovery
+    # events benefit; speech/info events flow through.
+    if node_id and severity in ("critical", "warning"):
+        import realm_db
+        prior = realm_db.find_recent_acked_event(
+            event.get("type", ""), node_id, event.get("text", "")
+        )
+        if prior:
+            _log_alert(event, severity, rule.get("name", ""),
+                       "all", "ack_suppressed", f"acked_by:{prior.get('ack_by','?')}")
+            log.info("Suppressed alert for %s: prior event %s acked by %s",
+                     node_id, prior.get("id"), prior.get("ack_by", "?"))
+            return
+
     # Filter channels by cooldown and enablement
     active_channels = []
     for ch_name in channel_names:

@@ -173,6 +173,19 @@ def init():
     except Exception:
         pass  # Column already exists
 
+    # Migration: event acknowledgement columns (Zabbix issue #8)
+    for col, ddl in [
+        ("ack_at",   "ALTER TABLE events ADD COLUMN ack_at REAL"),
+        ("ack_by",   "ALTER TABLE events ADD COLUMN ack_by TEXT"),
+        ("ack_note", "ALTER TABLE events ADD COLUMN ack_note TEXT"),
+        ("closed_at","ALTER TABLE events ADD COLUMN closed_at REAL"),
+    ]:
+        try:
+            c.execute(ddl)
+            c.commit()
+        except Exception:
+            pass  # Column already exists
+
     # Prune old events and stale reward dedup entries on startup
     prune_events()
 
@@ -338,8 +351,75 @@ def _auto_create_quest(event):
 
 
 def get_events_since(since_ts):
+    """Read events newer than since_ts. Merges ack/close columns into each event dict."""
     c = _conn()
-    rows = c.execute("SELECT id, data FROM events WHERE ts > ? ORDER BY ts", (since_ts,)).fetchall()
+    rows = c.execute(
+        """SELECT id, data, ack_at, ack_by, ack_note, closed_at
+           FROM events WHERE ts > ? ORDER BY ts""",
+        (since_ts,),
+    ).fetchall()
+    out = []
+    for r in rows:
+        try:
+            evt = json.loads(r["data"])
+            evt["id"] = r["id"]
+            # Surface ack/close state alongside the original event payload so
+            # the alerting hook and the UI both see one consistent view.
+            if r["ack_at"]:
+                evt["ack_at"] = r["ack_at"]
+                evt["ack_by"] = r["ack_by"] or ""
+                evt["ack_note"] = r["ack_note"] or ""
+            if r["closed_at"]:
+                evt["closed_at"] = r["closed_at"]
+            out.append(evt)
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return out
+
+
+def ack_event(event_id, ack_by="", note=""):
+    """Acknowledge an event. Returns updated event dict or None if not found."""
+    c = _conn()
+    cur = c.execute(
+        "UPDATE events SET ack_at = ?, ack_by = ?, ack_note = ? WHERE id = ? AND ack_at IS NULL",
+        (time.time(), ack_by, note, event_id),
+    )
+    c.commit()
+    if cur.rowcount == 0:
+        return None
+    return _get_event_by_id(event_id)
+
+
+def close_event(event_id):
+    """Close an event (resolution). Returns updated event dict or None."""
+    c = _conn()
+    cur = c.execute(
+        "UPDATE events SET closed_at = ? WHERE id = ? AND closed_at IS NULL",
+        (time.time(), event_id),
+    )
+    c.commit()
+    if cur.rowcount == 0:
+        return None
+    return _get_event_by_id(event_id)
+
+
+def get_unacked_events(event_types=None, lookback_seconds=86400):
+    """Return events that are not yet acknowledged and not yet closed.
+
+    Defaults: last 24h. Filter by event_types if provided.
+    """
+    c = _conn()
+    cutoff = time.time() - lookback_seconds
+    query = """SELECT id, data, ack_at, closed_at
+               FROM events
+               WHERE ts > ? AND ack_at IS NULL AND closed_at IS NULL"""
+    params = [cutoff]
+    if event_types:
+        placeholders = ",".join("?" * len(event_types))
+        query += f" AND type IN ({placeholders})"
+        params.extend(event_types)
+    query += " ORDER BY ts DESC"
+    rows = c.execute(query, params).fetchall()
     out = []
     for r in rows:
         try:
@@ -349,6 +429,60 @@ def get_events_since(since_ts):
         except (json.JSONDecodeError, TypeError):
             pass
     return out
+
+
+def find_recent_acked_event(event_type, node, text_prefix, lookback_seconds=3600):
+    """Look up the most recent acked-but-not-closed event matching (type, node, text prefix).
+
+    Used by the alerting pipeline to decide whether a new event should be
+    suppressed because a human already acked the matching condition.
+    """
+    c = _conn()
+    cutoff = time.time() - lookback_seconds
+    rows = c.execute(
+        """SELECT id, data, ack_at, ack_by FROM events
+           WHERE ts > ? AND type = ? AND ack_at IS NOT NULL AND closed_at IS NULL
+             AND json_extract(data, '$.node') = ?
+             AND substr(COALESCE(json_extract(data, '$.text'), ''), 1, 50) = substr(?, 1, 50)
+           ORDER BY ts DESC LIMIT 1""",
+        (cutoff, event_type, node, text_prefix),
+    ).fetchall()
+    if not rows:
+        return None
+    r = rows[0]
+    try:
+        evt = json.loads(r["data"])
+        evt["id"] = r["id"]
+        evt["ack_at"] = r["ack_at"]
+        evt["ack_by"] = r["ack_by"] or ""
+        return evt
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+
+def _get_event_by_id(event_id):
+    """Internal: fetch one event by id with all columns merged."""
+    c = _conn()
+    rows = c.execute(
+        """SELECT id, data, ack_at, ack_by, ack_note, closed_at
+           FROM events WHERE id = ?""",
+        (event_id,),
+    ).fetchall()
+    if not rows:
+        return None
+    r = rows[0]
+    try:
+        evt = json.loads(r["data"])
+        evt["id"] = r["id"]
+        if r["ack_at"]:
+            evt["ack_at"] = r["ack_at"]
+            evt["ack_by"] = r["ack_by"] or ""
+            evt["ack_note"] = r["ack_note"] or ""
+        if r["closed_at"]:
+            evt["closed_at"] = r["closed_at"]
+        return evt
+    except (json.JSONDecodeError, TypeError):
+        return None
 
 
 def cleanup_old_events(max_age_days=30, max_rows=50000):

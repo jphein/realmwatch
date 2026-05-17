@@ -387,10 +387,36 @@ def _h_get_events(req, params):
     qp = req.query_params
     since = float(qp.get("since", 0) or 0)
     limit = int(qp.get("limit", 0) or 0)
+    unacked_only = qp.get("ack", "").lower() in ("false", "0", "no")
     events = get_events_since(since)
+    if unacked_only:
+        events = [e for e in events if not e.get("ack_at") and not e.get("closed_at")]
     if limit > 0:
         events = events[-limit:]
     return events
+
+
+def _h_post_event_ack(req, params):
+    """POST /events/<id>/ack — acknowledge an event. Body: {by, note}."""
+    event_id = int(params.get("id", 0))
+    if not event_id:
+        return {"error": "missing event id"}
+    body = req.json() or {}
+    updated = realm_db.ack_event(event_id, body.get("by", ""), body.get("note", ""))
+    if not updated:
+        return {"error": "event not found or already acked"}
+    return updated
+
+
+def _h_post_event_close(req, params):
+    """POST /events/<id>/close — close an event (resolution)."""
+    event_id = int(params.get("id", 0))
+    if not event_id:
+        return {"error": "missing event id"}
+    updated = realm_db.close_event(event_id)
+    if not updated:
+        return {"error": "event not found or already closed"}
+    return updated
 
 def _h_get_personas(req, params):
     return _load_personas()
@@ -1524,6 +1550,8 @@ _route_table.add("GET", "/status", _h_get_status)
 _route_table.add("GET", "/quests", _h_get_api_quests)
 _route_table.add("GET", "/api/quests", _h_get_api_quests)
 _route_table.add("GET", "/events", _h_get_events)
+_route_table.add("POST", "/events/<id>/ack", _h_post_event_ack)
+_route_table.add("POST", "/events/<id>/close", _h_post_event_close)
 _route_table.add("GET", "/personas", _h_get_personas)
 _route_table.add("GET", "/topology", _h_get_topology)
 _route_table.add("GET", "/ping/<ip>", _h_get_ping_ip)
