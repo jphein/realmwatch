@@ -11,5 +11,26 @@
     "entry": "setup"
   },
 
-  "depends_on": ["discovery"]
+  "depends_on": ["discovery"],
+
+  "discovery_prototypes": [
+    {
+      "entity_type": "container",
+      "summary": "Docker container on a remote host",
+      "sublabel": "{{#NAME}} • {{#STATE}}",
+      "fantasy_template": "Iron Golem '{{#NAME}}'",
+      "alert_on": [
+        {
+          "when": "{{#STATE}} in ['exited','dead']",
+          "severity": "warning",
+          "text_template": "The Iron Golem '{{#NAME}}' has fallen silent in {{#HOST}}"
+        },
+        {
+          "when": "{{#STATE}} == 'restarting' and {{#RESTART_COUNT}} > 5",
+          "severity": "critical",
+          "text_template": "The Iron Golem '{{#NAME}}' shudders and crashes in {{#HOST}} ({{#RESTART_COUNT}} restarts)"
+        }
+      ]
+    }
+  ]
 }

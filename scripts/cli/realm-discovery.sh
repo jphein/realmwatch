@@ -22,6 +22,8 @@ SUBCOMMANDS:
   manual add <name>          Add a manual entry
   manual delete <name>       Remove a manual entry
   manual tags                Show available tags
+  prototypes                 List discovery prototypes (LLD templates)
+  entities --type T          Filter entities by type
 
 EXAMPLES:
   realm discovery list
@@ -29,6 +31,8 @@ EXAMPLES:
   realm discovery scan
   realm discovery scan --provider snmp
   realm discovery link katana ubox0
+  realm discovery prototypes
+  realm discovery entities --type netdata_host
 EOF
 }
 
@@ -39,7 +43,9 @@ show
 scan
 link
 unlink
-manual"
+manual
+prototypes
+entities"
 
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/realm-cli.sh"
 realm::parse_common "$@"
@@ -135,6 +141,48 @@ case "$sub" in
         realm::die "unknown manual subcommand: $msub" 2
         ;;
     esac
+    ;;
+  prototypes)
+    realm::api_get /discovery/prototypes \
+      | realm::fmt_table '
+          (["TYPE","PROVIDER","SUBLABEL","ALERTS"] | @tsv),
+          ((if type == "array" then . else [] end)[]
+            | [
+                .entity_type // "-",
+                .plugin // "-",
+                (.sublabel // "-"),
+                ((.alert_on // []) | length | tostring)
+              ] | @tsv)
+        '
+    ;;
+  entities)
+    type_filter=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --type) type_filter="$2"; shift 2 ;;
+        --type=*) type_filter="${1#*=}"; shift ;;
+        *) realm::die "unknown arg: $1" 2 ;;
+      esac
+    done
+    response=$(realm::api_get /discovery)
+    # /discovery returns {sub_entities: {host: [entity, ...]}, summary: {...}}
+    # Flatten + filter by entity_type
+    if [[ "$REALM_OUTPUT" = "json" ]]; then
+      printf '%s' "$response" | jq --arg t "$type_filter" '
+        [.sub_entities // {} | to_entries[]
+          | .key as $host
+          | .value[] | . + {host_node_id: $host}]
+        | (if $t == "" then . else map(select(.type == $t)) end)'
+    else
+      printf '%s' "$response" | jq -r --arg t "$type_filter" '
+        [.sub_entities // {} | to_entries[]
+          | .key as $host
+          | .value[] | . + {host_node_id: $host}]
+        | (if $t == "" then . else map(select(.type == $t)) end)
+        | (["ID","TYPE","NAME","HOST","STATUS"] | @tsv),
+          (.[] | [.id // "-", .type // "-", .name // "-", .host_node_id // "-", .status // "-"] | @tsv)
+        ' | column -t -s$'\t'
+    fi
     ;;
   *)
     realm::die "unknown subcommand: $sub" 2

@@ -6,5 +6,26 @@
   "fantasy_name": "Oracle Sight",
   "icon": "\ud83d\udd6e",
   "python": {"module": "plugin", "entry": "setup"},
-  "depends_on": ["discovery"]
+  "depends_on": ["discovery"],
+
+  "discovery_prototypes": [
+    {
+      "entity_type": "netdata_host",
+      "summary": "A host serving the Netdata REST API on :19999",
+      "sublabel": "v{{#VERSION}} • {{#CHARTS_COUNT}} charts",
+      "fantasy_template": "Seeing Stone at {{#NAME}}",
+      "alert_on": [
+        {
+          "when": "{{#ALARMS_CRITICAL}} > 0",
+          "severity": "critical",
+          "text_template": "The Seeing Stone at {{#NAME}} reveals {{#ALARMS_CRITICAL}} dire warning(s)"
+        },
+        {
+          "when": "{{#ALARMS_WARNING}} > 5",
+          "severity": "warning",
+          "text_template": "The Seeing Stone at {{#NAME}} senses {{#ALARMS_WARNING}} disturbances"
+        }
+      ]
+    }
+  ]
 }

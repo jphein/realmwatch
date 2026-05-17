@@ -459,6 +459,15 @@ def _h_get_role_by_name(req, params):
     }
 
 
+def _h_get_discovery_prototypes(req, params):
+    """GET /discovery/prototypes — every entity-type prototype declared
+    in plugin manifests. Zabbix-inspired LLD surface (issue #6).
+    """
+    if _plugin_registry is None:
+        return []
+    return _plugin_registry.get_discovery_prototypes()
+
+
 def _h_get_macros(req, params):
     """GET /macros?node=<id>&role=<r>&scope=<all|host|role|global>."""
     from plugins.alerting import macros
@@ -1648,6 +1657,7 @@ _route_table.add("POST", "/events/<id>/ack", _h_post_event_ack)
 _route_table.add("POST", "/events/<id>/close", _h_post_event_close)
 _route_table.add("GET", "/roles", _h_get_roles)
 _route_table.add("GET", "/roles/<name>", _h_get_role_by_name)
+_route_table.add("GET", "/discovery/prototypes", _h_get_discovery_prototypes)
 _route_table.add("GET", "/macros", _h_get_macros)
 _route_table.add("GET", "/macros/<name>/explain", _h_get_macro_explain)
 _route_table.add("POST", "/macros/<name>", _h_post_macro)

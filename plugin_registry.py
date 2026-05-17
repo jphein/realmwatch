@@ -151,6 +151,26 @@ class PluginRegistry:
         """All status provider functions."""
         return list(self._status_providers)
 
+    def get_discovery_prototypes(self) -> list[dict]:
+        """Return every discovery prototype declared in plugin manifests.
+
+        Each entry is {entity_type, sublabel, alert_on, plugin, ...} —
+        whatever the manifest declared, with `plugin` added so consumers
+        know which provider owns each prototype.
+
+        Zabbix-inspired (issue #6). Prototypes describe how to render and
+        alert on sub-entities of a given type — one declaration covers N
+        discovered instances.
+        """
+        out: list[dict] = []
+        for plugin_name, info in self._plugins.items():
+            manifest = info.manifest or {}
+            for proto in manifest.get("discovery_prototypes", []):
+                if not isinstance(proto, dict):
+                    continue
+                out.append({**proto, "plugin": plugin_name})
+        return out
+
     def get_event_handlers(self, event_type: str) -> list[tuple[Callable, str]]:
         """Event handlers for a specific event type."""
         return self._event_handlers.get(event_type, [])
