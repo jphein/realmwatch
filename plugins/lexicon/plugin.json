@@ -1,0 +1,19 @@
+{
+  "name": "lexicon",
+  "version": "0.1.0",
+  "type": "integrated",
+  "description": "Stable per-node identity via lexicon fleet catalog. Owns current_name/prior_names/realm/kind/role for every realmwatch node.",
+  "fantasy_name": "The Naming Ledger",
+  "icon": "📜",
+  "priority": 100,
+  "depends_on": [],
+  "panel": {
+    "id": "lexicon-panel",
+    "name": "The Naming Ledger",
+    "html": "panel.html",
+    "js": "panel.js",
+    "css": "panel.css",
+    "anchor": "sw",
+    "priority": 80
+  }
+}
