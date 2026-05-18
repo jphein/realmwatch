@@ -106,16 +106,23 @@ def rekey_json_file(path: Path, key_to_fleet_id: dict[str, str], apply: bool) ->
     rekeyed_top: dict[str, object] = {}
     legacy_map: dict[str, str] = {}
     for k, v in data.items():
-        if k == "_comment":
+        if k in ("_comment", "_legacy_name_map"):
             rekeyed_top[k] = v
             continue
+        # Case A: top-level key IS a known node name (e.g. personas.json) — rekey here
+        top_fid = key_to_fleet_id.get(k)
+        if top_fid:
+            rekeyed_top[top_fid] = v
+            legacy_map[top_fid] = k
+            continue
+        # Case B: top-level key is a namespace (e.g. realm-local.json herald_node_templates) — recurse one level
         if isinstance(v, dict):
             new_inner = {}
             for inner_k, inner_v in v.items():
-                fid = key_to_fleet_id.get(inner_k)
-                if fid:
-                    new_inner[fid] = inner_v
-                    legacy_map[fid] = inner_k
+                inner_fid = key_to_fleet_id.get(inner_k)
+                if inner_fid:
+                    new_inner[inner_fid] = inner_v
+                    legacy_map[inner_fid] = inner_k
                 else:
                     new_inner[inner_k] = inner_v
             rekeyed_top[k] = new_inner
