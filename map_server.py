@@ -1222,10 +1222,12 @@ def _h_post_event(req, params):
 def _h_post_personas(req, params):
     try:
         update = req.json()
-        node_key = update.get("node")
-        if not node_key:
+        raw_key = update.get("node")
+        if not raw_key:
             req.respond({"error": "missing 'node' key"}, 400)
             return None
+        # Fleet-resolve so prior_names and fleet_ids hit the canonical persona row.
+        node_key = _resolve_node_id(raw_key, _plugin_registry)
         if update.get("_delete"):
             realm_db.delete_persona(node_key)
         else:
@@ -1542,10 +1544,12 @@ def _h_post_connections(req, params):
 def _h_post_node(req, params):
     try:
         data = req.json()
-        node_id = data.get("id", "").strip()
-        if not node_id:
+        raw_id = data.get("id", "").strip()
+        if not raw_id:
             req.respond({"error": "missing 'id'"}, 400)
             return None
+        # Fleet-resolve so prior_names and fleet_ids land on the canonical node_id.
+        node_id = _resolve_node_id(raw_id, _plugin_registry)
         if data.get("_delete"):
             realm_db.delete_node(node_id)
         elif "x" in data and "y" in data and len(data) <= 3:
@@ -1558,7 +1562,7 @@ def _h_post_node(req, params):
             else:
                 realm_db.set_node(node_id, data)
         realm_db.save_topology_json(TOPOLOGY_FILE)
-        return {"ok": True}
+        return {"ok": True, "resolved_id": node_id}
     except (json.JSONDecodeError, KeyError) as e:
         req.respond({"error": str(e)}, 400)
         return None
