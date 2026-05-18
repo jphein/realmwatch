@@ -251,7 +251,79 @@ def register(ctx, catalog):
             resp["warnings"] = warnings
         return req.respond(resp)
 
+    def promote_handler(req, params):
+        body = req.json() or {}
+        fleet_id = body.get("fleet_id")
+        if not fleet_id:
+            return req.respond({"error": "fleet_id required"}, status=400)
+
+        entry = catalog._by_id.get(fleet_id)
+        if entry is None:
+            return req.respond(
+                {"error": f"unknown fleet_id: {fleet_id}"}, status=404
+            )
+        if entry.status != "tentative":
+            return req.respond(
+                {
+                    "error": (
+                        f"cannot promote: status is {entry.status!r} "
+                        f"(only tentative entries can be promoted)"
+                    )
+                },
+                status=400,
+            )
+
+        entry.status = "curated"
+        for field_name in ("new_name", "realm", "kind", "role"):
+            val = body.get(field_name)
+            if val is None:
+                continue
+            if field_name == "new_name":
+                entry.current_name = val
+            else:
+                setattr(entry, field_name, val)
+
+        catalog._reindex()
+        catalog.save()
+
+        ctx.push_event("realm-event", {
+            "kind": "fleet.promoted",
+            "fleet_id": fleet_id,
+            "current_name": entry.current_name,
+        })
+        ctx.push_event("plugin-broadcast", {
+            "type": "fleet-update",
+            "changed_fleet_ids": [fleet_id],
+        })
+        return req.respond({
+            "ok": True,
+            "fleet_id": fleet_id,
+            "current_name": entry.current_name,
+        })
+
+    def reload_handler(req, params):
+        from lexicon import load_fleet_catalog  # lazy: lexicon path is wired by plugin.py
+        try:
+            new_catalog = load_fleet_catalog(catalog.source_path)
+        except Exception as exc:
+            return req.respond(
+                {"error": f"reload failed: {exc}"}, status=500
+            )
+        catalog.entries = new_catalog.entries
+        catalog._reindex()
+
+        ctx.push_event("plugin-broadcast", {
+            "type": "fleet-update",
+            "reloaded": True,
+        })
+        return req.respond({
+            "ok": True,
+            "count": len(catalog.entries),
+        })
+
     ctx.register_endpoint("GET", "/fleet/list", list_handler, raw_path=True)
     ctx.register_endpoint("GET", "/fleet/resolve/<name>", resolve_handler, raw_path=True)
     ctx.register_endpoint("POST", "/fleet/rename", rename_handler, raw_path=True)
     ctx.register_endpoint("POST", "/fleet/replace", replace_handler, raw_path=True)
+    ctx.register_endpoint("POST", "/fleet/promote", promote_handler, raw_path=True)
+    ctx.register_endpoint("POST", "/fleet/reload", reload_handler, raw_path=True)
