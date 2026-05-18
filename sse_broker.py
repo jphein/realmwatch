@@ -76,6 +76,10 @@ class SSEBroker:
         self._sources = []  # list of SSESource (plugin + migrated core sources)
         self._sources_lock = threading.Lock()
         self._event_id = 0  # monotonic SSE event ID
+        # Optional transformer applied to the topology dict before push.
+        # Signature: fn(topology_dict) -> topology_dict. Set by map_server to
+        # inject fleet-catalog identity fields (lexicon plugin).
+        self.topology_transformer: Optional[Callable] = None
 
     # ── Source Registration ──
 
@@ -118,6 +122,11 @@ class SSEBroker:
         # ── Phase 1: Topology (structural, always first) ──
         try:
             topo = realm_db.get_topology()
+            if self.topology_transformer is not None:
+                try:
+                    topo = self.topology_transformer(topo)
+                except Exception:
+                    log.warning("SSE burst: topology_transformer failed", exc_info=True)
             topo_nodes = topo.get("nodes", [])
             self._event_id += 1
             q.put_nowait(("topology", _json(topo), self._event_id))
@@ -260,6 +269,11 @@ class SSEBroker:
                 # -- Core: Topology every 12th tick (60s) — first so topo_nodes is populated --
                 if tick % 12 == 0:
                     topo = realm_db.get_topology()
+                    if self.topology_transformer is not None:
+                        try:
+                            topo = self.topology_transformer(topo)
+                        except Exception:
+                            log.debug("SSE: topology_transformer failed", exc_info=True)
                     topo_nodes = topo.get("nodes", [])
                     self._check_and_push("topology", topo)
                     # Prune DB connections from dead request-handler threads

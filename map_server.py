@@ -2030,6 +2030,18 @@ if __name__ == "__main__":
                 burst_priority=source.burst_priority,
             ))
 
+    # ── Fleet catalog SSE join (Phase 5) ──
+    # Wire the topology transformer so SSE topology events get the same
+    # label/realm/role/kind merge that GET /topology applies.
+    def _sse_topology_transformer(topo):
+        fleet_api = _get_fleet_api()
+        if not fleet_api or not fleet_api.get("loaded"):
+            return topo
+        out = dict(topo)
+        out["nodes"] = _join_fleet_into_nodes(topo.get("nodes", []), fleet_api)
+        return out
+    _sse_broker.topology_transformer = _sse_topology_transformer
+
     _sse_broker.start()
 
     # ── Discovery engine startup (register providers from plugins, start scan loop) ──
