@@ -80,3 +80,14 @@ def setup(ctx):
         except Exception as e:
             print(f"[lexicon] discovery callback error: {e}")
     ctx.on_event("discovery.observation", _discovery_cb)
+
+    from . import watcher as _watcher_mod
+    def _reload_from_disk():
+        new_cat = load_fleet_catalog(FLEET_YAML)
+        catalog.entries = new_cat.entries
+        catalog._reindex()
+        ctx.push_event("plugin-broadcast", {"type": "fleet-update", "reloaded": True})
+        print(f"[lexicon] fleet.yaml reloaded: {len(catalog.entries)} entries")
+
+    _fleet_watcher = _watcher_mod.FleetWatcher(FLEET_YAML, _reload_from_disk)
+    _fleet_watcher.start()
