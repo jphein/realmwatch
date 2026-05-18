@@ -1,4 +1,4 @@
-"""HTTP handlers for /fleet/* — read paths."""
+"""HTTP handlers for /fleet/* — read and mutating paths."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ def _entry_to_dict(e):
 
 
 def register(ctx, catalog):
-    """Wire read-only fleet endpoints."""
+    """Wire fleet endpoints (read + mutating)."""
 
     def list_handler(req, params):
         status_filter = req.query_params.get("status")
@@ -41,5 +41,44 @@ def register(ctx, catalog):
             return req.respond({"error": "not found", "query": name}, status=404)
         return req.respond({"query": name, "entry": _entry_to_dict(e)})
 
+    def rename_handler(req, params):
+        body = req.json() or {}
+        fleet_id = body.get("fleet_id")
+        new_name = body.get("new_name")
+        reason = body.get("reason")
+        if not fleet_id or not new_name:
+            return req.respond(
+                {"error": "fleet_id and new_name required"}, status=400
+            )
+        try:
+            catalog.rename(fleet_id, new_name, reason=reason)
+        except KeyError as e:
+            return req.respond({"error": str(e)}, status=404)
+        except ValueError as e:
+            return req.respond({"error": str(e)}, status=400)
+        catalog.save()
+
+        entry = catalog._by_id.get(fleet_id)
+        # The just-appended prior name carries the old current_name.
+        from_name = (
+            entry.prior_names[-1].name if entry and entry.prior_names else None
+        )
+        ctx.push_event("realm-event", {
+            "kind": "fleet.renamed",
+            "fleet_id": fleet_id,
+            "from": from_name,
+            "to": new_name,
+        })
+        ctx.push_event("plugin-broadcast", {
+            "type": "fleet-update",
+            "changed_fleet_ids": [fleet_id],
+        })
+        return req.respond({
+            "ok": True,
+            "fleet_id": fleet_id,
+            "current_name": new_name,
+        })
+
     ctx.register_endpoint("GET", "/fleet/list", list_handler, raw_path=True)
     ctx.register_endpoint("GET", "/fleet/resolve/<name>", resolve_handler, raw_path=True)
+    ctx.register_endpoint("POST", "/fleet/rename", rename_handler, raw_path=True)

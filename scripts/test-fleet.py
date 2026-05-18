@@ -76,6 +76,36 @@ def main() -> int:
     else:
         print(f"   PASS: {len(body4.get('nodes', []))} nodes")
 
+    print("5. /fleet/rename round-trips")
+    status, listing = get(f"{args.host}/fleet/list?status=curated")
+    if status != 200 or not listing.get("entries"):
+        print(f"   FAIL: could not fetch a curated entry (status={status})")
+        failures += 1
+    else:
+        sample = listing["entries"][0]
+        fid = sample["fleet_id"]
+        orig = sample["current_name"]
+        tmp = f"{orig}-test"
+        s1, r1 = post(f"{args.host}/fleet/rename",
+                      {"fleet_id": fid, "new_name": tmp})
+        if s1 != 200 or r1.get("current_name") != tmp:
+            print(f"   FAIL: forward rename status={s1} body={r1}")
+            failures += 1
+        else:
+            # Resolve via the OLD name should still find the entry.
+            s2, r2 = get(f"{args.host}/fleet/resolve/{orig}")
+            if s2 != 200 or r2.get("entry", {}).get("current_name") != tmp:
+                print(f"   FAIL: resolve-via-old-name status={s2} body={r2}")
+                failures += 1
+            # Rename back to restore state.
+            s3, r3 = post(f"{args.host}/fleet/rename",
+                          {"fleet_id": fid, "new_name": orig})
+            if s3 != 200 or r3.get("current_name") != orig:
+                print(f"   FAIL: rollback rename status={s3} body={r3}")
+                failures += 1
+            else:
+                print(f"   PASS: {orig} → {tmp} → {orig}")
+
     if failures:
         print(f"\n{failures} check(s) failed")
         return 1
