@@ -157,6 +157,70 @@ def _load_topology():
     return data
 
 
+def _get_fleet_api():
+    """Look up the lexicon plugin's exposed API, or None if not loaded.
+
+    Falls back across module instances the same way push_event() does, since
+    `import map_server` after `python map_server.py` can create a second
+    module object with _plugin_registry still None.
+    """
+    registry = _plugin_registry
+    if registry is None:
+        import sys as _sys
+        for mod_name in ("__main__", "map_server"):
+            mod = _sys.modules.get(mod_name)
+            if mod is not None and getattr(mod, "_plugin_registry", None) is not None:
+                registry = mod._plugin_registry
+                break
+    if registry is None:
+        return None
+    return registry.get_plugin_api("lexicon")
+
+
+def _join_fleet_into_nodes(nodes, fleet_api):
+    """Replace identity fields (label, role, realm, kind) with values from fleet catalog.
+
+    nodes is the list of dicts the topology endpoint builds (each has at minimum
+    'id' and may have 'data' nested dict). fleet_api is the dict exposed by the
+    lexicon plugin (with 'resolve', 'list', 'loaded' keys), or None if the plugin
+    isn't loaded.
+    """
+    if not fleet_api or not fleet_api.get("loaded"):
+        return nodes
+    resolve = fleet_api["resolve"]
+    out = []
+    for node in nodes:
+        fid = (node.get("data") or {}).get("fleet_id") or node.get("fleet_id")
+        entry = resolve(fid) if fid else None
+        if entry is None:
+            out.append(node)
+            continue
+        merged = dict(node)
+        merged.setdefault("data", {})
+        merged["label"] = entry.current_name
+        merged["fleet_id"] = entry.fleet_id
+        if entry.realm:
+            merged["realm"] = entry.realm
+        if entry.role:
+            merged["role"] = entry.role
+        if entry.kind:
+            merged["kind"] = entry.kind
+        out.append(merged)
+    return out
+
+
+def _resolve_node_id(node_id_or_name, plugin_registry):
+    """Resolve any string (current_name, prior_name, fleet_id) to current node_id.
+    Returns the input unchanged if no fleet entry matches (backward-compat)."""
+    fleet_api = plugin_registry.get_plugin_api("lexicon") if plugin_registry else None
+    if not fleet_api or not fleet_api.get("loaded"):
+        return node_id_or_name
+    entry = fleet_api["resolve"](node_id_or_name)
+    if entry is None:
+        return node_id_or_name
+    return entry.current_name
+
+
 def _save_personas(data):
     for node_id, pdata in data.items():
         realm_db.set_persona(node_id, pdata)
@@ -525,7 +589,13 @@ def _h_get_personas(req, params):
     return _load_personas()
 
 def _h_get_topology(req, params):
-    return _load_topology()
+    topo = _load_topology()
+    fleet_api = _get_fleet_api()
+    if fleet_api and fleet_api.get("loaded"):
+        # Don't mutate the cached topology dict — shallow copy and replace nodes.
+        topo = dict(topo)
+        topo["nodes"] = _join_fleet_into_nodes(topo.get("nodes", []), fleet_api)
+    return topo
 
 def _h_get_ping_ip(req, params):
     ip = params.get("ip", "")
