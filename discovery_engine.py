@@ -17,6 +17,19 @@ import realm_db
 
 log = logging.getLogger(__name__)
 
+
+# Optional push_event_fn — set by plugins (e.g. lexicon) that want to receive
+# `discovery.observation` events on first sight of a new MAC. Kept as an opt-in
+# module-level hook so we don't have to thread the function through __init__
+# or touch map_server.py.
+_push_event_fn = None
+
+
+def set_push_event_fn(fn):
+    """Allow a plugin to receive `discovery.observation` events from the engine."""
+    global _push_event_fn
+    _push_event_fn = fn
+
 # ── Role-based provider defaults ──
 ROLE_PROVIDERS = {
     "server": ["docker", "systemd", "netdata"],
@@ -440,6 +453,29 @@ class DiscoveryEngine:
                         cb("new_entity", entity, None)
                     except Exception:
                         pass
+                # Emit `discovery.observation` so plugins like lexicon can
+                # write tentative fleet entries for newly-seen MACs.
+                if _push_event_fn is not None:
+                    mac = (entity.metadata or {}).get("mac")
+                    if mac:
+                        try:
+                            _push_event_fn({
+                                "type": "discovery.observation",
+                                "mac": mac,
+                                "hostname": (entity.metadata or {}).get("hostname")
+                                            or entity.name,
+                                "vendor_oui": (entity.metadata or {}).get("vendor_oui")
+                                              or (entity.metadata or {}).get("vendor"),
+                                "evidence": {
+                                    "provider": provider_name,
+                                    "host_node_id": entity.host_node_id,
+                                    "entity_id": entity.id,
+                                    "entity_type": entity.type,
+                                },
+                            })
+                        except Exception:
+                            log.debug("discovery.observation emit failed",
+                                      exc_info=True)
             elif old_status != entity.status:
                 for cb in self._event_subscribers:
                     try:

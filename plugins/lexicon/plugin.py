@@ -57,3 +57,26 @@ def setup(ctx):
 
     from . import endpoints
     endpoints.register(ctx, catalog)
+
+    from . import discovery as _discovery_mod
+    try:
+        import discovery_engine as _de
+        _de.set_push_event_fn(ctx.push_event)
+    except Exception as e:
+        print(f"[lexicon] could not register discovery push_event_fn: {e}")
+
+    def _discovery_cb(evt):
+        try:
+            if _discovery_mod.on_discovery_observation(
+                catalog,
+                evt.get("mac"),
+                evt.get("hostname"),
+                evt.get("vendor_oui"),
+                evt.get("evidence") or {},
+                catalog.save,
+            ):
+                ctx.push_event("plugin-broadcast",
+                               {"type": "fleet-update", "kind": "tentative-added"})
+        except Exception as e:
+            print(f"[lexicon] discovery callback error: {e}")
+    ctx.on_event("discovery.observation", _discovery_cb)
