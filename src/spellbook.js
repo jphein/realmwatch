@@ -661,9 +661,11 @@ if (_searchInput) {
   _searchInput.addEventListener('input', () => {
     const rawVal = _searchInput.value;
     const isMagic = rawVal.startsWith('?');
+    const isCmd = rawVal.startsWith('!');
     const q = rawVal.trim();
 
     _realmSearch.classList.toggle('magic-morph', isMagic);
+    _realmSearch.classList.toggle('cmd-morph', isCmd);
     _searchClear.style.display = q ? '' : 'none';
 
     if (!q) {
@@ -678,12 +680,67 @@ if (_searchInput) {
       hint.textContent = q.length > 1 ? '\u2728 Press Enter to consult the Oracle...' : '\u2728 Ask the Oracle anything...';
       _searchResults.appendChild(hint);
       _searchResults.classList.add('open');
+    } else if (isCmd) {
+      _searchResults.textContent = '';
+      const hint = document.createElement('div');
+      hint.className = 'sr-empty';
+      hint.textContent = q.length > 1
+        ? '\u2699 Press Enter to run: realm ' + q.substring(1).trim()
+        : '\u2699 Type a realm subcommand (e.g. !brief, !doctor, !fleet list)';
+      _searchResults.appendChild(hint);
+      _searchResults.classList.add('open');
     } else {
       _renderSearchResults(_searchRealm(q), q);
     }
   });
 
   _searchInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && _realmSearch.classList.contains('cmd-morph')) {
+      const q = _searchInput.value.trim();
+      if (q.length > 1) {
+        e.preventDefault();
+        const cmd = q.substring(1).trim();
+
+        _searchResults.textContent = '';
+        const running = document.createElement('div');
+        running.className = 'sr-empty';
+        running.textContent = '\u2699 running: realm ' + cmd + '\u2026';
+        _searchResults.appendChild(running);
+        _searchResults.classList.add('open');
+
+        fetch('/exec', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command: 'realm ' + cmd }),
+        })
+          .then(r => r.json())
+          .then(j => {
+            _searchResults.textContent = '';
+            const header = document.createElement('div');
+            header.className = 'sr-empty';
+            header.style.fontFamily = 'monospace';
+            header.style.color = j.code === 0 ? '#8eb' : '#e88';
+            header.textContent = '> realm ' + cmd + '  [exit ' + (j.code != null ? j.code : '?') + ']';
+            _searchResults.appendChild(header);
+
+            const out = document.createElement('pre');
+            out.style.cssText = 'margin:4px 0;padding:6px 8px;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.08);font-family:monospace;font-size:11px;line-height:1.4;white-space:pre-wrap;max-height:400px;overflow-y:auto;color:#dcdcdc;';
+            const text = (j.stdout || '') + (j.stderr ? '\n' + j.stderr : '');
+            out.textContent = text.trim() || '(no output)';
+            _searchResults.appendChild(out);
+          })
+          .catch(err => {
+            _searchResults.textContent = '';
+            const fail = document.createElement('div');
+            fail.className = 'sr-empty';
+            fail.style.color = '#e88';
+            fail.textContent = 'exec failed: ' + err.message;
+            _searchResults.appendChild(fail);
+          });
+        return;
+      }
+    }
+
     if (e.key === 'Enter' && _realmSearch.classList.contains('magic-morph')) {
       const q = _searchInput.value.trim();
       if (q.length > 1) {
