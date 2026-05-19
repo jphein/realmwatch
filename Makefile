@@ -4,19 +4,26 @@ build:
 	npm run build
 
 dev:
-	python3 map_server.py
+	.venv/bin/python3 map_server.py
 
 oracle:
-	python3 oracle_daemon.py --no-voice
+	.venv/bin/python3 oracle_daemon.py --no-voice
 
 herald:
-	python3 realm_herald.py
+	.venv/bin/python3 realm_herald.py
 
 health:
 	./scripts/realm-health.sh
 
+# Bootstrap: uv reads pyproject.toml + uv.lock for reproducible deps.
+# pip + requirements.txt still works as a fallback if uv isn't on PATH.
 install:
-	pip install -r requirements.txt
+	@if command -v uv >/dev/null 2>&1; then \
+	  uv sync; \
+	else \
+	  echo "uv not found; falling back to pip + requirements.txt"; \
+	  python3 -m venv .venv && .venv/bin/pip install -r requirements.txt; \
+	fi
 	npm install
 
 clean:

@@ -72,8 +72,10 @@ deploy_brave() {
 }
 
 deploy_navidrome() {
+  # shellcheck disable=SC1091
+  source "$(dirname "$0")/../scripts/lib/realm-python.sh"
   local disks_ip
-  disks_ip="$(python3 -c "import sys; sys.path.insert(0, '$(dirname "$0")/..'); import realm_fleet; print(realm_fleet.host_ip('disks') or '')" 2>/dev/null)"
+  disks_ip="$("$REALM_PYTHON" -c "import sys; sys.path.insert(0, '$REALM_HOME'); import realm_fleet; print(realm_fleet.host_ip('disks') or '')" 2>/dev/null)"
   if [[ -z "$disks_ip" ]]; then
     echo -e "  ${Y}Skip${N} — could not resolve 'disks' from fleet.yaml"
     return

@@ -1,0 +1,42 @@
+[project]
+name = "realmwatch"
+version = "0.4.1"
+description = "Fantasy-themed homelab network monitor + AI voice assistant"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "GPL-3.0-or-later" }
+authors = [{ name = "JP Hein" }]
+
+# Direct runtime dependencies. uv resolves transitives + writes uv.lock for
+# reproducibility. Loose-pinned (>=,<) on direct deps; the lockfile pins exact
+# versions per-package. Lock with: uv sync
+dependencies = [
+  "httpx>=0.28,<0.29",
+  "notion-client>=3.0,<4.0",
+  "openai>=2.29,<3.0",
+  "psutil>=7.0,<8.0",
+  "python-dotenv>=1.0,<2.0",
+  "ruamel.yaml>=0.18,<0.19",
+]
+
+[project.optional-dependencies]
+# Speech features (oracle daemon). Optional — most operators don't need it.
+speech = [
+  "azure-cognitiveservices-speech>=1.40",
+]
+# AWS Bedrock support (chat backend). Optional.
+aws = [
+  "boto3>=1.35",
+]
+# nmap plugin (network discovery via nmap binary).
+nmap = [
+  "python-nmap>=0.7",
+]
+
+[tool.uv]
+# Force a fresh resolution from PyPI; ignore any leaked system packages.
+package = false
+
+# Where uv puts the managed venv. Default is `.venv`; making it explicit.
+[tool.uv.workspace]
+members = []

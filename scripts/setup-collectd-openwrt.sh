@@ -38,16 +38,14 @@ if [[ ! -f "$_FLEET" ]]; then
 fi
 # shellcheck disable=SC1090
 source "$_FLEET"
-
-# KATANA_IP resolves from fleet.yaml via the same path scripts/lib/fleet.sh uses.
-# Was hardcoded "10.0.6.129". Falls back to that legacy value if fleet.yaml lookup fails.
-KATANA_IP="$(python3 -c "import sys, pathlib; sys.path.insert(0, '$(dirname "$0")/..'); import realm_fleet; print(realm_fleet.host_ip('katana') or '')" 2>/dev/null)"
-if [[ -z "$KATANA_IP" ]]; then
-  echo "ERROR: could not resolve 'katana' from fleet.yaml" >&2
-  exit 5
-fi
-source "$_FLEET"
 unset _FLEET
+
+# KATANA_IP resolves from fleet.yaml via the same realm_fleet helper.
+# Was hardcoded "10.0.6.129".
+# shellcheck disable=SC1091
+source "$(dirname "$0")/lib/realm-python.sh"
+KATANA_IP="$("$REALM_PYTHON" -c "import sys; sys.path.insert(0, '$REALM_HOME'); import realm_fleet; print(realm_fleet.host_ip('katana') or '')" 2>/dev/null)"
+[[ -n "$KATANA_IP" ]] || { echo "ERROR: could not resolve 'katana' from fleet.yaml" >&2; exit 5; }
 
 setup_ap() {
   local name="$1" ip="$2"
