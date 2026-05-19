@@ -11,6 +11,7 @@ authors = [{ name = "JP Hein" }]
 # reproducibility. Loose-pinned (>=,<) on direct deps; the lockfile pins exact
 # versions per-package. Lock with: uv sync
 dependencies = [
+  "fastmcp>=3.0,<4.0",
   "httpx>=0.28,<0.29",
   "notion-client>=3.0,<4.0",
   "openai>=2.29,<3.0",
