@@ -66,3 +66,5 @@ fleet.yaml
 realm.db.pre-fleet-*
 personas.json.pre-fleet-*
 realm-local.json.pre-fleet-*
+venv.legacy/
+*.egg-info/

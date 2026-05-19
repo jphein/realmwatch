@@ -13,7 +13,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=%h/Projects/realmwatch
-ExecStart=%h/Projects/realmwatch/venv/bin/python3 realm_launcher.py
+ExecStart=%h/Projects/realmwatch/.venv/bin/python3 realm_launcher.py
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=10

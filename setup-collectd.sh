@@ -18,7 +18,9 @@
 
 set -e
 
-KATANA_LAN="$(python3 -c "import sys, pathlib; sys.path.insert(0, '$(dirname "$0")'); import realm_fleet; print(realm_fleet.host_ip('katana') or '')")"
+# shellcheck disable=SC1091
+source "$(dirname "$0")/scripts/lib/realm-python.sh"
+KATANA_LAN="$("$REALM_PYTHON" -c "import sys; sys.path.insert(0, '$REALM_HOME'); import realm_fleet; print(realm_fleet.host_ip('katana') or '')")"
 [[ -n "$KATANA_LAN" ]] || { echo "ERROR: could not resolve 'katana' from fleet.yaml" >&2; exit 5; }
 KATANA_TS=$(ssh katana "tailscale ip -4" 2>/dev/null || echo "100.96.209.70")
 HOST=$(hostname)

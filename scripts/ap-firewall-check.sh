@@ -21,7 +21,9 @@ set -euo pipefail
 
 G='\033[0;32m'; R='\033[0;31m'; Y='\033[0;33m'; C='\033[0;36m'; N='\033[0m'
 
-GK_IP="$(python3 -c "import sys; sys.path.insert(0, '$(dirname "$0")/..'); import realm_fleet; print(realm_fleet.host_ip('gatekeeper') or '')" 2>/dev/null)"
+# shellcheck disable=SC1091
+source "$(dirname "$0")/lib/realm-python.sh"
+GK_IP="$("$REALM_PYTHON" -c "import sys; sys.path.insert(0, '$REALM_HOME'); import realm_fleet; print(realm_fleet.host_ip('gatekeeper') or '')" 2>/dev/null)"
 [[ -n "$GK_IP" ]] || { echo -e "${R}Could not resolve 'gatekeeper' from fleet.yaml${N}" >&2; exit 5; }
 GK="root@${GK_IP}"  # was hardcoded root@10.0.6.1
 

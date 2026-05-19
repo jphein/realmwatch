@@ -34,8 +34,10 @@ and gotchas.
 
 ## Tech Stack
 
-- **Python 3.12** (venv at `./venv/`): stdlib `http.server` + ThreadingMixIn,
-  psutil, openai (Azure AI), httpx, notion-client, python-dotenv
+- **Python 3.12** (uv-managed venv at `./.venv/`, lockfile `uv.lock`): stdlib
+  `http.server` + ThreadingMixIn, psutil, openai (Azure AI), httpx, notion-client,
+  python-dotenv, ruamel.yaml. Bootstrap: `make install` (uv sync) — falls back
+  to pip + requirements.txt if uv isn't on PATH. Direct deps in `pyproject.toml`.
 - **JavaScript**: vanilla ES2020 modules, bundled by esbuild 0.27.3 (IIFE),
   WinBox window manager (runtime, not bundled)
 - **Database**: SQLite (`realm.db`) with WAL mode — 12 tables: settings, events,
@@ -51,13 +53,13 @@ and gotchas.
 ## Quick Start
 
 ```bash
-make install              # pip install -r requirements.txt && npm install
+make install              # uv sync (reads pyproject.toml + uv.lock) + npm install
 make build                # esbuild src/main.js → realm-map.js (minified IIFE)
-make dev                  # python3 map_server.py — canonical foreground run
+make dev                  # .venv/bin/python3 map_server.py — canonical foreground
 
 # Optional daemons (off by default — opt-in per use)
-make oracle               # python3 oracle_daemon.py --no-voice
-make herald               # python3 realm_herald.py
+make oracle               # .venv/bin/python3 oracle_daemon.py --no-voice
+make herald               # .venv/bin/python3 realm_herald.py
 
 # Dev loop
 npm run watch             # esbuild watch mode (non-minified, auto-rebuild)
@@ -290,7 +292,7 @@ flag these clearly when working in adjacent areas:
 
 No test framework. Validate by running:
 
-- `python3 map_server.py` — check for import/startup errors AND plugin load log
+- `make dev` (or `.venv/bin/python3 map_server.py`) — check for import/startup errors AND plugin load log
 - Open http://localhost/realm-map.html — verify panels render, SSE stream live, interactions work
 - `curl -s http://localhost/status | python3 -m json.tool` — verify API
 - `curl -s http://localhost/debug | python3 -m json.tool` — see registered plugins/endpoints
