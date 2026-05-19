@@ -406,6 +406,16 @@ def _build_status_fresh():
             lat_api["set_wifi_nodes"](status.get("wifi", {}))
     # Pre-compute sublabels (saves client hostname matching + string formatting)
     status["sublabels"] = _compute_sublabels(status, topo_nodes)
+    # Core-host IPs resolved from fleet.yaml — replaces hardcoded IPs in src/node-status.js.
+    # Any name that doesn't resolve maps to None; frontend handles gracefully.
+    try:
+        import realm_fleet
+        status["core_hosts"] = {
+            name: realm_fleet.host_ip(name)
+            for name in ("katana", "gatekeeper", "oracle", "ha")
+        }
+    except Exception:
+        status["core_hosts"] = {}
     # Discovery entity counts per host node
     if _discovery_engine:
         status["discovery_counts"] = _discovery_engine.get_entity_counts_by_host()

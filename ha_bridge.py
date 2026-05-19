@@ -54,7 +54,16 @@ import urllib.request
 
 import node_roles
 
-HA_URL = os.environ.get("HA_URL", "https://10.0.6.108:8123")
+def _resolve_ha_url():
+    """HA_URL env var wins; otherwise resolve `ha` from fleet.yaml at port 8123 HTTPS."""
+    if (url := os.environ.get("HA_URL")):
+        return url
+    import realm_fleet
+    ip = realm_fleet.host_ip("ha")
+    return f"https://{ip}:8123" if ip else None
+
+
+HA_URL = _resolve_ha_url()  # was hardcoded "https://10.0.6.108:8123"
 POLL_INTERVAL = 30
 
 

@@ -17,6 +17,16 @@ import urllib.request
 import ha_bridge
 from discovery_engine import SubEntity
 
+
+def _ha_url():
+    """HA_URL env override > fleet.yaml `ha` entry @ port 8123 > None. No hardcode."""
+    if (u := os.environ.get("HA_URL")):
+        return u
+    import realm_fleet
+    ip = realm_fleet.host_ip("ha")
+    return f"https://{ip}:8123" if ip else None
+
+
 # ── Energy data cache (ported from map_server.py) ──
 _energy_cache = {"data": None, "ts": 0}
 _energy_cache_lock = threading.Lock()
@@ -30,7 +40,7 @@ def _get_energy_data():
         if _energy_cache["data"] is not None and (now - _energy_cache["ts"]) < _ENERGY_TTL:
             return _energy_cache["data"]
 
-    ha_url = os.environ.get("HA_URL", "https://10.0.6.108:8123")
+    ha_url = _ha_url()
     ha_token = os.environ.get("HA_TOKEN", "")
     if not ha_token:
         return {"error": "No HA_TOKEN"}
@@ -92,7 +102,7 @@ def handle_energy(req, params):
 
 def discover_ha(node_id, node_data, host_access, engine):
     """Discover Home Assistant devices from the HA REST API."""
-    ha_url = os.environ.get("HA_URL", "https://10.0.6.108:8123")
+    ha_url = _ha_url()
     ha_token = os.environ.get("HA_TOKEN", "")
     if not ha_token:
         return []

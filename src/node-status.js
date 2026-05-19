@@ -51,12 +51,16 @@ function updateCoreSublabels(d) {
   const wanN = getNodeDOM('wan');
   if (wanN.sub && astral.nft) wanN.sub.textContent = fmtBytes(astral.nft.wan) + ' traversed';
 
+  const core = d.core_hosts || {};
+  const gkIp = core.gatekeeper || '';
+  const oracleIp = core.oracle || '';
+
   const gkN = getNodeDOM('gatekeeper');
-  if (gkN.sub) gkN.sub.textContent = astral.nodes.gatekeeper ? 'OpenWrt Router \u2022 10.0.6.1' : 'SILENT \u2022 10.0.6.1';
+  if (gkN.sub) gkN.sub.textContent = (astral.nodes.gatekeeper ? 'OpenWrt Router \u2022 ' : 'SILENT \u2022 ') + gkIp;
   if (gkN.pulse) gkN.pulse.style.display = astral.nodes.gatekeeper ? '' : 'none';
 
   const oN = getNodeDOM('oracle');
-  if (oN.sub) oN.sub.textContent = astral.nodes.oracle ? 'ubox0 \u2022 10.0.6.11' : 'SILENT \u2022 10.0.6.11';
+  if (oN.sub) oN.sub.textContent = (astral.nodes.oracle ? 'ubox0 \u2022 ' : 'SILENT \u2022 ') + oracleIp;
   if (oN.pulse) oN.pulse.style.display = astral.nodes.oracle ? '' : 'none';
 }
 
@@ -212,9 +216,10 @@ function updateTooltips(d) {
   const tsOnline = ts ? ts.online_count : '?';
   const tsTotal = ts ? ts.total : '?';
 
+  const core = d.core_hosts || {};
   const katCd = d.collectd && Object.values(d.collectd).find(c => c.hostname && c.hostname.includes('katana'));
   tips.katana.stats = [
-    ["Role", "Primary Server (Self)"], ["IP", "10.0.6.129"],
+    ["Role", "Primary Server (Self)"], ["IP", core.katana || ""],
     ["Status", astral.nodes.katana ? "Online \u2014 Unsheathed" : "OFFLINE"],
     ["Tailscale", `${tsOnline} online / ${tsTotal} total`],
   ];
@@ -227,7 +232,7 @@ function updateTooltips(d) {
 
   const gkCd = d.collectd && d.collectd['gatekeeper'];
   tips.gatekeeper.stats = [
-    ["Role", "OpenWrt Router / Firewall"], ["IP", "10.0.6.1"],
+    ["Role", "OpenWrt Router / Firewall"], ["IP", core.gatekeeper || ""],
     ["WAN Traffic", astral.nft ? fmtBytes(astral.nft.wan) : "N/A"],
     ["LAN Traffic", astral.nft ? fmtBytes(astral.nft.lan) : "N/A"],
     ["Status", astral.nodes.gatekeeper ? "Standing Watch" : "Silent"],
@@ -242,7 +247,7 @@ function updateTooltips(d) {
     if (gkCd.uptime) { const ud = Math.floor(gkCd.uptime / 86400); tips.gatekeeper.stats.push(["Uptime", ud + "d"]); }
   }
 
-  tips.oracle.stats = [["Role", "Network Monitor"], ["Hostname", "ubox0"], ["IP", "10.0.6.11"], ["Status", astral.nodes.oracle ? "Pulsing" : "Silent"]];
+  tips.oracle.stats = [["Role", "Network Monitor"], ["Hostname", "ubox0"], ["IP", core.oracle || ""], ["Status", astral.nodes.oracle ? "Pulsing" : "Silent"]];
   tips.forge.stats = [["Usage", forge.usage.toFixed(1) + "%"], ["Temperature", forge.temp != null ? forge.temp.toFixed(0) + "\u00B0C" : "N/A"], ["Scale", `${forge.scale >= 0 ? '+' : ''}${forge.scale.toFixed(1)} (${scaleLabel(forge.scale)})`], ["Reading", forge.msg]];
   tips.mana.stats = [["Usage", mana.usage.toFixed(1) + "%"], ["Scale", `${mana.scale >= 0 ? '+' : ''}${mana.scale.toFixed(1)} (${scaleLabel(mana.scale)})`], ["Reading", mana.msg]];
   tips.gpu.stats = gpu ? [["Temperature", gpu.temp.toFixed(0) + "\u00B0C"], ["Load", gpu.load.toFixed(0) + "%"]] : [["Status", "No GPU detected"]];

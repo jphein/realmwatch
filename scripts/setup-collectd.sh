@@ -22,7 +22,8 @@
 
 set -e
 
-KATANA_LAN="10.0.6.129"
+KATANA_LAN="$(python3 -c "import sys, pathlib; sys.path.insert(0, '$(dirname "$0")/..'); import realm_fleet; print(realm_fleet.host_ip('katana') or '')")"
+[[ -n "$KATANA_LAN" ]] || { echo "ERROR: could not resolve 'katana' from fleet.yaml" >&2; exit 5; }
 KATANA_TS_FALLBACK="100.96.209.70"
 HOST=$(hostname)
 

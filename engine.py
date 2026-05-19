@@ -40,9 +40,12 @@ class RealmEngine:
 
     def __init__(self):
         self.persona = "The System"
-        self.katana_ip = os.getenv("KATANA_IP", "10.0.6.129")
-        self.router_ip = os.getenv("ROUTER_IP", "10.0.6.1")
-        self.ubox_ip = os.getenv("UBOX_IP", "10.0.6.11")
+        import realm_fleet
+        # Host IPs resolve from fleet.yaml. Env vars override for ops emergencies;
+        # no hardcoded fallbacks. resolve('oracle') walks 'ubox0' prior_name → 10.0.6.11.
+        self.katana_ip = realm_fleet.host_ip("katana", env_var="KATANA_IP")
+        self.router_ip = realm_fleet.host_ip("gatekeeper", env_var="ROUTER_IP")
+        self.ubox_ip = realm_fleet.host_ip("oracle", env_var="UBOX_IP")
 
         self.notion_token = os.getenv("NOTION_TOKEN")
         self.database_id = os.getenv("NOTION_DATABASE_ID")
