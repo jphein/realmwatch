@@ -7,7 +7,7 @@ devices, and energy data on an interactive SVG map with high-fantasy theming.
 Single machine, local dev.
 
 The plugin system is the structural truth: the bundled core is mostly a
-rendering engine, and 33 plugins under `plugins/<name>/` carry the feature
+rendering engine, and 37 plugins under `plugins/<name>/` carry the feature
 surface. For the full architecture, plugin catalog, and source tree see
 `README.md`. This file is the working brief for Claude — rules, environment,
 and gotchas.
@@ -26,6 +26,11 @@ and gotchas.
 - New features should be plugins (`plugins/<name>/plugin.json` + `plugin.py`).
   Only grow the core bundle for rendering or infrastructure changes.
 - openai SDK (2.29.0) for Azure AI — azure-ai-inference SDK migration is complete
+- `fleet.yaml` is identity-of-record for all nodes — JP-specific, gitignored.
+  Mutations go through `/fleet/rename`, `/fleet/replace`, `/fleet/promote`,
+  or direct file edits (mtime-poll hot-reloads ~2s). `topology.json` (in
+  `realm.db`), `personas.json`, and `realm-local.json` reference nodes by
+  `fleet_id`, not by current_name.
 
 ## Tech Stack
 

@@ -3,6 +3,7 @@ httpx==0.28.1
 notion-client==3.0.0
 openai==2.29.0
 psutil==7.2.2
+ruamel.yaml>=0.18,<0.19
 
 # Transitive dependencies (pinned for reproducibility)
 # httpx
