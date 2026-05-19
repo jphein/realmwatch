@@ -1,0 +1,56 @@
+.cli-panel {
+  padding: 8px 12px;
+  color: var(--realm-text, #ddd);
+  font-family: var(--realm-font, system-ui, sans-serif);
+  display: flex; flex-direction: column; height: 100%;
+}
+.cli-panel header { display: flex; justify-content: space-between; align-items: center; }
+.cli-panel h2 { margin: 0; font-size: 14px; letter-spacing: 0.5px; }
+
+.cli-tabs { display: flex; gap: 4px; margin: 8px 0; flex-wrap: wrap; }
+.cli-tabs button {
+  background: transparent; border: 1px solid rgba(255,255,255,0.15); color: inherit;
+  padding: 2px 10px; cursor: pointer; font-size: 11px; border-radius: 3px;
+}
+.cli-tabs button.active {
+  background: rgba(160,200,255,0.18); border-color: rgba(160,200,255,0.5);
+}
+
+.cli-controls { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; font-size: 11px; }
+.cli-controls button, .cli-controls input {
+  background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); color: inherit;
+  padding: 2px 8px; font-size: 11px; border-radius: 3px;
+}
+.cli-controls button { cursor: pointer; }
+.cli-auto-wrap { opacity: 0.7; }
+.cli-lines { width: 70px; }
+.cli-filter { flex: 0 0 130px; }
+
+.cli-quickbar { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 8px; max-height: 60px; overflow-y: auto; }
+.cli-quickbar button {
+  background: rgba(140,180,255,0.12); border: 1px solid rgba(140,180,255,0.3);
+  color: inherit; padding: 2px 6px; font-size: 10px; cursor: pointer; border-radius: 3px;
+  font-family: monospace;
+}
+.cli-quickbar button:hover { background: rgba(140,180,255,0.25); }
+
+.cli-exec-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.cli-prompt { font-family: monospace; color: rgba(160,200,255,0.8); font-size: 12px; }
+.cli-cmd {
+  flex: 1; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2);
+  color: inherit; padding: 4px 8px; font-family: monospace; font-size: 12px; border-radius: 3px;
+}
+.cli-run { background: rgba(140,200,160,0.18); border: 1px solid rgba(140,200,160,0.5); color: inherit; padding: 4px 12px; cursor: pointer; border-radius: 3px; }
+
+.cli-output {
+  flex: 1; min-height: 200px; max-height: 600px; overflow-y: auto;
+  margin: 0; padding: 8px;
+  background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.08);
+  font-family: 'JetBrains Mono', 'Source Code Pro', monospace;
+  font-size: 11px; line-height: 1.4; white-space: pre-wrap; word-break: break-word;
+  color: rgba(220,220,220,0.95);
+}
+.cli-output .ok     { color: #88e088; }
+.cli-output .fail   { color: #ff8888; }
+.cli-output .warn   { color: #f0c060; }
+.cli-output .header { color: rgba(160,200,255,0.9); font-weight: 600; }

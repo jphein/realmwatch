@@ -1,0 +1,23 @@
+{
+  "name": "cli",
+  "version": "0.1.0",
+  "type": "integrated",
+  "description": "The Command Spire — runs realm CLI commands from the webgui and surfaces doctor/logs/brief in a single panel. Backs the Scrying Terminal (/exec) and adds three diagnostic surfaces.",
+  "fantasy_name": "The Command Spire",
+  "icon": "⚗️",
+  "priority": 50,
+  "depends_on": [],
+  "python": {
+    "module": "plugin",
+    "entry": "setup"
+  },
+  "panel": {
+    "id": "cli-panel",
+    "name": "The Command Spire",
+    "html": "panel.html",
+    "js": "panel.js",
+    "css": "panel.css",
+    "anchor": "sw",
+    "priority": 70
+  }
+}

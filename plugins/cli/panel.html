@@ -1,0 +1,30 @@
+<div class="cli-panel">
+  <header>
+    <h2>The Command Spire</h2>
+    <label class="cli-auto-wrap"><input type="checkbox" class="cli-auto"> auto</label>
+  </header>
+
+  <div class="cli-tabs">
+    <button data-tab="brief"  class="active">Brief</button>
+    <button data-tab="doctor">Doctor</button>
+    <button data-tab="logs">Logs</button>
+    <button data-tab="exec">Exec</button>
+  </div>
+
+  <div class="cli-controls">
+    <button class="cli-refresh">↻ Refresh</button>
+    <input type="search" class="cli-filter" placeholder="filter (plugin name)" hidden>
+    <input type="number" class="cli-lines" placeholder="lines" value="100" min="10" max="2000" hidden>
+    <button class="cli-errors" hidden>Errors only</button>
+  </div>
+
+  <div class="cli-quickbar"></div>
+
+  <div class="cli-exec-bar" hidden>
+    <span class="cli-prompt">realm</span>
+    <input type="text" class="cli-cmd" placeholder="subcommand and args (e.g. fleet list, ssh katana uptime)" autocomplete="off" spellcheck="false">
+    <button class="cli-run">Run</button>
+  </div>
+
+  <pre class="cli-output"></pre>
+</div>
