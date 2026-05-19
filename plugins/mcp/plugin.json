@@ -1,0 +1,14 @@
+{
+  "name": "mcp",
+  "version": "0.1.0",
+  "type": "integrated",
+  "description": "MCP server — exposes realmwatch endpoints as Model Context Protocol tools for Claude Code and other AI clients.",
+  "fantasy_name": "The Astral Conduit",
+  "icon": "🜂",
+  "priority": 60,
+  "depends_on": [],
+  "python": {
+    "module": "plugin",
+    "entry": "setup"
+  }
+}
