@@ -76,7 +76,10 @@ import node_roles
 
 TOPOLOGY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "topology.json")
 SSH_OPTS = ["-o", "ConnectTimeout=4", "-o", "StrictHostKeyChecking=no"]
-GATEKEEPER = "10.0.6.1"
+
+import realm_fleet
+GATEKEEPER = realm_fleet.host_ip("gatekeeper")  # from fleet.yaml; was "10.0.6.1" hardcoded
+
 SCAN_INTERVAL = 90  # seconds
 
 # Connection types that represent WiFi links (eligible for roaming updates)

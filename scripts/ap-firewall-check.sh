@@ -21,12 +21,14 @@ set -euo pipefail
 
 G='\033[0;32m'; R='\033[0;31m'; Y='\033[0;33m'; C='\033[0;36m'; N='\033[0m'
 
-GK="root@10.0.6.1"
+GK_IP="$(python3 -c "import sys; sys.path.insert(0, '$(dirname "$0")/..'); import realm_fleet; print(realm_fleet.host_ip('gatekeeper') or '')" 2>/dev/null)"
+[[ -n "$GK_IP" ]] || { echo -e "${R}Could not resolve 'gatekeeper' from fleet.yaml${N}" >&2; exit 5; }
+GK="root@${GK_IP}"  # was hardcoded root@10.0.6.1
 
 echo -e "${C}=== Gatekeeper Firewall Audit ===${N}"
 
 if ! ssh -o ConnectTimeout=3 "$GK" true 2>/dev/null; then
-  echo -e "${R}Cannot reach gatekeeper at 10.0.6.1${N}"
+  echo -e "${R}Cannot reach gatekeeper at ${GK_IP}${N}"
   exit 1
 fi
 
