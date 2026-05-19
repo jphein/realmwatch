@@ -9,12 +9,23 @@
 #   scripts/setup-collectd-openwrt.sh
 #   scripts/setup-ssl-certs.sh
 #
-# Each one fails with a clear error if fleet.sh is missing. Bootstrap:
-#   cp scripts/lib/fleet.sh.example scripts/lib/fleet.sh
-#   $EDITOR scripts/lib/fleet.sh   # fill in your APs / routers / switches
+# Two ways to populate the arrays:
+#
+# A. Direct (this template) — declare arrays inline. Simple, no dependencies.
+#    Bootstrap: cp scripts/lib/fleet.sh.example scripts/lib/fleet.sh
+#               $EDITOR scripts/lib/fleet.sh
+#
+# B. Live-from-fleet.yaml (recommended once lexicon plugin is set up) — fleet.sh
+#    becomes a 3-line shim that evals scripts/lib/emit-fleet-arrays.py. fleet.yaml
+#    (also gitignored) is the operator-curated truth. category + ops_ip fields
+#    on each entry drive the arrays. Bootstrap:
+#       _fleet_sh_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+#       eval "$(python3 "${_fleet_sh_dir}/emit-fleet-arrays.py")"
+#       unset _fleet_sh_dir
+#    Hard requirement: ~/Projects/lexicon.realm.watch/python/ on disk.
 #
 # Provides five associative arrays:
-#   APS               — OpenWrt access points (location-name → IP)
+#   APS               — OpenWrt access points (location-name -> IP)
 #   ROUTERS           — gateway/VRRP routers
 #   SWITCHES_OPENWRT  — managed switches running OpenWrt
 #   SWITCHES_VENDOR   — managed switches NOT running OpenWrt (Comware/etc.)
