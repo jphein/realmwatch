@@ -1,0 +1,11 @@
+# fleet.example.yaml — example showing the schema. Actual fleet.yaml is gitignored.
+version: 1
+nodes:
+  - fleet_id: "mac:00:11:22:33:44:55"
+    current_name: example-switch
+    prior_names: []
+    realm: signal
+    kind: switch
+    role: managed_switch_8port
+    status: curated
+    first_seen: 2026-01-01

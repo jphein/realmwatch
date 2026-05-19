@@ -5,7 +5,7 @@
 **A fantasy-themed homelab network monitor that turns your infrastructure into a hand-painted realm map.**
 
 *Every host is a node on the SVG canvas with a fantasy name, a persona, and a voice.
-12 VLANs, 130+ nodes, 36 plugins, one unified CLI, an AI oracle, a herald daemon,
+12 VLANs, 130+ nodes, 37 plugins, one unified CLI, an AI oracle, a herald daemon,
 and a Zabbix-class alerting pipeline — all running from a single Linux box.*
 
 [Quick start](#quick-start) · [Architecture](#architecture) · [Plugins](#plugin-catalog)
@@ -28,7 +28,7 @@ and a unified `realm` CLI that exposes every capability via a single, ergonomic,
 git-style command.
 
 It is opinionated and personal — built around one user's homelab — but the
-architecture is deliberately decoupled. The 36 plugins under `plugins/` each
+architecture is deliberately decoupled. The 37 plugins under `plugins/` each
 live in their own directory with a `plugin.json` manifest, register themselves
 with the server through a `setup(ctx)` hook, and can ship HTTP endpoints, SSE
 sources, frontend panels, discovery providers, and CLI verbs. The core is a
@@ -65,7 +65,7 @@ for prereqs).
   VLANs, animated traffic ley lines, terrain contours, biome regions, and
   drag-to-arrange layout. Web workers handle force-directed layout and
   heightmap stamping; pre-computed sublabels stream over SSE.
-- **36 plugins.** Every domain feature — census, latency, firewall, WiFi
+- **37 plugins.** Every domain feature — census, latency, firewall, WiFi
   scan, system updates, herald, chat, debug, discovery, alerting,
   maintenance windows, agent registration, discovery actions — lives as
   a plugin under `plugins/<name>/`. Drop-in. No registry.
@@ -245,7 +245,7 @@ once enabled in repo settings).
 
 ## Plugin catalog
 
-36 plugins across UI, data bridges, discovery, infrastructure, and effects.
+37 plugins across UI, data bridges, discovery, infrastructure, and effects.
 
 ### UI panels
 
@@ -255,6 +255,7 @@ once enabled in repo settings).
 | `chat` | Oracle Link | 💬 | Session-based Azure AI chat, context-aware node discussions (o4-mini) |
 | `codex` | Lore Archives | 📚 | Notion-synced lore wiki served at `/codex/` |
 | `debug` | Arcane Mirror | 🔮 | Debug panel, API catalogue, Scrying Terminal command interface |
+| `lexicon` | The Naming Ledger | 📜 | Stable per-node identity. `fleet.yaml` owns `current_name`, `prior_names`, `kind`, `role`, `realm`. `/fleet/rename`, `/fleet/replace`, `/fleet/promote`, `/fleet/reload`. mtime hot-reload. Discovery emits tentative entries |
 | `plugin-manager` | Enchantment Registry | 📜 | Lists loaded plugins, endpoints, SSE sources, panels |
 | `scan` | Survey Glass | 🔭 | On-demand WiFi/LLDP/firewall/oracle/discovery triggers |
 | `skills` | Inscription Codex | ✎ | Browse and edit Skills, CLAUDE.md, Hooks, Agents |

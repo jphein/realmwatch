@@ -113,6 +113,10 @@ class PluginRegistry:
         """Store a plugin's public API for inter-plugin access."""
         self._plugin_apis[plugin_name] = api_dict
 
+    def get_plugin_api(self, plugin_name: str) -> dict | None:
+        """Return the exposed API dict for a named plugin, or None if not exposed."""
+        return self._plugin_apis.get(plugin_name)
+
     def register_discovery_provider(self, provider: DiscoveryProvider):
         """Register a discovery provider."""
         self._discovery_providers.append(provider)
@@ -174,10 +178,6 @@ class PluginRegistry:
     def get_event_handlers(self, event_type: str) -> list[tuple[Callable, str]]:
         """Event handlers for a specific event type."""
         return self._event_handlers.get(event_type, [])
-
-    def get_plugin_api(self, plugin_name: str) -> dict | None:
-        """Get another plugin's exposed API."""
-        return self._plugin_apis.get(plugin_name)
 
     def get_plugin_status(self, name: str) -> dict:
         """Get runtime status for a plugin (running/stopped/error)."""

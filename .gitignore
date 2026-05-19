@@ -58,3 +58,11 @@ personas.json
 
 # Realm-local config (JP-specific data: herald templates, node overrides, layout buildings)
 realm-local.json
+
+# Fleet catalog — JP-specific MACs, hostnames, VLANs; never tracked
+fleet.yaml
+
+# Migration backups (created by scripts/migrate-fleet.py)
+realm.db.pre-fleet-*
+personas.json.pre-fleet-*
+realm-local.json.pre-fleet-*
