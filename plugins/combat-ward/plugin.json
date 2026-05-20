@@ -1,0 +1,14 @@
+{
+  "name": "combat-ward",
+  "version": "0.1.0",
+  "type": "integrated",
+  "description": "Threat classification + ward management layer. Sits ON TOP of alerting — alerting still does notification routing; combat-ward turns threat-class events into bestiary encounters, ward actions, and a defense report. Migrated from os.realm.watch/servers/combat_ward.",
+  "fantasy_name": "The Combat Ward",
+  "icon": "🛡️",
+  "priority": 80,
+  "depends_on": ["alerting", "realm-engine"],
+  "python": {
+    "module": "plugin",
+    "entry": "setup"
+  }
+}
