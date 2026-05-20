@@ -1,0 +1,14 @@
+{
+  "name": "gnome-shell-monitor",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Parses gnome-shell-monitor log lines (crashes, JS errors, segfaults, compositor hangs, recoveries) and surfaces them as realm events.",
+  "fantasy_name": "Shell Sentinel",
+  "icon": "🕮️",
+  "priority": 80,
+  "depends_on": [],
+  "python": {
+    "module": "plugin",
+    "entry": "setup"
+  }
+}
