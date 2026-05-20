@@ -80,7 +80,7 @@ want fleet      && FLEET=$(ensure     "$(realm::api_get /fleet/list 2>/dev/null 
 want persona    && PERSONAS=$(ensure  "$(realm::api_get /personas 2>/dev/null || echo '{}')"                                     'type=="object"' '{}')
 want quest      && QUESTS=$(ensure    "$(realm::api_get '/plugins/quests/list?limit=200' 2>/dev/null || echo '[]')"              'type=="array"' '[]')
 want event      && EVENTS=$(ensure    "$(realm::api_get '/events?limit=200' 2>/dev/null || echo '[]')"                           'type=="array"' '[]')
-want sub-entity && DISCOVERY=$(ensure "$(realm::api_get /discovery 2>/dev/null || echo '{\"sub_entities\":{}}')"                 '.sub_entities | type=="object"' '{"sub_entities":{}}')
+want sub-entity && DISCOVERY=$(ensure "$(realm::api_get /discovery 2>/dev/null || echo '{"sub_entities":{}}')"                   '.sub_entities | type=="object"' '{"sub_entities":{}}')
 
 # ---- score in a single jq program -------------------------------------------
 # Streams {kind, score, name, context}, then sorts by (kind, -score) and caps.
@@ -105,16 +105,16 @@ MATCHES=$(jq -nc \
   # --slurpfile wraps each input in a 1-element array; unwrap here.
   ($sf_fleet[0]) as $fleet | ($sf_personas[0]) as $personas
   | ($sf_quests[0]) as $quests | ($sf_events[0]) as $events
-  | ($sf_discovery[0]) as $discovery |
+  | ($sf_discovery[0]) as $discovery
+  | ($q | ascii_downcase) as $q_lower |
   # Case-insensitive score; 0 means no match.
   def score(s):
     if s == null or s == "" then 0
     else
       (s | tostring | ascii_downcase) as $h
-      | ($q | ascii_downcase) as $q
-      | if   $h == $q                then 100
-        elif ($h | startswith($q))   then 75
-        elif ($h | contains($q))     then 50
+      | if   $h == $q_lower             then 100
+        elif ($h | startswith($q_lower)) then 75
+        elif ($h | contains($q_lower))   then 50
         else 0 end
     end;
 
