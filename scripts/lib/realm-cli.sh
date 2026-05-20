@@ -27,6 +27,11 @@ source "$_realm_lib_dir/colors.sh"
 source "$_realm_lib_dir/http.sh"
 # shellcheck disable=SC1091
 source "$_realm_lib_dir/output.sh"
-# fleet.sh is optional — only fleet ops scripts need it
+# fleet.sh is optional — only fleet ops scripts need it. The trailing `|| true`
+# is load-bearing: under `set -e` (the typical subcommand prelude), a missing
+# fleet.sh would make this line's exit code propagate out of the source chain
+# and abort the calling script silently. fleet.sh is gitignored — worktrees,
+# fresh clones, and CI runners legitimately don't have it. Surfaced by Nyx
+# (PR #26) and Solas (PR #27) both hitting CI failures from this exact line.
 # shellcheck disable=SC1091
-[[ -f "$_realm_lib_dir/fleet.sh" ]] && source "$_realm_lib_dir/fleet.sh"
+[[ -f "$_realm_lib_dir/fleet.sh" ]] && source "$_realm_lib_dir/fleet.sh" || true
