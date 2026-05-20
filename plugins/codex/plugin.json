@@ -1,10 +1,12 @@
 {
   "name": "codex",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "integrated",
-  "description": "Codex sync — fetches lore, architecture, and reference entries from Notion and serves the codex wiki.",
-  "fantasy_name": "Lore Archives",
-  "icon": "\ud83d\udcda",
+  "description": "The Codex of Realms — Notion sync (legacy) plus the absorbed lore-keeper: world codex, node backstories, chronicles, and the player journal. Owns codex_entries, node_lore, chronicles, journal_entries in the game sidecar DB (~/.realmwatch/game.db).",
+  "fantasy_name": "The Codex of Realms",
+  "icon": "📚",
+  "priority": 70,
+  "depends_on": [],
 
   "python": {
     "module": "plugin",
