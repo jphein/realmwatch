@@ -1,0 +1,14 @@
+{
+  "name": "progression",
+  "version": "0.1.0",
+  "type": "integrated",
+  "description": "XP, levels, skill trees, and achievements. Ported from os.realm.watch/servers/progression. Owns the players, xp_events, skill_trees, player_skills, achievements, player_achievements tables in the game sidecar DB (~/.realmwatch/game.db).",
+  "fantasy_name": "The Path of Ascension",
+  "icon": "📈",
+  "priority": 75,
+  "depends_on": [],
+  "python": {
+    "module": "plugin",
+    "entry": "setup"
+  }
+}
