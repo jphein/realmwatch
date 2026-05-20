@@ -463,11 +463,17 @@ REALM_COMPLETION_CACHE_TTL="${REALM_COMPLETION_CACHE_TTL:-5}"
 realm::_cache_ok() {
   local file="$1"
   [[ -f "$file" ]] || return 1
+  [[ -r "$file" ]] || return 1
   local now mtime age
   now=$(date +%s 2>/dev/null) || return 1
   mtime=$(stat -c '%Y' "$file" 2>/dev/null || stat -f '%m' "$file" 2>/dev/null) || return 1
   age=$(( now - mtime ))
-  (( age < REALM_COMPLETION_CACHE_TTL ))
+  # Sanitize TTL: default to 5 if unset or non-numeric — avoids arithmetic
+  # errors to stderr (which would break the "silent on failure" contract
+  # under set -euo pipefail).
+  local ttl="${REALM_COMPLETION_CACHE_TTL:-5}"
+  [[ "$ttl" =~ ^[0-9]+$ ]] || ttl=5
+  (( age < ttl ))
 }
 
 realm::_cache_write() {
@@ -485,17 +491,18 @@ realm::_emit_fleet_names() {
     cat "$cache"
     return 0
   fi
-  local out
-  if ! out=$(curl --silent --fail --max-time 2 \
+  mkdir -p "$REALM_COMPLETION_CACHE_DIR" 2>/dev/null || true
+  local out names=""
+  if out=$(curl --silent --fail --max-time 2 \
       "${REALM_API}/fleet/list" 2>/dev/null); then
-    return 0
+    names=$(printf '%s' "$out" | jq -r '.entries[]?.current_name // empty' 2>/dev/null) || names=""
   fi
-  local names
-  names=$(printf '%s' "$out" | jq -r '.entries[]?.current_name // empty' 2>/dev/null) || names=""
-  if [[ -n "$names" ]]; then
-    printf '%s\n' "$names" | realm::_cache_write "$cache" 2>/dev/null || true
-    printf '%s\n' "$names"
-  fi
+  # Always write the cache file (even if empty) so negative results are
+  # also throttled for the TTL window — repeated TAB presses with the
+  # server down shouldn't keep re-hitting the API.
+  printf '%s' "$names" > "$cache" 2>/dev/null || true
+  [[ -n "$names" ]] && printf '%s\n' "$names"
+  return 0
 }
 
 # realm::_emit_plugin_names — newline-separated plugin names from /plugins.
@@ -506,6 +513,7 @@ realm::_emit_plugin_names() {
     cat "$cache"
     return 0
   fi
+  mkdir -p "$REALM_COMPLETION_CACHE_DIR" 2>/dev/null || true
   local names="" out
   if out=$(curl --silent --fail --max-time 2 \
       "${REALM_API}/plugins" 2>/dev/null); then
@@ -524,10 +532,11 @@ realm::_emit_plugin_names() {
       fi
     done
   fi
-  if [[ -n "$names" ]]; then
-    printf '%s\n' "$names" | realm::_cache_write "$cache" 2>/dev/null || true
-    printf '%s\n' "$names"
-  fi
+  # Always write the cache (even if empty) so the TTL also throttles
+  # negative results when the server is down and plugins/ is missing.
+  printf '%s' "$names" > "$cache" 2>/dev/null || true
+  [[ -n "$names" ]] && printf '%s\n' "$names"
+  return 0
 }
 
 # realm::_emit_fix_targets — static list, kept in sync with realm-fix.sh.
