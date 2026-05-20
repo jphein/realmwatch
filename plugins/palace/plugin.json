@@ -1,0 +1,14 @@
+{
+  "name": "palace",
+  "version": "0.1.0",
+  "type": "integrated",
+  "description": "Memory Palace bridge — proxies palace-daemon (mempalace gateway) and auto-deposits significant realm events into the palace by wing/room.",
+  "fantasy_name": "The Memory Palace",
+  "icon": "🏛️",
+  "priority": 60,
+  "depends_on": [],
+  "python": {
+    "module": "plugin",
+    "entry": "setup"
+  }
+}
