@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
-# realm-find — universal fuzzy search across fleet, personas, quests,
-# events, and sub-entities. Ranking: exact > prefix > substring, with a
-# slight alias penalty. Tie-break by kind (fleet > persona > quest >
-# sub-entity > event) so high-signal sources outrank noisy ones. Paired
-# with `realm resolve` (name→IP) and `realm show` (drill-down).
+# realm-find — universal fuzzy search across fleet, personas, palace
+# memories, quests, events, and sub-entities. Ranking: exact > prefix >
+# substring, with a slight alias penalty. Palace results use their own
+# semantic score (cosine similarity * 100). Tie-break by kind (fleet >
+# persona > palace > quest > sub-entity > event) so high-signal sources
+# outrank noisy ones. Paired with `realm resolve` (name→IP) and
+# `realm show` (drill-down). `/palace/search` is gated: if the plugin
+# isn't loaded, palace results gracefully skip.
 
 set -euo pipefail
 
-REALM_HELP_SUMMARY="Ranked fuzzy search across fleet/persona/quest/event/sub-entity"
+REALM_HELP_SUMMARY="Ranked fuzzy search across fleet/persona/palace/quest/event/sub-entity"
 realm::help() {
   cat <<'EOF'
 realm find — ranked fuzzy search across all realm data
@@ -18,23 +21,26 @@ USAGE:
 SEARCHES (graceful skip on 404):
   fleet       /fleet/list          current_name, prior_names, fleet_id, vendor, notes
   persona     /personas            key, name, title, voice
+  palace      /palace/search       semantic memory drawers (title, wing, room, body)
   quest       /plugins/quests/list title, node, status, technical_label
   event       /events?limit=200    text/msg, node, type
   sub-entity  /discovery           name, type, id
 
 OPTIONS:
-  --kind K     Restrict to one of fleet|persona|quest|event|sub-entity
+  --kind K     Restrict to one of fleet|persona|palace|quest|event|sub-entity
   --limit N    Cap result count (default 20)
   --json       Emit results as {query, matches: [...]} JSON
   --no-color   Suppress ANSI color (also via NO_COLOR=1)
 
-RANKING: exact=100, prefix=75, substring=50, alias=60 (capped).
-Tie-breaker: fleet > persona > quest > sub-entity > event.
+RANKING: exact=100, prefix=75, substring=50, alias=60 (capped). Palace
+uses its own semantic score normalized to 0-100.
+Tie-breaker: fleet > persona > palace > quest > sub-entity > event.
 Exit codes: 0 matches, 1 none, 2 usage, 3 server unreachable.
 
 EXAMPLES:
   realm find katana
   realm find ollama --kind event
+  realm find "pgvector tuning" --kind palace
   realm find katana --json | jq '.matches[0]'
 EOF
 }
@@ -65,8 +71,8 @@ done
 [[ "$LIMIT" =~ ^[1-9][0-9]*$ ]] || realm::die "--limit must be a positive integer" 2
 
 case "$KIND" in
-  ""|fleet|persona|quest|event|sub-entity) ;;
-  *) realm::die "--kind must be one of: fleet, persona, quest, event, sub-entity" 2 ;;
+  ""|fleet|persona|palace|quest|event|sub-entity) ;;
+  *) realm::die "--kind must be one of: fleet, persona, palace, quest, event, sub-entity" 2 ;;
 esac
 
 realm::api_reachable || realm::die_unreachable
@@ -75,9 +81,12 @@ realm::api_reachable || realm::die_unreachable
 want() { [[ -z "$KIND" || "$KIND" = "$1" ]]; }
 ensure() { jq -e "$2" >/dev/null 2>&1 <<<"$1" && printf '%s' "$1" || printf '%s' "$3"; }
 
-FLEET="[]"; PERSONAS="{}"; QUESTS="[]"; EVENTS="[]"; DISCOVERY='{"sub_entities":{}}'
+FLEET="[]"; PERSONAS="{}"; PALACE='{"results":[]}'; QUESTS="[]"; EVENTS="[]"; DISCOVERY='{"sub_entities":{}}'
 want fleet      && FLEET=$(ensure     "$(realm::api_get /fleet/list 2>/dev/null | jq '.entries // []' 2>/dev/null || echo '[]')" 'type=="array"' '[]')
 want persona    && PERSONAS=$(ensure  "$(realm::api_get /personas 2>/dev/null || echo '{}')"                                     'type=="object"' '{}')
+# Palace: 404 = plugin not loaded; 502/JSON-error = palace-daemon down. Either
+# way coerce to {"results": []} so the jq pipeline below stays uniform.
+want palace     && PALACE=$(ensure    "$(realm::api_get "/palace/search?q=$(printf %s "$QUERY" | jq -Rr @uri)&limit=$LIMIT" 2>/dev/null || echo '{"results":[]}')" '(.results // .memories // .items) | type=="array"' '{"results":[]}')
 want quest      && QUESTS=$(ensure    "$(realm::api_get '/plugins/quests/list?limit=200' 2>/dev/null || echo '[]')"              'type=="array"' '[]')
 want event      && EVENTS=$(ensure    "$(realm::api_get '/events?limit=200' 2>/dev/null || echo '[]')"                           'type=="array"' '[]')
 want sub-entity && DISCOVERY=$(ensure "$(realm::api_get /discovery 2>/dev/null || echo '{"sub_entities":{}}')"                   '.sub_entities | type=="object"' '{"sub_entities":{}}')
@@ -90,6 +99,7 @@ want sub-entity && DISCOVERY=$(ensure "$(realm::api_get /discovery 2>/dev/null |
 _tmp=$(mktemp -d); trap 'rm -rf "$_tmp"' EXIT
 printf '%s' "$FLEET"     > "$_tmp/fleet.json"
 printf '%s' "$PERSONAS"  > "$_tmp/personas.json"
+printf '%s' "$PALACE"    > "$_tmp/palace.json"
 printf '%s' "$QUESTS"    > "$_tmp/quests.json"
 printf '%s' "$EVENTS"    > "$_tmp/events.json"
 printf '%s' "$DISCOVERY" > "$_tmp/discovery.json"
@@ -98,12 +108,14 @@ MATCHES=$(jq -nc \
   --arg q "$QUERY" \
   --slurpfile sf_fleet     "$_tmp/fleet.json" \
   --slurpfile sf_personas  "$_tmp/personas.json" \
+  --slurpfile sf_palace    "$_tmp/palace.json" \
   --slurpfile sf_quests    "$_tmp/quests.json" \
   --slurpfile sf_events    "$_tmp/events.json" \
   --slurpfile sf_discovery "$_tmp/discovery.json" \
   '
   # --slurpfile wraps each input in a 1-element array; unwrap here.
   ($sf_fleet[0]) as $fleet | ($sf_personas[0]) as $personas
+  | ($sf_palace[0]) as $palace_raw
   | ($sf_quests[0]) as $quests | ($sf_events[0]) as $events
   | ($sf_discovery[0]) as $discovery
   | ($q | ascii_downcase) as $q_lower |
@@ -157,6 +169,21 @@ MATCHES=$(jq -nc \
           | map(select(. != null and . != ""))
           | join(" · "))
       }),
+  # --- palace (semantic memory — score is already 0..1, scale to 0..100) ---
+  # Coalesce results/memories/items across palace-daemon shape drift.
+  ( ($palace_raw.results // $palace_raw.memories // $palace_raw.items // [])[]?
+    | . as $m
+    | (((($m.score // $m.similarity // 0) | tonumber? // 0) * 100) | floor) as $s
+    | select($s > 0)
+    | {
+        kind: "palace",
+        score: $s,
+        name: ($m.title // $m.name // $m.id // "(untitled)"),
+        context: ([
+          (((($m.wing // "?") | tostring) + "/" + (($m.room // "?") | tostring))),
+          ((($m.body // $m.text // "") | tostring)[:60])
+        ] | map(select(. != null and . != "")) | join(" · "))
+      }),
   # --- quest ---
   ( $quests[]?
     | . as $quest
@@ -209,7 +236,7 @@ MATCHES=$(jq -nc \
 
   ' \
   | jq -sc --argjson lim "$LIMIT" '
-      sort_by([(-.score), ({"fleet":1,"persona":2,"quest":3,"sub-entity":4,"event":5}[.kind] // 9)])
+      sort_by([(-.score), ({"fleet":1,"persona":2,"palace":3,"quest":4,"sub-entity":5,"event":6}[.kind] // 9)])
       | .[:$lim]
     ')
 
