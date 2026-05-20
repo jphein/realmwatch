@@ -1,0 +1,14 @@
+{
+  "name": "quests",
+  "version": "0.1.0",
+  "type": "integrated",
+  "description": "The Quest Forge — generates structured quests (with sub-quests, hints, XP rewards) from realm events. Backs the `realm quest` CLI and exposes MCP tools.",
+  "fantasy_name": "The Quest Forge",
+  "icon": "📜",
+  "priority": 75,
+  "depends_on": [],
+  "python": {
+    "module": "plugin",
+    "entry": "setup"
+  }
+}
