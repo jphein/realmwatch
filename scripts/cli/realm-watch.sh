@@ -39,14 +39,25 @@ SOURCES=""
 set -- "${REALM_POSARGS[@]+"${REALM_POSARGS[@]}"}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --filter)    FILTER="$2"; shift 2 ;;
+    --filter)
+      [[ $# -ge 2 ]] || realm::die "--filter requires a value" 2
+      FILTER="$2"; shift 2 ;;
     --filter=*)  FILTER="${1#*=}"; shift ;;
-    --node)      NODE="$2"; shift 2 ;;
+    --node)
+      [[ $# -ge 2 ]] || realm::die "--node requires a value" 2
+      NODE="$2"; shift 2 ;;
     --node=*)    NODE="${1#*=}"; shift ;;
     --sources)   SOURCES=1; shift ;;
     *) realm::die "unknown arg: $1" 2 ;;
   esac
 done
+
+# Both --node and --filter pipe events through jq; fail fast with a clear
+# error if jq isn't installed, rather than silently dropping every event
+# when the subprocess fails inside node_matches/uri-encoding below.
+if [[ -n "$NODE" || -n "$FILTER" ]]; then
+  command -v jq >/dev/null || realm::die "jq is required for --node and --filter" 2
+fi
 
 realm::api_reachable || realm::die_unreachable
 
@@ -56,10 +67,18 @@ realm::api_reachable || realm::die_unreachable
 CANONICAL_NODE=""
 if [[ -n "$NODE" ]]; then
   encoded=$(printf '%s' "$NODE" | jq -Rr @uri)
-  resolved=$(realm::api_get "/fleet/resolve/$encoded" 2>/dev/null || true)
+  # Capture exit status separately so we can distinguish "endpoint returned
+  # no entry" (200 OK, empty .entry) from "endpoint call failed" (auth,
+  # server error, transient network). Both fall back to the literal name,
+  # but the warning text should reflect which case we hit.
+  resolved=$(realm::api_get "/fleet/resolve/$encoded" 2>/dev/null) && resolve_rc=0 || resolve_rc=$?
   CANONICAL_NODE=$(printf '%s' "$resolved" | jq -r '.entry.current_name // empty' 2>/dev/null || true)
   if [[ -z "$CANONICAL_NODE" ]]; then
-    realm::warn "fleet has no entry for '$NODE' — filtering by that literal name; prior_names won't apply"
+    if [[ $resolve_rc -ne 0 ]]; then
+      realm::warn "fleet resolve failed for '$NODE' (api error rc=$resolve_rc) — filtering by literal name; prior_names won't apply"
+    else
+      realm::warn "no entry in fleet for '$NODE' — filtering by that literal name; prior_names won't apply"
+    fi
     CANONICAL_NODE="$NODE"
   elif [[ "$CANONICAL_NODE" != "$NODE" ]]; then
     realm::say "Resolved '$NODE' → '$CANONICAL_NODE' (via fleet)"
