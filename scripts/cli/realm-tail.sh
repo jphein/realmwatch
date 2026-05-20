@@ -46,9 +46,13 @@ set -- "${REALM_POSARGS[@]+"${REALM_POSARGS[@]}"}"
 TYPES=""; SINCE=""; PLUGIN=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --type)    TYPES="${2:-}";  shift 2 ;;
+    --type)
+      [[ $# -ge 2 && -n "${2:-}" ]] || realm::die "--type requires a value" 2
+      TYPES="$2"; shift 2 ;;
     --type=*)  TYPES="${1#*=}"; shift ;;
-    --since)   SINCE="${2:-}";  shift 2 ;;
+    --since)
+      [[ $# -ge 2 && -n "${2:-}" ]] || realm::die "--since requires a value (e.g. 30s, 5m, 1h, 2d)" 2
+      SINCE="$2"; shift 2 ;;
     --since=*) SINCE="${1#*=}"; shift ;;
     --*)       realm::die "unknown flag: $1 (try: realm tail --help)" 2 ;;
     *)
@@ -67,15 +71,21 @@ HELPER="$_self_dir/../lib/sse-pretty.py"
 # --since DURATION → backfill via /events?since=<unix-ts>. 5m/30s/1h/2d.
 BACKFILL_FILE=""
 if [[ -n "$SINCE" ]]; then
+  # Validate numeric portion *before* arithmetic expansion. Under set -e,
+  # values like `xm` would abort with an arithmetic error instead of our
+  # intended usage error; values like `09m` would be parsed as octal and
+  # fail on the digit 9. Force base-10 with 10# to avoid the latter.
   case "$SINCE" in
-    *s) secs="${SINCE%s}" ;;
-    *m) secs=$(( ${SINCE%m} * 60 )) ;;
-    *h) secs=$(( ${SINCE%h} * 3600 )) ;;
-    *d) secs=$(( ${SINCE%d} * 86400 )) ;;
+    *s) suffix=s; mult=1 ;;
+    *m) suffix=m; mult=60 ;;
+    *h) suffix=h; mult=3600 ;;
+    *d) suffix=d; mult=86400 ;;
     *[!0-9]*) realm::die "invalid --since (try: 30s, 5m, 1h, 2d)" 2 ;;
-    *) secs="$SINCE" ;;
+    *) suffix=""; mult=1 ;;   # bare integer = seconds
   esac
-  [[ "$secs" =~ ^[0-9]+$ ]] || realm::die "invalid --since (try: 30s, 5m, 1h, 2d)" 2
+  num="${SINCE%$suffix}"
+  [[ "$num" =~ ^[0-9]+$ ]] || realm::die "invalid --since (try: 30s, 5m, 1h, 2d)" 2
+  secs=$(( 10#$num * mult ))
   since_ts=$(( $(date +%s) - secs ))
   BACKFILL_FILE="$(mktemp -t realm-tail-backfill.XXXXXX.json)"
   if ! curl --silent --max-time 5 --fail \
@@ -138,6 +148,20 @@ CURL_PID=$!
 
 set +o pipefail
 wait "$PYTHON_PID" 2>/dev/null
-exit_code=$?
+py_rc=$?
+# After python exits (usually EOF from curl closing the FIFO), reap curl
+# too so we can detect server disconnect / DNS / connection failures —
+# otherwise python EOFs cleanly and we'd silently report success.
+wait "$CURL_PID" 2>/dev/null
+curl_rc=$?
 set -o pipefail
-exit "$exit_code"
+
+# Propagate failures: SIGINT (130) wins, else curl failure, else python's rc
+if (( py_rc == 130 || curl_rc == 130 )); then
+  exit 130
+elif (( curl_rc != 0 )); then
+  realm::warn "curl ended non-zero (rc=$curl_rc) — server disconnected or unreachable"
+  exit "$curl_rc"
+else
+  exit "$py_rc"
+fi
