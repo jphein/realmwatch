@@ -8,31 +8,15 @@ from upstream: DEFAULT_DB_PATH resolves SUDO_USER's home so the path is
 stable regardless of whether realmwatch runs as root (port 80) or as JP.
 """
 import os
-import pwd
 import sqlite3
 from pathlib import Path
 
-
-def _real_home() -> str:
-    """Resolve the invoking user's real home, even when launched under sudo.
-
-    `make dev` runs as root for port 80, which makes ~ expand to /root.
-    The game DB belongs to the human user — fall back via SUDO_USER /
-    LOGNAME / USER before honoring the current ~.
-    """
-    for env_var in ("SUDO_USER", "LOGNAME", "USER"):
-        user = os.environ.get(env_var)
-        if user and user != "root":
-            try:
-                return pwd.getpwnam(user).pw_dir
-            except KeyError:
-                continue
-    return os.path.expanduser("~")
+from realm_text import real_home
 
 
 DEFAULT_DB_PATH = os.environ.get(
     "REALM_GAME_DB",
-    os.path.join(_real_home(), ".realmwatch", "game.db"),
+    str(real_home() / ".realmwatch" / "game.db"),
 )
 
 _SCHEMA_SQL = """

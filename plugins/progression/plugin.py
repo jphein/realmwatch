@@ -13,9 +13,12 @@ Event coupling:
 - Listens for "xp.grant" plugin events for cross-plugin XP awards.
 
 Inter-plugin coupling:
-- Reads lore-keeper's exposed API for chronicle hooks (loose coupling
-  via ctx.get_plugin_api). If lore-keeper isn't loaded, chronicle calls
-  silently no-op — XP/level path remains functional.
+- Reads the codex plugin's exposed API for chronicle hooks (loose coupling
+  via ctx.get_plugin_api). codex (Mistwalker, Wave 3) absorbed lore-keeper
+  and now publishes chronicle_xp_granted / chronicle_level_up /
+  chronicle_achievement_unlocked under the "codex" plugin name. If codex
+  isn't loaded, chronicle calls silently no-op — XP/level path stays
+  functional.
 - Reads realm-engine's entities table directly for the "cartographer"
   achievement counter. We tolerate the table being absent on a fresh
   game.db (try/except in check_achievements).
@@ -45,7 +48,7 @@ from .server import (  # noqa: E402
     grant_achievement,
     grant_xp,
     list_player_skills,
-    set_lore_keeper_api,
+    set_codex_api,
     unlock_skill,
 )
 
@@ -156,15 +159,17 @@ def setup(ctx):
     print(f"[progression] default player: level={player.get('level')} "
           f"xp={player.get('total_xp')}")
 
-    # Loose-couple to lore-keeper for chronicle hooks. lore-keeper is a
-    # Wave 3 plugin; until it lands, set_lore_keeper_api(None) keeps the
-    # chronicle calls as silent no-ops.
-    lore_api = ctx.get_plugin_api("lore-keeper")
-    set_lore_keeper_api(lore_api)
-    if lore_api:
-        print("[progression] wired chronicle hooks to lore-keeper plugin API")
+    # Loose-couple to the codex plugin for chronicle hooks. Codex absorbed
+    # lore-keeper during the Wave 3 os.realm.watch migration — it now
+    # publishes chronicle_xp_granted / chronicle_level_up /
+    # chronicle_achievement_unlocked under the "codex" plugin name. If
+    # codex isn't loaded the chronicle calls remain silent no-ops.
+    codex_api = ctx.get_plugin_api("codex")
+    set_codex_api(codex_api)
+    if codex_api:
+        print("[progression] wired chronicle hooks to codex plugin API")
     else:
-        print("[progression] lore-keeper not loaded — chronicle hooks no-op")
+        print("[progression] codex not loaded — chronicle hooks no-op")
 
     # Expose our public API for other plugins (quest-forge in particular
     # will want to call grant_xp() when a quest enters the 'rewarded'

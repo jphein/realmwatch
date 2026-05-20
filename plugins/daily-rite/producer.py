@@ -20,9 +20,11 @@ import subprocess
 import time
 from pathlib import Path
 
+from realm_text import real_home
 
-# Game DB lives in os.realm.watch's home — sidecar approach for wave 2.
-DEFAULT_DB_PATH = os.path.expanduser("~/.realmwatch/game.db")
+
+# Game DB lives in the invoking user's home — sidecar approach for wave 2.
+DEFAULT_DB_PATH = str(real_home() / ".realmwatch" / "game.db")
 
 
 # XP curve: total XP required to reach level N is sum(100*i for i in 1..N-1).
@@ -217,7 +219,7 @@ def notify(title: str, body: str) -> bool:
 
 def play_chime() -> bool:
     """Play the morning rite sound chime. Returns True if chime was launched."""
-    chime_script = os.path.expanduser("~/.realmwatch/sounds/play.sh")
+    chime_script = str(real_home() / ".realmwatch" / "sounds" / "play.sh")
     if not os.path.isfile(chime_script):
         return False
     try:

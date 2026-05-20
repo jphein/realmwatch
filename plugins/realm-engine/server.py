@@ -9,8 +9,9 @@ Changes from the original:
 - Local relative imports (`.db`, `.models`) instead of `servers.shared.*`.
 - `ulid()` now comes from realmwatch's `realm_text` module (Wave 1).
 - `sanitize_hostname()` comes from `realm_text` too.
-- `update_bestiary()` from combat_ward is deferred to Wave 3 — the
-  ingestion path no longer calls it (TODO marker preserved below).
+- `update_bestiary()` is owned by the combat-ward plugin (Wave 3). It
+  subscribes to the same threat events directly via `ctx.on_event(...)`,
+  so the realm-engine ingest path no longer needs to call it.
 - `get_entity()` is now a direct DB query (no entity_resolver dependency).
   This is the Option B fallback per the Wave 2 brief. Wave 3 reconciles.
 """
@@ -127,10 +128,9 @@ def ingest_event(
     conn.commit()
     conn.close()
 
-    # TODO(Wave 3): when combat_ward lands as plugins/alerting or similar,
-    # re-enable bestiary update for severity >= 3 events. Original code:
-    #   if not replay and severity >= 3:
-    #       update_bestiary(db_path, event_type, severity)
+    # Bestiary updates for severity >= 3 events are owned by the combat-ward
+    # plugin, which subscribes to the same event types via ctx.on_event(...).
+    # Calling update_bestiary() here would double-count.
 
     return {"event_id": eid, "deduplicated": False}
 

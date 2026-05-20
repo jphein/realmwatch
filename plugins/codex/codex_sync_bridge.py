@@ -19,7 +19,6 @@ Usage (from realmwatch repo root):
 """
 from __future__ import annotations
 
-import os
 import re
 import sqlite3
 import sys
@@ -27,8 +26,13 @@ from pathlib import Path
 
 # Realmwatch repo root: <repo>/plugins/codex/codex_sync_bridge.py -> parent x3
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from realm_text import real_home  # noqa: E402
+
 REALMWATCH_CODEX = str(_REPO_ROOT / "docs" / "codex")
-DB_PATH = os.path.expanduser("~/.realmwatch/game.db")
+DB_PATH = str(real_home() / ".realmwatch" / "game.db")
 
 # Map HTML codex categories to game-DB categories
 HTML_TO_DB_CATEGORY = {

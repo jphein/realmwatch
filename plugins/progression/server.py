@@ -7,10 +7,10 @@ Wave 2 migration notes:
   (realm_text.py lives at the realmwatch repo root, Reverie wave 1.)
 - `from servers.shared.db ...` → `from .db ...` (plugin-local).
 - `from servers.shared.models ...` → `from .models ...` (plugin-local).
-- `from servers.shared.chronicle_hooks ...` → loose-coupled via
-  `_lore_keeper_api` callable injected by `plugin.setup(ctx)`. If
-  lore-keeper isn't loaded, chronicle calls are silently dropped — the
-  XP/level path stays functional.
+- `from servers.shared.chronicle_hooks ...` → loose-coupled via the
+  `_codex_api` dict injected by `plugin.setup(ctx)`. Codex absorbed
+  lore-keeper in Wave 3; if codex isn't loaded the chronicle calls are
+  silently dropped and the XP/level path stays functional.
 
 Owns tables: players, xp_events, skill_trees, player_skills, achievements,
 player_achievements. Reads: quests (quest_forge), entities (realm-engine).
@@ -26,23 +26,28 @@ from .db import DEFAULT_DB_PATH, get_connection
 from .models import level_from_xp, xp_for_level
 
 
-# ── Loose coupling to lore-keeper for chronicle entries ──────────────────────
-# plugin.setup() wires this to either ctx.get_plugin_api("lore-keeper") or
-# leaves it as the no-op default. Wave 3 lands lore-keeper in realmwatch.
+# ── Loose coupling to codex for chronicle entries ────────────────────────────
+# plugin.setup() wires this to ctx.get_plugin_api("codex"), which exposes
+# chronicle_xp_granted / chronicle_level_up / chronicle_achievement_unlocked
+# (codex absorbed lore-keeper during the Wave 3 os.realm.watch migration).
 
-_lore_keeper_api: Optional[dict] = None
+_codex_api: Optional[dict] = None
 
 
-def set_lore_keeper_api(api: Optional[dict]) -> None:
+def set_codex_api(api: Optional[dict]) -> None:
     """Wired by plugin.setup() once the registry is populated."""
-    global _lore_keeper_api
-    _lore_keeper_api = api
+    global _codex_api
+    _codex_api = api
+
+
+# Back-compat shim for any external caller that still imports the old name.
+set_lore_keeper_api = set_codex_api
 
 
 def _chronicle_xp_granted(db_path: str, amount: int, quest_title: str, source_type: str) -> None:
-    if not _lore_keeper_api:
+    if not _codex_api:
         return
-    fn = _lore_keeper_api.get("chronicle_xp_granted")
+    fn = _codex_api.get("chronicle_xp_granted")
     if not fn:
         return
     try:
@@ -52,9 +57,9 @@ def _chronicle_xp_granted(db_path: str, amount: int, quest_title: str, source_ty
 
 
 def _chronicle_level_up(db_path: str, player_name: str, new_level: int) -> None:
-    if not _lore_keeper_api:
+    if not _codex_api:
         return
-    fn = _lore_keeper_api.get("chronicle_level_up")
+    fn = _codex_api.get("chronicle_level_up")
     if not fn:
         return
     try:
@@ -64,9 +69,9 @@ def _chronicle_level_up(db_path: str, player_name: str, new_level: int) -> None:
 
 
 def _chronicle_achievement_unlocked(db_path: str, achievement_name: str) -> None:
-    if not _lore_keeper_api:
+    if not _codex_api:
         return
-    fn = _lore_keeper_api.get("chronicle_achievement_unlocked")
+    fn = _codex_api.get("chronicle_achievement_unlocked")
     if not fn:
         return
     try:

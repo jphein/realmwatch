@@ -18,7 +18,9 @@ import os
 import sqlite3
 from typing import Final
 
-DEFAULT_DB_PATH: Final[str] = os.path.expanduser("~/.realmwatch/game.db")
+from realm_text import real_home
+
+DEFAULT_DB_PATH: Final[str] = str(real_home() / ".realmwatch" / "game.db")
 
 
 # Progression-owned schema (plus foreign-key targets it references).

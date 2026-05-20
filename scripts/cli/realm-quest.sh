@@ -44,10 +44,13 @@ shift || true
 
 case "$sub" in
   list)
+    # `/quests` now returns rows from game.db (quest-forge schema) with
+    # `.title` as the human-facing field. Fall back to `.name` to keep
+    # the legacy realm.db row shape working during any transition.
     realm::api_get /quests \
       | realm::fmt_table '
           (["ID","NAME","STATUS","XP"] | @tsv),
-          (.[] | [.id, .name // "-", .status // "-", (.xp // 0 | tostring)] | @tsv)
+          (.[] | [.id, .title // .name // "-", .status // "-", ((.rewards.xp // .xp // 0) | tostring)] | @tsv)
         '
     ;;
   show)
@@ -58,7 +61,10 @@ case "$sub" in
   create)
     [[ $# -ge 1 ]] || realm::die "missing quest name" 2
     name="$1"; text="${2:-}"
-    body=$(jq -n --arg name "$name" --arg text "$text" '{name:$name, text:$text}')
+    # game.db quests expect `title` + `description`; keep the legacy `name`/
+    # `text` keys around so realm.db-backed flows keep working too.
+    body=$(jq -n --arg name "$name" --arg text "$text" \
+      '{name:$name, text:$text, title:$name, description:$text}')
     realm::api_post /quest-create "$body" \
       | if [[ "$REALM_OUTPUT" = "json" ]]; then cat; else realm::fmt_kv; fi
     ;;
