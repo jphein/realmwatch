@@ -67,6 +67,11 @@ fleet.yaml
 # vlans.yaml.example.
 vlans.yaml
 
+# fw4 zone registry per firewall device — JP-specific zone names;
+# loaded by realm_zones via lexicon.ZoneCatalog. Schema lives in
+# zones.yaml.example.
+zones.yaml
+
 # Migration backups (created by scripts/migrate-fleet.py)
 realm.db.pre-fleet-*
 personas.json.pre-fleet-*

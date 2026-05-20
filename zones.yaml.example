@@ -1,0 +1,24 @@
+# zones.yaml — fw4/nftables zone registry for one firewall device.
+#
+# Copy to `zones.yaml` (gitignored) and seed from your firewall's current
+# state. Use `realm zones list/show/rename` to inspect and mutate.
+#
+# Schema:
+#   version: 1
+#   host: <firewall device name>            # informational; informs which device the catalog describes
+#   zones:
+#     - current_name: <name>                # must match the live `uci show firewall.@zone[N].name`
+#       prior_names: [{name, retired_on, reason}]
+#       type: lan | wan | forwarding        # optional
+#       notes: ...                          # optional, operator commentary
+
+version: 1
+host: example-gateway
+
+zones:
+  - current_name: lan
+    type: lan
+    notes: LAN-side traffic
+  - current_name: wan
+    type: wan
+    notes: Internet uplink
