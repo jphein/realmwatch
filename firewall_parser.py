@@ -49,68 +49,47 @@ Public API (imported by map_server):
 """
 
 import json
-import os
 import sys
 import time
 import threading
 
-# ── VLAN registry — loaded from gitignored vlans.yaml ──
-# JP-specific data (labels, zones, statuses) lives in vlans.yaml at the repo
-# root. The schema and a starter example live in vlans.yaml.example. If
-# vlans.yaml is missing the firewall plugin still loads, but VLANS / ZONE_VLAN
-# are empty and the /firewall response will report no VLAN metadata.
+# ── VLAN registry — loaded via realm_vlans (lexicon.VLANCatalog) ──
+# JP-specific data lives in gitignored vlans.yaml (see vlans.yaml.example for
+# schema). The `realm_vlans` shim reads it through lexicon.VLANCatalog —
+# the same channel realm_fleet uses for hosts — which gives us prior_names
+# tracking, validation, and the rename workflow.
 #
-# The fw4 zone-name quirk (e.g. on gatekeeper the "lan" zone is actually IoT
-# VLAN 10) is encoded per-entry via the optional `zone:` key — `ZONE_VLAN`
-# is derived from yaml entries that declare one.
+# Public surface (VLANS, ZONE_VLAN, _REPORT_ZONES, _WAN_ZONES, VLAN_ZONE)
+# is preserved bit-for-bit so map_server, the firewall panel, and the
+# suggestions engine see identical data shapes.
 
-_VLANS_YAML = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vlans.yaml")
+import realm_vlans  # noqa: E402  — sibling module at repo root
 
 
-def _load_vlan_registry(path=_VLANS_YAML):
-    """Load (VLANS, ZONE_VLAN, _REPORT_ZONES, _WAN_ZONES) from vlans.yaml.
+def _build_registry_views():
+    """Derive the dict / tuple views the parser exposes from the VLANCatalog.
 
-    On any failure returns empty structures and prints a warning to stderr —
-    the firewall plugin can still load, the VLAN table just stays empty.
+    Returns (vlans, zone_vlan, report_zones, wan_zones). When the catalog is
+    unavailable (missing vlans.yaml, lexicon not importable, parse error)
+    realm_vlans surfaces None and we return empty structures — the firewall
+    plugin still loads, VLAN table just stays empty.
     """
-    try:
-        from ruamel.yaml import YAML
-    except ImportError:
-        print("[firewall_parser] ruamel.yaml not installed; VLAN registry empty", file=sys.stderr)
-        return {}, {}, (), ()
-    if not os.path.exists(path):
-        print(f"[firewall_parser] {path} missing; copy vlans.yaml.example to vlans.yaml", file=sys.stderr)
-        return {}, {}, (), ()
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            doc = YAML(typ="safe").load(f) or {}
-    except Exception as e:
-        print(f"[firewall_parser] failed to parse {path}: {e}", file=sys.stderr)
+    cat = realm_vlans.catalog()
+    if cat is None:
+        print("[firewall_parser] vlan catalog unavailable; VLANS empty", file=sys.stderr)
         return {}, {}, (), ()
 
-    raw = doc.get("vlans", {}) or {}
     vlans = {}
-    zone_vlan = {}
-    for vid, entry in raw.items():
-        try:
-            vid_int = int(vid)
-        except (TypeError, ValueError):
-            continue
-        entry = dict(entry or {})
-        zone = entry.pop("zone", None)
-        vlans[vid_int] = {
-            "label": entry.get("label", f"VLAN {vid_int}"),
-            "type": entry.get("type", "lan"),
-            "status": entry.get("status", "active"),
-            "desc": entry.get("desc", ""),
-            "icon": entry.get("icon", ""),
+    for e in cat.entries:
+        vlans[e.vlan_id] = {
+            "label": e.label,
+            "type": e.type,
+            "status": e.status,
+            "desc": e.desc,
+            "icon": e.icon,
         }
-        if zone:
-            zone_vlan[zone] = vid_int
 
-    for wan_zone in doc.get("wan_zones", []) or []:
-        zone_vlan.setdefault(wan_zone, None)
-
+    zone_vlan = cat.zone_to_vlan()
     report_zones = tuple(
         z for z, v in zone_vlan.items()
         if v is not None
@@ -121,7 +100,7 @@ def _load_vlan_registry(path=_VLANS_YAML):
     return vlans, zone_vlan, report_zones, wan_zones
 
 
-VLANS, ZONE_VLAN, _REPORT_ZONES, _WAN_ZONES = _load_vlan_registry()
+VLANS, ZONE_VLAN, _REPORT_ZONES, _WAN_ZONES = _build_registry_views()
 
 # Reverse: VLAN ID → fw4 zone name (only LAN-side entries)
 VLAN_ZONE = {v: k for k, v in ZONE_VLAN.items() if v is not None}
