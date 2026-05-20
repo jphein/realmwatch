@@ -19,27 +19,15 @@ arbitrary shell injection: input is shlex-parsed and the first token MUST be
 
 from __future__ import annotations
 
-import os
-import pwd
 import shlex
 import subprocess
 from pathlib import Path
 
-
-def _real_home() -> Path:
-    """Resolve real home even under sudo (server binds port 80)."""
-    for env_var in ("SUDO_USER", "LOGNAME", "USER"):
-        user = os.environ.get(env_var)
-        if user and user != "root":
-            try:
-                return Path(pwd.getpwnam(user).pw_dir)
-            except KeyError:
-                continue
-    return Path.home()
+from realm_text import real_home
 
 
-_REALM_HOME = _real_home() / "Projects" / "realmwatch"
-_REALM_BIN = _real_home() / ".local" / "bin" / "realm"
+_REALM_HOME = real_home() / "Projects" / "realmwatch"
+_REALM_BIN = real_home() / ".local" / "bin" / "realm"
 _REALM_CLI_DIR = _REALM_HOME / "scripts" / "cli"
 
 

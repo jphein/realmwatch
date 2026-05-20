@@ -40,7 +40,8 @@ _discovery_engine = None  # Set during startup
 
 # ── game.db write-back helpers ──
 import sqlite3 as _sql
-_GAME_DB = os.path.expanduser("~/.realmwatch/game.db")
+from realm_text import real_home as _real_home
+_GAME_DB = str(_real_home() / ".realmwatch" / "game.db")
 
 def _generate_ulid():
     """Generate a ULID (26 chars, Crockford base32). Matches os.realm.watch format."""
@@ -897,10 +898,26 @@ def _h_get_hud(req, params):
         },
     }
 
+# NOTE (Wave 4 cleanup, 2026-05-19):
+# `_h_get_api_quests`, `_h_post_quest_create`, `_h_post_quest_update`,
+# `_h_post_quest_delete`, and `_h_post_player_reward` below all back the
+# legacy `realm quest` CLI surface (/quests, /quest-create, /quest-update,
+# /quest-delete, /player/reward). They write directly against
+# ~/.realmwatch/game.db and predate the move of `quest_forge` into
+# `plugins/quests/`. The plugin already implements every code path needed
+# (list, create, update via `transition_quest`, archive, sub-quest cascade).
+#
+# TODO: migrate these handlers into `plugins/quests/` in v0.6 so the core
+# router can shrink. The current registrations at the bottom of this file
+# (`_route_table.add("GET", "/quests", _h_get_api_quests)`, etc.) live at
+# PRIORITY_CORE — a future plugin would either shadow them via raw_path
+# with `priority=PRIORITY_CORE - 1` or this file would delegate to
+# `ctx.get_plugin_api("quests")`. Until then the CLI keeps its current
+# contract; see Morpheus's Wave 2 findings for the full migration plan.
 def _h_get_api_quests(req, params):
     """Return quests from game.db (quest-forge) shaped for the quest-log UI."""
     import sqlite3 as _sql
-    db_path = os.path.expanduser("~/.realmwatch/game.db")
+    db_path = _GAME_DB
     if not os.path.exists(db_path):
         return []
 

@@ -29,30 +29,16 @@ Realm-event hook:
 """
 from __future__ import annotations
 
-import os
-import pwd
 import sys
 from pathlib import Path
 
-
-# ── Path injection (matches plugins/realm-engine and plugins/lexicon) ─────
-
-def _real_home() -> Path:
-    """Find the user's real home even when launched under sudo."""
-    for env_var in ("SUDO_USER", "LOGNAME", "USER"):
-        user = os.environ.get(env_var)
-        if user and user != "root":
-            try:
-                return Path(pwd.getpwnam(user).pw_dir)
-            except KeyError:
-                continue
-    return Path.home()
+from realm_text import real_home
 
 
 # Make the lexicon python lib importable for downstream tooling (mirrors
 # plugins/realm-engine — keeps the pattern consistent across plugins that
 # touch entities / lore).
-_LEXICON_PY = _real_home() / "Projects" / "lexicon.realm.watch" / "python"
+_LEXICON_PY = real_home() / "Projects" / "lexicon.realm.watch" / "python"
 if _LEXICON_PY.exists() and str(_LEXICON_PY) not in sys.path:
     sys.path.insert(0, str(_LEXICON_PY))
 

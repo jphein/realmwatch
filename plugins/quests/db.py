@@ -11,24 +11,13 @@ the auto-generation engine + MCP tools that operate on the same store.
 from __future__ import annotations
 
 import os
-import pwd
 import sqlite3
 from pathlib import Path
 
-
-def _real_home() -> Path:
-    """Find the user's real home even when launched under sudo."""
-    for env_var in ("SUDO_USER", "LOGNAME", "USER"):
-        user = os.environ.get(env_var)
-        if user and user != "root":
-            try:
-                return Path(pwd.getpwnam(user).pw_dir)
-            except KeyError:
-                continue
-    return Path.home()
+from realm_text import real_home
 
 
-DEFAULT_DB_PATH = str(_real_home() / ".realmwatch" / "game.db")
+DEFAULT_DB_PATH = str(real_home() / ".realmwatch" / "game.db")
 
 
 _SCHEMA_SQL = """

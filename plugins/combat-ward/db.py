@@ -13,29 +13,14 @@ still finds JP's game.db at /home/jp/.realmwatch/game.db.
 from __future__ import annotations
 
 import os
-import pwd
 import sqlite3
 
-
-def _real_home() -> str:
-    """Resolve the invoking user's real home, even when launched under sudo.
-
-    Matches the same logic in plugins/realm-engine/db.py so both plugins
-    open the same SQLite file regardless of whether map_server runs as root.
-    """
-    for env_var in ("SUDO_USER", "LOGNAME", "USER"):
-        user = os.environ.get(env_var)
-        if user and user != "root":
-            try:
-                return pwd.getpwnam(user).pw_dir
-            except KeyError:
-                continue
-    return os.path.expanduser("~")
+from realm_text import real_home
 
 
 DEFAULT_DB_PATH = os.environ.get(
     "REALM_GAME_DB",
-    os.path.join(_real_home(), ".realmwatch", "game.db"),
+    str(real_home() / ".realmwatch" / "game.db"),
 )
 
 

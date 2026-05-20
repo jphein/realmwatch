@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import json
 import os
-import pwd
 import shlex
 import sqlite3
 import subprocess
@@ -31,30 +30,23 @@ from pathlib import Path
 from typing import Any
 
 
-def _real_home() -> Path:
-    """Find the user's real home even when launched under sudo."""
-    for env_var in ("SUDO_USER", "LOGNAME", "USER"):
-        user = os.environ.get(env_var)
-        if user and user != "root":
-            try:
-                return Path(pwd.getpwnam(user).pw_dir)
-            except KeyError:
-                continue
-    return Path.home()
-
-
 # Repo root = plugins/mcp/tools.py → parent.parent.parent
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
-# Path-injection per CLAUDE.md realm-sigil precedent. Lexicon lives outside
-# the realmwatch repo, so push it on sys.path before we import.
-_LEXICON_PY = _real_home() / "Projects" / "lexicon.realm.watch" / "python"
-if _LEXICON_PY.exists() and str(_LEXICON_PY) not in sys.path:
-    sys.path.insert(0, str(_LEXICON_PY))
-
-# Realmwatch root must be on sys.path so realm_db / realm_fleet / etc. import.
+# Realmwatch root must be on sys.path so realm_text / realm_db / realm_fleet
+# import. This file is loaded both by the in-process MCP plugin AND by the
+# stdio launcher subprocess — keep the path setup order-safe.
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+
+from realm_text import real_home  # noqa: E402
+
+
+# Path-injection per CLAUDE.md realm-sigil precedent. Lexicon lives outside
+# the realmwatch repo, so push it on sys.path before we import.
+_LEXICON_PY = real_home() / "Projects" / "lexicon.realm.watch" / "python"
+if _LEXICON_PY.exists() and str(_LEXICON_PY) not in sys.path:
+    sys.path.insert(0, str(_LEXICON_PY))
 
 
 # ── Helpers ──

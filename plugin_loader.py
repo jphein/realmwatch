@@ -5,6 +5,7 @@ imports plugin modules, and calls setup(ctx) for each integrated plugin.
 """
 
 import importlib
+import importlib.machinery
 import importlib.util
 import json
 import logging
@@ -153,6 +154,39 @@ def _validate_files(manifest, plugin_dir):
     return warnings
 
 
+def _ensure_plugins_namespace() -> None:
+    """Make `plugins` and `plugins.<plugin_name>` resolvable as packages.
+
+    Without this, two plugins that each `import sources` (or any other bare
+    sibling name) would share the same `sys.modules['sources']` entry — the
+    second plugin's import silently picks up the first plugin's module.
+    Aether's Wave 2 findings documented this trap in detail.
+
+    The fix is two-part:
+      1) Register `plugins` itself as a synthetic namespace package rooted at
+         `<repo>/plugins/`. Python's import system can then resolve
+         `plugins.<name>.<sibling>` via standard relative-import machinery.
+      2) Register each plugin's own directory as `plugins.<name>` so
+         `from . import sibling` inside a plugin module attaches to the
+         right namespace without each plugin needing
+         `sys.path.insert(0, plugin_dir.parent)`.
+
+    Step (2) happens lazily inside `_load_plugin_module()`, since that's
+    when we know the plugin name and dir. This function only does step (1).
+    """
+    if "plugins" in sys.modules:
+        return
+    plugins_root = os.path.dirname(os.path.abspath(__file__))
+    plugins_pkg_dir = os.path.join(plugins_root, "plugins")
+    if not os.path.isdir(plugins_pkg_dir):
+        return
+    spec = importlib.machinery.ModuleSpec("plugins", loader=None, is_package=True)
+    spec.submodule_search_locations = [plugins_pkg_dir]
+    pkg = importlib.util.module_from_spec(spec)
+    pkg.__path__ = [plugins_pkg_dir]  # required for `from plugins.x import y`
+    sys.modules["plugins"] = pkg
+
+
 def _load_plugin_module(name, manifest, plugin_dir):
     """Import a plugin's Python module.
 
@@ -168,14 +202,35 @@ def _load_plugin_module(name, manifest, plugin_dir):
     if not os.path.isfile(module_path):
         return None
 
+    # Ensure `plugins` and `plugins.<name>` are registered as packages so
+    # relative imports (`from . import server`) resolve under unique keys
+    # — this prevents the sibling-name collision Aether documented (two
+    # plugins each importing a bare `producer` / `server` / `sources`
+    # would otherwise share one sys.modules entry).
+    _ensure_plugins_namespace()
+    pkg_spec_name = f"plugins.{name}"
+    if pkg_spec_name not in sys.modules:
+        pkg_spec = importlib.machinery.ModuleSpec(
+            pkg_spec_name, loader=None, is_package=True
+        )
+        pkg_spec.submodule_search_locations = [plugin_dir]
+        pkg_mod = importlib.util.module_from_spec(pkg_spec)
+        pkg_mod.__path__ = [plugin_dir]
+        sys.modules[pkg_spec_name] = pkg_mod
+
     # Import using spec loader to avoid name collisions
     spec_name = f"plugins.{name}.{module_name}"
     try:
-        spec = importlib.util.spec_from_file_location(spec_name, module_path)
+        spec = importlib.util.spec_from_file_location(
+            spec_name, module_path,
+            submodule_search_locations=[plugin_dir],
+        )
         if spec is None or spec.loader is None:
             log.error("Cannot create module spec for plugin %s", name)
             return None
         module = importlib.util.module_from_spec(spec)
+        # Set __package__ so `from . import x` resolves to plugins.<name>.x
+        module.__package__ = pkg_spec_name
         sys.modules[spec_name] = module
         spec.loader.exec_module(module)
         return module

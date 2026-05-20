@@ -14,30 +14,16 @@ What this plugin does inside realmwatch:
 
 from __future__ import annotations
 
-import os
-import pwd
 import sys
 from pathlib import Path
 
-
-# ── Path injection (matches plugins/lexicon precedent) ───────────────────
-
-def _real_home() -> Path:
-    """Find the user's real home even when launched under sudo."""
-    for env_var in ("SUDO_USER", "LOGNAME", "USER"):
-        user = os.environ.get(env_var)
-        if user and user != "root":
-            try:
-                return Path(pwd.getpwnam(user).pw_dir)
-            except KeyError:
-                continue
-    return Path.home()
+from realm_text import real_home
 
 
 # Make sure lexicon python lib is importable for downstream (the original
 # server.py didn't need this, but adjacent realmwatch utilities do — keep
 # the pattern consistent with plugins/lexicon).
-_LEXICON_PY = _real_home() / "Projects" / "lexicon.realm.watch" / "python"
+_LEXICON_PY = real_home() / "Projects" / "lexicon.realm.watch" / "python"
 if _LEXICON_PY.exists() and str(_LEXICON_PY) not in sys.path:
     sys.path.insert(0, str(_LEXICON_PY))
 

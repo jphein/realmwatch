@@ -1,4 +1,4 @@
-"""Realm text utilities — string sanitization and ID generation.
+"""Realm text utilities — string sanitization, ID generation, real-home resolution.
 
 Migrated from os.realm.watch/servers/shared/{sanitizer,ulid}.py 2026-05-19.
 
@@ -6,6 +6,12 @@ All hostnames, SSIDs, service banners, and log lines from the network are
 untrusted input. The sanitizer functions strip/escape them before they reach
 any LLM prompt or game system. The ulid() helper produces monotonic, sortable
 26-char IDs (Crockford base32) with no external dependency.
+
+`real_home()` returns the invoking user's home directory even when the process
+runs under sudo. realmwatch's `make dev` binds port 80 via sudo, so plain
+`os.path.expanduser("~")` resolves to `/root` — game.db / fleet.yaml /
+realm-local.json all live under the original user's home. Use this helper
+when reading or writing those files from plugin / core code.
 """
 
 from __future__ import annotations
@@ -13,6 +19,7 @@ from __future__ import annotations
 import os
 import re
 import time
+from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Sanitizers — network-sourced strings → LLM-safe strings
@@ -81,6 +88,36 @@ def sanitize_log_line(raw_line: str) -> dict:
 # ---------------------------------------------------------------------------
 
 _ENCODING = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+
+
+# ---------------------------------------------------------------------------
+# real_home — invoking-user home even under sudo
+# ---------------------------------------------------------------------------
+
+
+def real_home() -> Path:
+    """Return the invoking user's home directory.
+
+    Walks SUDO_USER → LOGNAME → USER → Path.home(). When realmwatch's
+    map_server is started via `sudo` (to bind port 80) the bare home
+    resolves to /root, but JP's data lives in /home/jp/. This helper
+    keeps the two cases coherent.
+    """
+    for env_var in ("SUDO_USER", "LOGNAME", "USER"):
+        user = os.environ.get(env_var)
+        if user and user != "root":
+            home = Path("/home") / user
+            if home.is_dir():
+                return home
+            # Fall back to pwd lookup for non-/home users (e.g. /Users on
+            # macOS dev boxes) — best-effort, swallow any failure.
+            try:
+                import pwd
+
+                return Path(pwd.getpwnam(user).pw_dir)
+            except (KeyError, ImportError):
+                continue
+    return Path.home()
 
 
 def ulid() -> str:
