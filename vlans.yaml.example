@@ -1,0 +1,46 @@
+# vlans.yaml — VLAN registry for the firewall parser and `realm vlans` CLI.
+#
+# Copy this file to `vlans.yaml` (gitignored) and fill in your own VLAN
+# labels, zones, and descriptions. `firewall_parser.py` loads it at
+# import time; if absent, the firewall plugin still loads but its VLAN
+# table will be empty.
+#
+# Schema:
+#   version: 1
+#   vlans:
+#     <vlan_id>:
+#       label:  human name shown in the firewall panel / CLI table
+#       type:   wan | lan | reserved
+#       status: active | standby | planned | reserved | deprecated | inactive
+#       desc:   one-line description
+#       icon:   single emoji glyph (optional)
+#       zone:   fw4 zone name on your firewall (optional; only entries
+#               with `zone:` participate in nft rule parsing)
+
+version: 1
+
+# fw4 zone names that represent WAN uplinks (no VLAN ID).
+wan_zones:
+  - wan
+
+vlans:
+  6:
+    label: Admin
+    type: lan
+    status: active
+    desc: Servers, management, infrastructure
+    icon: "⚔"
+    zone: admin
+  10:
+    label: IoT
+    type: lan
+    status: active
+    desc: Smart devices, sensors, automations
+    icon: "🤖"
+    zone: lan
+  38:
+    label: Primary WAN
+    type: wan
+    status: active
+    desc: Main internet uplink
+    icon: "🌍"

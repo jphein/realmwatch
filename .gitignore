@@ -62,6 +62,11 @@ realm-local.json
 # Fleet catalog — JP-specific MACs, hostnames, VLANs; never tracked
 fleet.yaml
 
+# VLAN registry — JP-specific labels/zones for the realm's 12 VLANs;
+# loaded by firewall_parser.py at import. Tracked schema lives in
+# vlans.yaml.example.
+vlans.yaml
+
 # Migration backups (created by scripts/migrate-fleet.py)
 realm.db.pre-fleet-*
 personas.json.pre-fleet-*

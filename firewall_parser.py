@@ -19,14 +19,15 @@ Configuration:
   _CACHE_TTL = 30.0  # seconds
 
 VLAN registry (VLANS dict):
-  Complete mapping of VLAN IDs 3-38 with label, type, status, description.
-  Exported to frontend for the full VLAN table display.
+  Mapping of VLAN IDs with label, type, status, description. Loaded at
+  import time from gitignored vlans.yaml (see vlans.yaml.example for the
+  schema). Exported to the frontend for the full VLAN table display.
 
-fw4 zone-name quirk (gatekeeper-specific):
-  fw4 zone "lan"    = VLAN 10  (IoT)    ← confusingly named
-  fw4 zone "iot"    = VLAN 8   (Guest)  ← confusingly named
-  fw4 zone "admin"  = VLAN 6   (Admin)
-  fw4 zone "family" = VLAN 11  (Family)
+fw4 zone-name quirk:
+  Some realms have fw4 zone names that don't match their human VLAN
+  meaning (e.g. a zone literally named "lan" carrying IoT traffic).
+  vlans.yaml encodes the mismatch via the per-entry `zone:` key, so the
+  parser stays zone-name-agnostic.
 
 Per-zone output fields:
   counters:    accept_bytes/pkts, reject_bytes/pkts
@@ -48,44 +49,82 @@ Public API (imported by map_server):
 """
 
 import json
+import os
+import sys
 import time
 import threading
 
-# ── Complete VLAN registry ──
-# fw4 zone names on gatekeeper are mismatched — map to correct human labels.
-# "lan" zone = VLAN 10 (IoT), "iot" zone = VLAN 8 (Guest), "family" zone = VLAN 11 (Family)
+# ── VLAN registry — loaded from gitignored vlans.yaml ──
+# JP-specific data (labels, zones, statuses) lives in vlans.yaml at the repo
+# root. The schema and a starter example live in vlans.yaml.example. If
+# vlans.yaml is missing the firewall plugin still loads, but VLANS / ZONE_VLAN
+# are empty and the /firewall response will report no VLAN metadata.
+#
+# The fw4 zone-name quirk (e.g. on gatekeeper the "lan" zone is actually IoT
+# VLAN 10) is encoded per-entry via the optional `zone:` key — `ZONE_VLAN`
+# is derived from yaml entries that declare one.
 
-VLANS = {
-    3:  {"label": "Backup WAN",    "type": "wan",      "status": "standby",  "desc": "Emergency DSL/cellular backup",           "icon": "\U0001F4E1"},
-    4:  {"label": "Old Treelink",  "type": "wan",      "status": "deprecated","desc": "Deprecated — replaced by VLAN 38",       "icon": "\U0001F6AB"},
-    5:  {"label": "Althea Mesh",   "type": "reserved", "status": "inactive", "desc": "Reserved for Althea mesh network",        "icon": "\U0001F578\uFE0F"},
-    6:  {"label": "Admin",         "type": "lan",      "status": "active",   "desc": "Servers, management, infrastructure",     "icon": "\u2694"},
-    7:  {"label": "Test Lab",      "type": "lan",      "status": "active",   "desc": "Testing and experimentation",             "icon": "\U0001F9EA"},
-    8:  {"label": "Guest",         "type": "lan",      "status": "active",   "desc": "Guest WiFi, isolated from all wards",     "icon": "\U0001F464"},
-    9:  {"label": "VPN Exit",      "type": "lan",      "status": "planned",  "desc": "WireGuard tunnel to gig exit node",       "icon": "\U0001F510"},
-    10: {"label": "IoT",           "type": "lan",      "status": "active",   "desc": "Smart devices, sensors, automations",     "icon": "\U0001F916"},
-    11: {"label": "Family",        "type": "lan",      "status": "active",   "desc": "Personal devices, phones, laptops",       "icon": "\U0001F46A"},
-    12: {"label": "Backup Fiber",  "type": "wan",      "status": "reserved", "desc": "Reserved for secondary fiber WAN",        "icon": "\U0001F4A0"},
-    20: {"label": "AT&T Fiber",    "type": "wan",      "status": "reserved", "desc": "Reserved for future AT&T fiber",          "icon": "\U0001F4A0"},
-    38: {"label": "Treelink WAN",  "type": "wan",      "status": "active",   "desc": "Primary internet — fiber + WiFi backup",  "icon": "\U0001F30D"},
-}
+_VLANS_YAML = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vlans.yaml")
 
-# fw4 zone name → VLAN ID (gatekeeper zone names are mismatched)
-ZONE_VLAN = {
-    "admin":  6,
-    "iot":    8,    # fw4 calls it "iot" but it's actually Guest
-    "lan":    10,   # fw4 calls it "lan" but it's actually IoT
-    "family": 11,   # fw4 calls it "family" — now correct!
-    "vpn":    9,
-    "wan":    None,
-    "wanguard": None,
-}
 
-# Reverse: VLAN → fw4 zone name
+def _load_vlan_registry(path=_VLANS_YAML):
+    """Load (VLANS, ZONE_VLAN, _REPORT_ZONES, _WAN_ZONES) from vlans.yaml.
+
+    On any failure returns empty structures and prints a warning to stderr —
+    the firewall plugin can still load, the VLAN table just stays empty.
+    """
+    try:
+        from ruamel.yaml import YAML
+    except ImportError:
+        print("[firewall_parser] ruamel.yaml not installed; VLAN registry empty", file=sys.stderr)
+        return {}, {}, (), ()
+    if not os.path.exists(path):
+        print(f"[firewall_parser] {path} missing; copy vlans.yaml.example to vlans.yaml", file=sys.stderr)
+        return {}, {}, (), ()
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            doc = YAML(typ="safe").load(f) or {}
+    except Exception as e:
+        print(f"[firewall_parser] failed to parse {path}: {e}", file=sys.stderr)
+        return {}, {}, (), ()
+
+    raw = doc.get("vlans", {}) or {}
+    vlans = {}
+    zone_vlan = {}
+    for vid, entry in raw.items():
+        try:
+            vid_int = int(vid)
+        except (TypeError, ValueError):
+            continue
+        entry = dict(entry or {})
+        zone = entry.pop("zone", None)
+        vlans[vid_int] = {
+            "label": entry.get("label", f"VLAN {vid_int}"),
+            "type": entry.get("type", "lan"),
+            "status": entry.get("status", "active"),
+            "desc": entry.get("desc", ""),
+            "icon": entry.get("icon", ""),
+        }
+        if zone:
+            zone_vlan[zone] = vid_int
+
+    for wan_zone in doc.get("wan_zones", []) or []:
+        zone_vlan.setdefault(wan_zone, None)
+
+    report_zones = tuple(
+        z for z, v in zone_vlan.items()
+        if v is not None
+        and vlans.get(v, {}).get("type") == "lan"
+        and vlans.get(v, {}).get("status") == "active"
+    )
+    wan_zones = tuple(z for z, v in zone_vlan.items() if v is None)
+    return vlans, zone_vlan, report_zones, wan_zones
+
+
+VLANS, ZONE_VLAN, _REPORT_ZONES, _WAN_ZONES = _load_vlan_registry()
+
+# Reverse: VLAN ID → fw4 zone name (only LAN-side entries)
 VLAN_ZONE = {v: k for k, v in ZONE_VLAN.items() if v is not None}
-
-# Which zones we parse nft rules for (only zones with fw4 chains)
-_REPORT_ZONES = ("admin", "iot", "lan", "family")
 
 _cache = None
 _cache_ts = 0
