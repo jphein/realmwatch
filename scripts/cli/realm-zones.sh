@@ -269,7 +269,14 @@ print("--- committing ---")
 print(f"[1/5] backup uci → {backup_name}")
 subprocess.run(["ssh", f"root@{host}", f"uci export firewall > {shlex.quote(backup_name)}"], check=True)
 local_backup = Path(f"/tmp/{host_label}-firewall-backup-{ts}.conf")
-subprocess.run(["scp", f"root@{host}:{backup_name}", str(local_backup)], check=True, capture_output=True)
+# OpenWrt's dropbear typically ships without sftp-server, so modern `scp`
+# fails on the firewall. Fall back to `ssh ... cat`, which works on every
+# OpenWrt version we've encountered.
+with open(local_backup, "wb") as f:
+    subprocess.run(
+        ["ssh", f"root@{host}", f"cat {shlex.quote(backup_name)}"],
+        stdout=f, check=True,
+    )
 print(f"      local copy: {local_backup}")
 
 # 2. Apply uci set + commit. We've already validated old_name and new_name
