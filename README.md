@@ -2,14 +2,17 @@
 
 # Realmwatch
 
-**A fantasy-themed homelab network monitor that turns your infrastructure into a hand-painted realm map.**
+**A fantasy-themed homelab network monitor, game engine, and MCP platform — all in one plugin-driven service.**
 
 *Every host is a node on the SVG canvas with a fantasy name, a persona, and a voice.
-12 VLANs, 130+ nodes, 37 plugins, one unified CLI, an AI oracle, a herald daemon,
-and a Zabbix-class alerting pipeline — all running from a single Linux box.*
+12 VLANs, 130+ nodes, 47 plugins, one unified CLI, an AI oracle, a herald daemon,
+a Zabbix-class alerting pipeline, an XP/quest/codex/ward RPG layer, and an MCP
+server that lets Claude Code drive the whole thing — all running from a single
+Linux box.*
 
 [Quick start](#quick-start) · [Architecture](#architecture) · [Plugins](#plugin-catalog)
-· [CLI](#the-realm-cli) · [Configuration](#configuration) · [Contributing](CONTRIBUTING.md)
+· [CLI](#the-realm-cli) · [Game layer](#game-layer) · [MCP server](#mcp-server)
+· [Configuration](#configuration) · [Contributing](CONTRIBUTING.md)
 · [Changelog](CHANGELOG.md)
 
 </div>
@@ -27,12 +30,26 @@ auto-discovery, trigger-dependency alert suppression, event acknowledgement,
 and a unified `realm` CLI that exposes every capability via a single, ergonomic,
 git-style command.
 
+In **May 2026** realmwatch absorbed [os.realm.watch](https://github.com/jphein/os.realm.watch)'s
+RPG layer — the realm-engine, progression (XP / skill trees / achievements),
+quest forge, codex / lore-keeper, and combat-ward all moved in as native
+plugins. os.realm.watch is now OS-layer only (GNOME extension, theme watcher,
+desktop integration). Realmwatch is the single home for everything that touches
+network events, fantasy translation, or game state.
+
 It is opinionated and personal — built around one user's homelab — but the
-architecture is deliberately decoupled. The 37 plugins under `plugins/` each
+architecture is deliberately decoupled. The **47 plugins** under `plugins/` each
 live in their own directory with a `plugin.json` manifest, register themselves
 with the server through a `setup(ctx)` hook, and can ship HTTP endpoints, SSE
-sources, frontend panels, discovery providers, and CLI verbs. The core is a
-rendering engine. Everything interesting is a plugin.
+sources, frontend panels, discovery providers, CLI verbs, **and MCP tools**.
+The core is a rendering engine. Everything interesting is a plugin.
+
+**Identity is curated, not inferred.** `fleet.yaml` is the operator-curated
+source of truth for every node — `current_name`, `prior_names`, `kind`, `role`,
+`realm`. It is backed by [lexicon.realm.watch](https://github.com/jphein/lexicon.realm.watch)'s
+FleetCatalog and gitignored so each operator's realm-specific data stays
+local. Everything else (`topology.json`, `personas.json`, `realm-local.json`)
+references nodes by `fleet_id`, never by current name.
 
 ---
 
@@ -65,10 +82,23 @@ for prereqs).
   VLANs, animated traffic ley lines, terrain contours, biome regions, and
   drag-to-arrange layout. Web workers handle force-directed layout and
   heightmap stamping; pre-computed sublabels stream over SSE.
-- **37 plugins.** Every domain feature — census, latency, firewall, WiFi
+- **47 plugins.** Every domain feature — census, latency, firewall, WiFi
   scan, system updates, herald, chat, debug, discovery, alerting,
-  maintenance windows, agent registration, discovery actions — lives as
-  a plugin under `plugins/<name>/`. Drop-in. No registry.
+  maintenance windows, agent registration, discovery actions, **quests,
+  progression, codex, combat-ward, realm-engine, mcp** — lives as a
+  plugin under `plugins/<name>/`. Drop-in. No registry.
+- **Game layer.** XP, skill trees, achievements, quest generation from
+  realm events, ward actions with policy-checked ack/execute, a codex of
+  world lore, per-node backstories, chronicles, and a player journal —
+  all integrated as plugins (`realm-engine`, `progression`, `quests`,
+  `combat-ward`, `codex`). Backed by a sidecar SQLite at
+  `~/.realmwatch/game.db`.
+- **MCP server (Astral Conduit).** A FastMCP stdio launcher
+  (`plugins/mcp/launcher.py`) exposes 12+ realmwatch tools to Claude
+  Code and other MCP clients — `realm_status`, `recent_events`,
+  `list_nodes`, `fleet_resolve`, `ping_host`, `ssh_run`,
+  `fleet_rename`, `post_event`, and more. Each plugin can declare its
+  own `mcp_tools.py` and the conduit auto-registers them.
 - **Unified `realm` CLI.** Git-style dispatcher that resolves `realm <verb>`
   against `scripts/cli/`, `plugins/<name>/cli`, and `$PATH`. 36+ subcommands
   today, including a generic Method-B handler that reads `cli.verbs` from any
@@ -245,7 +275,8 @@ once enabled in repo settings).
 
 ## Plugin catalog
 
-37 plugins across UI, data bridges, discovery, infrastructure, and effects.
+47 plugins across UI, data bridges, discovery, infrastructure, game layer,
+MCP, and effects.
 
 ### UI panels
 
@@ -253,7 +284,7 @@ once enabled in repo settings).
 |---|---|---|---|
 | `census` | Realm Census | ⚑ | Grouped node list with live online/offline status from SSE |
 | `chat` | Oracle Link | 💬 | Session-based Azure AI chat, context-aware node discussions (o4-mini) |
-| `codex` | Lore Archives | 📚 | Notion-synced lore wiki served at `/codex/` |
+| `codex` | The Codex of Realms | 📚 | Notion-synced lore wiki at `/codex/` + world codex, node backstories, chronicles, player journal (absorbed lore_keeper from os.realm.watch in v2.0) |
 | `debug` | Arcane Mirror | 🔮 | Debug panel, API catalogue, Scrying Terminal command interface |
 | `lexicon` | The Naming Ledger | 📜 | Stable per-node identity. `fleet.yaml` owns `current_name`, `prior_names`, `kind`, `role`, `realm`. `/fleet/rename`, `/fleet/replace`, `/fleet/promote`, `/fleet/reload`. mtime hot-reload. Discovery emits tentative entries |
 | `plugin-manager` | Enchantment Registry | 📜 | Lists loaded plugins, endpoints, SSE sources, panels |
@@ -302,6 +333,31 @@ nodes through `discovery_links`.
 | `maintenance` | Veiled Hours | 🔨 | Scheduled maintenance windows that suppress alerts and herald speech for planned downtime |
 | `agent-register` | The Heralds' Gate | 🚪 | Active agent auto-registration — hosts self-announce + heartbeat; metadata feeds the discovery-actions pipeline |
 | `discovery-actions` | The Onboarding Sigils | 🪄 | Declarative auto-classification: *if OUI matches OpenWrt then role=ap*. YAML rules evaluated at discovery time |
+
+### Game layer
+
+The RPG layer absorbed from os.realm.watch in 2026-05. Each plugin owns its
+own tables in the sidecar `~/.realmwatch/game.db`; plugins communicate via
+`ctx.expose_api()` / `ctx.get_plugin_api(...)` and realm-event subscriptions
+(`xp.grant`, `level.up`, `achievement.unlocked`, `quest.completed`, threat-type
+events).
+
+| Plugin | Fantasy name | Icon | Role |
+|---|---|---|---|
+| `realm-engine` | The Realm Engine | ⚙️ | Core game state — owns the `game.db` sidecar (events, entities, players). Wraps `push_event` so every realm event lands in the game DB; exposes `realm_status`, `ingest_event`, `get_profile`. |
+| `progression` | The Path of Ascension | 📈 | XP, levels, skill trees (20 skills across networking/security/systems/arcana), 12 achievements. Subscribes to `xp.grant` events; exposes `grant_xp`, `get_level_info`, `unlock_skill`. |
+| `quests` | The Quest Forge | 📜 | Generates structured quests from realm events — 17 templates (cpu_spike, port_scan, brute_force, ddos, …), sub-quests, hints, XP rewards, 15-min cooldowns. Backs the `realm quest` CLI. |
+| `combat-ward` | The Combat Ward | 🛡️ | Threat layer on top of `alerting` — bestiary (5 seeded creatures), ward templates (5 defensive actions), policy-checked propose / approve / execute, defense reports. Depends on `alerting` + `realm-engine`. |
+| `codex` | The Codex of Realms | 📚 | Absorbed lore_keeper. World codex, per-entity backstories, chronicles, player journal. Auto-chronicles on `xp.grant` / `level.up` / `achievement.unlocked` / `quest.completed`. Still serves the legacy Notion-synced `/codex/`. |
+| `gnome-shell-monitor` | Shell Sentinel | 🕮️ | Parses GNOME-shell crash/segfault/compositor-hang logs; surfaces as realm events. |
+| `system-optimizer` | The Realm Optimizer | ⚒️ | Periodic audit — disk, pip cache, journal, swap, zombies, load, /tmp, failed services, DNS. Findings become optimization quests. |
+| `daily-rite` | The Watcher's Daily Rite | 🌅 | 08:00 morning briefing — overnight events, quest stats, XP gain, announced via realm event + speech + notify-send. |
+
+### MCP server
+
+| Plugin | Fantasy name | Icon | Role |
+|---|---|---|---|
+| `mcp` | The Astral Conduit | 🜂 | FastMCP stdio launcher (`plugins/mcp/launcher.py`) — exposes realmwatch endpoints as MCP tools to Claude Code. Each plugin declares its own `mcp_tools.py`; the conduit aggregates and registers them. 12+ tools today (status, events, nodes, fleet, ping, ssh, fleet-rename, post-event, quests, progression, combat-ward, codex). |
 
 ### Daemons / effects / services
 
@@ -403,6 +459,113 @@ Full design spec: [`docs/superpowers/specs/2026-05-16-realm-cli-first-rate-desig
 
 ---
 
+## Game layer
+
+The game layer is what os.realm.watch used to be — five FastMCP servers, a
+SQLite called `game.db`, a quest engine, XP curves, a bestiary, and a codex
+of node lore. In May 2026 every one of those servers moved into realmwatch as
+a native plugin. The whole RPG layer now lives in-process with the monitor,
+sharing the same SSE bus, the same `ctx.expose_api()` surface, and a single
+sidecar SQLite at `~/.realmwatch/game.db`.
+
+```
+                    realm event (alert / system / discovery / threat-type)
+                                       │
+                                       ▼
+                            ┌──────────────────┐
+                            │  realm-engine    │   wraps push_event,
+                            │  (game.db owner) │   appends to events table
+                            └────────┬─────────┘
+                                     │
+            ┌────────────────────────┼─────────────────────────┐
+            │                        │                         │
+            ▼                        ▼                         ▼
+   ┌────────────────┐      ┌────────────────┐         ┌────────────────┐
+   │ progression    │      │ quests         │         │ combat-ward    │
+   │ on xp.grant    │      │ on alert/sys/  │         │ on threat-type │
+   │   → level/XP   │      │   threat-type  │         │   → bestiary,  │
+   │   → achievement│      │   → quest tree │         │     wards,     │
+   │   → on level.up│      │   → reward XP  │         │     defense    │
+   └────────┬───────┘      └────────┬───────┘         └────────┬───────┘
+            │                       │                          │
+            └───────────────────────┼──────────────────────────┘
+                                    ▼
+                          ┌────────────────────┐
+                          │ codex (lore-keeper)│   auto-chronicles
+                          │   chronicles       │   from every game event:
+                          │   node_lore        │   xp.grant, level.up,
+                          │   journal          │   achievement.unlocked,
+                          │   codex_entries    │   quest.completed
+                          └────────────────────┘
+```
+
+**Plugins talk via the realm-event bus.** A `port_scan` event with `severity:4`
+triggers (in parallel): quests (mints a "Banish the Probe" quest tree),
+combat-ward (increments the Shadow Probe bestiary entry), and any
+notification rules in alerting. Each subscriber attaches via
+`ctx.on_event("port_scan", handler)`; nothing imports anyone else directly.
+
+**XP fanout works the same way.** Completing a quest pushes
+`xp.grant` → progression awards XP → emits `level.up` if applicable →
+codex chronicles both events. All three plugins remain loosely coupled.
+
+**Sidecar DB.** `~/.realmwatch/game.db` (overridable via `REALM_GAME_DB`).
+Resolved through `realm_text.real_home()` so it stays in JP's home even
+when map_server runs under sudo. Tables are created `IF NOT EXISTS` by
+whichever plugin loads first — Wave 4 may unify schema ownership.
+
+See [`os.realm.watch` legacy README](https://github.com/jphein/os.realm.watch#readme)
+for the original design rationale. Behavior is preserved verbatim; the
+plugin shells are new.
+
+---
+
+## MCP server
+
+Realmwatch ships an in-tree MCP server (`plugins/mcp/`, fantasy name **The
+Astral Conduit**) that exposes realmwatch's runtime as Model Context Protocol
+tools to Claude Code, the Claude API SDK, or any FastMCP-compatible client.
+
+```bash
+# Run the launcher from any cwd:
+.venv/bin/python3 ~/Projects/realmwatch/plugins/mcp/launcher.py
+```
+
+Wired into Claude Code by adding it to `~/.claude/mcp.json` or via
+`claude mcp add realmwatch ~/Projects/realmwatch/plugins/mcp/launcher.py`.
+
+### Tools today (12+ core, more from each plugin)
+
+**Read-only** — `realm_status`, `recent_events`, `list_nodes`, `get_node`,
+`fleet_list`, `fleet_resolve`, `ping_host`, `recent_alerts`, `topology`.
+
+**Mutating** — `ssh_run` (BatchMode key-auth into any fleet host),
+`fleet_rename` (rewrites `fleet.yaml` + invalidates cache),
+`post_event` (writes to realm.db + triggers the SSE bus + auto-quest +
+5-minute dedup for free).
+
+**Plugin-supplied** — each plugin can declare a `mcp_tools.py` module with a
+list of `(name, fn, description)` tuples. The Astral Conduit aggregates
+them at launch. The game-layer plugins (`progression`, `quests`,
+`combat-ward`, `codex`) all ship their own tool sets:
+`grant_xp`, `get_level_info`, `unlock_skill`, `list_quests`, `accept_quest`,
+`complete_quest`, `active_threats`, `cast_ward`, `bestiary`,
+`lookup_lore`, `node_lore`, `chronicles`, `add_journal`, …
+
+### Transport
+
+**stdio** in v1 — Claude Code spawns the launcher per session. SSE on
+`/mcp/sse` is on the roadmap so MCP clients can attach without subprocess
+overhead.
+
+### Diagnostic
+
+`GET /mcp/info` returns the registered tool list, fastmcp version, and the
+absolute path to the launcher. Used by `realm doctor` and Claude Code's
+`/mcp` command.
+
+---
+
 ## Configuration
 
 ### Environment variables
@@ -452,9 +615,11 @@ named env vars referenced from the per-node discovery config — never stored in
 
 ---
 
-## Database (`realm.db`, SQLite WAL)
+## Databases
 
-12 tables; live data; never drop or truncate.
+Two SQLite files, both WAL mode, both live data — never drop or truncate.
+
+### `realm.db` — monitor state (12 tables)
 
 | Table | Purpose |
 |---|---|
@@ -464,7 +629,7 @@ named env vars referenced from the per-node discovery config — never stored in
 | `nodes` | Topology nodes with positions, `os`, `os_version`, `tags` |
 | `connections` | Node-to-node connections |
 | `regions` | Biome map regions |
-| `quests` | Quest log |
+| `quests` | Quest log (legacy core-server handlers; new plugin writes here too) |
 | `notion_synced` | Notion sync state |
 | `wifi_scans` | WiFi scan history |
 | `sub_entities` | Discovery-engine sub-entities |
@@ -474,6 +639,29 @@ named env vars referenced from the per-node discovery config — never stored in
 `topology.json` is a downstream artifact regenerated from `nodes` /
 `connections`. It is gitignored — query via the HTTP API
 (`curl -s http://localhost/topology`), don't read it directly.
+
+### `game.db` — RPG sidecar (owned by realm-engine plugin)
+
+Lives at `~/.realmwatch/game.db` (overridable via `REALM_GAME_DB`). Created
+by `realm-engine` on startup; each game-layer plugin adds its own tables
+`IF NOT EXISTS`. Resolved through `realm_text.real_home()` so it stays in
+the operator's home even when map_server runs under sudo.
+
+| Table | Owner plugin | Purpose |
+|---|---|---|
+| `events` | realm-engine | All realm events with ULID, severity, source_system |
+| `entities` | realm-engine | Canonical entity records (32k+ rows in JP's realm) |
+| `players` | progression | Player profiles |
+| `xp_events` | progression | XP grant log |
+| `skill_trees` / `player_skills` | progression | 20 skills across 4 trees |
+| `achievements` / `player_achievements` | progression | 12 seeded achievements |
+| `quests` / `quest_event_links` / `quest_state_log` | quests | Quest forge state |
+| `actions` / `action_policy_log` | combat-ward | Ward action lifecycle |
+| `bestiary_entries` / `ward_templates` | combat-ward | RPG threat catalog |
+| `codex_entries` | codex | World lore wiki |
+| `node_lore` | codex | Per-entity backstories |
+| `chronicles` | codex | Historical narratives |
+| `journal_entries` | codex | Player journal |
 
 ---
 

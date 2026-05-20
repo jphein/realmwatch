@@ -1,16 +1,24 @@
 <!-- claude-md-version: cd87c3f | updated: 2026-04-28 -->
 # Realmwatch — Claude Code Brief
 
-Fantasy-themed homelab network monitor + AI voice assistant. Visualizes 12 VLANs,
-130+ nodes, collectd metrics, firewall rules, WiFi roaming, Home Assistant
-devices, and energy data on an interactive SVG map with high-fantasy theming.
-Single machine, local dev.
+Fantasy-themed homelab network monitor + game engine + MCP platform.
+Visualizes 12 VLANs, 130+ nodes, collectd metrics, firewall rules, WiFi
+roaming, Home Assistant devices, and energy data on an interactive SVG
+map with high-fantasy theming. Includes an RPG layer (XP, skills, quests,
+combat-ward, codex) absorbed from os.realm.watch in May 2026, plus a
+FastMCP server that exposes realmwatch's runtime to Claude Code. Single
+machine, local dev.
 
 The plugin system is the structural truth: the bundled core is mostly a
-rendering engine, and 37 plugins under `plugins/<name>/` carry the feature
-surface. For the full architecture, plugin catalog, and source tree see
-`README.md`. This file is the working brief for Claude — rules, environment,
-and gotchas.
+rendering engine, and **47 plugins** under `plugins/<name>/` carry the
+feature surface. For the full architecture, plugin catalog, and source
+tree see `README.md`. This file is the working brief for Claude — rules,
+environment, and gotchas.
+
+**Scope boundary:** realmwatch owns everything that touches network
+events, fantasy translation, game state, or MCP tools. `os.realm.watch`
+is now **OS-layer only** (GNOME extension, theme watcher, desktop
+integration) — do not put new event producers or game logic there.
 
 ## Rules
 
@@ -31,6 +39,23 @@ and gotchas.
   or direct file edits (mtime-poll hot-reloads ~2s). `topology.json` (in
   `realm.db`), `personas.json`, and `realm-local.json` reference nodes by
   `fleet_id`, not by current_name.
+- `~/.realmwatch/game.db` is the RPG sidecar — owned by `plugins/realm-engine/`,
+  read/written by `progression`, `quests`, `combat-ward`, `codex`. Resolve
+  the path via `realm_text.real_home()` (handles sudo) — never hardcode
+  `~/.realmwatch/...` literally. `REALM_GAME_DB` env var overrides.
+- `realm_text.py` at the repo root is the canonical home for shared utility
+  helpers: `sanitize_hostname()`, `sanitize_log_line()`, `sanitize_banner()`,
+  `ulid()`, and `real_home()` (the sudo-aware home resolver). Plugins that
+  need any of these import from `realm_text` — never duplicate the
+  implementations.
+- Cross-plugin coupling is **loose**. Use `ctx.expose_api({...})` to publish
+  your plugin's API, `ctx.get_plugin_api("<name>")` to consume another's
+  (returns `None` if not loaded), and `ctx.on_event(type, fn)` /
+  `ctx.push_event(...)` for fire-and-forget pub-sub. Never `import` from
+  another plugin's module path.
+- The diagnose/fix/retrieve verb trinity is `brief` / `doctor` / `logs` /
+  `show` / `fix`. Plugins exposing CLI verbs should reach for these names
+  before inventing new ones — operators have muscle memory across the realm.
 
 ## Tech Stack
 
@@ -107,7 +132,44 @@ Independent processes (off by default):
 
 **Core principle: thin core, fat plugins.** Every domain feature (census,
 latency, firewall, wifi, scan, skills, debug, herald, chat, system-updates,
-…) is a plugin under `plugins/<name>/`.
+quests, progression, combat-ward, codex, mcp, …) is a plugin under
+`plugins/<name>/`.
+
+## Game layer (absorbed from os.realm.watch — May 2026)
+
+Five plugins form an RPG layer on top of the monitor:
+
+| Plugin | Owns | Subscribes to | Exposes via expose_api |
+|---|---|---|---|
+| `realm-engine` | `game.db` (events, entities, players); wraps `push_event` | `(all events flow in)` | `realm_status`, `ingest_event`, `get_profile`, `list_entities`, `get_entity`, `mcp_tools` |
+| `progression` | `players`, `xp_events`, `skill_trees`, `player_skills`, `achievements` | `xp.grant` | `grant_xp`, `get_level_info`, `unlock_skill`, `grant_achievement`, `check_achievements`, `mcp_tools` |
+| `quests` | `quests`, `quest_event_links`, `quest_state_log` (game.db); also writes legacy `realm.db.quests` table | `alert`, `system`, `discovery`, `speech`, `quest` (severity≥2) | `generate_quest_from_event`, `list_quests`, `accept_quest`, `complete_quest`, `mcp_tools` |
+| `combat-ward` | `actions`, `action_policy_log`, `bestiary_entries`, `ward_templates` | `port_scan`, `brute_force`, `dns_poisoning`, `firewall_block`, `ddos`, `unknown_device`, `cpu_spike`, `memory_critical` | `propose_action`, `approve_action`, `execute_action`, `update_bestiary`, `defense_report`, `mcp_tools` |
+| `codex` | `codex_entries`, `node_lore`, `chronicles`, `journal_entries` | `xp.grant`, `level.up`, `achievement.unlocked`, `quest.completed` | `get_codex_entry`, `get_node_lore`, `set_node_lore`, `get_chronicles`, `add_journal_entry`, `chronicle_*` helpers, `mcp_tools` |
+
+The game DB is a **sidecar** — separate from `realm.db`. Plugin schemas are
+declared `CREATE TABLE IF NOT EXISTS`, so multiple plugins safely co-load
+the same tables (Wave 4 may unify ownership). Don't try to merge into
+`realm.db` — that's a v0.6 decision.
+
+## MCP server (plugins/mcp/)
+
+In-tree MCP server, fantasy name "The Astral Conduit". Stdio transport in v1.
+
+- **Launcher:** `plugins/mcp/launcher.py` — run via
+  `.venv/bin/python3 plugins/mcp/launcher.py` from any cwd. FastMCP banner
+  on stderr; tool list logged to stderr; protocol on stdin/stdout.
+- **In-process plugin:** `plugins/mcp/plugin.py` only registers `/mcp/info`
+  diagnostic + logs the launcher path. Does NOT start a server in-process
+  (would compete for stdin with map_server).
+- **Tool registry:** `plugins/mcp/tools.py` holds 12 core tools. Each
+  game-layer plugin adds more via `mcp_tools.py` (a `MCP_TOOLS` list);
+  Wave 1.5 follow-up will auto-aggregate them.
+- **Connecting Claude Code:**
+  `claude mcp add realmwatch /home/jp/Projects/realmwatch/plugins/mcp/launcher.py`
+  (or hand-edit `~/.claude/mcp.json`).
+- **Roadmap:** SSE transport on `/mcp/sse` so clients can attach without a
+  subprocess; per-tool ACLs for mutating tools (`ssh_run`, `fleet_rename`).
 
 ## Source Files (current line counts)
 
@@ -136,6 +198,14 @@ Per-plugin backends (`ha_bridge.py`, `ap_scanner.py`, `collectd_reader.py`,
 `traffic_precompute.py`) still live at repo root and are imported by their
 respective plugins. **Migration into plugin dirs is in progress** —
 documented as intent in README; not done.
+
+`realm_text.py` (at repo root) is the canonical home for shared helpers:
+`sanitize_hostname`, `sanitize_log_line`, `sanitize_banner`, `ulid`, and
+`real_home` (the sudo-aware home resolver). Game-layer plugins land here
+post-migration — `_real_home()` helpers in `plugins/lexicon/`, `plugins/mcp/`,
+`plugins/realm-engine/`, `plugins/progression/`, `plugins/quests/`,
+`plugins/combat-ward/`, and `plugins/codex/` are pending dedup into
+`realm_text.real_home()`.
 
 ### Frontend — bundled core (`src/`)
 
@@ -286,7 +356,11 @@ flag these clearly when working in adjacent areas:
 - **No hot reload.** Plugin changes require a server restart.
 - **Daemons are off by default.** Foreground via `make dev`; systemd is opt-in.
 - **Fantasy theming is core** — maintain the aesthetic when touching frontend code.
-- **No MCP server in this project.** MCP refs in `requirements.txt` are for the separate `lit-rpg-fantasy-voice` server.
+- **MCP server is in-tree** at `plugins/mcp/` (fantasy name "The Astral Conduit").
+  Launcher is `plugins/mcp/launcher.py` (FastMCP stdio). Each plugin can ship
+  a `mcp_tools.py` (a `MCP_TOOLS` list of `(name, fn, description)` tuples);
+  the conduit aggregates them at launch. Connect Claude Code via
+  `claude mcp add realmwatch ~/Projects/realmwatch/plugins/mcp/launcher.py`.
 
 ## Testing
 
