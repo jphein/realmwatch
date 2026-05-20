@@ -116,22 +116,43 @@ def _consume_backfill(path, args):
 
 
 def _consume_sse_stdin(args):
-    current = ""
-    for raw in sys.stdin:
-        line = raw.rstrip("\r\n")
+    """SSE-spec parser: accumulate data: lines until blank-line boundary,
+    then dispatch one event. Joins multi-line data with '\n' per spec, and
+    resets event_type between events. Uses readline() rather than iter-over-
+    stdin to avoid Python's large default pipe buffer (kills tail latency)."""
+    event_type = ""
+    data_acc = []
+    while True:
+        line = sys.stdin.readline()
+        if not line:
+            break
+        line = line.rstrip("\r\n")
+        if not line:
+            # Event boundary — dispatch accumulated payload (if any) and reset.
+            if data_acc:
+                data_str = "\n".join(data_acc)
+                try:
+                    payload = json.loads(data_str)
+                except ValueError:
+                    payload = {"text": data_str}
+                if not isinstance(payload, dict):
+                    payload = {"text": str(payload)}
+                _emit(event_type or "realm-event", payload, args)
+            event_type = ""
+            data_acc = []
+            continue
+        if line.startswith(":"):
+            # SSE comment / heartbeat — ignore
+            continue
         if line.startswith("event:"):
-            current = line[6:].strip()
+            event_type = line[6:].strip()
         elif line.startswith("data:"):
-            data = line[5:].lstrip()
-            if not data:
-                continue
-            try:
-                payload = json.loads(data)
-            except ValueError:
-                payload = {"text": data}
-            if not isinstance(payload, dict):
-                payload = {"text": str(payload)}
-            _emit(current or "realm-event", payload, args)
+            # SSE spec: a single leading space after the colon is stripped.
+            chunk = line[5:]
+            if chunk.startswith(" "):
+                chunk = chunk[1:]
+            data_acc.append(chunk)
+        # ignore id:, retry:, and any other field types
 
 
 def main():

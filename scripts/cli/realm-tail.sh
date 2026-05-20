@@ -39,6 +39,7 @@ EOF
 }
 
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/realm-cli.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/realm-python.sh"
 realm::parse_common "$@"
 set -- "${REALM_POSARGS[@]+"${REALM_POSARGS[@]}"}"
 
@@ -96,16 +97,25 @@ banner="Tailing /sse"
 [[ -n "$SINCE"  ]] && banner="$banner  since=$SINCE"
 realm::say "$banner — Ctrl-C to stop"
 
-# Prefer the project venv python if present (matches the server).
-PYTHON="python3"
-_self_repo="$(cd "$_self_dir/../.." && pwd)"
-[[ -x "$_self_repo/.venv/bin/python3" ]] && PYTHON="$_self_repo/.venv/bin/python3"
+# Use the realmwatch venv python via realm-python.sh helper (style guide).
+PYTHON="$REALM_PYTHON"
 
 # Run curl + python as separate jobs joined by a FIFO so the trap has
 # direct PIDs to kill (a `|` pipeline hides children under a subshell that
 # `pkill -P $$` can't reach). pipefail off around wait so a SIGINT-killed
 # curl doesn't trip set -e.
-FIFO="$(mktemp -u -t realm-tail.XXXXXX.fifo)"
+#
+# Use mktemp -d (atomic) rather than mktemp -u + mkfifo (TOCTOU race —
+# filename is generated but not reserved, so another process could win
+# the slot between the two calls). The dir gives us a unique namespace
+# for the FIFO and a single rm -rf for cleanup.
+#
+# Reader is started before writer: open() for read on a FIFO blocks
+# until a writer arrives (and vice versa), so both ends synchronise on
+# the kernel. Starting python first guarantees no events fall on the
+# floor in the window between curl opening the FIFO and python catching up.
+FIFO_DIR="$(mktemp -d -t realm-tail.XXXXXX)"
+FIFO="$FIFO_DIR/sse"
 mkfifo "$FIFO"
 
 cleanup() {
@@ -113,11 +123,12 @@ cleanup() {
   [[ -n "${CURL_PID:-}"   ]] && kill "$CURL_PID"   2>/dev/null || true
   [[ -n "${PYTHON_PID:-}" ]] && kill "$PYTHON_PID" 2>/dev/null || true
   [[ -n "$BACKFILL_FILE" && -f "$BACKFILL_FILE" ]] && rm -f "$BACKFILL_FILE"
-  [[ -p "$FIFO" ]] && rm -f "$FIFO"
+  [[ -d "$FIFO_DIR" ]] && rm -rf "$FIFO_DIR"
 }
 trap cleanup EXIT
 trap 'cleanup; exit 130' INT TERM
 
+# Reader first — blocks on open() until curl opens the writer end.
 "$PYTHON" -u "$HELPER" "${helper_args[@]+"${helper_args[@]}"}" < "$FIFO" &
 PYTHON_PID=$!
 curl --silent --show-error --no-buffer \
