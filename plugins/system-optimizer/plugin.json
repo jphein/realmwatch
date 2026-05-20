@@ -1,0 +1,14 @@
+{
+  "name": "system-optimizer",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Periodic system audit — disk, pip cache, journal, swap, zombies, load, memory, /tmp, failed services, DNS. Surfaces findings as realm events the quest system can turn into optimization quests.",
+  "fantasy_name": "The Realm Optimizer",
+  "icon": "⚒️",
+  "priority": 80,
+  "depends_on": [],
+  "python": {
+    "module": "plugin",
+    "entry": "setup"
+  }
+}
