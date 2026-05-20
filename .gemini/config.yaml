@@ -1,0 +1,41 @@
+# Gemini Code Assist for GitHub — repo configuration
+# Docs: https://developers.google.com/gemini-code-assist/docs/customize
+#
+# Review style: actionable, terse, architecture-aware. Don't restate the
+# diff; tell us what's wrong + the minimal fix.
+
+have_fun: true
+
+code_review:
+  disable: false
+
+  # Don't drown contributors. We have a smaller team; quality > quantity.
+  comment_severity_threshold: MEDIUM
+  max_review_comments: 10
+
+  pull_request_opened:
+    help: false           # the help comment is noise on every PR
+    summary: true         # short PR summary is useful
+    code_review: true     # do the actual review
+
+ignore_patterns:
+  # Generated / vendored
+  - "realm-map.js"
+  - "node_modules/**"
+  - ".venv/**"
+  - "venv/**"
+  - "**/__pycache__/**"
+
+  # JP-specific gitignored configs (won't appear anyway, but defense in depth)
+  - "fleet.yaml"
+  - "realm-local.json"
+  - "personas.json"
+  - "**/.realmwatch/**"
+
+  # Docs PRs don't need code review
+  - "docs/**"
+  - "README.md"
+  - "CHANGELOG.md"
+
+  # Tests aren't a thing yet (per CLAUDE.md)
+  - "tests/**"
