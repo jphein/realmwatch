@@ -62,7 +62,7 @@ while (( i <= $# )); do
 done
 
 [[ -n "$QUERY" ]] || realm::die "usage: realm find <query> [--kind K] [--limit N] [--json]" 2
-[[ "$LIMIT" =~ ^[0-9]+$ ]] || realm::die "--limit must be a positive integer" 2
+[[ "$LIMIT" =~ ^[1-9][0-9]*$ ]] || realm::die "--limit must be a positive integer" 2
 
 case "$KIND" in
   ""|fleet|persona|quest|event|sub-entity) ;;
@@ -159,14 +159,14 @@ MATCHES=$(jq -nc \
       }),
   # --- quest ---
   ( $quests[]?
-    | . as $q
-    | (best_score([$q.title, $q.node, $q.status, $q.technical_label])) as $s
+    | . as $quest
+    | (best_score([$quest.title, $quest.node, $quest.status, $quest.technical_label])) as $s
     | select($s > 0)
     | {
         kind: "quest",
         score: $s,
-        name: ($q.title // $q.quest_id // "?"),
-        context: ([$q.node, $q.status]
+        name: ($quest.title // $quest.quest_id // "?"),
+        context: ([$quest.node, $quest.status]
           | map(select(. != null and . != ""))
           | join(" · "))
       }),
@@ -209,7 +209,7 @@ MATCHES=$(jq -nc \
 
   ' \
   | jq -sc --argjson lim "$LIMIT" '
-      sort_by([({"fleet":1,"persona":2,"quest":3,"sub-entity":4,"event":5}[.kind] // 9), (-.score)])
+      sort_by([(-.score), ({"fleet":1,"persona":2,"quest":3,"sub-entity":4,"event":5}[.kind] // 9)])
       | .[:$lim]
     ')
 
