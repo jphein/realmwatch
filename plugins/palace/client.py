@@ -17,7 +17,10 @@ Endpoints used (palace-daemon v1.7.2 + unreleased main):
   POST   /search/hybrid             (body: {"query": "...", "limit": N})
   GET    /list?wing=&room=&limit=&offset=
   POST   /memory                    (deposit: {wing, room, title, body})
-  GET    /memory/{id}               (recall — wraps mempalace_get_drawer)
+  POST   /mcp                       (recall: JSON-RPC tools/call →
+                                     mempalace_get_drawer. palace-daemon's
+                                     REST surface does NOT expose
+                                     GET /memory/{id}.)
 
 Auth: palace-daemon honours ``X-Api-Key`` when ``PALACE_API_KEY`` is set in
 its environment. This client reads ``PALACE_API_KEY`` from realmwatch's
@@ -41,7 +44,10 @@ class PalaceClient:
     """Thin HTTP client for palace-daemon.
 
     Args:
-        base_url: e.g. ``"http://disks.jphe.in:8085"`` or ``"http://10.0.6.120:8085"``.
+        base_url: palace-daemon base URL, e.g.
+                  ``"http://palace-daemon.example.com:8085"``. Resolved by
+                  the caller (plugin or mcp_tools) via env > realm_fleet —
+                  this class never bakes in a host.
                   Trailing slash is stripped.
         api_key:  Optional ``X-Api-Key`` header. Reads ``PALACE_API_KEY`` from
                   the environment when ``None``.

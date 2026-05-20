@@ -35,34 +35,51 @@ if str(_REPO_ROOT) not in sys.path:
 from client import PalaceClient  # type: ignore  # noqa: E402
 
 
-DEFAULT_FALLBACK_URL = "http://disks.jphe.in:8085"
+_NOT_CONFIGURED = {
+    "error": "palace-daemon URL not configured",
+    "hint": ("Set PALACE_DAEMON_URL or add a 'palace-daemon' entry to "
+             "fleet.yaml (with realm_fleet.host_ip-resolvable ops_ip)."),
+}
 
 
-def _resolve_base_url() -> str:
-    """Mirror plugin.py's URL resolution (env > fleet > fallback)."""
+def _resolve_base_url() -> Optional[str]:
+    """Mirror plugin.py's URL resolution (env > fleet > None).
+
+    No hardcoded fallback — that violates the "no hardcoded hosts"
+    architecture invariant in ``.gemini/styleguide.md``. Callers must
+    handle ``None`` by returning an error dict.
+    """
     env = os.environ.get("PALACE_DAEMON_URL", "").strip()
     if env:
-        return env
+        return env.rstrip("/")
     try:
         import realm_fleet  # type: ignore
         host_ip = realm_fleet.host_ip("palace-daemon")
         if host_ip:
             if not host_ip.startswith(("http://", "https://")):
                 host_ip = f"http://{host_ip}"
-            return host_ip
+            return host_ip.rstrip("/")
     except Exception:
         pass
-    return DEFAULT_FALLBACK_URL
+    return None
 
 
 _client: Optional[PalaceClient] = None
 
 
-def _get_client() -> PalaceClient:
-    """Cache one PalaceClient instance per process."""
+def _get_client() -> Optional[PalaceClient]:
+    """Cache one PalaceClient instance per process.
+
+    Returns ``None`` if the palace-daemon URL cannot be resolved — every
+    tool then surfaces ``_NOT_CONFIGURED`` instead of constructing a
+    client against a hardcoded host.
+    """
     global _client
     if _client is None:
-        _client = PalaceClient(base_url=_resolve_base_url())
+        base = _resolve_base_url()
+        if base is None:
+            return None
+        _client = PalaceClient(base_url=base)
     return _client
 
 
@@ -93,7 +110,10 @@ def palace_search(query: str, wing: Optional[str] = None,
     ``{"results": [...]}`` where each result has ``title``, ``wing``,
     ``room``, ``score``, and ``id`` fields.
     """
-    ok, payload = _get_client().search(query, limit=limit, wing=wing, room=room)
+    client = _get_client()
+    if client is None:
+        return dict(_NOT_CONFIGURED)
+    ok, payload = client.search(query, limit=limit, wing=wing, room=room)
     return _unwrap(ok, payload)
 
 
@@ -106,7 +126,10 @@ def palace_recall(drawer_id: str) -> dict:
     Returns the drawer's full content (title, body, wing, room, ts, ...)
     or ``{"error": ...}`` on miss.
     """
-    ok, payload = _get_client().recall(drawer_id)
+    client = _get_client()
+    if client is None:
+        return dict(_NOT_CONFIGURED)
+    ok, payload = client.recall(drawer_id)
     return _unwrap(ok, payload)
 
 
@@ -122,7 +145,10 @@ def palace_list(wing: Optional[str] = None, room: Optional[str] = None,
 
     Returns palace-daemon's ``/list`` response.
     """
-    ok, payload = _get_client().list_drawers(
+    client = _get_client()
+    if client is None:
+        return dict(_NOT_CONFIGURED)
+    ok, payload = client.list_drawers(
         wing=wing, room=room, limit=limit, offset=offset)
     return _unwrap(ok, payload)
 
@@ -141,7 +167,10 @@ def palace_deposit(wing: str, room: str, title: str, body: str = "") -> dict:
     ``{"id": "<drawer_id>", "ok": true}`` or ``{"queued": true, ...}``
     if a rebuild is in progress.
     """
-    ok, payload = _get_client().deposit(
+    client = _get_client()
+    if client is None:
+        return dict(_NOT_CONFIGURED)
+    ok, payload = client.deposit(
         wing=wing, room=room, title=title, body=body)
     return _unwrap(ok, payload)
 
@@ -151,7 +180,10 @@ def palace_health() -> dict:
     ``{"status": "ok", "version": "1.7.2", ...}`` or an error dict if the
     daemon is unreachable.
     """
-    ok, payload = _get_client().health()
+    client = _get_client()
+    if client is None:
+        return dict(_NOT_CONFIGURED)
+    ok, payload = client.health()
     return _unwrap(ok, payload)
 
 

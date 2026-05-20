@@ -83,15 +83,52 @@ QS="?q=$(encode "$QUERY")&limit=$LIMIT"
 [[ -n "$ROOM" ]] && QS="${QS}&room=$(encode "$ROOM")"
 [[ "$HYBRID" -eq 1 ]] && QS="${QS}&hybrid=1"
 
-# Note: realm::api_get exits non-zero on a 502 (palace-daemon down). We
-# catch that and surface a clearer error than the generic "client error".
-RESPONSE=$(realm::api_get "/palace/search${QS}" 2>/dev/null) || {
+# Note: realm::api_get writes the HTTP body to stdout *before* returning
+# a non-zero exit code (see scripts/lib/http.sh::_run — `cat "$tmp"` runs
+# regardless of curl's exit). Capture both stdout (body) and stderr
+# (curl/realm chatter) so the error path can surface real upstream errors
+# (e.g., 401 auth, 503 daemon down, 404 plugin not loaded) instead of
+# collapsing everything to a generic "unreachable" message.
+_recall_stderr=$(mktemp)
+RESPONSE=$(realm::api_get "/palace/search${QS}" 2>"$_recall_stderr") || {
   ec=$?
-  if [[ "$ec" -eq 5 || "$ec" -eq 22 ]]; then
-    realm::die "palace-daemon unreachable (realmwatch is up; the upstream is not)" 4
+  _recall_err=""
+  [[ -s "$_recall_stderr" ]] && _recall_err=$(<"$_recall_stderr")
+  rm -f "$_recall_stderr"
+
+  # Try to extract a useful message from the upstream JSON body if any.
+  _body_msg=""
+  if [[ -n "$RESPONSE" ]]; then
+    _body_msg=$(echo "$RESPONSE" \
+      | jq -r '.error // .body // .hint // empty' 2>/dev/null \
+      | head -c 300)
   fi
-  realm::die "search failed (exit $ec)" "$ec"
+
+  case "$ec" in
+    3)   # network — realm host itself unreachable
+      realm::die "realm host unreachable${_recall_err:+: $_recall_err}" 3
+      ;;
+    4)   # auth (401/403) on the realm API
+      realm::die "auth failed (401/403)${_body_msg:+: $_body_msg}" 4
+      ;;
+    5)   # 5xx — realm proxy returned upstream error; usually daemon down
+      if [[ -n "$_body_msg" ]]; then
+        realm::die "palace-daemon error: $_body_msg" 4
+      fi
+      realm::die "palace-daemon unreachable (realmwatch is up; the upstream is not)" 4
+      ;;
+    22)  # other 4xx — often 404 (plugin not loaded) or 503 (not configured)
+      if [[ -n "$_body_msg" ]]; then
+        realm::die "palace: $_body_msg" 4
+      fi
+      realm::die "palace endpoint unavailable (plugin not loaded?)" 4
+      ;;
+    *)
+      realm::die "search failed (exit $ec)${_body_msg:+: $_body_msg}${_recall_err:+ — $_recall_err}" "$ec"
+      ;;
+  esac
 }
+rm -f "$_recall_stderr"
 
 # Surface palace-daemon errors that came back as 200 JSON-with-error.
 if echo "$RESPONSE" | jq -e '.error' >/dev/null 2>&1; then

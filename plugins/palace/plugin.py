@@ -3,14 +3,16 @@
 This plugin gives realmwatch:
 
 1. **Search/recall surface.** ``GET /palace/{health,search,recall,list}``
-   proxies palace-daemon at ``disks.jphe.in:8085`` (configurable). Other
-   plugins consume the same surface via ``ctx.get_plugin_api("palace")`` →
+   proxies palace-daemon (URL resolved at load time from env / fleet).
+   Other plugins consume the same surface via
+   ``ctx.get_plugin_api("palace")`` →
    ``{search, recall, list, health, deposit}``.
 
 2. **Auto-deposit on significant events.** Subscribes to ``realm-event``,
-   ``xp.grant``, and ``alert`` via ``ctx.on_event`` and routes them to the
-   right wing/room in the palace, with per-(event-type, node) rate
-   limiting. See ``deposit_router.py`` for the full taxonomy.
+   ``xp.grant``, ``alert``, and ``quest.completed`` via ``ctx.on_event``
+   and routes them to the right wing/room in the palace, with
+   per-(event-type, node) rate limiting. See ``deposit_router.py`` for
+   the full taxonomy.
 
 3. **MCP tools.** ``mcp_tools.py`` exposes ``palace_search``,
    ``palace_recall``, ``palace_list``, ``palace_deposit``, and
@@ -23,11 +25,13 @@ This plugin gives realmwatch:
 URL resolution order (highest to lowest precedence):
   1. ``PALACE_DAEMON_URL`` env var
   2. ``realm_fleet.host_ip("palace-daemon")`` from fleet.yaml
-  3. Hardcoded fallback ``http://disks.jphe.in:8085``
+  3. None — plugin loads INERT and every endpoint returns 503 with a
+     helpful message. No hardcoded host fallback (architecture invariant
+     from ``.gemini/styleguide.md`` — "no hardcoded hosts").
 
-If palace-daemon is unreachable, the plugin still LOADS — endpoints return
-the upstream error gracefully, the deposit router logs and drops, and the
-realmwatch HTTP server stays up.
+If palace-daemon is configured but unreachable, the plugin still LOADS —
+endpoints return the upstream error gracefully, the deposit router logs
+and drops, and the realmwatch HTTP server stays up.
 """
 
 from __future__ import annotations
@@ -47,47 +51,77 @@ from .client import PalaceClient  # noqa: E402
 from .deposit_router import DepositRouter  # noqa: E402
 
 
-DEFAULT_FALLBACK_URL = "http://disks.jphe.in:8085"
-
-
-def _resolve_palace_url(log) -> str:
+def _resolve_palace_url(log=None) -> str | None:
     """Resolve the palace-daemon base URL.
 
     Order:
       1. ``PALACE_DAEMON_URL`` env var (overrides everything)
       2. ``realm_fleet.host_ip("palace-daemon")`` from fleet.yaml
-      3. Hardcoded fallback ``http://disks.jphe.in:8085``
+      3. ``None`` — caller decides what to do.
 
     The fleet entry's ``ops_ip`` is stored as ``10.0.6.120:8085`` (host:port).
     We prepend ``http://`` if the resolved value doesn't already include a
-    scheme.
+    scheme. Returns the URL with any trailing slash stripped.
+
+    No hardcoded host fallback exists — that violates the "no hardcoded
+    hosts" architecture invariant in ``.gemini/styleguide.md``. If neither
+    source resolves, the plugin loads inert and endpoints return 503.
     """
+    def _log(fmt, *args):
+        if log is not None:
+            log(fmt, *args)
+
     env = os.environ.get("PALACE_DAEMON_URL", "").strip()
     if env:
-        log("using PALACE_DAEMON_URL=%s", env)
-        return env
+        _log("using PALACE_DAEMON_URL=%s", env)
+        return env.rstrip("/")
 
     try:
         import realm_fleet  # type: ignore
         host_ip = realm_fleet.host_ip("palace-daemon")
     except Exception as exc:
-        log("realm_fleet lookup failed (%s); falling back to %s",
-            exc.__class__.__name__, DEFAULT_FALLBACK_URL)
-        return DEFAULT_FALLBACK_URL
+        _log("realm_fleet lookup failed (%s); palace-daemon URL unresolved",
+             exc.__class__.__name__)
+        return None
 
     if not host_ip:
-        log("fleet has no palace-daemon entry; falling back to %s",
-            DEFAULT_FALLBACK_URL)
-        return DEFAULT_FALLBACK_URL
+        _log("fleet has no palace-daemon entry; palace-daemon URL unresolved")
+        return None
 
     # Add scheme if missing.
     if not host_ip.startswith(("http://", "https://")):
         host_ip = f"http://{host_ip}"
-    log("resolved palace-daemon via fleet: %s", host_ip)
-    return host_ip
+    _log("resolved palace-daemon via fleet: %s", host_ip)
+    return host_ip.rstrip("/")
 
 
 # ── HTTP handlers ──────────────────────────────────────────────────────────
+
+
+_NOT_CONFIGURED = {
+    "error": "palace-daemon URL not configured",
+    "hint": ("Set PALACE_DAEMON_URL or add a 'palace-daemon' entry to "
+             "fleet.yaml (with realm_fleet.host_ip-resolvable ops_ip)."),
+    "status": 503,
+}
+
+
+def _make_inert_handlers():
+    """Endpoints when palace-daemon URL couldn't be resolved.
+
+    Every verb returns 503 with the same payload — the plugin is loaded
+    but cannot reach a daemon. This lets ``/debug`` and the plugins panel
+    show palace, but every call surfaces the configuration gap.
+    """
+    def _503(req, _params):
+        return req.respond(_NOT_CONFIGURED, status=503)
+    return {
+        "health": _503,
+        "search": _503,
+        "recall": _503,
+        "list": _503,
+        "deposit": _503,
+    }
 
 
 def _make_handlers(client: PalaceClient):
@@ -181,10 +215,46 @@ def _make_handlers(client: PalaceClient):
 def setup(ctx):
     """Plugin entry point — see module docstring."""
     base_url = _resolve_palace_url(ctx.log)
+
+    # ── HTTP endpoints (raw_path so they live at /palace/* not /plugins/palace/*) ──
+    if base_url is None:
+        # Inert load — every endpoint returns 503 with a configuration
+        # hint. Architecture invariant: no hardcoded host fallback.
+        ctx.log("WARN: PALACE_DAEMON_URL not set and palace-daemon not in "
+                "fleet — plugin loaded but inert (endpoints return 503)")
+        handlers = _make_inert_handlers()
+        ctx.register_endpoint("GET",  "/palace/health", handlers["health"],  raw_path=True)
+        ctx.register_endpoint("GET",  "/palace/search", handlers["search"],  raw_path=True)
+        ctx.register_endpoint("GET",  "/palace/list",   handlers["list"],    raw_path=True)
+        ctx.register_endpoint("POST", "/palace/deposit", handlers["deposit"], raw_path=True)
+        ctx.register_endpoint("GET",  "/palace/recall/<drawer_id>",
+                              handlers["recall"], raw_path=True)
+        ctx.register_endpoint("GET",  "/palace/recall",
+                              handlers["recall"], raw_path=True)
+
+        def _inert_call(*_a, **_kw):
+            return False, dict(_NOT_CONFIGURED)
+
+        def _inert_search(*_a, **_kw):
+            return []
+
+        ctx.expose_api({
+            "search": _inert_call,
+            "recall": _inert_call,
+            "list": _inert_call,
+            "health": _inert_call,
+            "deposit": _inert_call,
+            "palace_search": _inert_search,
+            "_client": None,
+            "_router": None,
+            "base_url": None,
+            "configured": False,
+        })
+        return
+
     client = PalaceClient(base_url=base_url)
     router = DepositRouter(client, log=ctx.log)
 
-    # ── HTTP endpoints (raw_path so they live at /palace/* not /plugins/palace/*) ──
     handlers = _make_handlers(client)
     ctx.register_endpoint("GET",  "/palace/health", handlers["health"],  raw_path=True)
     ctx.register_endpoint("GET",  "/palace/search", handlers["search"],  raw_path=True)
@@ -215,20 +285,28 @@ def setup(ctx):
         "_client": client,
         "_router": router,
         "base_url": base_url,
+        "configured": True,
     })
 
     # ── Event subscriptions (auto-deposit) ─────────────────────────────────
-    ctx.on_event("realm-event", router.on_realm_event)
-    ctx.on_event("xp.grant", router.on_xp_grant)
-    ctx.on_event("alert", router.on_alert)
-    # quest.completed is also fired as a standalone event by some plugins.
-    # The realm-event dispatch covers `{kind: quest.completed}` shape;
-    # this covers `quest.completed` as the direct event_type.
-    ctx.on_event("quest.completed",
-                 lambda e: router.on_realm_event({**(e or {}), "kind": "quest.completed"}))
+    # Track triggers so the startup log can never drift from what's wired.
+    triggers: list[tuple[str, object]] = [
+        ("realm-event", router.on_realm_event),
+        ("xp.grant", router.on_xp_grant),
+        ("alert", router.on_alert),
+        # quest.completed is also fired as a standalone event by some
+        # plugins. The realm-event dispatch covers `{kind: quest.completed}`
+        # shape; this covers `quest.completed` as the direct event_type.
+        ("quest.completed",
+         lambda e: router.on_realm_event({**(e or {}), "kind": "quest.completed"})),
+    ]
+    for event_type, fn in triggers:
+        ctx.on_event(event_type, fn)
 
+    # 5 endpoints (health, search, list, deposit, recall — recall is
+    # registered twice but is one verb to operators).
     ctx.log("The Memory Palace — bridge to %s ready (5 endpoints, %d "
-            "auto-deposit triggers)", base_url, 4)
+            "auto-deposit triggers)", base_url, len(triggers))
 
 
 def _palace_search_adapter(client: PalaceClient):
