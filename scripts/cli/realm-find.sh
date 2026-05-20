@@ -86,7 +86,7 @@ want fleet      && FLEET=$(ensure     "$(realm::api_get /fleet/list 2>/dev/null 
 want persona    && PERSONAS=$(ensure  "$(realm::api_get /personas 2>/dev/null || echo '{}')"                                     'type=="object"' '{}')
 # Palace: 404 = plugin not loaded; 502/JSON-error = palace-daemon down. Either
 # way coerce to {"results": []} so the jq pipeline below stays uniform.
-want palace     && PALACE=$(ensure    "$(realm::api_get "/palace/search?q=$(printf %s "$QUERY" | jq -Rr @uri)&limit=$LIMIT" 2>/dev/null || echo '{"results":[]}')" '(.results // .memories // .items) | type=="array"' '{"results":[]}')
+want palace     && PALACE=$(ensure    "$(realm::api_get "/palace/search?q=$(printf '%s' "$QUERY" | jq -Rr @uri)&limit=$LIMIT" 2>/dev/null || echo '{"results":[]}')" '(.results // .memories // .items) | type=="array"' '{"results":[]}')
 want quest      && QUESTS=$(ensure    "$(realm::api_get '/plugins/quests/list?limit=200' 2>/dev/null || echo '[]')"              'type=="array"' '[]')
 want event      && EVENTS=$(ensure    "$(realm::api_get '/events?limit=200' 2>/dev/null || echo '[]')"                           'type=="array"' '[]')
 want sub-entity && DISCOVERY=$(ensure "$(realm::api_get /discovery 2>/dev/null || echo '{"sub_entities":{}}')"                   '.sub_entities | type=="object"' '{"sub_entities":{}}')
@@ -173,7 +173,7 @@ MATCHES=$(jq -nc \
   # Coalesce results/memories/items across palace-daemon shape drift.
   ( ($palace_raw.results // $palace_raw.memories // $palace_raw.items // [])[]?
     | . as $m
-    | (((($m.score // $m.similarity // 0) | tonumber? // 0) * 100) | floor) as $s
+    | ([(((($m.score // $m.similarity // 0) | tonumber? // 0) * 100) | floor), 100] | min) as $s
     | select($s > 0)
     | {
         kind: "palace",
@@ -181,7 +181,7 @@ MATCHES=$(jq -nc \
         name: ($m.title // $m.name // $m.id // "(untitled)"),
         context: ([
           (((($m.wing // "?") | tostring) + "/" + (($m.room // "?") | tostring))),
-          ((($m.body // $m.text // "") | tostring)[:60])
+          ((($m.body // $m.text // "") | tostring)[:80])
         ] | map(select(. != null and . != "")) | join(" · "))
       }),
   # --- quest ---
