@@ -1,9 +1,13 @@
-"""Tiny read-only helper for looking up VLANs in vlans.yaml from anywhere in realmwatch.
+"""Tiny helper for looking up (and renaming) VLANs in vlans.yaml from anywhere in realmwatch.
 
 Wraps lexicon.load_vlan_catalog() with a process-local cache so callers that
 import this don't pay the YAML-parse cost on every lookup. vlans.yaml is the
 gitignored single source of truth (see vlans.yaml.example for schema); this
 is the import-from-anywhere accessor.
+
+Lookup helpers (get / resolve / all_entries / zone_to_vlan) are read-only.
+rename() mutates: it calls VLANCatalog.rename(), persists vlans.yaml via
+.save(), and invalidates the cache so the next lookup re-reads from disk.
 
 Usage:
     import realm_vlans
@@ -74,13 +78,13 @@ def get(vlan_id: int) -> Optional["VLANEntry"]:
     return cat.resolve(vlan_id) if cat else None
 
 
-def resolve(name_or_id) -> Optional["VLANEntry"]:
+def resolve(name_or_id: int | str) -> Optional["VLANEntry"]:
     """Look up a VLAN by ID (int or str) or by current/prior label."""
     cat = _catalog()
     return cat.resolve(name_or_id) if cat else None
 
 
-def all_entries() -> list:
+def all_entries() -> list["VLANEntry"]:
     """Return all VLANEntry objects sorted by ID, or [] if catalog unavailable."""
     cat = _catalog()
     if cat is None:

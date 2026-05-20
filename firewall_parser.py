@@ -76,7 +76,19 @@ def _build_registry_views():
     """
     cat = realm_vlans.catalog()
     if cat is None:
-        print("[firewall_parser] vlan catalog unavailable; VLANS empty", file=sys.stderr)
+        vlans_path = realm_vlans._VLANS_YAML
+        if not vlans_path.exists():
+            print(
+                f"[firewall_parser] {vlans_path} missing — copy vlans.yaml.example "
+                f"to vlans.yaml; VLAN table will be empty until then",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                "[firewall_parser] vlan catalog unavailable "
+                "(lexicon import failed or yaml parse error); VLANS empty",
+                file=sys.stderr,
+            )
         return {}, {}, (), ()
 
     vlans = {}

@@ -102,13 +102,18 @@ case "$sub" in
   show)
     [[ $# -ge 1 ]] || realm::die "missing VLAN id or label (e.g. realm vlans show 10)" 2
     target="$1"
-    # Resolve label → id via lexicon (handles prior_names).
+    # Resolve label → id via lexicon (handles prior_names). Pass label
+    # through argv (not string interpolation) so labels with quotes,
+    # backslashes, or shell metacharacters can't break the Python parse.
     if ! [[ "$target" =~ ^[0-9]+$ ]]; then
-      target=$("$REALM_PYTHON" -c "
-import sys, realm_vlans
-e = realm_vlans.resolve('$target'.replace(chr(39), ''))
-sys.stdout.write(str(e.vlan_id) if e else '')
-") || realm::die "lookup failed" 3
+      target=$("$REALM_PYTHON" - "$target" <<'PY'
+import sys
+import realm_vlans
+e = realm_vlans.resolve(sys.argv[1])
+sys.stdout.write(str(e.vlan_id) if e else "")
+PY
+)
+      [[ $? -eq 0 ]] || realm::die "lookup failed" 3
       [[ -n "$target" ]] || realm::die "no VLAN matches that label" 1
     fi
     raw=$(_emit_registry_json)
@@ -137,8 +142,9 @@ sys.stdout.write(str(e.vlan_id) if e else '')
     done
 
     # Delegate to lexicon.VLANCatalog via the shim. Errors bubble back with
-    # a non-zero exit code from python.
-    if ! "$REALM_PYTHON" - "$vid" "$new_label" "$reason" <<'PY'
+    # a non-zero exit code from python. We avoid `if ! cmd; then exit $?`
+    # because `!` flips the status — `$?` inside `then` would be 0.
+    "$REALM_PYTHON" - "$vid" "$new_label" "$reason" <<'PY' || exit $?
 import sys
 import realm_vlans
 vid = int(sys.argv[1])
@@ -159,9 +165,6 @@ except Exception as e:
     print(f"error: {e}", file=sys.stderr)
     sys.exit(1)
 PY
-    then
-      exit $?
-    fi
     ;;
   *)
     realm::die "unknown subcommand: $sub" 2
