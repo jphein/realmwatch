@@ -87,15 +87,29 @@ while [[ $i -lt ${#args[@]} ]]; do
     --reset)             WIZARD_RESET=1 ;;
     --list-sections)     WIZARD_LIST=1 ;;
     --section)
+      # Arity check: --section requires an explicit value; missing one would
+      # silently fall back to a full run, which is a footgun. Use EX_USAGE (64).
+      if [[ $((i + 1)) -ge ${#args[@]} ]]; then
+        realm::die "--section requires a value" 64
+      fi
       i=$((i + 1))
-      WIZARD_SECTION="${args[$i]:-}"
+      WIZARD_SECTION="${args[$i]}"
       ;;
-    --section=*)         WIZARD_SECTION="${arg#*=}" ;;
+    --section=*)
+      WIZARD_SECTION="${arg#*=}"
+      [[ -n "$WIZARD_SECTION" ]] || realm::die "--section requires a value" 64
+      ;;
     --skip)
+      if [[ $((i + 1)) -ge ${#args[@]} ]]; then
+        realm::die "--skip requires a value" 64
+      fi
       i=$((i + 1))
-      WIZARD_SKIP="${args[$i]:-}"
+      WIZARD_SKIP="${args[$i]}"
       ;;
-    --skip=*)            WIZARD_SKIP="${arg#*=}" ;;
+    --skip=*)
+      WIZARD_SKIP="${arg#*=}"
+      [[ -n "$WIZARD_SKIP" ]] || realm::die "--skip requires a value" 64
+      ;;
     *)                   _remaining+=("$arg") ;;
   esac
   i=$((i + 1))
@@ -193,6 +207,13 @@ state::is_skipped() {
 # state::mark_completed <section-name>
 state::mark_completed() {
   [[ -n "$WIZARD_DRY" ]] && return 0
+  # If jq is missing, the prereqs section is expected to surface it; do not
+  # crash subsequent sections under `set -e` just because state can't be
+  # serialized. Warn and continue.
+  command -v jq >/dev/null 2>&1 || {
+    realm::warn "jq missing; state file not updated"
+    return 0
+  }
   state::init_if_missing
   local now tmp
   now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -207,6 +228,10 @@ state::mark_completed() {
 # state::mark_skipped <section-name>
 state::mark_skipped() {
   [[ -n "$WIZARD_DRY" ]] && return 0
+  command -v jq >/dev/null 2>&1 || {
+    realm::warn "jq missing; state file not updated"
+    return 0
+  }
   state::init_if_missing
   local now tmp
   now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -312,12 +337,16 @@ check_python_version() {
   else
     realm::status_ok "python3 $ver"
   fi
+  return 0
 }
 
 section_prereqs() {
   realm::print_section "Checking prerequisites"
   local fails=0
-  check_python_version
+  # Each check_* function may `return 1` on failure. Under `set -e`, a bare
+  # call would abort the wizard; aggregate via `|| fails=$((fails+1))`
+  # at the call site so the section can summarize ALL missing tools.
+  check_python_version || fails=$((fails + 1))
   check_tool uv "curl -LsSf https://astral.sh/uv/install.sh | sh" 1 || fails=$((fails + 1))
   check_tool npm "apt install nodejs npm   (or: mise install node@20)" 1 || fails=$((fails + 1))
   check_tool jq "apt install jq" 1 || fails=$((fails + 1))
@@ -377,9 +406,11 @@ section_realm_setup() {
       if [[ -n "$WIZARD_DRY" ]]; then
         dry_say "git clone https://github.com/jphein/lexicon.realm.watch $lexicon_dir"
       else
-        git clone https://github.com/jphein/lexicon.realm.watch "$lexicon_dir" || {
+        if ! git clone https://github.com/jphein/lexicon.realm.watch "$lexicon_dir"; then
           realm::status_fail "lexicon clone failed"
-        }
+          realm::warn "lexicon clone failed; some features will be unavailable"
+          return 1
+        fi
       fi
     fi
   fi
@@ -584,7 +615,13 @@ PROVIDERS=(
   "DEEPINFRA_API_KEY|DeepInfra API|Cheap open-source hosting"
   "FIREWORKS_API_KEY|Fireworks API|Open-source hosting"
   "AZURE_AI_API_KEY|Azure AI API|Already used by realmwatch chat/oracle"
-  "AWS_ACCESS_KEY_ID|AWS Bedrock|Standard AWS creds (also AWS_SECRET_ACCESS_KEY)"
+  # AWS Bedrock needs the full credential triplet (access-key + secret +
+  # region). Grouped here so the cloud-keys walk collects all three before
+  # moving on — earlier versions only collected AWS_ACCESS_KEY_ID, leaving
+  # the .env incomplete and Bedrock unusable.
+  "AWS_ACCESS_KEY_ID|AWS Bedrock Access Key|AWS access key (paired with secret + region below)"
+  "AWS_SECRET_ACCESS_KEY|AWS Bedrock Secret Key|AWS secret access key (pairs with AWS_ACCESS_KEY_ID)"
+  "AWS_REGION|AWS Bedrock Region|AWS region (e.g. us-west-2). Press Enter for us-west-2 default."
 )
 
 # Check if env var already set in .env file
@@ -677,11 +714,26 @@ section_cloud_keys() {
 
     # 3. Prompt user (masked)
     if [[ -n "$WIZARD_NONINT" || -n "$WIZARD_DRY" ]]; then
-      realm::status_warn "no value found, skipping (non-interactive)"
+      # Non-interactive mode: skip unless we have a sensible default.
+      # AWS_REGION is the one exception — JP's homelab is California, so
+      # us-west-2 is a reasonable unattended default.
+      if [[ "$env_var" == "AWS_REGION" ]]; then
+        env_append "$env_var" "us-west-2"
+      else
+        realm::status_warn "no value found, skipping (non-interactive)"
+      fi
       continue
     fi
-    printf '      %s(not in vault — paste key or press Enter to skip)%s\n' "$D" "$N"
-    val=$(wizard::prompt_secret "  Enter $env_var")
+    # AWS_REGION is not a secret — prompt unmasked with a default.
+    if [[ "$env_var" == "AWS_REGION" ]]; then
+      printf '      %s(not in vault — press Enter for us-west-2 default)%s\n' "$D" "$N"
+      printf '  Enter %s [us-west-2]: ' "$env_var"
+      read -r val || val=""
+      val="${val:-us-west-2}"
+    else
+      printf '      %s(not in vault — paste key or press Enter to skip)%s\n' "$D" "$N"
+      val=$(wizard::prompt_secret "  Enter $env_var")
+    fi
     if [[ -z "$val" ]]; then
       realm::status_warn "skipped — empty input"
       continue
@@ -713,6 +765,29 @@ section_commercial_cli() {
   for entry in "${tools[@]}"; do
     local tool hint
     IFS='|' read -r tool hint <<< "$entry"
+
+    # GitHub Copilot CLI ships as a `gh` extension (`gh copilot ...`), NOT a
+    # standalone `copilot` binary. The earlier `command -v copilot` check
+    # always failed even on systems where the extension was installed, so
+    # the wizard kept suggesting an install that wasn't needed. Detect both
+    # forms and fall through to "not installed" only when neither is found.
+    if [[ "$tool" == "copilot" ]]; then
+      if command -v gh >/dev/null 2>&1 \
+          && gh extension list 2>/dev/null | grep -q 'github/gh-copilot'; then
+        local ver
+        ver=$(timeout 3 gh copilot --version 2>/dev/null | head -1 || echo "gh extension")
+        realm::status_ok "gh copilot extension installed — $ver"
+      elif command -v copilot >/dev/null 2>&1; then
+        local ver
+        ver=$(timeout 3 copilot --version 2>/dev/null | head -1 || echo "version unknown")
+        realm::status_ok "copilot binary (standalone) installed — $ver"
+      else
+        realm::status_warn "copilot CLI not installed"
+        printf '      %sinstall hint: gh extension install github/gh-copilot%s\n' "$D" "$N"
+      fi
+      continue
+    fi
+
     if command -v "$tool" >/dev/null 2>&1; then
       local ver
       ver=$(timeout 3 "$tool" --version 2>/dev/null | head -1 || echo "version unknown")
@@ -783,18 +858,31 @@ install_goose() {
     return 0
   fi
   # Block's official one-liner. URL may change; this is best-effort.
-  curl -fsSL https://github.com/block/goose/releases/latest/download/download_cli.sh \
-    | bash \
-    && realm::status_ok "Goose installed" \
-    || realm::status_warn "Goose install failed — check https://block.github.io/goose"
+  if curl -fsSL https://github.com/block/goose/releases/latest/download/download_cli.sh | bash; then
+    realm::status_ok "Goose installed"
+    return 0
+  fi
+  # User opted-in but install failed. Don't silently mark the section
+  # completed — surface the failure so it shows up as a problem.
+  realm::status_warn "Goose install failed — check https://block.github.io/goose"
+  if [[ -n "$WIZARD_YES" || -n "$WIZARD_NONINT" ]]; then
+    # Unattended: propagate failure
+    return 1
+  fi
+  # Interactive: ask whether to soldier on or report failure
+  if wizard::confirm "Goose install failed. Continue with section anyway?"; then
+    return 0
+  fi
+  return 1
 }
 
 section_oss_agents() {
   realm::print_section "OSS AI agents"
-  install_opencode
-  install_cline
-  install_goose
-  return 0
+  local rc=0
+  install_opencode || rc=1
+  install_cline    || rc=1
+  install_goose    || rc=1
+  return "$rc"
 }
 
 # =========================================================================
