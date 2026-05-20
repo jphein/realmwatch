@@ -38,7 +38,8 @@ SECTIONS:
   5. cloud-keys       11 providers — Anthropic, OpenRouter, Groq, ...
   6. commercial-cli   Verify claude/gemini/codex/copilot/aider
   7. oss-agents       OpenCode (default), Cline, Goose                  [opt-in]
-  8. mcp-wire         Register realmwatch MCP server with each agent
+  8. mcp-wire         Register MCP servers (realmwatch + mempalace +
+                      speech-to-cli + cloud-chat-assistant) with each agent
   9. final-card       Next-steps card
 
 STATE:
@@ -888,185 +889,425 @@ section_oss_agents() {
 # =========================================================================
 # Section 8 — mcp-wire
 # =========================================================================
+#
+# Registers the full set of MCP servers in JP's homelab with every
+# installed AI agent. The registry is the source of truth — add a row to
+# MCP_REGISTRY and the wizard will offer it to every agent.
+#
+# Excluded from registry (with reason):
+#   familiar     — HTTP-only MCP at familiar.jphe.in/mcp; no stdio launcher
+#                  exists. Wire manually when an agent supports HTTP MCP.
+#   gnome-speaks — GNOME shell extension + D-Bus service; not an MCP
+#                  server.
+#   palace-daemon — Backend for the mempalace dispatcher; not exposed as
+#                  its own MCP server.
+#
+# Registry format: each row is "name|command|args" — `args` is a
+# space-joined argv (may include the launcher script path).
 
 MCP_LAUNCHER="$REALM_HOME/plugins/mcp/launcher.py"
 MCP_PYTHON="$REALM_HOME/.venv/bin/python3"
 
-wire_claude() {
-  if ! command -v claude >/dev/null 2>&1; then
-    realm::status_warn "claude not installed — skipping"
-    return 0
+# REAL_HOME / DISKS_HOST — resolved lazily by mcp_registry::build via the
+# realmwatch python (so we respect realm_text.real_home() and
+# realm_fleet.host_ip() per styleguide). Falls back to $HOME / "disks" if
+# the helper isn't usable on this host.
+REAL_HOME=""
+DISKS_HOST=""
+
+_mcp_resolve_helpers() {
+  # Source realm-python.sh once (idempotent). It sets $REALM_PYTHON.
+  if [[ -z "${REALM_PYTHON:-}" ]]; then
+    # shellcheck disable=SC1091
+    source "$REALM_HOME/scripts/lib/realm-python.sh" 2>/dev/null || true
   fi
-  if ! wizard::confirm_yes "Wire realmwatch MCP into Claude Code?"; then
-    realm::status_warn "claude: skipped"
-    return 0
+
+  # Try the venv python first; fall back to system python3.
+  local py="${REALM_PYTHON:-python3}"
+
+  REAL_HOME="$("$py" -c "
+import sys
+sys.path.insert(0, '$REALM_HOME')
+try:
+    from realm_text import real_home
+    print(real_home())
+except Exception:
+    import os; print(os.path.expanduser('~'))
+" 2>/dev/null)"
+  [[ -n "$REAL_HOME" ]] || REAL_HOME="$HOME"
+
+  DISKS_HOST="$("$py" -c "
+import sys
+sys.path.insert(0, '$REALM_HOME')
+try:
+    import realm_fleet
+    print(realm_fleet.host_ip('disks') or 'disks')
+except Exception:
+    print('disks')
+" 2>/dev/null)"
+  [[ -n "$DISKS_HOST" ]] || DISKS_HOST="disks"
+}
+
+# mcp_registry::build — populate MCP_REGISTRY based on what's installable
+# on this host. Called once at the top of section_mcp_wire after the
+# realmwatch-specific defaults are resolved.
+declare -a MCP_REGISTRY=()
+mcp_registry::build() {
+  MCP_REGISTRY=()
+  _mcp_resolve_helpers
+
+  # realmwatch — local repo, FastMCP stdio.
+  if [[ -f "$MCP_LAUNCHER" ]]; then
+    MCP_REGISTRY+=( "realmwatch|$MCP_PYTHON|$MCP_LAUNCHER" )
   fi
-  if [[ -n "$WIZARD_DRY" ]]; then
-    dry_say "claude mcp add realmwatch $MCP_LAUNCHER"
-    return 0
+
+  # mempalace — dispatcher form (proxies to palace-daemon at disks:8085).
+  # Launcher: memorypalace's plugin venv python + palace-daemon's
+  # mempalace-mcp.py client. We don't probe disks:8085 here — the wizard
+  # registers the launcher and `claude mcp list` will surface connect
+  # failures at runtime (graceful no-op per spec).
+  local mempal_py="$REAL_HOME/Projects/memorypalace/.claude-plugin/venv/bin/python"
+  local mempal_client="$REAL_HOME/Projects/palace-daemon/clients/mempalace-mcp.py"
+  if [[ -x "$mempal_py" && -f "$mempal_client" ]]; then
+    MCP_REGISTRY+=( "mempalace|$mempal_py|$mempal_client --daemon http://${DISKS_HOST}:8085" )
   fi
-  # `claude mcp add` is idempotent — re-adding the same name updates the entry.
-  if claude mcp add realmwatch "$MCP_LAUNCHER" 2>&1 | head -3; then
-    realm::status_ok "claude: wired"
-  else
-    realm::status_warn "claude mcp add returned non-zero (may already be registered)"
+
+  # speech-to-cli — single-file python MCP, no venv needed.
+  local speech_script="$REAL_HOME/Projects/speech-to-cli/mcp_speech.py"
+  if [[ -f "$speech_script" ]]; then
+    MCP_REGISTRY+=( "speech-to-cli|python3|$speech_script" )
+  fi
+
+  # cloud-chat-assistant — needs its own venv.
+  local cca_py="$REAL_HOME/Projects/cloud-chat-assistant/venv/bin/python3"
+  local cca_script="$REAL_HOME/Projects/cloud-chat-assistant/mcp_cloud_chat.py"
+  if [[ -x "$cca_py" && -f "$cca_script" ]]; then
+    MCP_REGISTRY+=( "cloud-chat-assistant|$cca_py|$cca_script" )
   fi
 }
 
-wire_opencode() {
-  if ! command -v opencode >/dev/null 2>&1; then
-    realm::status_warn "opencode not installed — skipping"
+# mcp_registry::parse <row> → sets MCP_NAME / MCP_CMD / MCP_ARGS (array).
+# MCP_ARGS is the canonical argv form used by every wire_<agent>_one
+# helper (no further word-splitting needed downstream). Registry rows are
+# authored in this file, so the space-joined source is safe to split here.
+# Returns 0 on success.
+MCP_NAME=""
+MCP_CMD=""
+declare -a MCP_ARGS=()
+mcp_registry::parse() {
+  local row="$1"
+  MCP_NAME="${row%%|*}"
+  local rest="${row#*|}"
+  MCP_CMD="${rest%%|*}"
+  local args_str="${rest#*|}"
+  # shellcheck disable=SC2206  # intentional word-split for argv
+  MCP_ARGS=( $args_str )
+}
+
+# mcp_registry::backup_config <path> — copy to <path>.bak-YYYYMMDDHHMMSS-NNN.
+# Seconds-resolution would collide when this is called several times in the
+# same second (every server × every agent does its own backup); appending
+# nanoseconds + $RANDOM keeps each restore point unique. No-op if the file
+# does not exist or we're in dry-run.
+mcp_registry::backup_config() {
+  local cfg="$1"
+  [[ -f "$cfg" ]] || return 0
+  local stamp
+  stamp="$(date +%Y%m%d%H%M%S)-$(date +%N 2>/dev/null || echo 000000000)-${RANDOM}"
+  [[ -n "$WIZARD_DRY" ]] && { dry_say "backup $cfg → $cfg.bak-$stamp"; return 0; }
+  cp -p "$cfg" "$cfg.bak-$stamp"
+}
+
+# ---------- Per-agent wire helpers ----------
+#
+# Each helper takes: <name> <command> <args-string>
+# Returns 0 on success or graceful skip (already-wired counts as success).
+
+wire_claude_one() {
+  # NOTE: reads global MCP_NAME / MCP_CMD / MCP_ARGS (populated by
+  # mcp_registry::parse). The array form avoids word-splitting hazards
+  # if any argv ever grows a space (gemini styleguide).
+  local name="$MCP_NAME" cmd="$MCP_CMD"
+  # idempotency: claude mcp list reports current name set.
+  if claude mcp list 2>/dev/null | grep -qE "^${name}: "; then
+    realm::status_ok "claude: $name already wired"
     return 0
   fi
-  local cfg="$HOME/.opencode/config.json"
-  if ! wizard::confirm_yes "Wire realmwatch MCP into OpenCode (~/.opencode/config.json)?"; then
-    realm::status_warn "opencode: skipped"
+  if ! wizard::confirm_yes "wire $name into Claude Code?"; then
+    realm::status_warn "claude: $name skipped"
     return 0
   fi
   if [[ -n "$WIZARD_DRY" ]]; then
-    dry_say "merge realmwatch MCP entry into $cfg"
+    dry_say "claude mcp add $name -- $cmd ${MCP_ARGS[*]+${MCP_ARGS[*]}}"
     return 0
   fi
+  # `claude mcp add <name> -- <cmd> <args...>` — the `--` separator stops
+  # claude from interpreting launcher args as flags to itself.
+  if claude mcp add "$name" -- "$cmd" "${MCP_ARGS[@]+"${MCP_ARGS[@]}"}" 2>&1 | head -3; then
+    realm::status_ok "claude: $name wired"
+  else
+    realm::status_warn "claude: $name — mcp add returned non-zero (may already be registered)"
+  fi
+}
+
+# _jq_write_merge <cfg> <root-key> <name> <cmd> <args-json-array>
+# Generic jq-merge for JSON configs that use {<root-key>: {<name>: {command, args}}}.
+_jq_write_merge() {
+  local cfg="$1" root="$2" name="$3" cmd="$4" args_json="$5"
   mkdir -p "$(dirname "$cfg")"
   local tmp
   tmp=$(mktemp)
   if [[ -f "$cfg" ]]; then
-    jq --arg cmd "$MCP_PYTHON" --arg arg "$MCP_LAUNCHER" '
-      .mcp_servers = (.mcp_servers // {}) |
-      .mcp_servers.realm = {command: $cmd, args: [$arg]}
-    ' "$cfg" > "$tmp" 2>/dev/null || echo '{}' > "$tmp"
+    jq --arg r "$root" --arg n "$name" --arg c "$cmd" --argjson a "$args_json" '
+      .[$r] = (.[$r] // {}) |
+      .[$r][$n] = {command: $c, args: $a}
+    ' "$cfg" > "$tmp" 2>/dev/null || jq -n --arg r "$root" --arg n "$name" --arg c "$cmd" --argjson a "$args_json" '
+      {($r): {($n): {command: $c, args: $a}}}
+    ' > "$tmp"
   else
-    jq -n --arg cmd "$MCP_PYTHON" --arg arg "$MCP_LAUNCHER" '{
-      mcp_servers: {realm: {command: $cmd, args: [$arg]}}
-    }' > "$tmp"
+    jq -n --arg r "$root" --arg n "$name" --arg c "$cmd" --argjson a "$args_json" '
+      {($r): {($n): {command: $c, args: $a}}}
+    ' > "$tmp"
   fi
   mv "$tmp" "$cfg"
-  realm::status_ok "opencode: wired ($cfg)"
 }
 
-wire_cline() {
-  if ! command -v cline >/dev/null 2>&1; then
-    realm::status_warn "cline not installed — skipping"
+# _config_has_name <cfg> <root-key> <name> — 0 if already present.
+_config_has_name() {
+  local cfg="$1" root="$2" name="$3"
+  [[ -f "$cfg" ]] || return 1
+  jq -e --arg r "$root" --arg n "$name" '.[$r][$n] // empty' "$cfg" >/dev/null 2>&1
+}
+
+wire_opencode_one() {
+  local name="$MCP_NAME" cmd="$MCP_CMD"
+  local cfg="$REAL_HOME/.opencode/config.json"
+
+  # Backward-compat: previous wizard versions wrote the realmwatch server
+  # under the bare key `mcp_servers.realm` (not `mcp_servers.realmwatch`).
+  # Existing user configs in the wild use that. Preserve the legacy key for
+  # realmwatch only; every other server uses its own name canonically.
+  local config_key="$name"
+  if [[ "$name" == "realmwatch" ]]; then
+    config_key="realm"
+  fi
+
+  # Idempotency: treat either the legacy or canonical key as "already wired"
+  # so we don't double-register on re-run.
+  if _config_has_name "$cfg" "mcp_servers" "$config_key"; then
+    realm::status_ok "opencode: $name already wired (key: $config_key)"
     return 0
   fi
-  # Cline reads MCP config from VS Code settings or .cline/mcp.json depending on platform.
-  # We write the per-user .cline/mcp.json which Cline CLI uses.
-  local cfg="$HOME/.cline/mcp.json"
-  if ! wizard::confirm_yes "Wire realmwatch MCP into Cline (~/.cline/mcp.json)?"; then
-    realm::status_warn "cline: skipped"
+  if [[ "$name" == "realmwatch" ]] && _config_has_name "$cfg" "mcp_servers" "realmwatch"; then
+    realm::status_ok "opencode: $name already wired"
+    return 0
+  fi
+  if ! wizard::confirm_yes "wire $name into OpenCode?"; then
+    realm::status_warn "opencode: $name skipped"
     return 0
   fi
   if [[ -n "$WIZARD_DRY" ]]; then
-    dry_say "merge realmwatch MCP entry into $cfg"
+    dry_say "merge $name into $cfg (key: $config_key)"
     return 0
   fi
-  mkdir -p "$(dirname "$cfg")"
-  local tmp
-  tmp=$(mktemp)
-  if [[ -f "$cfg" ]]; then
-    jq --arg cmd "$MCP_PYTHON" --arg arg "$MCP_LAUNCHER" '
-      .mcpServers = (.mcpServers // {}) |
-      .mcpServers.realm = {command: $cmd, args: [$arg]}
-    ' "$cfg" > "$tmp" 2>/dev/null || echo '{}' > "$tmp"
-  else
-    jq -n --arg cmd "$MCP_PYTHON" --arg arg "$MCP_LAUNCHER" '{
-      mcpServers: {realm: {command: $cmd, args: [$arg]}}
-    }' > "$tmp"
-  fi
-  mv "$tmp" "$cfg"
-  realm::status_ok "cline: wired ($cfg)"
+  mcp_registry::backup_config "$cfg"
+  # jq --args + $ARGS.positional preserves argv with embedded whitespace.
+  local args_json
+  args_json=$(jq -nc '$ARGS.positional' --args "${MCP_ARGS[@]+"${MCP_ARGS[@]}"}")
+  _jq_write_merge "$cfg" "mcp_servers" "$config_key" "$cmd" "$args_json"
+  realm::status_ok "opencode: $name wired (key: $config_key)"
 }
 
-wire_goose() {
-  if ! command -v goose >/dev/null 2>&1; then
-    realm::status_warn "goose not installed — skipping"
+wire_cline_one() {
+  local name="$MCP_NAME" cmd="$MCP_CMD"
+  local cfg="$REAL_HOME/.cline/mcp.json"
+  if _config_has_name "$cfg" "mcpServers" "$name"; then
+    realm::status_ok "cline: $name already wired"
     return 0
   fi
-  # Goose reads ~/.config/goose/config.yaml. We append an mcp entry.
-  local cfg="$HOME/.config/goose/config.yaml"
-  if ! wizard::confirm_yes "Print Goose MCP setup hint? (manual — Goose YAML format)"; then
-    realm::status_warn "goose: skipped"
+  if ! wizard::confirm_yes "wire $name into Cline?"; then
+    realm::status_warn "cline: $name skipped"
     return 0
   fi
+  if [[ -n "$WIZARD_DRY" ]]; then
+    dry_say "merge $name into $cfg"
+    return 0
+  fi
+  mcp_registry::backup_config "$cfg"
+  local args_json
+  args_json=$(jq -nc '$ARGS.positional' --args "${MCP_ARGS[@]+"${MCP_ARGS[@]}"}")
+  _jq_write_merge "$cfg" "mcpServers" "$name" "$cmd" "$args_json"
+  realm::status_ok "cline: $name wired"
+}
+
+wire_gemini_one() {
+  local name="$MCP_NAME" cmd="$MCP_CMD"
+  # Gemini CLI uses ~/.gemini/settings.json (single file holds account,
+  # model, and mcpServers). Verified live on this workstation.
+  local cfg="$REAL_HOME/.gemini/settings.json"
+  if _config_has_name "$cfg" "mcpServers" "$name"; then
+    realm::status_ok "gemini: $name already wired"
+    return 0
+  fi
+  if ! wizard::confirm_yes "wire $name into Gemini CLI?"; then
+    realm::status_warn "gemini: $name skipped"
+    return 0
+  fi
+  if [[ -n "$WIZARD_DRY" ]]; then
+    dry_say "merge $name into $cfg"
+    return 0
+  fi
+  mcp_registry::backup_config "$cfg"
+  local args_json
+  args_json=$(jq -nc '$ARGS.positional' --args "${MCP_ARGS[@]+"${MCP_ARGS[@]}"}")
+  _jq_write_merge "$cfg" "mcpServers" "$name" "$cmd" "$args_json"
+  realm::status_ok "gemini: $name wired"
+}
+
+wire_goose_one() {
+  local name="$MCP_NAME" cmd="$MCP_CMD"
+  # Goose YAML — print hint only (schema varies by version and we don't
+  # want to risk corrupting a YAML config with bash text munging).
+  if ! wizard::confirm_yes "print Goose hint for $name? (manual YAML edit)"; then
+    realm::status_warn "goose: $name skipped"
+    return 0
+  fi
+  local cfg="$REAL_HOME/.config/goose/config.yaml"
   printf '  %sAdd to %s:%s\n' "$D" "$cfg" "$N"
   printf '    extensions:\n'
-  printf '      realm:\n'
+  printf '      %s:\n' "$name"
   printf '        type: stdio\n'
-  printf '        cmd: %s\n' "$MCP_PYTHON"
-  printf '        args:\n'
-  printf '          - %s\n' "$MCP_LAUNCHER"
-  realm::status_ok "goose: hint printed (manual step — Goose config schema varies by version)"
+  printf '        cmd: %s\n' "$cmd"
+  if [[ ${#MCP_ARGS[@]} -gt 0 ]]; then
+    printf '        args:\n'
+    local a
+    for a in "${MCP_ARGS[@]}"; do
+      printf '          - %s\n' "$a"
+    done
+  fi
+  realm::status_ok "goose: $name hint printed"
 }
 
-wire_gemini() {
-  if ! command -v gemini >/dev/null 2>&1; then
-    realm::status_warn "gemini not installed — skipping"
+wire_codex_one() {
+  local name="$MCP_NAME" cmd="$MCP_CMD"
+  # Codex TOML — print hint only. Bash should not edit TOML structure.
+  if ! wizard::confirm_yes "print Codex hint for $name? (manual TOML edit)"; then
+    realm::status_warn "codex: $name skipped"
     return 0
   fi
-  local cfg="$HOME/.gemini/mcp.json"
-  if ! wizard::confirm_yes "Wire realmwatch MCP into Gemini CLI?"; then
-    realm::status_warn "gemini: skipped"
+  local cfg="$REAL_HOME/.codex/config.toml"
+  printf '  %sAdd to %s:%s\n' "$D" "$cfg" "$N"
+  printf '    [mcp_servers.%s]\n' "$name"
+  printf '    command = "%s"\n' "$cmd"
+  if [[ ${#MCP_ARGS[@]} -gt 0 ]]; then
+    # jq emits a valid JSON array literal — same syntax as TOML for
+    # string arrays — straight from the argv array (handles whitespace).
+    printf '    args = %s\n' "$(jq -nc '$ARGS.positional' --args "${MCP_ARGS[@]}")"
+  fi
+  realm::status_ok "codex: $name hint printed"
+}
+
+# mcp_registry::smoke_test — run `claude mcp list` if available and
+# print which registry names connected. Non-fatal.
+mcp_registry::smoke_test() {
+  if ! command -v claude >/dev/null 2>&1; then
     return 0
   fi
   if [[ -n "$WIZARD_DRY" ]]; then
-    dry_say "merge realmwatch MCP entry into $cfg"
+    dry_say "smoke-test: claude mcp list (would verify registry names connect)"
     return 0
   fi
-  mkdir -p "$(dirname "$cfg")"
-  local tmp
-  tmp=$(mktemp)
-  if [[ -f "$cfg" ]]; then
-    jq --arg cmd "$MCP_PYTHON" --arg arg "$MCP_LAUNCHER" '
-      .mcpServers = (.mcpServers // {}) |
-      .mcpServers.realm = {command: $cmd, args: [$arg]}
-    ' "$cfg" > "$tmp" 2>/dev/null || echo '{}' > "$tmp"
-  else
-    jq -n --arg cmd "$MCP_PYTHON" --arg arg "$MCP_LAUNCHER" '{
-      mcpServers: {realm: {command: $cmd, args: [$arg]}}
-    }' > "$tmp"
-  fi
-  mv "$tmp" "$cfg"
-  realm::status_ok "gemini: wired ($cfg)"
-}
-
-wire_codex() {
-  if ! command -v codex >/dev/null 2>&1; then
-    realm::status_warn "codex not installed — skipping"
-    return 0
-  fi
-  local cfg="$HOME/.codex/config.toml"
-  if ! wizard::confirm_yes "Print Codex MCP setup hint? (TOML)"; then
-    realm::status_warn "codex: skipped"
-    return 0
-  fi
-  printf '  %sAdd to %s:%s\n' "$D" "$cfg" "$N"
-  printf '    [mcp_servers.realm]\n'
-  printf '    command = "%s"\n' "$MCP_PYTHON"
-  printf '    args = ["%s"]\n' "$MCP_LAUNCHER"
-  realm::status_ok "codex: hint printed (manual step)"
+  printf '\n  %sSmoke test — claude mcp list:%s\n' "$D" "$N"
+  local out
+  out=$(claude mcp list 2>&1 || true)
+  local row name
+  for row in "${MCP_REGISTRY[@]}"; do
+    name="${row%%|*}"
+    if echo "$out" | grep -qE "^${name}: .* ✓ Connected"; then
+      realm::status_ok "claude reports: $name connected"
+    elif echo "$out" | grep -qE "^${name}: "; then
+      realm::status_warn "claude reports: $name registered but not connected"
+    else
+      realm::status_warn "claude reports: $name not present"
+    fi
+  done
 }
 
 section_mcp_wire() {
   realm::print_section "Wire MCP servers"
 
+  # Hard dep: every JSON-config wirer (opencode/cline/gemini) uses jq for
+  # the merge, and codex's TOML hint uses it for the args literal. Fail
+  # fast with a clear pointer rather than letting `set -e` kill us mid-loop
+  # if the user skipped prereqs.
+  command -v jq >/dev/null 2>&1 || \
+    realm::die "jq required for mcp-wire (run: realm wizard --section prereqs)" 2
+
+  # Resolve realmwatch defaults first (other registry entries are
+  # workstation-wide, but realmwatch is local-repo-relative).
   if [[ ! -f "$MCP_LAUNCHER" ]]; then
-    realm::status_fail "MCP launcher not found at $MCP_LAUNCHER"
+    realm::status_fail "realmwatch MCP launcher not found at $MCP_LAUNCHER"
     return 1
   fi
   if [[ ! -x "$MCP_PYTHON" ]]; then
-    realm::status_warn "$MCP_PYTHON not found — using system python3 in wired configs"
+    realm::status_warn "$MCP_PYTHON not found — using system python3 for realmwatch"
     MCP_PYTHON="$(command -v python3 || echo python3)"
   fi
-  realm::status_ok "MCP launcher: $MCP_LAUNCHER"
-  realm::status_ok "Python:       $MCP_PYTHON"
+
+  mcp_registry::build
+
+  if [[ ${#MCP_REGISTRY[@]} -eq 0 ]]; then
+    realm::status_fail "MCP registry is empty — nothing to wire"
+    return 1
+  fi
+
+  realm::status_ok "MCP registry has ${#MCP_REGISTRY[@]} server(s):"
+  local row name
+  for row in "${MCP_REGISTRY[@]}"; do
+    name="${row%%|*}"
+    printf '    %s•%s %s\n' "$C" "$N" "$name"
+  done
   printf '\n'
 
-  wire_claude
-  wire_opencode
-  wire_cline
-  wire_goose
-  wire_gemini
-  wire_codex
+  # Per-agent installed detection — only loop the agents that exist.
+  local -a AGENTS=()
+  command -v claude   >/dev/null 2>&1 && AGENTS+=( claude )
+  command -v opencode >/dev/null 2>&1 && AGENTS+=( opencode )
+  command -v cline    >/dev/null 2>&1 && AGENTS+=( cline )
+  command -v goose    >/dev/null 2>&1 && AGENTS+=( goose )
+  command -v gemini   >/dev/null 2>&1 && AGENTS+=( gemini )
+  command -v codex    >/dev/null 2>&1 && AGENTS+=( codex )
+
+  if [[ ${#AGENTS[@]} -eq 0 ]]; then
+    realm::status_warn "no AI agent CLIs detected — skipping mcp-wire"
+    return 0
+  fi
+
+  realm::status_ok "agents present: ${AGENTS[*]}"
+  printf '\n'
+
+  # (agent × server) loop. Each pair is independently confirmable so the
+  # operator can pick exactly which MCP servers go into which agent.
+  # mcp_registry::parse populates the globals MCP_NAME / MCP_CMD / MCP_ARGS
+  # that each wire_<agent>_one helper reads. Passing argv as a space-joined
+  # string and re-splitting it would lose any embedded whitespace.
+  local agent
+  for agent in "${AGENTS[@]}"; do
+    printf '\n  %s── %s ──%s\n' "$D" "$agent" "$N"
+    for row in "${MCP_REGISTRY[@]}"; do
+      mcp_registry::parse "$row"
+      case "$agent" in
+        claude)   wire_claude_one   ;;
+        opencode) wire_opencode_one ;;
+        cline)    wire_cline_one    ;;
+        goose)    wire_goose_one    ;;
+        gemini)   wire_gemini_one   ;;
+        codex)    wire_codex_one    ;;
+      esac
+    done
+  done
+
+  mcp_registry::smoke_test
 
   return 0
 }
@@ -1093,8 +1334,16 @@ section_final_card() {
   printf '  %sWizard state:%s   %s\n' "$D" "$N" "$WIZARD_STATE_FILE"
   printf '  %sRe-run section:%s realm wizard --section <name>\n' "$D" "$N"
   printf '\n'
-  printf '  %sConnected MCP server for AI agents:%s\n' "$D" "$N"
-  printf '    %s%s%s\n' "$C" "$MCP_LAUNCHER" "$N"
+  printf '  %sConnected MCP servers for AI agents:%s\n' "$D" "$N"
+  if [[ ${#MCP_REGISTRY[@]} -gt 0 ]]; then
+    local row name
+    for row in "${MCP_REGISTRY[@]}"; do
+      name="${row%%|*}"
+      printf '    %s•%s %s\n' "$C" "$N" "$name"
+    done
+  else
+    printf '    %s%s%s\n' "$C" "$MCP_LAUNCHER" "$N"
+  fi
   printf '\n'
   return 0
 }
