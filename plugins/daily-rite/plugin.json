@@ -2,7 +2,7 @@
   "name": "daily-rite",
   "version": "1.0.0",
   "type": "integrated",
-  "description": "Morning briefing for the Watcher — queries the os.realm.watch game.db for overnight events, quests, and player XP and announces a summary via realm event, gnome-speaks, and notify-send.",
+  "description": "Morning briefing for the Watcher — queries the game.db sidecar (~/.realmwatch/game.db) for overnight events, quests, and player XP and announces a summary via realm event, gnome-speaks, and notify-send.",
   "fantasy_name": "The Watcher's Daily Rite",
   "icon": "🌅",
   "priority": 80,
