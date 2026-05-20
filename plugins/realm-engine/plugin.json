@@ -1,0 +1,14 @@
+{
+  "name": "realm-engine",
+  "version": "0.1.0",
+  "type": "integrated",
+  "description": "Core game state — events, entities, players. Owns the ~/.realmwatch/game.db sidecar SQLite database. Migrated from os.realm.watch/servers/realm_engine.",
+  "fantasy_name": "The Realm Engine",
+  "icon": "⚙️",
+  "priority": 70,
+  "depends_on": [],
+  "python": {
+    "module": "plugin",
+    "entry": "setup"
+  }
+}
