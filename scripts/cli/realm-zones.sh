@@ -99,9 +99,13 @@ case "$sub" in
   show)
     [[ $# -ge 1 ]] || realm::die "missing zone name (e.g. realm zones show lan)" 2
     target="$1"
-    match=$("$REALM_PYTHON" - "$target" <<'PY'
+    match=$("$REALM_PYTHON" - "$target" <<'PY' || true
 import json, sys
-import realm_zones
+try:
+    import realm_zones
+except Exception as e:
+    print(f"error: realm_zones load failed: {e}", file=sys.stderr)
+    sys.exit(3)
 e = realm_zones.resolve(sys.argv[1])
 if not e:
     sys.exit(0)
@@ -145,6 +149,7 @@ PY
     # uci commands, SSHes to gatekeeper if --commit, updates yaml files, and
     # rolls back on failure.
     "$REALM_PYTHON" - "$old_name" "$new_name" "$reason" "$commit" "$host_override" "$no_vlans_update" <<'PY' || exit $?
+import re
 import sys
 import subprocess
 import shlex
@@ -157,6 +162,19 @@ import realm_vlans
 old_name, new_name, reason, commit_str, host_override, no_vlans_str = sys.argv[1:7]
 commit = commit_str == "1"
 no_vlans_update = no_vlans_str == "1"
+
+# Charset whitelist — fw4 zone names are bare identifiers. Reject anything
+# else BEFORE building any shell command (defense against quote/metachar
+# injection into the remote ssh command line).
+_NAME_RE = re.compile(r"^[A-Za-z0-9_]+$")
+for label, val in [("old_name", old_name), ("new_name", new_name)]:
+    if not _NAME_RE.fullmatch(val):
+        print(
+            f"error: {label} {val!r} contains characters outside [A-Za-z0-9_]; "
+            f"fw4 zone names must be bare identifiers",
+            file=sys.stderr,
+        )
+        sys.exit(2)
 
 cat = realm_zones.catalog()
 if cat is None:
@@ -188,10 +206,16 @@ except subprocess.CalledProcessError as e:
     print(f"error: ssh to {host} failed: {e.stderr.strip()}", file=sys.stderr)
     sys.exit(3)
 
-# A reference looks like firewall.@zone[N].name='lan' or firewall.@forwarding[N].src='lan'.
-# Mutations apply to the right-hand-side of these assignments where the value matches old_name.
-import re
-ref_re = re.compile(r"^(firewall\.@\w+\[\d+\]\.(?:name|src|dest|device|network))='([^']*)'$", re.M)
+# A reference looks like one of:
+#   firewall.@zone[N].name='lan'      (anonymous section, fw4 default style)
+#   firewall.lan.name='lan'           (named section, uci style)
+#   firewall.@forwarding[N].src='lan' (anonymous forwarding/rule/redirect)
+# Section identifier is either `@<type>[N]` or a bare name. Field set is
+# limited to the ones that actually carry zone references.
+ref_re = re.compile(
+    r"^(firewall\.(?:@\w+\[\d+\]|[A-Za-z0-9_]+)\.(?:name|src|dest|device|network))='([^']*)'$",
+    re.M,
+)
 matches = [(m.group(1), m.group(2)) for m in ref_re.finditer(uci_out)]
 # We rename ONLY name/src/dest references that equal old_name. `network` and
 # `device` happen to reference UCI network interfaces which share names with
@@ -203,24 +227,34 @@ if not to_rename:
     print(f"error: no firewall references to {old_name!r} found on {host}", file=sys.stderr)
     sys.exit(1)
 
+# Derive a safe label for backup filenames from the actual host (not a
+# hardcoded "gatekeeper"). Strip anything outside [A-Za-z0-9_-] so the path
+# is shell-safe regardless of dot/colon characters in host strings.
+host_label = re.sub(r"[^A-Za-z0-9_-]", "_", host) or "host"
+
 print(f"plan: rename fw4 zone {old_name!r} → {new_name!r} on host {host}")
 print(f"  reason: {reason or '(none provided)'}")
 print(f"  references to update ({len(to_rename)}):")
 for key, _ in to_rename:
-    print(f"    uci set {key}='{new_name}'")
+    print(f"    uci set {key}={shlex.quote(new_name)}")
 print("  uci commit firewall")
 print("  fw4 check && fw4 reload")
 print(f"  zones.yaml: prior_names entry for {old_name!r}")
 if not no_vlans_update:
     vcat = realm_vlans.catalog()
-    affected = [e.vlan_id for e in (vcat.entries if vcat else []) if e.__dict__.get("zone") == old_name or getattr(e, "zone", None) == old_name]
+    affected = [
+        e.vlan_id
+        for e in (vcat.entries if vcat else [])
+        if getattr(e, "zone", None) == old_name
+    ]
     if affected:
         print(f"  vlans.yaml: update VLAN(s) {affected} zone {old_name!r} → {new_name!r}")
     else:
         print("  vlans.yaml: no entries reference this zone")
 
-backup_name = f"/tmp/gatekeeper-firewall-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}.conf"
-print(f"  backup: gatekeeper saves uci export to {backup_name} (copied home if --commit)")
+ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+backup_name = f"/tmp/{host_label}-firewall-{ts}.conf"
+print(f"  backup: {host} saves uci export to {backup_name} (copied home if --commit)")
 
 if not commit:
     print()
@@ -231,17 +265,21 @@ if not commit:
 print()
 print("--- committing ---")
 
-# 1. Backup uci on gatekeeper.
+# 1. Backup uci on the firewall.
 print(f"[1/5] backup uci → {backup_name}")
 subprocess.run(["ssh", f"root@{host}", f"uci export firewall > {shlex.quote(backup_name)}"], check=True)
-local_backup = Path(f"/tmp/gatekeeper-firewall-backup-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}.conf")
+local_backup = Path(f"/tmp/{host_label}-firewall-backup-{ts}.conf")
 subprocess.run(["scp", f"root@{host}:{backup_name}", str(local_backup)], check=True, capture_output=True)
 print(f"      local copy: {local_backup}")
 
-# 2. Apply uci set + commit.
+# 2. Apply uci set + commit. We've already validated old_name and new_name
+# against [A-Za-z0-9_]+ at the top of this script, AND we shlex.quote both
+# the key and the value below — belt-and-suspenders defense against shell
+# injection on the remote side.
 print(f"[2/5] uci set every reference + commit")
+quoted_new = shlex.quote(new_name)
 set_cmds = " && ".join(
-    f"uci set {shlex.quote(key)}='{new_name}'" for key, _ in to_rename
+    f"uci set {shlex.quote(key)}={quoted_new}" for key, _ in to_rename
 )
 try:
     subprocess.run(

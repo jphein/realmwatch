@@ -80,7 +80,7 @@ def resolve(name: str) -> Optional["ZoneEntry"]:
     return cat.resolve(name) if cat else None
 
 
-def all_entries() -> list:
+def all_entries() -> list["ZoneEntry"]:
     """Return all ZoneEntry objects in catalog order, or [] if unavailable."""
     cat = _catalog()
     if cat is None:
