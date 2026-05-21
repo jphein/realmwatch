@@ -1,0 +1,14 @@
+{
+  "name": "wave",
+  "version": "0.1.0",
+  "type": "integrated",
+  "description": "Wave Terminal block helpers — adaptive TUIs for realm bandwidth/palace/daemon, plus a one-shot installer that spawns them as named Wave blocks.",
+  "fantasy_name": "Tide Singers",
+  "icon": "\ud83c\udf0a",
+
+  "depends_on": [],
+
+  "cli": {
+    "summary": "Wave Terminal blocks — adaptive monitor TUIs for the realm"
+  }
+}

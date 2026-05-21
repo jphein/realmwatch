@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+# realm wave — Wave Terminal block helpers.
+# This file is invoked as `realm wave <verb> [args...]` via the realm
+# dispatcher's plugin Method-A path (plugins/wave/cli, executable).
+set -euo pipefail
+
+REALM_HELP_SUMMARY="Wave Terminal blocks — adaptive monitor TUIs for the realm"
+
+_self="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || realpath "${BASH_SOURCE[0]}")"
+_plugin_dir="$(cd "$(dirname "$_self")" && pwd)"
+_repo_dir="$(cd "$_plugin_dir/../.." && pwd)"
+
+# Pick a python — repo .venv first (matches scripts/realm), fallback to system.
+if [[ -x "$_repo_dir/.venv/bin/python3" ]]; then
+    PY="$_repo_dir/.venv/bin/python3"
+else
+    PY="$(command -v python3)"
+fi
+
+# Map verb name → script.
+declare -A TUIS=(
+    [bandwidth]="$_plugin_dir/tuis/bandwidth.py"
+    [palace]="$_plugin_dir/tuis/palace_status.py"
+    [daemon]="$_plugin_dir/tuis/daemon_log.py"
+)
+
+# Display titles used when spawning Wave blocks.
+declare -A TITLES=(
+    [bandwidth]="WAN bandwidth (gatekeeper br-lan.38)"
+    [palace]="mempalace status"
+    [daemon]="daemon journal (disks)"
+)
+
+# Short summaries for `realm wave list`.
+declare -A SUMMARIES=(
+    [bandwidth]="Live WAN bandwidth — adaptive sparklines, 30s long-window pair"
+    [palace]="palace-daemon health + drawer/wing counts via MCP"
+    [daemon]="tail palace-daemon journal on disks (auto-reconnect)"
+)
+
+usage() {
+    cat <<EOF
+realm wave — Wave Terminal blocks · adaptive monitor TUIs
+
+USAGE
+  realm wave <verb> [args...]
+
+VERBS
+  bandwidth                    Live WAN bandwidth TUI
+  palace                       palace-daemon status TUI
+  daemon                       tail palace-daemon journal on disks
+  list                         List available TUIs
+  install [name]               Spawn the TUI(s) as Wave blocks via wsh
+                               (no name → spawn all)
+
+ENVIRONMENT
+  PALACE_DAEMON_URL            Default http://disks.jphe.in:8085
+  PALACE_API_KEY               Required for palace TUI; auto-fetched from
+                               disks (~/.config/palace-daemon/env) if unset
+  PALACE_DAEMON_HOST           Default jp@disks.jphe.in (used by daemon TUI)
+  PALACE_DAEMON_UNIT           Default palace-daemon (used by daemon TUI)
+
+EXAMPLES
+  realm wave bandwidth                       # run TUI in current terminal
+  realm wave install                         # spawn all 3 as Wave blocks
+  realm wave install bandwidth               # spawn just the bandwidth block
+EOF
+}
+
+cmd_list() {
+    printf '%-12s  %s\n' "VERB" "DESCRIPTION"
+    for name in "${!TUIS[@]}"; do
+        printf '%-12s  %s\n' "$name" "${SUMMARIES[$name]}"
+    done | sort
+}
+
+cmd_run() {
+    local name="$1"; shift || true
+    local script="${TUIS[$name]:-}"
+    if [[ -z "$script" || ! -f "$script" ]]; then
+        echo "realm wave: unknown TUI '$name'. Try: realm wave list" >&2
+        return 1
+    fi
+    exec "$PY" "$script" "$@"
+}
+
+cmd_install() {
+    local target="${1:-}"
+
+    if ! command -v wsh >/dev/null 2>&1; then
+        echo "realm wave install: wsh not found on PATH" >&2
+        echo "Install Wave Terminal: https://www.waveterm.dev/" >&2
+        return 1
+    fi
+    if [[ -z "${WAVETERM_TABID:-}" ]]; then
+        echo "Warning: not inside a Wave terminal block; spawned blocks will" >&2
+        echo "land in the current Wave window's active tab." >&2
+    fi
+
+    local names
+    if [[ -n "$target" ]]; then
+        if [[ -z "${TUIS[$target]:-}" ]]; then
+            echo "realm wave install: unknown TUI '$target'" >&2
+            return 1
+        fi
+        names=("$target")
+    else
+        names=(daemon palace bandwidth)  # spawn order matters for layout
+    fi
+
+    for n in "${names[@]}"; do
+        local cmd="realm wave $n"
+        local title="${TITLES[$n]}"
+        local out
+        out=$(wsh run -c "$cmd" 2>&1) || {
+            echo "wsh run failed for $n:" >&2
+            echo "  $out" >&2
+            continue
+        }
+        # Output is "run block created: block:<uuid>"
+        local id="${out#*block:}"
+        id="${id//$'\n'/}"
+        if [[ -n "$id" ]]; then
+            wsh setmeta -b "$id" "frame:title=$title" >/dev/null 2>&1 || true
+            printf '✓ spawned %-12s  block:%s  "%s"\n' "$n" "$id" "$title"
+        else
+            printf '? %s — could not parse block id from: %s\n' "$n" "$out"
+        fi
+    done
+}
+
+verb="${1:-}"
+case "$verb" in
+    ""|-h|--help|help)
+        usage; exit 0 ;;
+    list)
+        cmd_list ;;
+    install)
+        shift; cmd_install "$@" ;;
+    bandwidth|palace|daemon)
+        cmd_run "$verb" "${@:2}" ;;
+    *)
+        echo "realm wave: unknown verb '$verb'" >&2
+        echo "Try: realm wave help" >&2
+        exit 1 ;;
+esac
