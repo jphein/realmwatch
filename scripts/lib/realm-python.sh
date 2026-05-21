@@ -29,5 +29,16 @@ else
   echo "      run \`make install\` in $REALM_HOME to set up the managed venv" >&2
 fi
 
+# Put REALM_HOME on PYTHONPATH so top-level modules (realm_zones, realm_vlans,
+# realm_fleet, firewall_parser, ap_scanner, ...) are importable from the venv.
+# pyproject.toml marks the repo as `package = false`, so there is no editable
+# install — this is how callers get the local modules onto sys.path. Prepend
+# rather than append so repo modules win over any same-named PyPI package.
+if [[ -n "${PYTHONPATH:-}" ]]; then
+  PYTHONPATH="$REALM_HOME:$PYTHONPATH"
+else
+  PYTHONPATH="$REALM_HOME"
+fi
+
 # Export so subshells (heredocs, $(...)) see it
-export REALM_HOME REALM_PYTHON REALM_PYTHON_OK
+export REALM_HOME REALM_PYTHON REALM_PYTHON_OK PYTHONPATH
