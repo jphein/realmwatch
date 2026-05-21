@@ -155,9 +155,9 @@ echo "BACKUP network:  $NET_BACKUP"
 
 # Arm setsid rollback BEFORE writing changes
 setsid sh -c "sleep 120
-[ -f $DISARM ] && exit 0
-cp $FW_BACKUP /etc/config/firewall
-cp $NET_BACKUP /etc/config/network
+[ -f \"$DISARM\" ] && exit 0
+cp \"$FW_BACKUP\" /etc/config/firewall
+cp \"$NET_BACKUP\" /etc/config/network
 fw4 reload >/dev/null 2>&1 || /etc/init.d/firewall reload >/dev/null 2>&1
 /etc/init.d/network reload >/dev/null 2>&1" </dev/null >/dev/null 2>&1 &
 echo "ARMED rollback (disarm: $DISARM)"
@@ -193,6 +193,7 @@ uci commit firewall
 uci commit network
 
 fw4 reload >/dev/null 2>&1 || /etc/init.d/firewall reload >/dev/null 2>&1
+/etc/init.d/network reload >/dev/null 2>&1
 
 echo "COMMITTED disarm-with: touch $DISARM"
 echo "DISARM=$DISARM"
@@ -207,7 +208,7 @@ applied=0
 ok=0
 unreach=0
 
-for name in $(echo "${!SCAN[@]}" | tr ' ' '\n' | sort); do
+for name in $(printf '%s\n' "${!SCAN[@]}" | sort); do
   ip="${SCAN[$name]}"
   echo -e "${B}── $name ($ip) ──${N}"
 
@@ -218,7 +219,8 @@ for name in $(echo "${!SCAN[@]}" | tr ' ' '\n' | sort); do
   fi
 
   mode=$([ $COMMIT -eq 1 ] && echo "commit" || echo "dryrun")
-  out=$(ssh -o ConnectTimeout=8 "root@$ip" "cat > /tmp/std.sh && sh /tmp/std.sh $mode" <<<"$REMOTE_SCRIPT" 2>&1) || true
+  # Pipe the remote script straight into the AP's shell (no /tmp artifact).
+  out=$(ssh -o ConnectTimeout=8 "root@$ip" "sh -s -- $mode" <<<"$REMOTE_SCRIPT" 2>&1) || true
 
   echo "$out" | sed 's/^/  /'
 
@@ -226,13 +228,27 @@ for name in $(echo "${!SCAN[@]}" | tr ' ' '\n' | sort); do
     *"already-compliant"*) ok=$((ok+1)) ;;
     *"COMMITTED"*)
       applied=$((applied+1))
-      # Verify + disarm
+      # Verify + disarm. The remote ran network+firewall reload — give it time
+      # before SSH-probing, otherwise we report a false negative on slow APs.
       disarm=$(echo "$out" | awk -F= '/^DISARM=/{print $2}')
-      sleep 2
-      if ssh -o ConnectTimeout=5 "root@$ip" "touch $disarm" 2>/dev/null; then
+      if [[ -z "$disarm" ]]; then
+        echo -e "  ${R}✗ remote script didn't emit DISARM path — rollback will fire in <120s${N}"
+        fail=$((fail+1))
+        continue
+      fi
+      # Retry-probe SSH up to ~25s before giving up
+      verified=0
+      for try in 1 2 3 4 5; do
+        sleep 5
+        if ssh -o ConnectTimeout=4 -o BatchMode=yes "root@$ip" "touch \"$disarm\"" 2>/dev/null; then
+          verified=1
+          break
+        fi
+      done
+      if [[ "$verified" -eq 1 ]]; then
         echo -e "  ${G}✓ verified + disarmed${N}"
       else
-        echo -e "  ${R}✗ SSH dropped after commit — rollback will fire in <120s${N}"
+        echo -e "  ${R}✗ SSH didn't recover within 25s — rollback will fire${N}"
         fail=$((fail+1))
       fi
       ;;
