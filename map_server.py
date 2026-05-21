@@ -1535,21 +1535,61 @@ def _h_post_settings(req, params):
 def _h_post_wol(req, params):
     try:
         data = req.json()
-        mac = data.get("mac", "").replace(":", "").replace("-", "").lower()
-        if len(mac) != 12:
-            req.respond({"error": "Invalid MAC address"}, 400)
+        # Accept `target` (the CLI's payload field) OR legacy `mac`. The
+        # target may be a raw MAC, a fleet current_name, a prior_name, or
+        # a fleet_id; we try MAC parse first and fall back to fleet lookup.
+        raw_target = (data.get("target") or data.get("mac") or "").strip()
+        if not raw_target:
+            req.respond({"error": "missing 'target' (mac or node id)"}, 400)
             return None
+
+        def _normalize_mac(s: str) -> str | None:
+            n = s.replace(":", "").replace("-", "").lower()
+            if len(n) == 12 and all(c in "0123456789abcdef" for c in n):
+                return n
+            return None
+
+        mac = _normalize_mac(raw_target)
+        directed_ip = data.get("ip")
+        resolved_name = None
+        if mac is None:
+            # Treat as a fleet identifier — resolve to MAC via the catalog.
+            import realm_fleet
+            entry = realm_fleet.host(raw_target)
+            if entry is None:
+                req.respond({"error": f"{raw_target!r} is not a valid MAC and not a known fleet host"}, 400)
+                return None
+            if not entry.fleet_id.startswith("mac:"):
+                req.respond({"error": f"fleet entry {entry.current_name!r} has a non-MAC fleet_id ({entry.fleet_id!r}); WoL needs a MAC"}, 400)
+                return None
+            mac = _normalize_mac(entry.fleet_id.split(":", 1)[1])
+            if mac is None:
+                req.respond({"error": f"fleet entry {entry.current_name!r} has malformed MAC in fleet_id"}, 500)
+                return None
+            resolved_name = entry.current_name
+            if not directed_ip and getattr(entry, "ops_ip", None):
+                directed_ip = entry.ops_ip
+
         mac_bytes = bytes.fromhex(mac)
         magic = b'\xff' * 6 + mac_bytes * 16
         import socket
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            # 255.255.255.255 is the IPv4 limited broadcast address per
+            # RFC 1122 §3.2.1.3 — it's a protocol constant, not a host
+            # that could move. Same applies to the per-subnet directed
+            # broadcast below (x.y.z.255 for a /24).
             sock.sendto(magic, ("255.255.255.255", 9))
-            if data.get("ip"):
-                ip_parts = data["ip"].rsplit(".", 1)
+            if directed_ip:
+                ip_parts = directed_ip.rsplit(".", 1)
                 if len(ip_parts) == 2:
                     sock.sendto(magic, (ip_parts[0] + ".255", 9))
-        return {"ok": True, "mac": mac, "sent": True}
+        result = {"ok": True, "mac": mac, "sent": True}
+        if resolved_name:
+            result["resolved_name"] = resolved_name
+        if directed_ip:
+            result["directed_ip"] = directed_ip
+        return result
     except Exception as e:
         req.respond({"error": str(e)}, 500)
         return None

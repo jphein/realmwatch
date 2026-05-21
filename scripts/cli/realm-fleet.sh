@@ -12,6 +12,9 @@ USAGE:
 
 SUBCOMMANDS:
   list                                List all known APs/routers/switches
+  add <ip|hostname> [--name N]        Probe a host (SSH + OpenWrt detect)
+       [--category C] [--realm R]     and append it to fleet.yaml
+       [--notes T] [--yes] [--json]
   audit [ap_name|--all]               Audit SSIDs/VLANs/interfaces
   firewall-check                      Audit gatekeeper fw4 zones/rules
   ap-firewall-audit [ap|--json]       Audit per-AP fw4 vs realm standard
@@ -36,6 +39,7 @@ EOF
 }
 
 REALM_SUBCOMMANDS="list
+add
 audit
 firewall-check
 ap-firewall-audit
@@ -72,6 +76,9 @@ case "$sub" in
     for name in $(echo "${!SWITCHES_VENDOR[@]}" | tr ' ' '\n' | sort); do
       realm::print_kv "$name" "${SWITCHES_VENDOR[$name]}"
     done
+    ;;
+  add)
+    exec "$_scripts_dir/cli/realm-fleet-add.sh" "$@"
     ;;
   audit)
     exec "$_scripts_dir/ap-audit.sh" "$@"
