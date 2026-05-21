@@ -15,6 +15,8 @@ SUBCOMMANDS:
   audit [ap_name|--all]               Audit SSIDs/VLANs/interfaces
   firewall-check                      Audit gatekeeper fw4 zones/rules
   ap-firewall-audit [ap|--json]       Audit per-AP fw4 vs realm standard
+  ap-firewall-standardize <ap|--all> [--commit]
+                                      Standardize per-AP fw4 (dry-run default)
   add-vlan --ap N --vlan V --name I   Add a VLAN interface to one AP
   migrate-ssid --ssid S --network N   Reassign an SSID to a network (fleet-wide)
   deploy-theme [ap_name]              Deploy LuCI theme to one AP or fleet
@@ -37,6 +39,7 @@ REALM_SUBCOMMANDS="list
 audit
 firewall-check
 ap-firewall-audit
+ap-firewall-standardize
 add-vlan
 migrate-ssid
 deploy-theme
@@ -78,6 +81,9 @@ case "$sub" in
     ;;
   ap-firewall-audit)
     exec "$_scripts_dir/ap-firewall-audit.sh" "$@"
+    ;;
+  ap-firewall-standardize)
+    exec "$_scripts_dir/ap-firewall-standardize.sh" "$@"
     ;;
   add-vlan)
     exec "$_scripts_dir/ap-add-vlan.sh" "$@"
