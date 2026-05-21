@@ -46,7 +46,10 @@ source "$(dirname "${BASH_SOURCE[0]}")/../lib/realm-python.sh"
 realm::parse_common "$@"
 set -- "${REALM_POSARGS[@]+"${REALM_POSARGS[@]}"}"
 
-subnet="10.0.6.0/24"
+# Default subnet = the /24 surrounding gatekeeper's ops_ip (i.e. the admin
+# VLAN). Resolved via realm_fleet rather than hardcoded so a different host
+# layout doesn't require editing this file. Override with --subnet.
+subnet=""
 include_known=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -70,6 +73,19 @@ import realm_fleet
 
 subnet_str, include_known_str = sys.argv[1:3]
 include_known = include_known_str == "1"
+
+if not subnet_str:
+    # Default to the /24 around gatekeeper's ops_ip (the admin VLAN). This
+    # keeps the styleguide invariant (no hardcoded subnets) and adapts to
+    # different host layouts without editing the script.
+    gk_ip = realm_fleet.host_ip("gatekeeper")
+    if gk_ip and re.match(r"^\d+\.\d+\.\d+\.\d+$", gk_ip):
+        subnet_str = ".".join(gk_ip.split(".")[:3]) + ".0/24"
+    else:
+        print("error: no --subnet given and could not derive default from "
+              "realm_fleet.host_ip('gatekeeper'). Pass --subnet CIDR.",
+              file=sys.stderr)
+        sys.exit(2)
 
 try:
     net = ipaddress.ip_network(subnet_str, strict=False)

@@ -1575,6 +1575,10 @@ def _h_post_wol(req, params):
         import socket
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            # 255.255.255.255 is the IPv4 limited broadcast address per
+            # RFC 1122 §3.2.1.3 — it's a protocol constant, not a host
+            # that could move. Same applies to the per-subnet directed
+            # broadcast below (x.y.z.255 for a /24).
             sock.sendto(magic, ("255.255.255.255", 9))
             if directed_ip:
                 ip_parts = directed_ip.rsplit(".", 1)

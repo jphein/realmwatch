@@ -61,7 +61,13 @@ if [[ -z "${HA_TOKEN:-}" ]] && command -v bw >/dev/null 2>&1; then
   fi
 fi
 
-GATEKEEPER_HOST="${GATEKEEPER_HOST:-gatekeeper}"
+# Resolve gatekeeper via realm_fleet (per styleguide invariant: no hardcoded
+# hosts). Falls back to the literal name only if the catalog can't load —
+# SSH config will normally resolve the bare name anyway.
+GATEKEEPER_HOST="${GATEKEEPER_HOST:-$(
+  "$REALM_PYTHON" -c 'import realm_fleet; print(realm_fleet.host_ip("gatekeeper") or "gatekeeper")' 2>/dev/null \
+    || echo gatekeeper
+)}"
 
 # Hand to Python for the heavy lifting.
 HA_TOKEN="${HA_TOKEN:-}" GATEKEEPER_HOST="$GATEKEEPER_HOST" \
@@ -69,6 +75,7 @@ HA_TOKEN="${HA_TOKEN:-}" GATEKEEPER_HOST="$GATEKEEPER_HOST" \
 import json
 import os
 import re
+import shlex
 import ssl
 import subprocess
 import sys
@@ -76,9 +83,22 @@ import time
 import urllib.error
 import urllib.request
 
+import realm_fleet
+
 target = sys.argv[1].strip()
 HA_TOKEN = os.environ.get("HA_TOKEN", "")
-GATEKEEPER = os.environ.get("GATEKEEPER_HOST", "gatekeeper")
+# Hosts: prefer fleet catalog resolution (styleguide invariant) and fall
+# back to the env override + literal name (for first-run / SSH-config-only
+# setups where the catalog isn't populated yet).
+GATEKEEPER = os.environ.get("GATEKEEPER_HOST") \
+    or realm_fleet.host_ip("gatekeeper") or "gatekeeper"
+HA_HOST = realm_fleet.host_ip("ha") or "ha"
+HA_BASE_URL = f"https://{HA_HOST}:8123"
+# HA in this homelab uses a self-signed cert that's bound to the public
+# hostname (ha.jphe.in) but accessed by IP from the LAN — verify() would
+# always fail. CERT_NONE is intentional. To enable verification (e.g. if
+# you've imported a CA), set REALM_HA_VERIFY=1.
+HA_VERIFY = os.environ.get("REALM_HA_VERIFY") == "1"
 
 # ANSI helpers — short, no external lib.
 class _C:
@@ -101,8 +121,11 @@ def line(label: str, value: str, ok: bool | None = None) -> None:
 def _ha_get(path: str) -> object | None:
     if not HA_TOKEN:
         return None
-    ctx = ssl.create_default_context(); ctx.check_hostname = False; ctx.verify_mode = ssl.CERT_NONE
-    req = urllib.request.Request(f"https://ha.jphe.in:8123{path}",
+    ctx = ssl.create_default_context()
+    if not HA_VERIFY:
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+    req = urllib.request.Request(f"{HA_BASE_URL}{path}",
                                  headers={"Authorization": f"Bearer {HA_TOKEN}"})
     try:
         with urllib.request.urlopen(req, context=ctx, timeout=8) as r:
@@ -115,9 +138,12 @@ def _ha_get(path: str) -> object | None:
 def _ha_template(template: str) -> str | None:
     if not HA_TOKEN:
         return None
-    ctx = ssl.create_default_context(); ctx.check_hostname = False; ctx.verify_mode = ssl.CERT_NONE
+    ctx = ssl.create_default_context()
+    if not HA_VERIFY:
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
     payload = json.dumps({"template": template}).encode()
-    req = urllib.request.Request("https://ha.jphe.in:8123/api/template",
+    req = urllib.request.Request(f"{HA_BASE_URL}/api/template",
                                  data=payload,
                                  headers={"Authorization": f"Bearer {HA_TOKEN}",
                                           "Content-Type": "application/json"})
@@ -209,8 +235,12 @@ elif mac_normalized:
 else:
     # No HA entity — try DHCP leases and topology by hostname before giving up.
     line("query", f"{target}")
-    # Search DHCP leases for the hostname.
-    lease_search = _gk(f"awk -v t='{target.lower()}' 'tolower($4)==t || index(tolower($4),t)>0 {{print; exit}}' /tmp/dhcp.leases").strip()
+    # Search DHCP leases for the hostname. `target` is user input — must be
+    # shell-quoted before insertion into the remote `awk -v` command line, or
+    # an attacker could escape the literal and execute arbitrary commands on
+    # gatekeeper. shlex.quote() returns a safely single-quoted shell token.
+    safe_target = shlex.quote(target.lower())
+    lease_search = _gk(f"awk -v t={safe_target} 'tolower($4)==t || index(tolower($4),t)>0 {{print; exit}}' /tmp/dhcp.leases").strip()
     if lease_search:
         fields = lease_search.split()
         if len(fields) >= 4:
@@ -219,6 +249,7 @@ else:
     # Search topology by id/label.
     if not mac_normalized:
         try:
+            # See note above — local map_server loopback, not a host literal.
             with urllib.request.urlopen("http://localhost/topology", timeout=4) as r:
                 topo = json.loads(r.read())
             for n in topo.get("nodes", []):
@@ -305,6 +336,9 @@ if mac_normalized:
     candidate_keys.append("_unknown_" + mac_normalized.replace(":", ""))
     candidate_keys.append(mac_normalized.replace(":", ""))
     try:
+        # map_server runs on this host (per CLAUDE.md "HTTP :80" — see
+        # systemd/realm-map-server.service). Localhost is the intentional
+        # loopback target for the CLI's own backend, not a hardcoded host.
         with urllib.request.urlopen("http://localhost/scan/wifi", timeout=4) as r:
             clients = json.loads(r.read())
         # Build a case-insensitive lookup.
@@ -339,6 +373,7 @@ if mac_normalized:
             # to topology nodes. Unpromoted "unknown" clients carry their AP
             # info in /scan's unknown list — check that too.
             try:
+                # See note above — local map_server loopback, not a host literal.
                 with urllib.request.urlopen("http://localhost/scan", timeout=4) as r:
                     scan = json.loads(r.read())
                 hit = None
