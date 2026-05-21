@@ -27,6 +27,7 @@ _LEXICON_PY = Path.home() / "Projects" / "lexicon.realm.watch" / "python"
 sys.path.insert(0, str(_LEXICON_PY))
 
 from lexicon import load_fleet_catalog  # noqa: E402
+from lexicon.fleet import LIVE_STATUSES  # noqa: E402
 
 FLEET_YAML = Path(__file__).parent.parent.parent / "fleet.yaml"
 
@@ -51,7 +52,7 @@ def main():
     buckets: dict[str, list[tuple[str, str, str]]] = {arr: [] for arr in CATEGORY_TO_ARRAY.values()}
 
     for entry in cat.entries:
-        if entry.status != "curated":
+        if entry.status not in LIVE_STATUSES:
             continue
         arr = CATEGORY_TO_ARRAY.get(entry.category or "")
         if not arr:
