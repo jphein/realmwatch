@@ -16,6 +16,9 @@ SUBCOMMANDS:
   links                      Show relationship graph (manual + auto)
   show <node_id>             Show details for one node
   scan [--provider TYPE]     Trigger a discovery scan
+  scan-aps [--subnet CIDR]   Sweep subnet for OpenWrt boxes not yet
+       [--include-known]     in fleet.yaml — prints ready-to-paste
+                             `realm fleet add` commands for each
   link <a> <b>               Create a manual link between two entities
   unlink <a> <b>             Remove a manual link
   manual                     List manual entries
@@ -41,6 +44,7 @@ providers
 links
 show
 scan
+scan-aps
 link
 unlink
 manual
@@ -51,7 +55,11 @@ source "$(dirname "${BASH_SOURCE[0]}")/../lib/realm-cli.sh"
 realm::parse_common "$@"
 set -- "${REALM_POSARGS[@]+"${REALM_POSARGS[@]}"}"
 
-realm::api_reachable || realm::die_unreachable
+# scan-aps runs its own SSH probes against the network and does not need
+# map_server — skip the reachability gate when that's the subcommand.
+if [[ "${1:-}" != "scan-aps" ]]; then
+  realm::api_reachable || realm::die_unreachable
+fi
 
 sub="${1:-list}"
 shift || true
@@ -102,6 +110,9 @@ case "$sub" in
     fi
     realm::say "Triggering discovery scan..."
     realm::api_post /discovery/scan "$body"
+    ;;
+  scan-aps)
+    exec "$(dirname "${BASH_SOURCE[0]}")/realm-discovery-scan-aps.sh" "$@"
     ;;
   link)
     [[ $# -ge 2 ]] || realm::die "usage: realm discovery link <a> <b>" 2
