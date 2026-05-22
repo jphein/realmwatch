@@ -36,8 +36,12 @@ def validate(p: pathlib.Path) -> list[str]:
         elif not cli.get("verbs"):
             errors.append("cli section requires verbs[]")
         else:
+            # method-a: plugin owns plugins/<name>/cli, verbs are dispatched there
+            # method-b (default): verbs map to HTTP endpoints, need method+path
+            dispatch = cli.get("dispatch", "method-b")
+            required = ("name",) if dispatch == "method-a" else ("name", "method", "path")
             for i, v in enumerate(cli["verbs"]):
-                for k in ("name", "method", "path"):
+                for k in required:
                     if k not in v:
                         errors.append(f"cli.verbs[{i}] missing {k}")
 
