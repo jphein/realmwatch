@@ -90,6 +90,17 @@ def discover_systemd(node_id, node_data, host, engine):
             sub_state = unit.get("sub", "")
             load = unit.get("load", "")
 
+            # CRITICAL: skip phantom entries where load=="not-found". These
+            # are placeholders systemd emits in `--user --all` mode for unit
+            # names it knows about but that have no actual unit file in this
+            # scope (e.g. a system service like ollama.service when there
+            # is no per-user override). They report inactive/dead and were
+            # overwriting the legitimate system-level entries because both
+            # produce the same SubEntity id, causing healthy services to be
+            # cached as "stopped" → constant alert flapping.
+            if load == "not-found":
+                continue
+
             # Filter: interesting services only
             is_failed = active == "failed"
             is_watched = name in watch_list or name.replace(".service", "") in watch_list
