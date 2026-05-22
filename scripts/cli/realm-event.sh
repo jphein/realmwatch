@@ -8,14 +8,15 @@ realm::help() {
 realm event — list, post, acknowledge, or close realm events
 
 USAGE:
-  realm event list [--type TYPE] [--limit N] [--unacked]
+  realm event list [--type|--kind TYPE] [--limit N] [--unacked]
   realm event post <type> <text> [--node ID] [--color COLOR]
   realm event ack <id> [--by NAME] [--note "..."]
   realm event close <id>
   realm event unacked [--limit N]
 
 OPTIONS:
-  --type TYPE   Filter by event type (list mode)
+  --type TYPE   Filter by event type (list mode). --kind is an alias
+                for consistency with `realm find --kind`.
   --limit N     Max events to show (default 20)
   --unacked     Only show unacked + open events (list mode)
   --node ID     Node to associate with the event (post mode)
@@ -53,8 +54,9 @@ case "$sub" in
     type=""; limit=20; unacked=""
     while [[ $# -gt 0 ]]; do
       case "$1" in
-        --type) type="$2"; shift 2 ;;
-        --type=*) type="${1#*=}"; shift ;;
+        # --kind is an alias for --type so this CLI matches `realm find --kind`.
+        --type|--kind) type="$2"; shift 2 ;;
+        --type=*|--kind=*) type="${1#*=}"; shift ;;
         --limit) limit="$2"; shift 2 ;;
         --limit=*) limit="${1#*=}"; shift ;;
         --unacked) unacked=1; shift ;;
