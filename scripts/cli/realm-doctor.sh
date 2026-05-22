@@ -45,6 +45,12 @@ EOF
 }
 
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/realm-cli.sh"
+# realm-python.sh sets REALM_HOME, REALM_PYTHON, and puts REALM_HOME on
+# PYTHONPATH so `import realm_fleet` works from any inline -c invocation
+# without manual sys.path twiddling. realm_fleet then handles its own
+# lexicon-path injection via real_home(), which is sudo-aware (the
+# realmwatch HTTP server runs as root and Path.home() would return /root).
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/realm-python.sh"
 realm::parse_common "$@"
 set -- "${REALM_POSARGS[@]+"${REALM_POSARGS[@]}"}"
 
@@ -56,9 +62,6 @@ for arg in "$@"; do
     --verbose) VERBOSE=1 ;;
   esac
 done
-
-_self="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
-REALM_HOME="$(cd "$(dirname "$_self")/../.." && pwd)"
 
 declare -a JSON_LINES=()
 FAIL_COUNT=0
@@ -221,7 +224,7 @@ done
 # 7. core host reachability
 if [[ "$QUICK" -eq 0 ]]; then
   section "Core host reachability"
-  if [[ -x "$REALM_HOME/.venv/bin/python3" ]]; then
+  if [[ "$REALM_PYTHON_OK" -eq 1 ]]; then
     while IFS='|' read -r name ip; do
       if [[ -z "$ip" || "$ip" = "None" ]]; then
         emit warn "$name has no ops_ip" "set ops_ip on its fleet.yaml entry"
@@ -232,9 +235,7 @@ if [[ "$QUICK" -eq 0 ]]; then
       else
         emit fail "$name ($ip) not pinging" "host may be down or STP-blocked"
       fi
-    done < <("$REALM_HOME/.venv/bin/python3" -c "
-import sys, pathlib
-sys.path.insert(0, str(pathlib.Path.home() / 'Projects' / 'lexicon.realm.watch' / 'python'))
+    done < <("$REALM_PYTHON" -c "
 import realm_fleet
 for name in ('gatekeeper', 'katana', 'ha', 'oracle'):
     e = realm_fleet.host(name)
@@ -270,10 +271,8 @@ if [[ "$QUICK" -eq 0 ]]; then
   local_pct=$(df -P -k / 2>/dev/null | awk 'NR==2 {print $5}')
   _check_disk "local /" "${local_pct:-?}"
   # Gatekeeper (firewall — full / there breaks dhcp + logs).
-  if [[ -x "$REALM_HOME/.venv/bin/python3" ]]; then
-    gk_ip=$("$REALM_HOME/.venv/bin/python3" -c "
-import sys, pathlib
-sys.path.insert(0, str(pathlib.Path.home() / 'Projects' / 'lexicon.realm.watch' / 'python'))
+  if [[ "$REALM_PYTHON_OK" -eq 1 ]]; then
+    gk_ip=$("$REALM_PYTHON" -c "
 import realm_fleet
 e = realm_fleet.host('gatekeeper')
 print(e.ops_ip if e and e.ops_ip else '')
