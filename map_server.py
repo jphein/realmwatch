@@ -475,12 +475,14 @@ def _h_get_events(req, params):
     # `type` filter: comma-separated list, e.g. ?type=speech,alert. The CLI
     # exposes this via `realm event list --type speech` (and --kind alias).
     # Until this was added, the param was accepted but silently ignored —
-    # callers got the full unfiltered stream regardless of --type.
+    # callers got the full unfiltered stream regardless of --type. Match
+    # case-insensitively so ?type=Alert and ?type=alert behave the same,
+    # consistent with the `ack` param's lower() handling above.
     type_filter = qp.get("type", "").strip()
-    type_set = {t.strip() for t in type_filter.split(",") if t.strip()} if type_filter else None
+    type_set = {t.strip().lower() for t in type_filter.split(",") if t.strip()} if type_filter else None
     events = get_events_since(since)
     if type_set is not None:
-        events = [e for e in events if e.get("type") in type_set]
+        events = [e for e in events if str(e.get("type", "")).lower() in type_set]
     if unacked_only:
         events = [e for e in events if not e.get("ack_at") and not e.get("closed_at")]
     if limit > 0:
