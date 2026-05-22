@@ -37,6 +37,15 @@ _DISCOVERY_NEW_TEMPLATES = {
 }
 
 _discovery_cooldown = {}  # entity_id -> last_event_ts
+# Track the LAST STATUS we actually emitted an event for. The cooldown alone
+# is not enough when an upstream probe is flapping the entity between e.g.
+# running↔stopped — without this guard, the cooldown lets through one event
+# every 5 min, but the *direction* depends on which transition happens at
+# the cooldown boundary. With this guard, we only emit an event when the
+# new status genuinely differs from the last emitted status (edge-triggered
+# on the emitted stream). The upstream flap is still a real problem worth
+# fixing, but at least the alert noise stops.
+_last_emitted_status = {}  # entity_id -> last status we fired an event for
 _DISCOVERY_EVENT_COOLDOWN = 300  # 5 minutes
 
 
@@ -44,26 +53,39 @@ def _on_discovery_change(event_type, entity, old_status):
     """Handle discovery change events — generate themed realm events."""
     now = time.time()
 
-    # Cooldown check
+    # Cooldown check (rate-limit per entity, regardless of direction).
     last = _discovery_cooldown.get(entity.id, 0)
     if now - last < _DISCOVERY_EVENT_COOLDOWN:
         return
-    _discovery_cooldown[entity.id] = now
 
     if event_type == "status_change":
+        # Edge-triggered on the EMITTED stream: skip if the new status matches
+        # the one we last emitted for this entity. Prevents a flapping probe
+        # from generating duplicate "blazes anew" / "fades to silence" events
+        # whenever the cooldown expires.
+        prev_emitted = _last_emitted_status.get(entity.id)
+        if prev_emitted == entity.status:
+            return
         template = _DISCOVERY_TEMPLATES.get((entity.type, entity.status))
         if not template:
             return
         color = "#ff4040" if entity.status in ("failed",) else "#ffaa00" if entity.status in ("stopped", "stale") else "#80ff80"
         evt_type = "alert" if entity.status == "failed" else "speech"
+        _last_emitted_status[entity.id] = entity.status
     elif event_type == "new_entity":
         template = _DISCOVERY_NEW_TEMPLATES.get(entity.type)
         if not template:
             return
         color = "#80c0ff"
         evt_type = "speech"
+        # Seed last_emitted with the first-seen status so a follow-up
+        # status_change to the same value doesn't fire redundantly.
+        _last_emitted_status[entity.id] = entity.status
     else:
         return
+
+    # Only mark the cooldown once we've decided we're actually firing.
+    _discovery_cooldown[entity.id] = now
 
     text = template.format(name=entity.name, host=entity.host_node_id)
 

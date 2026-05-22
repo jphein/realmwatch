@@ -34,6 +34,7 @@ WHAT IT CHECKS:
   - DB integrity (realm.db exists + WAL mode)
   - env vars set (HA_TOKEN, AZURE_AI_API_KEY, NOTION_TOKEN)
   - core hosts reachable (gatekeeper, ha, katana, oracle — quick ping)
+  - disk pressure on local host + gatekeeper (warn ≥75%, fail ≥90%)
   - open events count
 
 EXAMPLES:
@@ -44,6 +45,12 @@ EOF
 }
 
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/realm-cli.sh"
+# realm-python.sh sets REALM_HOME, REALM_PYTHON, and puts REALM_HOME on
+# PYTHONPATH so `import realm_fleet` works from any inline -c invocation
+# without manual sys.path twiddling. realm_fleet then handles its own
+# lexicon-path injection via real_home(), which is sudo-aware (the
+# realmwatch HTTP server runs as root and Path.home() would return /root).
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/realm-python.sh"
 realm::parse_common "$@"
 set -- "${REALM_POSARGS[@]+"${REALM_POSARGS[@]}"}"
 
@@ -55,9 +62,6 @@ for arg in "$@"; do
     --verbose) VERBOSE=1 ;;
   esac
 done
-
-_self="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
-REALM_HOME="$(cd "$(dirname "$_self")/../.." && pwd)"
 
 declare -a JSON_LINES=()
 FAIL_COUNT=0
@@ -220,7 +224,7 @@ done
 # 7. core host reachability
 if [[ "$QUICK" -eq 0 ]]; then
   section "Core host reachability"
-  if [[ -x "$REALM_HOME/.venv/bin/python3" ]]; then
+  if [[ "$REALM_PYTHON_OK" -eq 1 ]]; then
     while IFS='|' read -r name ip; do
       if [[ -z "$ip" || "$ip" = "None" ]]; then
         emit warn "$name has no ops_ip" "set ops_ip on its fleet.yaml entry"
@@ -231,9 +235,7 @@ if [[ "$QUICK" -eq 0 ]]; then
       else
         emit fail "$name ($ip) not pinging" "host may be down or STP-blocked"
       fi
-    done < <("$REALM_HOME/.venv/bin/python3" -c "
-import sys, pathlib
-sys.path.insert(0, str(pathlib.Path.home() / 'Projects' / 'lexicon.realm.watch' / 'python'))
+    done < <("$REALM_PYTHON" -c "
 import realm_fleet
 for name in ('gatekeeper', 'katana', 'ha', 'oracle'):
     e = realm_fleet.host(name)
@@ -242,7 +244,52 @@ for name in ('gatekeeper', 'katana', 'ha', 'oracle'):
   fi
 fi
 
-# 8. recent events (the /events endpoint returns a flat array; no status filter)
+# 8. disk pressure (skipped under --quick because the gatekeeper probe SSHes)
+if [[ "$QUICK" -eq 0 ]]; then
+  section "Disk pressure"
+  # Each check parses `df -P -k <mount>` and grabs the "Use%" field. We use
+  # POSIX-mode df (`-P`) because the default output line-wraps when the
+  # device name is long, breaking the `NR==2` parse. -k forces 1KB blocks
+  # so the column positions stay predictable across busybox + GNU df.
+  _check_disk() {
+    local label="$1" pct_raw="$2"
+    # Strip trailing % and validate as integer.
+    local pct="${pct_raw%\%}"
+    if ! [[ "$pct" =~ ^[0-9]+$ ]]; then
+      emit warn "$label disk: couldn't parse usage" "got: $pct_raw"
+      return
+    fi
+    if   (( pct >= 90 )); then
+      emit fail "$label disk ${pct}%" "free up space (uv/pip/journal/go-build caches usually have the most)"
+    elif (( pct >= 75 )); then
+      emit warn "$label disk ${pct}%" "still room but headed up — consider cache cleanup"
+    else
+      emit pass "$label disk ${pct}%"
+    fi
+  }
+  # Local host (where realm doctor runs).
+  local_pct=$(df -P -k / 2>/dev/null | awk 'NR==2 {print $5}')
+  _check_disk "local /" "${local_pct:-?}"
+  # Gatekeeper (firewall — full / there breaks dhcp + logs).
+  if [[ "$REALM_PYTHON_OK" -eq 1 ]]; then
+    gk_ip=$("$REALM_PYTHON" -c "
+import realm_fleet
+e = realm_fleet.host('gatekeeper')
+print(e.ops_ip if e and e.ops_ip else '')
+" 2>/dev/null)
+    if [[ -n "$gk_ip" ]]; then
+      gk_pct=$(ssh -o ConnectTimeout=4 -o BatchMode=yes "root@$gk_ip" \
+                 "df -P -k / 2>/dev/null | awk 'NR==2 {print \$5}'" 2>/dev/null)
+      if [[ -n "$gk_pct" ]]; then
+        _check_disk "gatekeeper /" "$gk_pct"
+      else
+        emit warn "gatekeeper disk: SSH unreachable" "skipped — host or key auth not available"
+      fi
+    fi
+  fi
+fi
+
+# 9. recent events (the /events endpoint returns a flat array; no status filter)
 section "Recent events"
 if realm::api_reachable; then
   if ev=$(realm::api_get "/events?limit=50" 2>/dev/null); then
