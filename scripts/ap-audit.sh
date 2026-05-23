@@ -38,7 +38,7 @@ audit_ap() {
     return
   fi
 
-  # Dump SSID→network mapping
+  # Dump SSID→network mapping with band/channel from parent radio
   echo -e "  ${Y}SSIDs:${N}"
   ssh -o ConnectTimeout=5 "root@$ip" "
     for iface in \$(uci show wireless 2>/dev/null | grep '=wifi-iface' | cut -d= -f1 | cut -d. -f2); do
@@ -47,10 +47,15 @@ audit_ap() {
       disabled=\$(uci -q get wireless.\$iface.disabled)
       mode=\$(uci -q get wireless.\$iface.mode)
       r11=\$(uci -q get wireless.\$iface.ieee80211r)
+      radio=\$(uci -q get wireless.\$iface.device)
       [ -z \"\$ssid\" ] && continue
+      band=\$(uci -q get wireless.\$radio.band)
+      chan=\$(uci -q get wireless.\$radio.channel)
+      rdisabled=\$(uci -q get wireless.\$radio.disabled)
       status='active'
       [ \"\$disabled\" = '1' ] && status='disabled'
-      printf '    %-25s net=%-10s mode=%-4s 11r=%-3s %s\n' \"\$ssid\" \"\$net\" \"\$mode\" \"\${r11:-no}\" \"\$status\"
+      [ \"\$rdisabled\" = '1' ] && status='disabled'
+      printf '    %-25s net=%-10s %-4s ch%-4s mode=%-4s 11r=%-3s %s\n' \"\$ssid\" \"\$net\" \"\${band:-?}\" \"\${chan:-?}\" \"\$mode\" \"\${r11:-no}\" \"\$status\"
     done
   " 2>/dev/null || echo -e "  ${R}Failed to read wireless config${N}"
 
