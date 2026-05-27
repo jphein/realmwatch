@@ -13,6 +13,17 @@
 #   source definitions, commands, parsers, and lock groups as the web panel,
 #   so CLI and browser stay in sync.
 set -euo pipefail
+
+# Wave terminal (wavesrv) injects XDG_CACHE_HOME, XDG_CONFIG_HOME, XDG_DATA_HOME
+# as empty strings into spawned shells. The XDG basedir spec says empty should
+# fall back to the default ($HOME/.cache etc.), but not every tool complies —
+# notably, mise path-joins XDG_CACHE_HOME with "mise", yielding a relative dir
+# and leaking cache into whatever CWD this script runs from. Normalize before
+# any subprocess inherits.
+[ -z "${XDG_CACHE_HOME:-}" ] && export XDG_CACHE_HOME="$HOME/.cache"
+[ -z "${XDG_CONFIG_HOME:-}" ] && export XDG_CONFIG_HOME="$HOME/.config"
+[ -z "${XDG_DATA_HOME:-}" ] && export XDG_DATA_HOME="$HOME/.local/share"
+
 cd "$(dirname "$(realpath "$0")")/.."
 
 LOG_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/realm-update"
