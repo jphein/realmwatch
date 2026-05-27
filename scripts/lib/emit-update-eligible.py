@@ -30,12 +30,20 @@ from pathlib import Path
 
 from ruamel.yaml import YAML
 
-_LEXICON_PY = Path.home() / "Projects" / "lexicon.realm.watch" / "python"
+# Resolve paths via realm_text.real_home() so this works under sudo —
+# Path.home() returns /root when invoked by `sudo realm update …`, but JP's
+# lexicon checkout lives at /home/jp/Projects/. realm_text lives at the
+# realmwatch repo root (two levels up from scripts/lib/).
+_REPO_ROOT = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(_REPO_ROOT))
+from realm_text import real_home  # noqa: E402
+
+_LEXICON_PY = real_home() / "Projects" / "lexicon.realm.watch" / "python"
 sys.path.insert(0, str(_LEXICON_PY))
 
 from lexicon.fleet import LIVE_STATUSES  # noqa: E402
 
-FLEET_YAML = Path(__file__).parent.parent.parent / "fleet.yaml"
+FLEET_YAML = _REPO_ROOT / "fleet.yaml"
 
 
 def _eligible(entry: dict) -> bool:
@@ -75,7 +83,11 @@ def main(argv: list[str] | None = None) -> int:
     # (writes go through lexicon's typed model), so we don't need rt mode.
     yaml = YAML(typ="safe")
     with FLEET_YAML.open("r") as fh:
-        root = yaml.load(fh) or {}
+        root = yaml.load(fh)
+    # Guard against an empty / malformed fleet.yaml (None, scalar, list, etc.)
+    # — anything but a mapping at the root yields zero nodes rather than crash.
+    if not isinstance(root, dict):
+        root = {}
     nodes = root.get("nodes") or []
 
     rows = [_opt(n) for n in nodes if _eligible(n)]

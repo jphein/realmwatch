@@ -151,7 +151,15 @@ fi
 # ─── --node / --nodes / --all-nodes: ansible bridge ──────────────────────
 if [[ ${#NODES[@]} -gt 0 || $ALL_NODES -eq 1 ]]; then
   if [[ $ALL_NODES -eq 1 ]]; then
-    mapfile -t NODES < <(python3 "$_scripts_dir/lib/emit-update-eligible.py" --format=names)
+    # Capture into a var first so we can distinguish "helper failed" (exit
+    # non-zero, e.g. missing ruamel) from "helper succeeded but no opt-ins".
+    # `mapfile < <(...)` swallows the producer's exit code → silent failure.
+    if ! _eligible=$(python3 "$_scripts_dir/lib/emit-update-eligible.py" --format=names); then
+      realm::die "failed to query eligible nodes from fleet.yaml" 1
+    fi
+    if [[ -n "$_eligible" ]]; then
+      mapfile -t NODES <<<"$_eligible"
+    fi
     if [[ ${#NODES[@]} -eq 0 ]]; then
       realm::die "no fleet.yaml entries with realm_update.enabled: true (try: realm update --list-hosts)" 1
     fi
