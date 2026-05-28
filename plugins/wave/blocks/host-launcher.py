@@ -32,7 +32,7 @@ os.execv(
     [
         sys.executable,
         WAVE_BLOCK,
-        "custom",
+        "host",
         "--title", TITLE,
         "--cmd", f"{sys.executable} {POLL}",
         "--interval", INTERVAL,

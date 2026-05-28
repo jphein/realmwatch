@@ -507,6 +507,232 @@ def _emit(lines: list[str], h: int, tick: int = 0):
 
 # ── Custom-mode helpers ─────────────────────────────────────────────────────
 
+# ── Host dashboard render ───────────────────────────────────────────────────
+#
+# `render_host` lays out a one-host system snapshot in the wave-block style:
+# stacked gold progress bars for each percent metric (RAM, swap, disk, GPU
+# util, GPU VRAM), a temperature/load sparkline section, a network row, and
+# label lines for distro/kernel. The point is the visual quality of the
+# bars — the same `█▌░` half-block precision render that the backfill
+# template uses.
+
+# The label, color, and (used_key, total_key) source for each percent bar.
+# Order matters — that's the display order.
+_HOST_BARS: list[tuple[str, str, str, str, str]] = [
+    # (label, pct_key, color, used_key, total_key)
+    ("RAM",     "ram_pct",   "accent", "ram_used_gb",   "ram_total_gb"),
+    ("Swap",    "swap_pct",  "warn",   "swap_used_gb",  ""),
+    ("Disk /",  "disk_pct",  "accent", "disk_used_gb",  "disk_total_gb"),
+]
+
+
+def _host_temp_color(c: int | float) -> str:
+    """Olive ≤55 → amber ≤75 → orange ≤85 → red above. CPUs + GPUs."""
+    try:
+        v = float(c)
+    except (TypeError, ValueError):
+        return "muted"
+    if v >= 85:
+        return "err"
+    if v >= 75:
+        return "warn"
+    if v >= 55:
+        return "accent"
+    return "good"
+
+
+def _bar_row(label: str, pct: float, width: int, *, color: str = "accent",
+             detail: str = "") -> str:
+    """Render one labelled progress-bar row that fits inside box_row(content, width).
+
+    Layout:  " <label:7s> <bar> <pct:5.1f%>  <detail> "
+    """
+    label_str = f" {label:<7s}"
+    pct_str = f" {pct:5.1f}%"
+    detail_str = f"  {C['muted']}{detail}{C['reset']}" if detail else ""
+    detail_visible = len(detail) + 2 if detail else 0
+    bar_w = width - 2 - len(label_str) - len(pct_str) - detail_visible
+    if bar_w < 6:
+        bar_w = max(6, width - 2 - len(label_str) - len(pct_str))
+        detail_str = ""
+    bar = progress_bar(pct / 100.0, bar_w)
+    return (
+        f"{label_str}"
+        f"{bar} "
+        f"{C[color]}{pct_str.strip()}{C['reset']}"
+        f"{detail_str}"
+    )
+
+
+def _mini_bar(pct: float, width: int = 10) -> str:
+    """Smaller progress bar suitable for inline GPU util/VRAM rows."""
+    return progress_bar(max(pct, 0) / 100.0, width)
+
+
+def render_host(title: str, metrics: dict, history: dict[str, list[float]], tick: int):
+    """Beautiful per-host dashboard — gold percent bars, teal sparklines, wave banners.
+
+    Field conventions consumed:
+      ram_pct + ram_used_gb + ram_total_gb            primary bar
+      swap_pct + swap_used_gb                         swap bar (omitted if missing)
+      disk_pct + disk_used_gb + disk_total_gb         disk bar
+      load_1m / load_5m / load_15m + cpu_count        load line
+      cpu_temp_c                                      temp line (sparkline)
+      gpu<N>_temp_c / gpu<N>_util_pct / gpu<N>_vram_pct GPU rows (per index)
+      net_<iface>_rx_Mbps / net_<iface>_tx_Mbps        net line
+      uptime_hours, pg_active_conns                   misc numerics
+      hostname, distro, kernel, arch, wave_host       label footer
+    """
+    w = term_width()
+    h = term_height()
+    tier = _size_tier(w)
+
+    lines: list[str] = []
+
+    if h >= 18 and tier in ("medium", "wide"):
+        lines.append(wave_banner(tick, w))
+
+    # ── Title bar ───────────────────────────────────────────────────────────
+    distro = metrics.get("distro", "")
+    cores = metrics.get("cpu_count", "")
+    title_extras = []
+    if distro: title_extras.append(str(distro))
+    if cores:  title_extras.append(f"{cores} cores")
+    full_title = title + (" · " + " · ".join(title_extras) if title_extras and tier != "narrow" else "")
+    lines.append(box_top(w, full_title))
+
+    # ── Stacked percent bars ────────────────────────────────────────────────
+    bar_count = 0
+    for label, pct_key, color, used_key, total_key in _HOST_BARS:
+        if pct_key not in metrics:
+            continue
+        try:
+            pct = float(metrics[pct_key])
+        except (TypeError, ValueError):
+            continue
+        detail = ""
+        used = metrics.get(used_key)
+        total = metrics.get(total_key) if total_key else None
+        if used is not None and total is not None:
+            detail = f"{used}G / {total}G"
+        elif used is not None:
+            detail = f"{used}G used"
+        lines.append(box_row(_bar_row(label, pct, w, color=color, detail=detail), w))
+        bar_count += 1
+
+    if bar_count == 0:
+        lines.append(box_row(f" {C['muted']}(no resource counters yet){C['reset']}", w))
+
+    # ── Load + CPU temp ─────────────────────────────────────────────────────
+    if h >= 8 and tier in ("medium", "wide", "narrow"):
+        lines.append(box_mid(w))
+
+    load_parts = []
+    for k in ("load_1m", "load_5m", "load_15m"):
+        if k in metrics:
+            load_parts.append(f"{float(metrics[k]):.2f}")
+    if load_parts:
+        cores_suffix = f"  {C['muted']}({metrics.get('cpu_count', '?')} cores){C['reset']}" if "cpu_count" in metrics else ""
+        load_str = f" {C['fg']}Load{C['reset']}    {C['accent']}{' / '.join(load_parts)}{C['reset']}{cores_suffix}"
+        lines.append(box_row(load_str, w))
+
+    cpu_t = metrics.get("cpu_temp_c")
+    if cpu_t is not None:
+        col = _host_temp_color(cpu_t)
+        spark_w = max(w - 24, 8) if tier in ("medium", "wide") else max(w - 16, 4)
+        cpu_history = history.get("cpu_temp_c", [])
+        spark = sparkline(cpu_history, spark_w) if len(cpu_history) > 1 else ""
+        lines.append(box_row(
+            f" {C['fg']}CPU temp{C['reset']} {C[col]}{int(float(cpu_t))}°C{C['reset']} {spark}", w
+        ))
+
+    # ── GPUs (per-index) ────────────────────────────────────────────────────
+    gpu_indices: set[int] = set()
+    for k in metrics:
+        if k.startswith("gpu") and "_" in k:
+            try:
+                gpu_indices.add(int(k[3:].split("_", 1)[0]))
+            except ValueError:
+                continue
+
+    for i in sorted(gpu_indices):
+        temp = metrics.get(f"gpu{i}_temp_c")
+        util = metrics.get(f"gpu{i}_util_pct")
+        vram = metrics.get(f"gpu{i}_vram_pct")
+        vram_gb = metrics.get(f"gpu{i}_vram_used_gb")
+        parts: list[str] = [f" {C['fg']}GPU {i}{C['reset']}"]
+        if temp is not None:
+            tcol = _host_temp_color(temp)
+            parts.append(f"{C[tcol]}{int(float(temp))}°C{C['reset']}")
+        if util is not None and tier in ("medium", "wide"):
+            parts.append(f"{C['muted']}util{C['reset']} {_mini_bar(float(util), 10)} {C['accent']}{int(float(util)):>3d}%{C['reset']}")
+        elif util is not None:
+            parts.append(f"util {C['accent']}{int(float(util))}%{C['reset']}")
+        if vram is not None and tier in ("medium", "wide"):
+            vram_label = f"vram {_mini_bar(float(vram), 10)} {C['accent']}{float(vram):4.1f}%{C['reset']}"
+            if vram_gb is not None:
+                vram_label += f"  {C['muted']}({vram_gb}G){C['reset']}"
+            parts.append(vram_label)
+        elif vram is not None:
+            parts.append(f"vram {C['accent']}{float(vram):.0f}%{C['reset']}")
+        lines.append(box_row("  ".join(parts), w))
+
+    # ── Network + uptime + pg + last log ─────────────────────────────────────
+    net_pairs = []
+    for k in sorted(metrics):
+        if k.startswith("net_") and k.endswith("_rx_Mbps"):
+            iface = k[len("net_"):-len("_rx_Mbps")]
+            rx = metrics.get(k, 0)
+            tx = metrics.get(f"net_{iface}_tx_Mbps", 0)
+            net_pairs.append((iface, float(rx), float(tx)))
+    if net_pairs and h >= 10:
+        lines.append(box_mid(w))
+        for iface, rx, tx in net_pairs[:2]:
+            lines.append(box_row(
+                f" {C['fg']}Net{C['reset']}    {C['muted']}{iface}{C['reset']}  "
+                f"rx {C['accent']}{rx:6.2f} Mbps{C['reset']}  "
+                f"tx {C['accent']}{tx:6.2f} Mbps{C['reset']}", w
+            ))
+
+    misc_parts: list[str] = []
+    if "uptime_hours" in metrics:
+        u = float(metrics["uptime_hours"])
+        if u >= 24:
+            misc_parts.append(f"{C['fg']}uptime{C['reset']} {C['accent']}{u/24:.1f}d{C['reset']}")
+        else:
+            misc_parts.append(f"{C['fg']}uptime{C['reset']} {C['accent']}{u:.1f}h{C['reset']}")
+    if "pg_active_conns" in metrics:
+        misc_parts.append(f"{C['fg']}pg_conns{C['reset']} {C['accent']}{int(metrics['pg_active_conns'])}{C['reset']}")
+    if misc_parts and h >= 11:
+        lines.append(box_row(" " + "    ".join(misc_parts), w))
+
+    # ── Identity footer ─────────────────────────────────────────────────────
+    if h >= 12:
+        lines.append(box_mid(w))
+        id_parts: list[str] = []
+        for k in ("hostname", "distro", "kernel", "arch"):
+            v = metrics.get(k)
+            if v:
+                id_parts.append(str(v))
+        if id_parts:
+            ident = " · ".join(id_parts)
+            if len(ident) > w - 4:
+                ident = ident[:w - 7] + "..."
+            lines.append(box_row(f" {C['muted']}{ident}{C['reset']}", w))
+
+    if "_error" in metrics:
+        lines.append(box_row(f" {C['err']}{str(metrics['_error'])[:w-4]}{C['reset']}", w))
+
+    lines.append(box_bot(w))
+
+    if h >= 18 and tier in ("medium", "wide"):
+        lines.append(wave_banner(tick + 4, w))
+
+    _emit(lines, h, tick)
+
+
+# ── JSON flatten helper ─────────────────────────────────────────────────────
+
 def _flatten_json(obj: Any, prefix: str = "") -> dict[str, Any]:
     out: dict[str, Any] = {}
     if isinstance(obj, dict):

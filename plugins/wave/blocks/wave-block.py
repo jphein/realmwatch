@@ -48,6 +48,7 @@ from renderer import (  # noqa: E402
     move_to,
     parse_backfill_status,
     render_backfill,
+    render_host,
     show_cursor,
     term_height,
     _flatten_json,
@@ -162,6 +163,59 @@ def run_custom_dashboard(title: str, cmd: str, parse_path: str | None, interval:
                     renderer._resize_flag = False
                     clear_screen()
                 _render_custom(title, flat, metrics_history, tick)
+
+    except KeyboardInterrupt:
+        pass
+    finally:
+        show_cursor()
+        sys.stdout.write("\n")
+
+
+def run_host_dashboard(title: str, cmd: str, interval: float):
+    """Run a host-collect-shaped command and render as the bar-heavy host TUI.
+
+    Mirrors run_custom_dashboard's poll loop but routes the flattened metrics
+    + history buffers through render_host, which prefers progress_bar over
+    sparkline for *_pct fields and adds dedicated GPU / load / temp sections.
+    """
+    signal.signal(signal.SIGWINCH, _on_resize)
+
+    tick = 0
+    metrics_history: dict[str, list[float]] = {}
+
+    hide_cursor()
+    clear_screen()
+
+    try:
+        while True:
+            try:
+                result = subprocess.run(
+                    cmd, shell=True, capture_output=True, text=True, timeout=15,
+                )
+                data = json.loads(result.stdout)
+            except Exception as e:
+                data = {"_error": str(e)}
+
+            flat = _flatten_json(data)
+
+            for k, v in flat.items():
+                if isinstance(v, (int, float)):
+                    metrics_history.setdefault(k, []).append(v)
+                    if len(metrics_history[k]) > 120:
+                        metrics_history[k] = metrics_history[k][-120:]
+
+            clear_screen()
+            render_host(title, flat, metrics_history, tick)
+            tick += 1
+
+            poll_start = time.monotonic()
+            while time.monotonic() - poll_start < interval:
+                time.sleep(0.15)
+                tick += 1
+                if renderer._resize_flag:
+                    renderer._resize_flag = False
+                    clear_screen()
+                render_host(title, flat, metrics_history, tick)
 
     except KeyboardInterrupt:
         pass
@@ -291,6 +345,14 @@ def main():
     cu.add_argument("--detach", action="store_true",
                     help="Launch in a new terminal block (WaveTerm/Ghostty) instead of inline")
 
+    ho = sub.add_parser("host", help="Per-host system dashboard (RAM/disk/GPU bars, temp sparklines)")
+    ho.add_argument("--title", required=True)
+    ho.add_argument("--cmd", required=True,
+                    help="Shell command emitting JSON matching host-collect.py's schema")
+    ho.add_argument("--interval", type=float, default=5.0)
+    ho.add_argument("--detach", action="store_true",
+                    help="Launch in a new terminal block (WaveTerm/Ghostty) instead of inline")
+
     args = parser.parse_args()
 
     if args.mode == "backfill":
@@ -341,6 +403,27 @@ def main():
             print("No detach target found — running inline")
 
         run_custom_dashboard(args.title, args.cmd, args.parse, args.interval)
+
+    elif args.mode == "host":
+        if args.detach:
+            script = os.path.abspath(__file__)
+            argv = ["python3", script, "host",
+                    "--title", args.title,
+                    "--cmd", args.cmd,
+                    "--interval", str(args.interval)]
+
+            terminal = _detect_terminal()
+            if terminal == "waveterm":
+                if _launch_in_waveterm(argv):
+                    print(f"Launched '{args.title}' dashboard in WaveTerm block")
+                    return
+            elif terminal == "ghostty":
+                if _launch_in_ghostty(argv):
+                    print(f"Launched '{args.title}' dashboard in Ghostty window")
+                    return
+            print("No detach target found — running inline")
+
+        run_host_dashboard(args.title, args.cmd, args.interval)
 
 
 if __name__ == "__main__":
