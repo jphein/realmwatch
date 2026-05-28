@@ -17,7 +17,10 @@ else
     PY="$(command -v python3)"
 fi
 
-# Map verb name → script.
+# Map verb name → script. Hardcoded entries are baked-in launchers; the
+# `wave` blocks in other plugins' plugin.json are merged in below via
+# blocks/discover.py — they don't need a launcher file, they exec
+# wave-block.py directly through cmd_run_manifest.
 declare -A TUIS=(
     [bandwidth]="$_plugin_dir/tuis/bandwidth.py"
     [palace]="$_plugin_dir/tuis/palace_status.py"
@@ -27,7 +30,6 @@ declare -A TUIS=(
     [kgops]="$_plugin_dir/blocks/kgops-launcher.py"
 )
 
-# Display titles used when spawning Wave blocks.
 declare -A TITLES=(
     [bandwidth]="WAN bandwidth (gatekeeper br-lan.38)"
     [palace]="mempalace status"
@@ -37,7 +39,6 @@ declare -A TITLES=(
     [kgops]="KG ops (familiar)"
 )
 
-# Short summaries for `realm wave list`.
 declare -A SUMMARIES=(
     [bandwidth]="Live WAN bandwidth — adaptive sparklines, 30s long-window pair"
     [palace]="palace-daemon health + drawer/wing counts via MCP"
@@ -47,6 +48,23 @@ declare -A SUMMARIES=(
     [kgops]="familiar sysmon + KG queue counts + per-worker activity"
 )
 
+# Manifest-discovered verbs: verb → "mode\tinterval\tcmd" so cmd_run_manifest
+# can hand them off to wave-block.py without a per-verb launcher file.
+declare -A MANIFESTS=()
+
+# Pull `wave` blocks from every plugin's plugin.json and merge into the
+# verb tables. Hardcoded entries take precedence on conflict (back-compat).
+while IFS=$'\t' read -r m_verb m_title m_summary m_mode m_interval m_cmd; do
+    [[ -z "$m_verb" ]] && continue
+    if [[ -n "${TUIS[$m_verb]:-}" ]]; then
+        echo "realm wave: manifest verb '$m_verb' collides with hardcoded launcher — keeping hardcoded" >&2
+        continue
+    fi
+    TITLES[$m_verb]="$m_title"
+    SUMMARIES[$m_verb]="$m_summary"
+    MANIFESTS[$m_verb]=$'\x1f'"$m_mode"$'\x1f'"$m_interval"$'\x1f'"$m_cmd"
+done < <("$PY" "$_plugin_dir/blocks/discover.py" 2>/dev/null)
+
 usage() {
     cat <<EOF
 realm wave — Wave Terminal blocks · adaptive monitor TUIs
@@ -55,17 +73,37 @@ USAGE
   realm wave <verb> [args...]
 
 VERBS
-  bandwidth                    Live WAN bandwidth TUI
-  palace                       palace-daemon status TUI
-  daemon                       tail palace-daemon journal on familiar
-  backfill                     KG-extract queue progress + ETA
-  sysmon                       familiar host metrics (load, RAM, GPU, pg)
-  kgops                        sysmon + KG queue + per-worker activity
-  list                         List available TUIs
-  install [name]               Spawn the TUI(s) as Wave blocks via wsh
-                               (no name → spawn all six)
+  Hardcoded (rich + wave-block launchers):
+    bandwidth                  Live WAN bandwidth TUI
+    palace                     palace-daemon status TUI
+    daemon                     tail palace-daemon journal on familiar
+    backfill                   KG-extract queue progress + ETA
+    sysmon                     familiar host metrics (load, RAM, GPU, pg)
+    kgops                      sysmon + KG queue + per-worker activity
 
-ENVIRONMENT
+  Manifest-discovered (any plugin can add one — see "MANIFESTS" below):
+    Run \`realm wave list\` for the live verb roster.
+
+  Built-in:
+    list                       List every available TUI (hardcoded + discovered)
+    install [name]             Spawn the TUI(s) as Wave blocks via wsh
+                               (no name → spawn all)
+
+MANIFESTS
+  A plugin can declare a wave TUI by adding a "wave" block to its
+  plugin.json. blocks/discover.py picks them up at startup; no launcher
+  file required. Minimum shape:
+
+    "wave": {
+      "verb":     "<name>",
+      "title":    "<window title>",
+      "summary":  "<one-line summary for \`realm wave list\`>",
+      "cmd":      "<shell cmd emitting JSON>",
+      "mode":     "custom",          // or "backfill"
+      "interval": 30                  // poll seconds
+    }
+
+ENVIRONMENT (hardcoded verbs)
   PALACE_DAEMON_URL            Default http://familiar:8085
   PALACE_API_KEY               Required for palace TUI; auto-fetched from
                                familiar (~/.config/palace-daemon/env) if unset
@@ -78,21 +116,49 @@ ENVIRONMENT
   KGOPS_SSH_HOST               SSH target for kg-extract-poll (default familiar)
 
 EXAMPLES
+  realm wave list                            # see every verb
   realm wave bandwidth                       # run TUI in current terminal
-  realm wave install                         # spawn all six as Wave blocks
+  realm wave install                         # spawn all verbs as Wave blocks
   realm wave install backfill                # spawn just the backfill block
 EOF
 }
 
 cmd_list() {
     printf '%-12s  %s\n' "VERB" "DESCRIPTION"
-    for name in "${!TUIS[@]}"; do
-        printf '%-12s  %s\n' "$name" "${SUMMARIES[$name]}"
-    done | sort
+    {
+        for name in "${!TUIS[@]}"; do
+            printf '%-12s  %s\n' "$name" "${SUMMARIES[$name]}"
+        done
+        for name in "${!MANIFESTS[@]}"; do
+            printf '%-12s  %s\n' "$name" "${SUMMARIES[$name]}"
+        done
+    } | sort -u
+}
+
+cmd_run_manifest() {
+    # Manifest verb: split the packed mode/interval/cmd and exec
+    # wave-block.py directly. Title comes from TITLES[$name].
+    local name="$1"
+    local packed="${MANIFESTS[$name]}"
+    local mode interval cmd
+    IFS=$'\x1f' read -r _ mode interval cmd <<< "$packed"
+    local title="${TITLES[$name]}"
+    local wave_block="$_plugin_dir/blocks/wave-block.py"
+    if [[ "$mode" == "backfill" ]]; then
+        exec "$PY" "$wave_block" backfill --cmd "$cmd" --interval "$interval"
+    fi
+    # Default mode: custom.
+    exec "$PY" "$wave_block" custom --title "$title" --cmd "$cmd" --interval "$interval"
 }
 
 cmd_run() {
     local name="$1"; shift || true
+    # Manifest-discovered verb?
+    if [[ -n "${MANIFESTS[$name]:-}" ]]; then
+        cmd_run_manifest "$name"
+        return $?
+    fi
+    # Hardcoded launcher.
     local script="${TUIS[$name]:-}"
     if [[ -z "$script" || ! -f "$script" ]]; then
         echo "realm wave: unknown TUI '$name'. Try: realm wave list" >&2
@@ -116,13 +182,19 @@ cmd_install() {
 
     local names
     if [[ -n "$target" ]]; then
-        if [[ -z "${TUIS[$target]:-}" ]]; then
+        if [[ -z "${TUIS[$target]:-}" && -z "${MANIFESTS[$target]:-}" ]]; then
             echo "realm wave install: unknown TUI '$target'" >&2
             return 1
         fi
         names=("$target")
     else
-        names=(daemon palace bandwidth backfill sysmon kgops)  # spawn order matters for layout
+        # Default spawn order: hardcoded launchers first (they're the
+        # historical defaults), then manifest-discovered ones in
+        # whatever order discover.py emits.
+        names=(daemon palace bandwidth backfill sysmon kgops)
+        for n in "${!MANIFESTS[@]}"; do
+            names+=("$n")
+        done
     fi
 
     for n in "${names[@]}"; do
@@ -154,10 +226,14 @@ case "$verb" in
         cmd_list ;;
     install)
         shift; cmd_install "$@" ;;
-    bandwidth|palace|daemon|backfill|sysmon|kgops)
-        cmd_run "$verb" "${@:2}" ;;
     *)
-        echo "realm wave: unknown verb '$verb'" >&2
-        echo "Try: realm wave help" >&2
-        exit 1 ;;
+        # Hardcoded or manifest-discovered?
+        if [[ -n "${TUIS[$verb]:-}" || -n "${MANIFESTS[$verb]:-}" ]]; then
+            cmd_run "$verb" "${@:2}"
+        else
+            echo "realm wave: unknown verb '$verb'" >&2
+            echo "Try: realm wave help" >&2
+            exit 1
+        fi
+        ;;
 esac
