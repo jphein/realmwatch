@@ -37,9 +37,11 @@ LOCAL (default — same as `realm-update` legacy script):
   realm update check [SOURCE]        Check one source, or all
   realm update run   [SOURCE]        Upgrade one source, or all (no prompt)
 
-CROSS-HOST (via ansible plugin, Ubuntu only in Phase A):
-  realm update --node NAME           Update one fleet host
+CROSS-HOST (via ansible plugin; Ubuntu + OpenWrt fleets):
+  realm update --node NAME           Update one fleet host (auto-routes
+                                     by OS: Ubuntu → apt, OpenWrt → opkg)
   realm update --nodes a,b,c         Update a comma-separated set
+                                     (buckets by OS, one playbook per bucket)
   realm update --all-nodes           Update every fleet.yaml entry with
                                      realm_update.enabled: true
   realm update --list-hosts          Show which fleet entries are opted in
@@ -63,7 +65,13 @@ EXAMPLES:
 DETAILS:
   - Local desktop toolchains (mise, brew, claude/copilot updaters, pipx,
     firmware) only live on this box — the system-updates plugin owns them.
-  - Fleet hosts are handled by the ansible plugin's update-ubuntu.yml.
+  - Fleet hosts route by OS:
+      ubuntu  → plugins/ansible/playbooks/update-ubuntu.yml  (apt+DKMS+fwupd)
+      openwrt → plugins/ansible/playbooks/update-openwrt.yml (opkg via raw/Dropbear)
+    Override fleet.yaml's inferred OS with realm_update.os: openwrt|ubuntu.
+  - OpenWrt runs are dry-run by default — opkg index refresh + list, no
+    upgrade. Pass `--extra-vars do_upgrade=true` (via --playbook-args, or
+    direct `realm ansible-update --playbook update-openwrt.yml`) to apply.
   - Logs land in $XDG_STATE_HOME/realm-update/ (default ~/.local/state/...).
     The 10 most recent runs are kept.
 EOF
@@ -150,31 +158,87 @@ fi
 
 # ─── --node / --nodes / --all-nodes: ansible bridge ──────────────────────
 if [[ ${#NODES[@]} -gt 0 || $ALL_NODES -eq 1 ]]; then
+  # Pull the eligibility manifest as JSON once — we use it both for
+  # --all-nodes expansion AND for per-host OS lookup so --node/--nodes can
+  # route to the right playbook automatically.
+  if ! _eligible_json=$(python3 "$_scripts_dir/lib/emit-update-eligible.py" --format=json); then
+    realm::die "failed to query eligible nodes from fleet.yaml" 1
+  fi
+
   if [[ $ALL_NODES -eq 1 ]]; then
-    # Capture into a var first so we can distinguish "helper failed" (exit
-    # non-zero, e.g. missing ruamel) from "helper succeeded but no opt-ins".
-    # `mapfile < <(...)` swallows the producer's exit code → silent failure.
-    if ! _eligible=$(python3 "$_scripts_dir/lib/emit-update-eligible.py" --format=names); then
-      realm::die "failed to query eligible nodes from fleet.yaml" 1
-    fi
-    if [[ -n "$_eligible" ]]; then
-      mapfile -t NODES <<<"$_eligible"
-    fi
+    mapfile -t NODES < <(printf '%s' "$_eligible_json" | jq -r '.[].name')
     if [[ ${#NODES[@]} -eq 0 ]]; then
       realm::die "no fleet.yaml entries with realm_update.enabled: true (try: realm update --list-hosts)" 1
     fi
   fi
 
-  hosts_csv=$(IFS=','; echo "${NODES[*]}")
-  realm::print_section "Cross-host update via ansible plugin: $hosts_csv"
+  # Bucket hosts by OS. The manifest only includes opted-in entries, so
+  # --node on a non-eligible host falls through to the legacy default
+  # (ubuntu) — same behavior as Phase A. This keeps the verb forgiving
+  # when an operator targets a one-off host that hasn't been opted in
+  # yet but is reachable via ansible inventory.
+  declare -a UBUNTU_NODES=()
+  declare -a OPENWRT_NODES=()
+  declare -a UNKNOWN_NODES=()
+  for n in "${NODES[@]}"; do
+    os=$(printf '%s' "$_eligible_json" \
+      | jq -r --arg n "$n" '.[] | select(.name == $n) | .os' \
+      | head -n1)
+    case "$os" in
+      openwrt) OPENWRT_NODES+=("$n") ;;
+      ubuntu)  UBUNTU_NODES+=("$n") ;;
+      "")      UNKNOWN_NODES+=("$n") ;;   # not in manifest — see below
+      *)       UBUNTU_NODES+=("$n") ;;    # forward-compat: unknown → ubuntu bucket
+    esac
+  done
 
-  ansible_args=(ansible-update --hosts "$hosts_csv")
-  [[ "${REALM_DRY_RUN:-}" = "1" ]] && ansible_args+=(--check)
-  [[ "${REALM_OUTPUT:-human}" = "json" ]] && ansible_args+=(--json)
-  # Forward any leftover args (e.g. --playbook, --no-wait) verbatim.
-  ansible_args+=("${LOCAL_ARGS[@]+"${LOCAL_ARGS[@]}"}")
+  # Hosts not in the manifest default to the ubuntu bucket (back-compat
+  # with how Phase A behaved when --node targeted any host the inventory
+  # knew about, opted in or not).
+  if [[ ${#UNKNOWN_NODES[@]} -gt 0 ]]; then
+    realm::verbose "Nodes not in fleet.yaml opt-in: ${UNKNOWN_NODES[*]} — routing to update-ubuntu.yml"
+    UBUNTU_NODES+=("${UNKNOWN_NODES[@]}")
+  fi
 
-  exec "$realm_bin" "${ansible_args[@]}"
+  realm::print_section "Cross-host update via ansible plugin"
+  if [[ ${#UBUNTU_NODES[@]} -gt 0 ]]; then
+    realm::say "ubuntu  bucket (${#UBUNTU_NODES[@]}): ${UBUNTU_NODES[*]}"
+  fi
+  if [[ ${#OPENWRT_NODES[@]} -gt 0 ]]; then
+    realm::say "openwrt bucket (${#OPENWRT_NODES[@]}): ${OPENWRT_NODES[*]}"
+  fi
+
+  # run_bucket PLAYBOOK NODE...  — fires off one realm-ansible-update
+  # invocation. Sequential per bucket so a failing playbook stops the
+  # whole verb (mirrors Phase A semantics for --all-nodes).
+  run_bucket() {
+    local playbook="$1"; shift
+    local -a bucket_nodes=("$@")
+    local hosts_csv
+    hosts_csv=$(IFS=','; echo "${bucket_nodes[*]}")
+    local -a ansible_args=(ansible-update --hosts "$hosts_csv" --playbook "$playbook")
+    [[ "${REALM_DRY_RUN:-}" = "1" ]] && ansible_args+=(--check)
+    [[ "${REALM_OUTPUT:-human}" = "json" ]] && ansible_args+=(--json)
+    # Forward any leftover args (e.g. --no-wait) verbatim. We do NOT
+    # forward --playbook from LOCAL_ARGS — the bucketing chose it.
+    local arg
+    for arg in "${LOCAL_ARGS[@]+"${LOCAL_ARGS[@]}"}"; do
+      case "$arg" in
+        --playbook|--playbook=*) ;;  # drop; bucket-selected
+        *) ansible_args+=("$arg") ;;
+      esac
+    done
+    "$realm_bin" "${ansible_args[@]}"
+  }
+
+  exit_overall=0
+  if [[ ${#UBUNTU_NODES[@]} -gt 0 ]]; then
+    run_bucket update-ubuntu.yml "${UBUNTU_NODES[@]}" || exit_overall=$?
+  fi
+  if [[ ${#OPENWRT_NODES[@]} -gt 0 ]]; then
+    run_bucket update-openwrt.yml "${OPENWRT_NODES[@]}" || exit_overall=$?
+  fi
+  exit "$exit_overall"
 fi
 
 # ─── Default path: local system-updates ──────────────────────────────────

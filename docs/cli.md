@@ -499,16 +499,34 @@ slow). Idempotent — skips hosts where `:19999` already responds.
 ### `realm ansible-update`
 
 ```text
-Run Ansible update playbook against every Ubuntu host in the realm.
+Run an Ansible update playbook against fleet hosts (Ubuntu or OpenWrt).
 ```
 
-Runs `update-ubuntu.yml`. Safety upgrades:
+Defaults to `update-ubuntu.yml`. Pass `--playbook update-openwrt.yml` for
+the OpenWrt fleet (APs, routers, switch_openwrt).
+
+`update-ubuntu.yml` safety upgrades:
 - DKMS verification — captures `dkms status` after apt upgrade, **fails the
   play** if any module is in a non-`installed` state.
 - fwupdmgr refresh — syncs LVFS metadata + lists pending firmware
   updates (does not auto-apply).
 - Captures `/var/run/reboot-required.pkgs` so the summary lists which
   packages need a reboot.
+
+`update-openwrt.yml` safety contract:
+- Drives the device over `ansible.builtin.raw` + Dropbear SSH — no python
+  installed on target, no extra flash overhead.
+- Always runs `opkg update` + `opkg list-upgradable` (informational).
+- `opkg upgrade` is gated behind `--extra-vars do_upgrade=true`. A plain
+  run is effectively dry-run for openwrt boxes: it reports what *would*
+  upgrade without touching the device.
+- Never reboots; surfaces `reboot needed` in the per-host summary when
+  opkg output flags it.
+
+For multi-OS rollouts use the unified `realm update --node/--nodes/
+--all-nodes` instead — it buckets by OS via `fleet.yaml`'s
+`realm_update.os` field (with category-based inference fallback when
+the field is absent) and dispatches the matching playbook per bucket.
 
 ### `realm ansible upgrade-release --host <name> [--to VERSION]`
 

@@ -10,8 +10,9 @@ Opt-in shape (per entry):
     current_name: disks
     realm_update:
       enabled: true
-      sources: [apt, brew]   # optional allowlist (Phase B, currently advisory)
-      os: ubuntu             # default; openwrt added in Phase B
+      sources: [apt, brew]   # optional allowlist (currently advisory)
+      os: ubuntu | openwrt   # explicit; falls back to category-inferred
+                             # (ap/router/switch_openwrt → openwrt, else ubuntu)
 
 Modes:
   --format=names   newline-separated current_names (default; for shell loops)
@@ -57,6 +58,21 @@ def _eligible(entry: dict) -> bool:
     return True
 
 
+# Phase B: when an entry does not declare realm_update.os, infer from
+# category/role. The OpenWrt-family categories in fleet.yaml are `ap`,
+# `router`, and `switch_openwrt`; everything else (server, service,
+# infra_*, switch_vendor, …) stays on the back-compat `ubuntu` default.
+_OPENWRT_CATEGORIES = frozenset({"ap", "router", "switch_openwrt"})
+
+
+def _infer_os(entry: dict) -> str:
+    if (entry.get("category") or "") in _OPENWRT_CATEGORIES:
+        return "openwrt"
+    if (entry.get("vendor") or "").lower().startswith("openwrt"):
+        return "openwrt"
+    return "ubuntu"
+
+
 def _opt(entry: dict) -> dict:
     ru = entry.get("realm_update") or {}
     return {
@@ -64,7 +80,7 @@ def _opt(entry: dict) -> dict:
         "fleet_id": entry.get("fleet_id"),
         "ops_ip": entry.get("ops_ip") or "",
         "category": entry.get("category") or "",
-        "os": (ru.get("os") or "ubuntu"),
+        "os": (ru.get("os") or _infer_os(entry)),
         "sources": list(ru.get("sources") or []),
     }
 
