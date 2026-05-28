@@ -23,6 +23,8 @@ declare -A TUIS=(
     [palace]="$_plugin_dir/tuis/palace_status.py"
     [daemon]="$_plugin_dir/tuis/daemon_log.py"
     [backfill]="$_plugin_dir/blocks/backfill-launcher.py"
+    [sysmon]="$_plugin_dir/blocks/sysmon-launcher.py"
+    [kgops]="$_plugin_dir/blocks/kgops-launcher.py"
 )
 
 # Display titles used when spawning Wave blocks.
@@ -31,6 +33,8 @@ declare -A TITLES=(
     [palace]="mempalace status"
     [daemon]="daemon journal (familiar)"
     [backfill]="KG extract backfill (familiar)"
+    [sysmon]="sysmon (familiar)"
+    [kgops]="KG ops (familiar)"
 )
 
 # Short summaries for `realm wave list`.
@@ -39,6 +43,8 @@ declare -A SUMMARIES=(
     [palace]="palace-daemon health + drawer/wing counts via MCP"
     [daemon]="tail palace-daemon journal on familiar (auto-reconnect)"
     [backfill]="KG-extract queue progress + ETA via wave-block render_backfill"
+    [sysmon]="familiar host metrics — load, RAM, disk, GPU temps, pg conns"
+    [kgops]="familiar sysmon + KG queue counts + per-worker activity"
 )
 
 usage() {
@@ -52,9 +58,12 @@ VERBS
   bandwidth                    Live WAN bandwidth TUI
   palace                       palace-daemon status TUI
   daemon                       tail palace-daemon journal on familiar
+  backfill                     KG-extract queue progress + ETA
+  sysmon                       familiar host metrics (load, RAM, GPU, pg)
+  kgops                        sysmon + KG queue + per-worker activity
   list                         List available TUIs
   install [name]               Spawn the TUI(s) as Wave blocks via wsh
-                               (no name → spawn all)
+                               (no name → spawn all six)
 
 ENVIRONMENT
   PALACE_DAEMON_URL            Default http://familiar:8085
@@ -62,11 +71,16 @@ ENVIRONMENT
                                familiar (~/.config/palace-daemon/env) if unset
   PALACE_DAEMON_HOST           Default jp@familiar (used by daemon TUI)
   PALACE_DAEMON_UNIT           Default palace-daemon (used by daemon TUI)
+  KG_EXTRACT_TOTAL             Backfill denominator fallback (default 383090)
+  KG_EXTRACT_INTERVAL          Backfill poll cadence in seconds (default 5)
+  SYSMON_INTERVAL              Sysmon poll cadence in seconds (default 3)
+  KGOPS_INTERVAL               KG-ops poll cadence in seconds (default 5)
+  KGOPS_SSH_HOST               SSH target for kg-extract-poll (default familiar)
 
 EXAMPLES
   realm wave bandwidth                       # run TUI in current terminal
-  realm wave install                         # spawn all 3 as Wave blocks
-  realm wave install bandwidth               # spawn just the bandwidth block
+  realm wave install                         # spawn all six as Wave blocks
+  realm wave install backfill                # spawn just the backfill block
 EOF
 }
 
@@ -108,7 +122,7 @@ cmd_install() {
         fi
         names=("$target")
     else
-        names=(daemon palace bandwidth)  # spawn order matters for layout
+        names=(daemon palace bandwidth backfill sysmon kgops)  # spawn order matters for layout
     fi
 
     for n in "${names[@]}"; do
@@ -140,7 +154,7 @@ case "$verb" in
         cmd_list ;;
     install)
         shift; cmd_install "$@" ;;
-    bandwidth|palace|daemon|backfill)
+    bandwidth|palace|daemon|backfill|sysmon|kgops)
         cmd_run "$verb" "${@:2}" ;;
     *)
         echo "realm wave: unknown verb '$verb'" >&2
