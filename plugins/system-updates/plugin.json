@@ -109,5 +109,14 @@
         "args": ["source"]
       }
     ]
+  },
+
+  "wave": {
+    "verb": "updates",
+    "title": "Patch Runes",
+    "summary": "Pending updates by source — apt, snap, flatpak, mise, brew",
+    "cmd": "realm system-updates list",
+    "mode": "custom",
+    "interval": 120
   }
 }

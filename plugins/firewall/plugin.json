@@ -42,5 +42,14 @@
         "path": "/firewall"
       }
     ]
+  },
+
+  "wave": {
+    "verb": "firewall",
+    "title": "Ward Stones",
+    "summary": "Live nftables counters per zone — sparkline trend",
+    "cmd": "realm firewall show",
+    "mode": "custom",
+    "interval": 60
   }
 }

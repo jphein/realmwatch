@@ -42,5 +42,14 @@
         "args": ["id"]
       }
     ]
+  },
+
+  "wave": {
+    "verb": "maintenance",
+    "title": "Veiled Hours",
+    "summary": "Active maintenance windows — currently suppressing alerts",
+    "cmd": "realm maintenance active",
+    "mode": "custom",
+    "interval": 60
   }
 }

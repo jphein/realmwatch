@@ -92,5 +92,14 @@
         "path": "/scan"
       }
     ]
+  },
+
+  "wave": {
+    "verb": "wifi",
+    "title": "Aether Towers",
+    "summary": "Live AP roster — clients per tower, SSID counts",
+    "cmd": "realm wifi aps",
+    "mode": "custom",
+    "interval": 60
   }
 }

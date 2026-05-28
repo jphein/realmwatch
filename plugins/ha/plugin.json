@@ -55,5 +55,14 @@
         "path": "/energy"
       }
     ]
+  },
+
+  "wave": {
+    "verb": "energy",
+    "title": "Solar Sanctum",
+    "summary": "Live solar/battery/grid wattage — sparkline history",
+    "cmd": "realm ha energy",
+    "mode": "custom",
+    "interval": 30
   }
 }

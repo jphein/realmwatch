@@ -42,5 +42,14 @@
         "path": "/latency"
       }
     ]
+  },
+
+  "wave": {
+    "verb": "latency",
+    "title": "Realm Latency",
+    "summary": "Per-VLAN RTT snapshot — sparklines per node",
+    "cmd": "realm latency show",
+    "mode": "custom",
+    "interval": 30
   }
 }
