@@ -84,6 +84,12 @@ VERBS
   Manifest-discovered (any plugin can add one — see "MANIFESTS" below):
     Run \`realm wave list\` for the live verb roster.
 
+  Per-host dashboard (any fleet entry):
+    realm wave <hostname>      GPU/CPU/RAM/disk/temps/net for that host.
+                               Resolves <hostname> via \`realm --list-fleet-names\`
+                               (Ubuntu hosts; OpenWrt nodes surface an error
+                               for now — see issue #49 for the routing fix).
+
   Built-in:
     list                       List every available TUI (hardcoded + discovered)
     install [name]             Spawn the TUI(s) as Wave blocks via wsh
@@ -167,6 +173,49 @@ cmd_run() {
     exec "$PY" "$script" "$@"
 }
 
+# is_fleet_host VERB — return 0 if VERB matches a current_name in fleet.yaml.
+# Tries `realm --list-fleet-names` first (5s-cached); falls back to a direct
+# yaml parse if the dispatcher isn't reachable.
+is_fleet_host() {
+    local v="$1"
+    [[ -z "$v" ]] && return 1
+    local names
+    names=$(realm --list-fleet-names 2>/dev/null) || names=""
+    if [[ -z "$names" ]]; then
+        local fleet="$_repo_dir/fleet.yaml"
+        [[ -f "$fleet" ]] || return 1
+        names=$("$PY" -c "
+import sys, yaml
+try:
+    d = yaml.safe_load(open('$fleet'))
+except Exception:
+    sys.exit(0)
+nodes = (d or {}).get('nodes') or (d or {}).get('hosts') or (d or {}).get('fleet') or (d if isinstance(d, list) else [])
+for n in nodes:
+    if not isinstance(n, dict):
+        continue
+    name = n.get('current_name') or n.get('name') or n.get('id')
+    if name:
+        print(name)
+" 2>/dev/null)
+    fi
+    [[ -z "$names" ]] && return 1
+    while IFS= read -r n; do
+        [[ "$n" == "$v" ]] && return 0
+    done <<< "$names"
+    return 1
+}
+
+cmd_run_host() {
+    local host="$1"
+    local launcher="$_plugin_dir/blocks/host-launcher.py"
+    if [[ ! -x "$launcher" ]]; then
+        echo "realm wave: host-launcher.py missing or not executable" >&2
+        return 1
+    fi
+    WAVE_HOST="$host" exec "$PY" "$launcher"
+}
+
 cmd_install() {
     local target="${1:-}"
 
@@ -230,6 +279,12 @@ case "$verb" in
         # Hardcoded or manifest-discovered?
         if [[ -n "${TUIS[$verb]:-}" || -n "${MANIFESTS[$verb]:-}" ]]; then
             cmd_run "$verb" "${@:2}"
+        elif is_fleet_host "$verb"; then
+            # Generic per-host dashboard: GPU/CPU/RAM/disk/temps/net for any
+            # Ubuntu host in the fleet. OpenWrt hosts surface as `_error`
+            # because they lack python3 by default (see issue #49 for the
+            # Phase-B routing that addresses that surface).
+            cmd_run_host "$verb"
         else
             echo "realm wave: unknown verb '$verb'" >&2
             echo "Try: realm wave help" >&2
