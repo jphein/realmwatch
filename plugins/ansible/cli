@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+# plugins/ansible/cli — CLI front for the ansible plugin (War Room).
+#
+# The ansible plugin ships verbs two ways:
+#   • Method B (declarative) — `inventory`, `playbooks`, `runs`, `run`,
+#     `run-check`, `ai` are declared in plugin.json's `cli.verbs` and
+#     handled by scripts/cli/realm-plugin.sh.
+#   • Method A (this script) — verbs that need real shell logic (SSH,
+#     interactive tmux, multi-step confirmation) live here. Currently:
+#       upgrade-release — major Ubuntu release upgrade for one host.
+#
+# The dispatcher prefers Method A when this file is executable, so we
+# intercept the verbs we own and delegate everything else back to the
+# Method B handler. That keeps the existing surface intact while letting
+# us add shell-only verbs without bending the manifest.
+#
+# Direct invocation forms (used by the dispatcher):
+#   plugins/ansible/cli --one-line-help        # summary line
+#   plugins/ansible/cli --list-subcommands     # all verbs (Method A + B)
+#   plugins/ansible/cli --help                 # combined help
+#   plugins/ansible/cli <verb> [args...]       # execute a verb
+
+set -euo pipefail
+
+_self="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || realpath "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
+_plugin_dir="$(cd "$(dirname "$_self")" && pwd)"
+_repo_dir="$(cd "$_plugin_dir/../.." && pwd)"
+_method_b="$_repo_dir/scripts/cli/realm-plugin.sh"
+_manifest="$_plugin_dir/plugin.json"
+
+# Verbs handled in this script. Everything else falls through to Method B.
+_OWN_VERBS=(upgrade-release)
+
+# is_own_verb VERB — return 0 if we handle it here.
+is_own_verb() {
+  local v="$1" own
+  for own in "${_OWN_VERBS[@]}"; do
+    [[ "$v" == "$own" ]] && return 0
+  done
+  return 1
+}
+
+# Dispatcher hooks — answered without sourcing the lib so they stay fast.
+case "${1:-}" in
+  --one-line-help)
+    jq -r '.cli.summary // .description // "(no summary)"' "$_manifest"
+    exit 0
+    ;;
+  --list-subcommands)
+    # Method A verbs first, then Method B verbs from the manifest.
+    printf '%s\n' "${_OWN_VERBS[@]}"
+    jq -r '.cli.verbs // [] | map(.name) | .[]' "$_manifest" 2>/dev/null || true
+    exit 0
+    ;;
+  ""|--help|-h|help)
+    # Delegate to the Method B handler — it already renders a polished
+    # help table from the manifest. We append our own verbs.
+    "$_method_b" ansible --help
+    cat <<EOF
+
+EXTRA VERBS (shell-only)
+  upgrade-release  Major Ubuntu release upgrade for one host (interactive,
+                   via SSH + tmux). See: realm ansible upgrade-release --help
+EOF
+    exit 0
+    ;;
+esac
+
+verb="$1"
+
+if is_own_verb "$verb"; then
+  shift
+  case "$verb" in
+    upgrade-release)
+      exec "$_plugin_dir/scripts/upgrade-release.sh" "$@"
+      ;;
+  esac
+fi
+
+# Not our verb — hand off to the generic plugin handler so all the
+# existing Method B verbs (inventory, playbooks, runs, run, run-check, ai)
+# keep working unchanged.
+exec "$_method_b" ansible "$@"

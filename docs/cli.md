@@ -510,6 +510,50 @@ Runs `update-ubuntu.yml`. Safety upgrades:
 - Captures `/var/run/reboot-required.pkgs` so the summary lists which
   packages need a reboot.
 
+### `realm ansible upgrade-release --host <name> [--to VERSION]`
+
+```text
+Major Ubuntu release upgrade for one host (interactive, via SSH+tmux).
+```
+
+For when a host is one release behind (e.g. 22.04 → 24.04 → 24.10) and
+needs `do-release-upgrade`, which is interactive and prompt-heavy.
+Always one host at a time, always human-in-the-loop.
+
+Flow:
+1. Resolves `<name>` via the topology and confirms `node.os == "ubuntu"`.
+2. SSHs in and runs `do-release-upgrade -c` (read-only check) — shows the
+   offered new release.
+3. If `--to <version>` was passed, the offered version must match
+   (otherwise the run is aborted).
+4. Prompts for explicit `y/N` confirmation. There is no `--yes` flag.
+5. Opens a tmux session over SSH (`tmux new-session -A`) so the upgrade
+   survives a disconnect — JP can detach and reattach with
+   `ssh <user>@<host> ; tmux attach -t <session>`.
+6. Emits realm events `ansible/upgrade.started` and
+   `ansible/upgrade.completed` for the alerting plugin and the codex.
+
+Out of scope: auto-reboot (host says "reboot required", JP triggers it
+with `realm ssh <host> sudo reboot`), bulk fleet release upgrades
+(always one host at a time), pre-release / development versions.
+
+Examples:
+
+```bash
+# Preview without starting an upgrade
+realm ansible upgrade-release --host familiar --check-only
+
+# Interactive upgrade
+realm ansible upgrade-release --host familiar
+
+# Pin the target version
+realm ansible upgrade-release --host familiar --to 24.04
+```
+
+Exit codes: `0` ok, `2` usage, `3` realm unreachable, `4` no such host /
+wrong OS, `5` no release available or `--to` mismatch, `6` user declined,
+`7` SSH unreachable / upgrade failed.
+
 ### `realm update-all`
 
 ```text
