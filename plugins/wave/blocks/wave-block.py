@@ -319,7 +319,9 @@ def _get_total_drawers(api_key: str, url_base: str) -> int:
 # ── CLI ─────────────────────────────────────────────────────────────────────
 
 def main():
-    signal.signal(signal.SIGINT, lambda *_: None)
+    # NB: do NOT install a no-op SIGINT handler here. The dashboard loops
+    # rely on the default handler raising KeyboardInterrupt to break out of
+    # `while True: time.sleep(0.15)`; swallowing SIGINT made Ctrl-C a no-op.
 
     parser = argparse.ArgumentParser(
         description="wave-block — beautiful live TUI dashboards",
