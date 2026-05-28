@@ -14,7 +14,7 @@
     "verbs": [
       {"name": "bandwidth", "summary": "Live WAN bandwidth TUI (gatekeeper br-lan.38)"},
       {"name": "palace", "summary": "palace-daemon health TUI (MCP probes + drawer counts)"},
-      {"name": "daemon", "summary": "tail palace-daemon journal on disks (auto-reconnect)"},
+      {"name": "daemon", "summary": "tail palace-daemon journal on familiar (auto-reconnect)"},
       {"name": "list", "summary": "list available Wave-block TUIs"},
       {"name": "install", "summary": "spawn TUI(s) as Wave blocks via wsh"}
     ]

@@ -28,14 +28,14 @@ declare -A TUIS=(
 declare -A TITLES=(
     [bandwidth]="WAN bandwidth (gatekeeper br-lan.38)"
     [palace]="mempalace status"
-    [daemon]="daemon journal (disks)"
+    [daemon]="daemon journal (familiar)"
 )
 
 # Short summaries for `realm wave list`.
 declare -A SUMMARIES=(
     [bandwidth]="Live WAN bandwidth — adaptive sparklines, 30s long-window pair"
     [palace]="palace-daemon health + drawer/wing counts via MCP"
-    [daemon]="tail palace-daemon journal on disks (auto-reconnect)"
+    [daemon]="tail palace-daemon journal on familiar (auto-reconnect)"
 )
 
 usage() {
@@ -48,16 +48,16 @@ USAGE
 VERBS
   bandwidth                    Live WAN bandwidth TUI
   palace                       palace-daemon status TUI
-  daemon                       tail palace-daemon journal on disks
+  daemon                       tail palace-daemon journal on familiar
   list                         List available TUIs
   install [name]               Spawn the TUI(s) as Wave blocks via wsh
                                (no name → spawn all)
 
 ENVIRONMENT
-  PALACE_DAEMON_URL            Default http://disks.jphe.in:8085
+  PALACE_DAEMON_URL            Default http://familiar:8085
   PALACE_API_KEY               Required for palace TUI; auto-fetched from
-                               disks (~/.config/palace-daemon/env) if unset
-  PALACE_DAEMON_HOST           Default jp@disks.jphe.in (used by daemon TUI)
+                               familiar (~/.config/palace-daemon/env) if unset
+  PALACE_DAEMON_HOST           Default jp@familiar (used by daemon TUI)
   PALACE_DAEMON_UNIT           Default palace-daemon (used by daemon TUI)
 
 EXAMPLES

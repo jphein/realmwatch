@@ -7,7 +7,7 @@ Adaptive TUI monitors for use as [Wave Terminal](https://www.waveterm.dev/) bloc
 ```
 realm wave bandwidth        Live WAN bandwidth (gatekeeper br-lan.38)
 realm wave palace           palace-daemon health + drawer count
-realm wave daemon           tail palace-daemon journal on disks
+realm wave daemon           tail palace-daemon journal on familiar
 realm wave install [name]   spawn the TUI(s) as Wave blocks via `wsh run`
 realm wave list             list available TUIs
 ```
@@ -24,8 +24,8 @@ Each TUI is a self-contained Python script under `tuis/`. They:
 Sources:
 
 - `bandwidth` — calls `realm collectd show --json`, reads `gatekeeper.interfaces.br-lan.38.{rx,tx}_bps`. Updates ~every 30s (collectd interval); polls at 2s.
-- `palace` — POSTs to `http://disks.jphe.in:8085/mcp` (`mempalace_status`). Auth via `PALACE_API_KEY` from `~/.config/palace-daemon/env` on disks.
-- `daemon` — `ssh jp@disks journalctl -fu palace-daemon`. Long-lived; reconnects on drop.
+- `palace` — POSTs to `http://familiar:8085/mcp` (`mempalace_status`). Auth via `PALACE_API_KEY` from `~/.config/palace-daemon/env` on familiar.
+- `daemon` — `ssh jp@familiar journalctl -fu palace-daemon`. Long-lived; reconnects on drop.
 
 ## Installer
 

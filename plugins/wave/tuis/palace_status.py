@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """Palace-daemon status TUI.
 
-Polls http://disks.jphe.in:8085/mcp every 5s and renders:
+Polls http://familiar:8085/mcp every 5s and renders:
   - daemon reachability (HTTP 200 on /mcp tools/list)
   - mempalace_status response (drawer count, wing count, error if any)
   - reality-check via ssh + psql when daemon reports "No palace found"
     (distinguishes daemon misconfigured from postgres truly empty)
 
 Config:
-  PALACE_DAEMON_URL  default http://disks.jphe.in:8085
-  PALACE_API_KEY     auto-fetched from disks (~/.config/palace-daemon/env)
+  PALACE_DAEMON_URL  default http://familiar:8085
+  PALACE_API_KEY     auto-fetched from familiar (~/.config/palace-daemon/env)
                      if not in env. Cached in process for the session.
 """
 from __future__ import annotations
@@ -30,18 +30,18 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-URL = os.environ.get("PALACE_DAEMON_URL", "http://disks.jphe.in:8085")
-DISKS_HOST = os.environ.get("PALACE_DAEMON_HOST", "jp@disks.jphe.in")
+URL = os.environ.get("PALACE_DAEMON_URL", "http://familiar:8085")
+FAMILIAR_HOST = os.environ.get("PALACE_DAEMON_HOST", "jp@familiar")
 REFRESH_S = 5.0
 
 
 def fetch_api_key() -> str:
-    """Pull the API key from disks once at startup. Returns '' if unavailable."""
+    """Pull the API key from familiar once at startup. Returns '' if unavailable."""
     if v := os.environ.get("PALACE_API_KEY"):
         return v
     try:
         out = subprocess.check_output(
-            ["ssh", "-o", "ConnectTimeout=4", DISKS_HOST,
+            ["ssh", "-o", "ConnectTimeout=4", FAMILIAR_HOST,
              'sed -n "s/^PALACE_API_KEY=//p" ~/.config/palace-daemon/env'],
             timeout=8, stderr=subprocess.DEVNULL,
         )
@@ -92,7 +92,7 @@ def reality_check_postgres() -> str:
     )
     try:
         out = subprocess.check_output(
-            ["ssh", "-o", "ConnectTimeout=4", DISKS_HOST, cmd],
+            ["ssh", "-o", "ConnectTimeout=4", FAMILIAR_HOST, cmd],
             timeout=8, stderr=subprocess.DEVNULL,
         )
         return out.decode().strip() or "?"
@@ -199,7 +199,7 @@ def render(state: dict, term_w: int, term_h: int) -> Panel:
 def main():
     api_key = fetch_api_key()
     if not api_key:
-        print(f"ERROR: no PALACE_API_KEY in env and could not pull from {DISKS_HOST}")
+        print(f"ERROR: no PALACE_API_KEY in env and could not pull from {FAMILIAR_HOST}")
         return 1
 
     state = {"status": "init", "message": "fetching first sample…"}

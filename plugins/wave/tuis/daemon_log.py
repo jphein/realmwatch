@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """palace-daemon journal tail.
 
-Streams `journalctl -fu palace-daemon` from disks. On disconnect, retries
+Streams `journalctl -fu palace-daemon` from familiar. On disconnect, retries
 with exponential backoff up to MAX_BACKOFF seconds.
 """
 from __future__ import annotations
@@ -12,7 +12,7 @@ import subprocess
 import sys
 import time
 
-HOST = os.environ.get("PALACE_DAEMON_HOST", "jp@disks.jphe.in")
+HOST = os.environ.get("PALACE_DAEMON_HOST", "jp@familiar")
 UNIT = os.environ.get("PALACE_DAEMON_UNIT", "palace-daemon")
 MAX_BACKOFF = 30
 
