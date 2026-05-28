@@ -22,9 +22,9 @@ fi
 # blocks/discover.py — they don't need a launcher file, they exec
 # wave-block.py directly through cmd_run_manifest.
 declare -A TUIS=(
-    [bandwidth]="$_plugin_dir/tuis/bandwidth.py"
-    [palace]="$_plugin_dir/tuis/palace_status.py"
-    [daemon]="$_plugin_dir/tuis/daemon_log.py"
+    [bandwidth]="$_plugin_dir/blocks/bandwidth-launcher.py"
+    [palace]="$_plugin_dir/blocks/palace-launcher.py"
+    [daemon]="$_plugin_dir/blocks/daemon-launcher.py"
     [backfill]="$_plugin_dir/blocks/backfill-launcher.py"
     [sysmon]="$_plugin_dir/blocks/sysmon-launcher.py"
     [kgops]="$_plugin_dir/blocks/kgops-launcher.py"
@@ -40,9 +40,9 @@ declare -A TITLES=(
 )
 
 declare -A SUMMARIES=(
-    [bandwidth]="Live WAN bandwidth — adaptive sparklines, 30s long-window pair"
-    [palace]="palace-daemon health + drawer/wing counts via MCP"
-    [daemon]="tail palace-daemon journal on familiar (auto-reconnect)"
+    [bandwidth]="Live WAN bandwidth (gatekeeper br-lan.38) — gold-bar + teal sparklines"
+    [palace]="palace-daemon + mempalace_status: drawers/wings/triples + daemon ms"
+    [daemon]="palace-daemon log health: error/warn counts in last 60s + last line"
     [backfill]="KG-extract queue progress + ETA via wave-block render_backfill"
     [sysmon]="familiar host metrics — load, RAM, disk, GPU temps, pg conns"
     [kgops]="familiar sysmon + KG queue counts + per-worker activity"
@@ -73,10 +73,10 @@ USAGE
   realm wave <verb> [args...]
 
 VERBS
-  Hardcoded (rich + wave-block launchers):
-    bandwidth                  Live WAN bandwidth TUI
-    palace                     palace-daemon status TUI
-    daemon                     tail palace-daemon journal on familiar
+  Hardcoded (all wave-block launchers — gold-bar + teal sparkline template):
+    bandwidth                  Live WAN bandwidth (gatekeeper br-lan.38)
+    palace                     mempalace_status — drawers/wings/triples
+    daemon                     palace-daemon log-health snapshot
     backfill                   KG-extract queue progress + ETA
     sysmon                     familiar host metrics (load, RAM, GPU, pg)
     kgops                      sysmon + KG queue + per-worker activity
