@@ -7,16 +7,20 @@ title: Realmwatch — fantasy homelab monitor
 
 A fantasy-themed homelab network monitor that turns your infrastructure into a
 hand-painted realm map. Every host is a node on the SVG canvas with a fantasy
-name, a persona, and a voice.
+name, a persona, and a voice. As of May 2026 it also carries an RPG layer —
+quests, progression, combat-ward, codex — and ships an in-tree MCP server,
+the Astral Conduit, that Claude Code can attach to.
 
-> 12 VLANs · 130+ nodes · 36 plugins · one unified CLI · an AI oracle ·
-> a herald daemon · a Zabbix-class alerting pipeline — all from a single
-> Linux box.
+> 12 VLANs · 130+ nodes · 47 plugins · one unified CLI with 40+ verbs · an
+> AI oracle · a herald daemon · a Zabbix-class alerting pipeline · an RPG
+> game layer · an MCP server · adaptive Wave Terminal dashboards — all from
+> a single Linux box.
 
 [Get started](getting-started.html){: .btn}
 &nbsp;[Architecture](architecture.html){: .btn}
 &nbsp;[Plugins](plugins.html){: .btn}
 &nbsp;[CLI reference](cli.html){: .btn}
+&nbsp;[Wave Terminal](wave.html){: .btn}
 &nbsp;[Source on GitHub](https://github.com/jphein/realmwatch){: .btn}
 
 ---
@@ -33,13 +37,14 @@ Underneath the theming sits a serious operational toolkit:
 - **Live SVG topology** — pan/zoom canvas, animated traffic, terrain
   contours, biome regions, drag-to-arrange layout. Web workers offload
   the heavy work.
-- **Plugin system** — 36 plugins under `plugins/<name>/`, each with a
+- **Plugin system** — 47 plugins under `plugins/<name>/`, each with a
   `plugin.json` manifest. Drop-in. Topological-sorted dependencies. Hooks
   for endpoints, SSE sources, node enrichers, discovery providers, and CLI
   verbs.
-- **Unified `realm` CLI** — git-style dispatcher. Type `realm watch` and
-  tail SSE events; `realm topology` for a table view; `realm alerting why
-  oracle` to explain why an alert was suppressed.
+- **Unified `realm` CLI** — git-style dispatcher with 40+ verbs. Type
+  `realm watch` and tail SSE events; `realm topology` for a table view;
+  `realm alerting why oracle` to explain why an alert was suppressed;
+  `realm wave install` to spawn live Wave Terminal dashboards.
 - **Auto-OS discovery + Netdata fleet rollout** — one command probes every
   reachable node via SSH, writes back `os` / `os_version` / `tags`, and
   installs the Netdata agent on every Ubuntu host via Ansible.
@@ -66,6 +71,21 @@ Underneath the theming sits a serious operational toolkit:
 - **AI oracle** — Azure o4-mini. Polls the events table for queries, posts
   responses back. Optional Azure TTS for voice. Sister herald daemon
   narrates interesting nodes with themed personas.
+- **RPG game layer** *(absorbed from os.realm.watch, May 2026)* — five
+  plugins, one sidecar SQLite at `~/.realmwatch/game.db`. `realm-engine`
+  ingests events; `progression` grants XP, levels, skills, achievements;
+  `quests` turns alerts into accept/complete quests; `combat-ward` proposes
+  and gates defensive actions against intrusions; `codex` writes node lore
+  and chronicles. Every event in the realm becomes XP for the operator.
+- **MCP server — the Astral Conduit** — in-tree FastMCP server at
+  `plugins/mcp/launcher.py`. Claude Code attaches with one command and
+  gains 30+ tools across realm status, fleet ops, quests, combat-ward,
+  codex, and progression. Stdio transport today; SSE on `/mcp/sse`
+  planned.
+- **Wave Terminal dashboards (Tide Singers)** — `realm wave install`
+  spawns adaptive ANSI TUIs as Wave blocks: WAN bandwidth (gatekeeper
+  br-lan.38), palace-daemon health, live journal tail. Each TUI resizes
+  cleanly and goes red-bordered when its source goes quiet.
 
 ---
 
@@ -100,11 +120,15 @@ for prereqs).
 │   └── Plugins: plugin_loader · plugin_context · plugin_registry        │
 │                  → setup(ctx) for every integrated plugin              │
 └────────────────────────────────────────────────────────────────────────┘
-                 │                                  │
-                 ▼                                  ▼
-   Independent daemons                  Discovery providers
-   oracle_daemon · herald · launcher    netdata · snmp · docker · kvm ·
-                                        systemd · nmap · ha · caddy · …
+                 │                  │                  │
+                 ▼                  ▼                  ▼
+   Independent daemons     Discovery providers    Game-layer plugins
+   oracle_daemon ·         netdata · snmp ·       realm-engine ·
+   herald · launcher       docker · kvm ·         progression ·
+                           systemd · nmap · ha    quests · combat-ward
+                           caddy · …              codex
+                                                  + plugins/mcp/
+                                                    (Astral Conduit, FastMCP)
 ```
 
 [Read the deeper architecture writeup →](architecture.html)
@@ -117,7 +141,7 @@ for prereqs).
 git clone https://github.com/jphein/realmwatch.git
 cd realmwatch
 
-make install        # pip + npm
+make install        # uv sync + npm
 make build          # esbuild → realm-map.js
 make dev            # python3 map_server.py — :80 + SSE + plugins
 
@@ -125,6 +149,9 @@ make dev            # python3 map_server.py — :80 + SSE + plugins
 make cli-install    # symlinks realm into ~/.local/bin (no sudo)
 realm status
 realm watch
+
+# Optional: attach Claude Code to the Astral Conduit (MCP)
+claude mcp add realmwatch ~/Projects/realmwatch/plugins/mcp/launcher.py
 ```
 
 Open <http://localhost/realm-map.html>. Panels render, SSE streams live, every
@@ -144,6 +171,8 @@ plugin's UI loads from `/plugins/<name>/panel.{html,js,css}` at runtime.
   what it does, what it integrates.
 - **[CLI reference](cli.html)** — every `realm` subcommand, every flag, every
   exit code, completion install.
+- **[Wave Terminal dashboards](wave.html)** — Tide Singers — adaptive ANSI
+  TUIs as Wave blocks.
 
 ## Project docs in the repo
 

@@ -94,7 +94,7 @@ make dev
 This runs `python3 map_server.py` in the foreground. Watch the log:
 
 ```
-[plugin_loader] discovered 36 plugins
+[plugin_loader] discovered 47 plugins
 [plugin_loader] dep-sort complete
 [plugin_loader] loading: collectd, wifi, events, ha, latency, …
 [plugin_loader] all plugins loaded in 1.42s

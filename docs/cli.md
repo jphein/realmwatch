@@ -430,6 +430,42 @@ realm discovery-actions apply familiar    # re-run actions, live writes
 realm discovery-actions delete openwrt-ap # remove an action by id
 ```
 
+### `realm wave bandwidth|palace|daemon|list|install`
+
+```text
+Wave Terminal blocks — adaptive monitor TUIs for the realm.
+```
+
+`plugins/wave/` — the **Tide Singers**. Three adaptive Python TUIs designed
+to live as Wave Terminal blocks: live WAN bandwidth from gatekeeper's
+`br-lan.38`, palace-daemon health on familiar (via MCP `mempalace_status`),
+and a journal tail of `palace-daemon` over SSH with auto-reconnect. The
+underlying scripts have no Wave dependency and will run in any terminal —
+the `install` verb is what pairs them with Wave's block system via `wsh`.
+
+```bash
+realm wave list                  # show available TUIs
+realm wave bandwidth             # run the WAN bandwidth TUI in this terminal
+realm wave palace                # run the palace-daemon status TUI
+realm wave daemon                # tail palace-daemon journal on familiar
+realm wave install               # spawn all three as Wave blocks via wsh
+realm wave install bandwidth     # spawn just the WAN block
+```
+
+`install` requires `wsh` on PATH (ships with [Wave Terminal](https://www.waveterm.dev/)).
+The TUIs adapt to terminal width and height: header fields drop right-to-
+left as width shrinks, sparklines stretch to fill, and a long-window 30-second-
+bucket pair appears below the live sparklines when the pane is tall enough.
+
+| Env var | Default | Used by |
+|---|---|---|
+| `PALACE_DAEMON_URL` | `http://familiar:8085` | `palace` |
+| `PALACE_API_KEY` | *(auto-fetched over SSH from `familiar:~/.config/palace-daemon/env`)* | `palace` |
+| `PALACE_DAEMON_HOST` | `jp@familiar` | `palace` + `daemon` |
+| `PALACE_DAEMON_UNIT` | `palace-daemon` | `daemon` |
+
+Full writeup: [Tide Singers — the Wave plugin](wave.html).
+
 ---
 
 ## Fleet + update orchestration

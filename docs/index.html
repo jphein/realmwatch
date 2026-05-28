@@ -3,12 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Realmwatch — A high-fantasy SVG map of every device on your home network. 130+ nodes, 12 VLANs, 36 plugins, a unified realm CLI, and an AI oracle that speaks.">
-<meta name="realm-version" content='{"name": "realmwatch", "description": "Realmwatch \u2014 the fantasy network monitor", "version": "Valiant Relic \u00b7 3603ece", "hash": "3603ece", "branch": "master", "dirty": true, "built": "2026-05-17T03:04:20Z", "realm": "fantasy", "repo": "https://github.com/jphein/realmwatch", "commit_url": "https://github.com/jphein/realmwatch/commit/3603ece"}'>
+<meta name="description" content="Realmwatch — A high-fantasy SVG map of every device on your home network. 130+ nodes, 12 VLANs, 47 plugins, an RPG game layer, an in-tree MCP server, adaptive Wave Terminal dashboards, and a unified realm CLI with 40+ verbs.">
+<meta name="theme-color" content="#0c1612" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f3ead3" media="(prefers-color-scheme: light)">
+<meta name="realm-version" content='{"name": "realmwatch", "description": "Realmwatch — the fantasy network monitor", "version": "Valiant Relic · 3603ece", "hash": "3603ece", "branch": "master", "dirty": true, "built": "2026-05-17T03:04:20Z", "realm": "fantasy", "repo": "https://github.com/jphein/realmwatch", "commit_url": "https://github.com/jphein/realmwatch/commit/3603ece"}'>
 <title>Realmwatch — the realm in code</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Cinzel+Decorative:wght@400;700;900&family=IM+Fell+English:ital@0;1&family=MedievalSharp&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Cinzel+Decorative:wght@400;700;900&family=IM+Fell+English:ital@0;1&family=MedievalSharp&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   /* ────────────────────────────────────────────────────────────── */
@@ -31,11 +34,14 @@
     --emerald-deep:  #3a8e5a;
     --indigo:        #8c9ad8;
     --ruby:          #d88494;
+    --azure:         #7ac8e8;
     --rule:          rgba(192, 158, 88, 0.25);
     --rule-strong:   rgba(192, 158, 88, 0.55);
     --shadow:        0 8px 32px rgba(0, 0, 0, 0.55);
     --glow-gold:     0 0 24px rgba(240, 216, 144, 0.28);
     --glow-emerald:  0 0 22px rgba(128, 232, 160, 0.24);
+    --glow-azure:    0 0 22px rgba(122, 200, 232, 0.28);
+    --focus-ring:    0 0 0 2px rgba(255, 232, 160, 0.85), 0 0 0 5px rgba(240, 216, 144, 0.28);
   }
 
   @media (prefers-color-scheme: light) {
@@ -55,11 +61,14 @@
       --emerald-deep:  #1a4a2c;
       --indigo:        #364080;
       --ruby:          #983040;
+      --azure:         #2a6b8a;
       --rule:          rgba(120, 80, 40, 0.32);
       --rule-strong:   rgba(120, 80, 40, 0.62);
       --shadow:        0 4px 18px rgba(80, 50, 20, 0.25);
       --glow-gold:     0 0 16px rgba(184, 134, 42, 0.22);
       --glow-emerald:  0 0 16px rgba(42, 106, 68, 0.22);
+      --glow-azure:    0 0 16px rgba(42, 107, 138, 0.22);
+      --focus-ring:    0 0 0 2px rgba(120, 80, 40, 0.9), 0 0 0 5px rgba(120, 80, 40, 0.22);
     }
   }
 
@@ -74,6 +83,7 @@
     line-height: 1.65;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
+    text-rendering: optimizeLegibility;
   }
 
   body {
@@ -84,6 +94,43 @@
       var(--bg);
     min-height: 100vh;
   }
+
+  /* Smooth in-page nav */
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+  }
+
+  /* Focus-visible — accessible keyboard halo */
+  a:focus-visible,
+  button:focus-visible,
+  .cta:focus-visible,
+  .feature:focus-visible,
+  .plugin:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+    border-radius: 4px;
+  }
+
+  /* Skip link */
+  .skip {
+    position: absolute;
+    top: -40px;
+    left: 8px;
+    background: var(--bg-deep);
+    color: var(--gold-bright);
+    padding: 8px 14px;
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border: 1px solid var(--gold);
+    border-radius: 4px;
+    z-index: 100;
+    transition: top 0.2s;
+  }
+  .skip:focus { top: 8px; }
 
   /* Drifting motes (CSS only) */
   .motes {
@@ -108,6 +155,9 @@
     90%  { opacity: 0.5; }
     100% { transform: translate(40px, -120vh) scale(1.3); opacity: 0; }
   }
+  @media (prefers-reduced-motion: reduce) {
+    .motes { display: none; }
+  }
 
   /* ────────────────────────────────────────────────────────────── */
   /* Layout                                                          */
@@ -118,6 +168,9 @@
     max-width: 1120px;
     margin: 0 auto;
     padding: 56px 28px 96px;
+  }
+  @media (max-width: 640px) {
+    .wrap { padding: 28px 18px 64px; }
   }
 
   /* ─── Top sigil bar ─── */
@@ -132,15 +185,23 @@
     letter-spacing: 0.22em;
     text-transform: uppercase;
     color: var(--ink-dim);
+    flex-wrap: wrap;
+  }
+  @media (max-width: 640px) {
+    .topbar { margin-bottom: 48px; }
   }
   .topbar .sigil { display: flex; align-items: center; gap: 12px; }
   .topbar .sigil svg { width: 28px; height: 28px; filter: drop-shadow(0 0 6px rgba(240, 216, 144, 0.3)); }
   .topbar .sigil span { color: var(--gold); letter-spacing: 0.34em; }
-  .topbar nav { display: flex; gap: 22px; font-size: 11px; }
+  .topbar nav { display: flex; gap: 22px; font-size: 11px; flex-wrap: wrap; }
+  @media (max-width: 480px) {
+    .topbar nav { gap: 14px; }
+  }
   .topbar nav a {
     color: var(--ink-soft);
     text-decoration: none;
     transition: color 0.2s, text-shadow 0.2s;
+    padding: 2px 2px;
   }
   .topbar nav a:hover {
     color: var(--gold-bright);
@@ -153,6 +214,9 @@
     margin-bottom: 96px;
     position: relative;
   }
+  @media (max-width: 640px) {
+    .hero { margin-bottom: 64px; }
+  }
   .hero .crest {
     font-family: 'Cinzel Decorative', serif;
     font-size: clamp(48px, 8vw, 92px);
@@ -161,7 +225,7 @@
     text-shadow:
       0 0 40px rgba(240, 216, 144, 0.25),
       0 0 2px rgba(255, 232, 160, 0.6);
-    line-height: 1;
+    line-height: 1.02;
     margin: 0 0 20px;
     letter-spacing: 0.02em;
   }
@@ -179,8 +243,9 @@
     line-height: 1.75;
     color: var(--ink);
     max-width: 720px;
-    margin: 0 auto 44px;
+    margin: 0 auto 28px;
     text-align: justify;
+    hyphens: auto;
   }
   .hero .dragon::first-letter {
     font-family: 'Cinzel Decorative', serif;
@@ -191,6 +256,41 @@
     color: var(--gold);
     text-shadow: var(--glow-gold);
   }
+  @media (max-width: 640px) {
+    .hero .dragon { text-align: left; }
+  }
+
+  /* Pillar pips beneath the dragon — fast surface of the four pillars */
+  .pillars {
+    display: flex;
+    justify-content: center;
+    gap: 22px;
+    flex-wrap: wrap;
+    margin: 0 auto 44px;
+    max-width: 720px;
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .pillars .pip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    background: var(--bg-elev);
+    transition: border-color 0.2s, color 0.2s, transform 0.18s;
+  }
+  .pillars .pip:hover {
+    border-color: var(--gold);
+    color: var(--gold-bright);
+    transform: translateY(-1px);
+  }
+  .pillars .pip .glyph { font-family: serif; color: var(--gold); }
+
   .hero .cta-row {
     display: flex;
     justify-content: center;
@@ -209,7 +309,10 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     font-size: 13px;
-    transition: transform 0.15s, box-shadow 0.2s, background 0.2s;
+    transition: transform 0.15s, box-shadow 0.2s, background 0.2s, border-color 0.2s, color 0.2s;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cta { transition: none; }
   }
   .cta-primary {
     background: linear-gradient(180deg, #2a5a3a 0%, #1a3e26 100%);
@@ -221,6 +324,12 @@
     transform: translateY(-2px);
     box-shadow: 0 0 36px rgba(240, 216, 144, 0.45), inset 0 0 0 1px rgba(240, 216, 144, 0.25);
   }
+  @media (prefers-color-scheme: light) {
+    .cta-primary {
+      background: linear-gradient(180deg, #d6c082 0%, #b8a25c 100%);
+      color: #2a1d10;
+    }
+  }
   .cta-ghost {
     background: transparent;
     color: var(--ink);
@@ -229,6 +338,7 @@
   .cta-ghost:hover {
     border-color: var(--gold);
     color: var(--gold-bright);
+    transform: translateY(-2px);
   }
 
   /* ─── Ornate divider ─── */
@@ -242,6 +352,9 @@
     font-size: 11px;
     letter-spacing: 0.4em;
     text-transform: uppercase;
+  }
+  @media (max-width: 480px) {
+    .divider { gap: 12px; font-size: 10px; letter-spacing: 0.28em; margin: 56px 0 36px; }
   }
   .divider::before, .divider::after {
     content: '';
@@ -264,6 +377,7 @@
     text-align: center;
     margin: 0 0 8px;
     text-shadow: var(--glow-gold);
+    line-height: 1.15;
   }
   .section-sub {
     text-align: center;
@@ -284,8 +398,16 @@
     border-bottom: 1px solid var(--rule);
     background: linear-gradient(180deg, transparent, rgba(20, 36, 28, 0.4), transparent);
   }
+  @media (prefers-color-scheme: light) {
+    .numbers {
+      background: linear-gradient(180deg, transparent, rgba(214, 192, 130, 0.25), transparent);
+    }
+  }
   @media (max-width: 720px) {
-    .numbers { grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .numbers { grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  }
+  @media (max-width: 420px) {
+    .numbers { grid-template-columns: repeat(2, 1fr); gap: 16px; }
   }
   .num-cell {
     text-align: center;
@@ -318,6 +440,11 @@
     position: relative;
     overflow: hidden;
   }
+  @media (prefers-color-scheme: light) {
+    .map-snippet {
+      background: radial-gradient(ellipse at center, rgba(255, 240, 200, 0.85), rgba(230, 217, 179, 0.7));
+    }
+  }
   .map-snippet::before {
     content: '';
     position: absolute; inset: 0;
@@ -344,6 +471,105 @@
     margin-top: 14px;
   }
 
+  /* ─── Pillar callout (Wave, MCP, Game) ─── */
+  .pillar-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+  }
+  @media (max-width: 880px) {
+    .pillar-row { grid-template-columns: 1fr; }
+  }
+  .pillar-card {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--panel-edge);
+    border-radius: 6px;
+    padding: 26px 24px 22px;
+    transition: transform 0.18s, border-color 0.2s, box-shadow 0.2s;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .pillar-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    opacity: 0.45;
+  }
+  .pillar-card.azure::before { background: linear-gradient(90deg, transparent, var(--azure), transparent); opacity: 0.55; }
+  .pillar-card.emerald::before { background: linear-gradient(90deg, transparent, var(--emerald), transparent); opacity: 0.55; }
+  .pillar-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--gold);
+    box-shadow: var(--shadow), var(--glow-gold);
+  }
+  .pillar-card.azure:hover { border-color: var(--azure); box-shadow: var(--shadow), var(--glow-azure); }
+  .pillar-card.emerald:hover { border-color: var(--emerald); box-shadow: var(--shadow), var(--glow-emerald); }
+  .pillar-card .icon {
+    font-size: 32px;
+    line-height: 1;
+    margin-bottom: 14px;
+    filter: drop-shadow(0 0 10px rgba(240, 216, 144, 0.45));
+  }
+  .pillar-card.azure .icon { filter: drop-shadow(0 0 10px rgba(122, 200, 232, 0.5)); }
+  .pillar-card.emerald .icon { filter: drop-shadow(0 0 10px rgba(128, 232, 160, 0.5)); }
+  .pillar-card h3 {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 19px;
+    color: var(--gold-bright);
+    margin: 0 0 4px;
+    font-weight: 700;
+  }
+  .pillar-card .sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--emerald);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .pillar-card.azure .sub { color: var(--azure); }
+  .pillar-card p {
+    margin: 0 0 14px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--ink);
+    flex-grow: 1;
+  }
+  .pillar-card .pillar-cli {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-dim);
+    border-top: 1px dashed var(--rule);
+    padding-top: 12px;
+    margin-top: auto;
+  }
+  .pillar-card .pillar-cli code {
+    color: var(--gold);
+    background: none;
+    padding: 0;
+  }
+  .pillar-card .pillar-link {
+    display: inline-block;
+    margin-top: 10px;
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--rule-strong);
+    padding-bottom: 2px;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .pillar-card .pillar-link:hover {
+    color: var(--gold-bright);
+    border-color: var(--gold);
+  }
+
   /* ─── Feature cards (the eight Zabbix-class spells) ─── */
   .features {
     display: grid;
@@ -358,6 +584,10 @@
     position: relative;
     transition: transform 0.18s, border-color 0.2s, box-shadow 0.2s;
     overflow: hidden;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .feature, .pillar-card, .plugin { transition: none; }
+    .feature:hover, .pillar-card:hover, .plugin:hover { transform: none; }
   }
   .feature::before {
     content: '';
@@ -425,6 +655,13 @@
     overflow: hidden;
     box-shadow: var(--shadow);
   }
+  @media (prefers-color-scheme: light) {
+    .terminal {
+      background: linear-gradient(180deg, #1a1208 0%, #2a1d10 100%);
+      border-color: rgba(120, 80, 40, 0.35);
+    }
+    .terminal pre { color: #f3ead3; }
+  }
   .terminal .titlebar {
     display: flex;
     align-items: center;
@@ -438,8 +675,15 @@
     color: var(--ink-soft);
     text-transform: uppercase;
   }
+  @media (prefers-color-scheme: light) {
+    .terminal .titlebar {
+      background: rgba(40, 28, 16, 0.85);
+      color: rgba(243, 234, 211, 0.78);
+      border-bottom-color: rgba(120, 80, 40, 0.35);
+    }
+  }
   .terminal .titlebar .dots { display: flex; gap: 6px; margin-right: 10px; }
-  .terminal .titlebar .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--rule); opacity: 0.6; }
+  .terminal .titlebar .dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(192, 158, 88, 0.45); opacity: 0.7; }
   .terminal pre {
     margin: 0;
     padding: 22px 26px;
@@ -449,20 +693,26 @@
     color: #d8e8d8;
     overflow-x: auto;
   }
-  .terminal .prompt { color: var(--emerald); }
-  .terminal .cmd    { color: var(--gold-bright); }
-  .terminal .ok     { color: var(--emerald); }
-  .terminal .warn   { color: var(--gold); }
-  .terminal .fail   { color: var(--ruby); }
-  .terminal .dim    { color: var(--ink-dim); }
-  .terminal .head   { color: var(--indigo); font-weight: 500; }
+  @media (max-width: 480px) {
+    .terminal pre { padding: 16px 14px; font-size: 11.5px; }
+  }
+  .terminal .prompt { color: #80e8a0; }
+  .terminal .cmd    { color: #ffe8a0; }
+  .terminal .ok     { color: #80e8a0; }
+  .terminal .warn   { color: #f0d890; }
+  .terminal .fail   { color: #d88494; }
+  .terminal .dim    { color: rgba(233, 226, 200, 0.52); }
+  .terminal .head   { color: #8c9ad8; font-weight: 500; }
   .terminal .caret  {
-    background: var(--emerald);
-    color: var(--bg-deep);
+    background: #80e8a0;
+    color: #060e0b;
     animation: blink 1.1s steps(1, end) infinite;
     padding: 0 1px;
   }
   @keyframes blink { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) {
+    .terminal .caret { animation: none; }
+  }
 
   /* ─── Plugin gallery ─── */
   .plugin-group {
@@ -555,8 +805,19 @@
     overflow-x: auto;
     box-shadow: var(--shadow);
   }
-  .install pre .c { color: var(--ink-dim); }
-  .install pre .p { color: var(--emerald); }
+  @media (prefers-color-scheme: light) {
+    .install pre {
+      background: linear-gradient(180deg, #1a1208 0%, #2a1d10 100%);
+      color: #f3ead3;
+      border-color: rgba(120, 80, 40, 0.35);
+      border-left-color: var(--gold);
+    }
+  }
+  @media (max-width: 480px) {
+    .install pre { padding: 14px 14px; font-size: 12px; }
+  }
+  .install pre .c { color: rgba(233, 226, 200, 0.52); }
+  .install pre .p { color: #80e8a0; }
 
   /* ─── Footer ─── */
   footer {
@@ -592,6 +853,13 @@
     opacity: 1;
     transform: translateY(0);
   }
+  @media (prefers-reduced-motion: reduce) {
+    .unfurl {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+  }
 
   /* ─── SVG ley-line animation ─── */
   .ley {
@@ -611,9 +879,15 @@
     0%, 100% { filter: drop-shadow(0 0 6px rgba(240, 216, 144, 0.5)); }
     50%      { filter: drop-shadow(0 0 14px rgba(240, 216, 144, 0.9)); }
   }
+  @media (prefers-reduced-motion: reduce) {
+    .ley { animation: none; }
+    .node-glow { animation: none; }
+  }
 </style>
 </head>
 <body>
+
+<a class="skip" href="#main">Skip to content</a>
 
 <!-- Drifting motes -->
 <div class="motes" aria-hidden="true">
@@ -629,7 +903,7 @@
   <div class="mote" style="left: 94%; animation-delay: -1s;  animation-duration: 21s;"></div>
 </div>
 
-<div class="wrap">
+<div class="wrap" id="main">
 
   <!-- Top bar -->
   <div class="topbar">
@@ -640,7 +914,8 @@
       </svg>
       <span>Realmwatch</span>
     </div>
-    <nav>
+    <nav aria-label="Primary">
+      <a href="#pillars">Pillars</a>
       <a href="#features">Spells</a>
       <a href="#cli">The CLI</a>
       <a href="#plugins">Plugins</a>
@@ -662,9 +937,18 @@
       serious operational toolkit: live SVG topology, server-sent events,
       role-based auto-discovery, trigger-dependency alert suppression, event
       acknowledgement, declarative onboarding actions, an AI oracle that speaks,
-      and a unified <code style="font-family:'JetBrains Mono', monospace; color: var(--gold-bright); background: none;">realm</code> CLI that exposes every capability through one
+      an in-tree MCP server, an RPG game layer where every event grants XP,
+      and a unified <code style="font-family:'JetBrains Mono', monospace; color: var(--gold-bright); background: none;">realm</code> CLI with 40+ verbs that exposes every capability through one
       ergonomic, git-style command.
     </p>
+
+    <div class="pillars" aria-label="The four pillars">
+      <span class="pip"><span class="glyph">✦</span>Realm Map</span>
+      <span class="pip"><span class="glyph">⚔</span>Game Layer</span>
+      <span class="pip"><span class="glyph">⚯</span>Astral Conduit · MCP</span>
+      <span class="pip"><span class="glyph">🌊</span>Wave Dashboards</span>
+    </div>
+
     <div class="cta-row">
       <a class="cta cta-primary" href="https://github.com/jphein/realmwatch" target="_blank" rel="noopener">
         Clone the realm →
@@ -674,14 +958,14 @@
   </section>
 
   <!-- Map snippet -->
-  <section class="unfurl">
+  <section class="unfurl" aria-labelledby="map-heading">
     <div class="divider">
       <span class="glyph">✦</span>
-      <span>The realm at a glance</span>
+      <span id="map-heading">The realm at a glance</span>
       <span class="glyph">✦</span>
     </div>
     <div class="map-snippet">
-      <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg">
+      <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A stylised treasure-map view of four outer nodes orbiting a central citadel, connected by glowing ley-lines.">
         <defs>
           <radialGradient id="nodeGold" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stop-color="#ffe8a0" stop-opacity="1"/>
@@ -751,21 +1035,86 @@
   </section>
 
   <!-- Numbers strip -->
-  <section class="unfurl" style="margin-top: 64px;">
+  <section class="unfurl" style="margin-top: 64px;" aria-label="Realm statistics">
     <div class="numbers">
-      <div class="num-cell"><div class="n">36</div><div class="l">Plugins</div></div>
+      <div class="num-cell"><div class="n">47</div><div class="l">Plugins</div></div>
+      <div class="num-cell"><div class="n">40+</div><div class="l">CLI Verbs</div></div>
       <div class="num-cell"><div class="n">12</div><div class="l">VLANs</div></div>
       <div class="num-cell"><div class="n">130+</div><div class="l">Nodes</div></div>
-      <div class="num-cell"><div class="n">10,169</div><div class="l">Netdata Charts</div></div>
-      <div class="num-cell"><div class="n">8</div><div class="l">Zabbix Spells</div></div>
+      <div class="num-cell"><div class="n">5</div><div class="l">Game Layer Plugins</div></div>
+    </div>
+  </section>
+
+  <!-- ─── The three new pillars: Game layer, Astral Conduit, Wave ─── -->
+  <section class="unfurl" id="pillars" aria-labelledby="pillars-heading">
+    <div class="divider">
+      <span class="glyph">✦</span>
+      <span id="pillars-heading">Three new pillars, May 2026</span>
+      <span class="glyph">✦</span>
+    </div>
+    <h2 class="section-title">Beyond the map</h2>
+    <p class="section-sub">The monitor learned to play, to speak protocol, and to fill terminal blocks.</p>
+
+    <div class="pillar-row">
+
+      <div class="pillar-card emerald">
+        <div class="icon" aria-hidden="true">⚔️</div>
+        <h3>The Game Layer</h3>
+        <div class="sub">realm-engine · progression · quests · combat-ward · codex</div>
+        <p>
+          Absorbed from <code style="font-family:'JetBrains Mono', monospace; font-size:12px; color: var(--emerald); background:none;">os.realm.watch</code> this May. Five plugins on a sidecar
+          SQLite at <code style="font-family:'JetBrains Mono', monospace; font-size:12px; color: var(--emerald); background:none;">~/.realmwatch/game.db</code>. Every realm event becomes XP,
+          intrusions become bestiary entries, alerts become accept/complete quests,
+          and the codex chronicles it all.
+        </p>
+        <div class="pillar-cli">
+          <code>realm quest list | accept | complete</code><br>
+          <code>realm progression level</code>
+        </div>
+      </div>
+
+      <div class="pillar-card azure">
+        <div class="icon" aria-hidden="true">⚯</div>
+        <h3>The Astral Conduit</h3>
+        <div class="sub">in-tree MCP server · FastMCP · stdio</div>
+        <p>
+          A FastMCP server lives in-tree at <code style="font-family:'JetBrains Mono', monospace; font-size:12px; color: var(--azure); background:none;">plugins/mcp/launcher.py</code>.
+          Claude Code attaches with one command and gains 30+ tools across realm
+          status, fleet ops, quests, combat-ward, codex, and progression.
+          Stdio today; SSE on <code style="font-family:'JetBrains Mono', monospace; font-size:12px; color: var(--azure); background:none;">/mcp/sse</code> planned.
+        </p>
+        <div class="pillar-cli">
+          <code>claude mcp add realmwatch \<br>
+          &nbsp;&nbsp;~/Projects/realmwatch/plugins/mcp/launcher.py</code>
+        </div>
+      </div>
+
+      <div class="pillar-card">
+        <div class="icon" aria-hidden="true">🌊</div>
+        <h3>Tide Singers</h3>
+        <div class="sub">adaptive Wave Terminal dashboards</div>
+        <p>
+          <code style="font-family:'JetBrains Mono', monospace; font-size:12px; color: var(--gold); background:none;">realm wave install</code> spawns live monitors as
+          <a href="https://www.waveterm.dev/" target="_blank" rel="noopener" style="color: var(--gold); text-decoration:none; border-bottom:1px dashed var(--rule-strong);">Wave Terminal</a>
+          blocks. Three TUIs ship: WAN bandwidth (gatekeeper br-lan.38),
+          palace-daemon health, live journal tail. Each resizes cleanly and
+          goes red-bordered when its source falls quiet.
+        </p>
+        <div class="pillar-cli">
+          <code>realm wave install</code><br>
+          <code>realm wave bandwidth | palace | daemon</code>
+          <a class="pillar-link" href="wave.html">Read the Tide Singers brief →</a>
+        </div>
+      </div>
+
     </div>
   </section>
 
   <!-- Feature catalog -->
-  <section class="unfurl" id="features">
+  <section class="unfurl" id="features" aria-labelledby="features-heading">
     <div class="divider">
       <span class="glyph">✦</span>
-      <span>The illuminated catalog of spells</span>
+      <span id="features-heading">The illuminated catalog of spells</span>
       <span class="glyph">✦</span>
     </div>
     <h2 class="section-title">Eight workings, freshly bound</h2>
@@ -840,13 +1189,13 @@
   </section>
 
   <!-- CLI terminal -->
-  <section class="unfurl" id="cli">
+  <section class="unfurl" id="cli" aria-labelledby="cli-heading">
     <div class="divider">
       <span class="glyph">✦</span>
-      <span>The wizard's prompt</span>
+      <span id="cli-heading">The wizard's prompt</span>
       <span class="glyph">✦</span>
     </div>
-    <h2 class="section-title">One command, many verbs</h2>
+    <h2 class="section-title">One command, forty verbs</h2>
     <p class="section-sub">A git-style dispatcher. Drop a file, gain a subcommand.</p>
 
     <div class="terminal">
@@ -857,9 +1206,11 @@
 <pre><span class="prompt">$</span> <span class="cmd">realm status</span>
 <span class="head">┌─ REALM STATUS ──────────────────────────────────────────────┐</span>
 <span class="head">│</span> uptime           <span class="ok">14d 03:22</span>      events (24h)   <span class="ok">1,847</span>
-<span class="head">│</span> plugins loaded   <span class="ok">36 / 36</span>        sse subscribers <span class="ok">4</span>
+<span class="head">│</span> plugins loaded   <span class="ok">47 / 47</span>        sse subscribers <span class="ok">4</span>
 <span class="head">│</span> nodes online     <span class="ok">127 / 131</span>      maintenance     <span class="warn">1 active</span>
 <span class="head">│</span> alerts pending   <span class="warn">2 unack</span>        oracle backlog  <span class="dim">0</span>
+<span class="head">│</span> player level     <span class="ok">14 (Archmage)</span>  open quests     <span class="ok">3</span>
+<span class="head">│</span> mcp tools        <span class="ok">32 exposed</span>     wave blocks     <span class="ok">3 attached</span>
 <span class="head">└─────────────────────────────────────────────────────────────┘</span>
 
 <span class="prompt">$</span> <span class="cmd">realm role show gateway</span>
@@ -870,63 +1221,68 @@ sublabel        : <span class="dim">"{ip} · {os} · {fw}"</span>
 
 <span class="prompt">$</span> <span class="cmd">realm watch --filter alert</span>
 <span class="dim">[19:42:11]</span> <span class="warn">▲</span> <span class="head">ward-stone</span>        ward.firewall.drop.spike    <span class="warn">suppressed-by gatekeeper</span>
-<span class="dim">[19:42:18]</span> <span class="ok">●</span> <span class="head">scrying-stone</span>     ward.recovered.cpu          <span class="ok">cleared</span>
-<span class="dim">[19:42:24]</span> <span class="fail">▼</span> <span class="head">dragon-at-gate</span>    ward.tls.expiry.soon        <span class="fail">acked by jp</span>
+<span class="dim">[19:42:18]</span> <span class="ok">●</span> <span class="head">scrying-stone</span>     ward.recovered.cpu          <span class="ok">cleared · +12 xp</span>
+<span class="dim">[19:42:24]</span> <span class="fail">▼</span> <span class="head">dragon-at-gate</span>    ward.tls.expiry.soon        <span class="fail">acked by jp · quest accepted</span>
 <span class="dim">[19:42:31]</span> <span class="ok">●</span> <span class="head">aether-tower</span>      ward.roaming.client         <span class="ok">familiar slipped between towers</span>
 
-<span class="prompt">$</span> <span class="cmd">realm tags list</span>
-TAG              COUNT   SAMPLE NODES
-critical         12      gatekeeper, ubox0, katana
-wireless         8       ap-ground, ap-loft, ap-shed
-ai               3       oracle, herald, chat-bridge
-sigil:fantasy    131     all
+<span class="prompt">$</span> <span class="cmd">realm wave install</span>
+<span class="ok">✓</span> spawned <span class="head">bandwidth</span>  block <span class="dim">8a3c…</span>  title: <span class="warn">WAN br-lan.38</span>
+<span class="ok">✓</span> spawned <span class="head">palace</span>     block <span class="dim">1f02…</span>  title: <span class="warn">Palace · familiar</span>
+<span class="ok">✓</span> spawned <span class="head">daemon</span>     block <span class="dim">b771…</span>  title: <span class="warn">palace-daemon journal</span>
 
 <span class="prompt">$</span> <span class="caret">_</span></pre>
     </div>
 
     <p style="text-align:center; margin-top: 22px; font-family: 'MedievalSharp', cursive; font-style: italic; color: var(--ink-soft); font-size: 14px;">
-      36+ subcommands. Bash and zsh completion query the live filesystem — no registry.
+      40+ subcommands. Bash and zsh completion query the live filesystem — no registry.
     </p>
   </section>
 
   <!-- Plugin gallery -->
-  <section class="unfurl" id="plugins">
+  <section class="unfurl" id="plugins" aria-labelledby="plugins-heading">
     <div class="divider">
       <span class="glyph">✦</span>
-      <span>The enchantment registry</span>
+      <span id="plugins-heading">The enchantment registry</span>
       <span class="glyph">✦</span>
     </div>
-    <h2 class="section-title">Thirty-six plugins, every one optional</h2>
+    <h2 class="section-title">Forty-seven plugins, every one optional</h2>
     <p class="section-sub">The core is a rendering engine. Everything else is a drop-in scroll.</p>
 
     <div id="pluginGallery"></div>
   </section>
 
   <!-- Install -->
-  <section class="unfurl">
+  <section class="unfurl" aria-labelledby="install-heading">
     <div class="divider">
       <span class="glyph">✦</span>
-      <span>Open the gates</span>
+      <span id="install-heading">Open the gates</span>
       <span class="glyph">✦</span>
     </div>
     <h2 class="section-title">Quick start</h2>
-    <p class="section-sub">Python 3.12 · Node for esbuild · stdlib http.server · SQLite WAL</p>
+    <p class="section-sub">Python 3.12 (uv) · Node for esbuild · stdlib http.server · SQLite WAL</p>
     <div class="install">
 <pre><span class="c"># Clone the realm</span>
 <span class="p">$</span> git clone https://github.com/jphein/realmwatch.git
 <span class="p">$</span> cd realmwatch
 
-<span class="c"># Install Python + Node deps</span>
+<span class="c"># Install Python (uv) + Node deps</span>
 <span class="p">$</span> make install
 <span class="p">$</span> make build         <span class="c"># esbuild src/main.js → realm-map.js</span>
 <span class="p">$</span> make dev           <span class="c"># python3 map_server.py — :80 + SSE + plugins</span>
 
 <span class="c"># Install the realm CLI into ~/.local/bin (no sudo)</span>
 <span class="p">$</span> make cli-install
-<span class="p">$</span> realm status</pre>
+<span class="p">$</span> realm status
+
+<span class="c"># Optional: attach Claude Code to the Astral Conduit (MCP)</span>
+<span class="p">$</span> claude mcp add realmwatch \
+    ~/Projects/realmwatch/plugins/mcp/launcher.py
+
+<span class="c"># Optional: spawn live Wave Terminal dashboards</span>
+<span class="p">$</span> realm wave install</pre>
       <div style="margin-top: 22px;">
         <a class="cta cta-primary" href="https://github.com/jphein/realmwatch" target="_blank" rel="noopener">Clone the realm →</a>
-        <a class="cta cta-ghost" href="https://github.com/jphein/realmwatch/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener" style="margin-left: 10px;">Contributing</a>
+        <a class="cta cta-ghost" href="https://github.com/jphein/realmwatch/blob/master/CONTRIBUTING.md" target="_blank" rel="noopener" style="margin-left: 10px;">Contributing</a>
       </div>
     </div>
   </section>
@@ -947,7 +1303,7 @@ sigil:fantasy    131     all
 
 <script>
   // ────────────────────────────────────────────────────────────
-  // Plugin catalog — inlined from the 36 plugin.json manifests.
+  // Plugin catalog — inlined from the 47 plugin.json manifests.
   //
   // Built with safe DOM construction (no innerHTML for data).
   // ────────────────────────────────────────────────────────────
@@ -960,6 +1316,9 @@ sigil:fantasy    131     all
     { g:'infra', icon:'\u{1F4DC}', fn:'Enchantment Registry',   n:'plugin-manager',    d:'Plugin management panel — loaded plugins, endpoints, SSE sources, panels.', c:'realm plugins list | toggle' },
     { g:'infra', icon:'⚡',     fn:'Sentinel Wards',         n:'events',            d:'Event generator — collectd / HA threshold monitor that fires themed alerts.', c:'realm event list | post | ack | close' },
     { g:'infra', icon:'⚔️', fn:'War Room',              n:'ansible',           d:'Ansible playbook execution and AI-assisted infrastructure ops.', c:'realm ansible inventory | run | ai' },
+    { g:'infra', icon:'\u{1F6E0}️', fn:'The Tempering',     n:'system-optimizer',  d:'Local system tuning, swap policy, sysctl drift detection.', c:'realm system-optimizer scan | apply' },
+    { g:'infra', icon:'\u{1F31E}', fn:'The Daily Rite',         n:'daily-rite',        d:'Scheduled maintenance cron — patch sweep, snapshot, herald summary.', c:'realm daily-rite status | run' },
+    { g:'infra', icon:'\u{1F5A5}️', fn:'Shell Familiar',     n:'gnome-shell-monitor', d:'GNOME shell extension bridge — desktop-side realm status indicator.', c:'shell extension surface' },
 
     // ── Discovery: the eyes of the realm ──
     { g:'disco', icon:'\u{1F50D}', fn:'Realm Surveyors',        n:'discovery',         d:'Discovery engine companion — API, SSE source, node enricher for autodiscovery.', c:'realm discovery list | providers | scan' },
@@ -985,11 +1344,23 @@ sigil:fantasy    131     all
     { g:'obs', icon:'⚑',    fn:'Realm Census',              n:'census',            d:'Grouped node list with live online/offline status and sublabels from SSE.', c:'live SSE-backed panel' },
     { g:'obs', icon:'\u{1F4DC}', fn:'Scroll of Patch Runes',     n:'system-updates',    d:'APT, snap, flatpak, mise, brew, npm, pip, fwupd, AI CLI updates tracked.', c:'realm system-updates list | run' },
 
+    // ── Game layer: absorbed from os.realm.watch, May 2026 ──
+    { g:'game', icon:'\u{2694}️', fn:'The Realm Engine',     n:'realm-engine',      d:'Game DB owner — events, entities, players. Wraps push_event into XP grants.', c:'realm engine status | profile' },
+    { g:'game', icon:'\u{1F31F}', fn:'Path of Progression',    n:'progression',       d:'XP, levels, skill trees, achievements. Operator advances as the realm reports.', c:'realm progression level | grant | unlock' },
+    { g:'game', icon:'\u{1F4DC}', fn:'Quest Portals',           n:'quests',            d:'Alerts and discoveries promoted to accept/complete quests with state log.', c:'realm quest list | accept | complete' },
+    { g:'game', icon:'\u{1F6E1}️', fn:'Combat Ward',         n:'combat-ward',       d:'Defensive action proposer — port scans, brute force, DDoS get bestiary entries and gated counter-spells.', c:'realm combat propose | approve | execute' },
+    { g:'game', icon:'\u{1F4D6}', fn:'Codex of the Realm',      n:'codex',             d:'Node lore, chronicles, journal entries. Listens to xp.grant, level.up, achievement.unlocked.', c:'realm codex show | journal | chronicle' },
+
+    // ── MCP & terminal: the new mouths and ears ──
+    { g:'mcp', icon:'\u{2BEF}', fn:'The Astral Conduit',     n:'mcp',               d:'In-tree FastMCP server. Claude Code attaches via stdio; 30+ tools aggregated from every plugin.', c:'plugins/mcp/launcher.py · claude mcp add' },
+    { g:'mcp', icon:'\u{1F30A}', fn:'Tide Singers',           n:'wave',              d:'Adaptive ANSI TUIs as Wave Terminal blocks. WAN bandwidth, palace-daemon health, journal tail.', c:'realm wave install | list' },
+    { g:'mcp', icon:'\u{1F3DB}️', fn:'Memory Palace Wing', n:'palace',            d:'MemPalace bridge — surfaces drawers, rooms, knowledge graph as realm-side queries.', c:'realm palace search | status' },
+    { g:'mcp', icon:'\u{1F4D6}', fn:'The Lexicon',             n:'lexicon',           d:'Project catalog & cross-realm lexicon — names, aliases, taxonomy.', c:'realm lexicon show | sync' },
+
     // ── Story: voices and quests ──
     { g:'story', icon:'\u{1F4AC}', fn:'Oracle Link',             n:'chat',              d:'Session-based Azure AI chat — context-aware node discussions (o4-mini).', c:'realm chat ask | sessions | history' },
     { g:'story', icon:'\u{1F4EF}', fn:'Town Crier',              n:'herald',            d:'Manages the realm-herald subprocess — themed node speech events.', c:'realm herald status' },
-    { g:'story', icon:'\u{1F4DC}', fn:'Quest Portals',           n:'notion',            d:'Notion API — pull Today todos as quests, archive completed quests.', c:'realm notion sync | complete' },
-    { g:'story', icon:'\u{1F4DA}', fn:'Lore Archives',           n:'codex',             d:'Notion-synced lore, architecture, reference entries — served at /codex/.', c:'public wiki view' },
+    { g:'story', icon:'\u{1F4DC}', fn:'Notion Quest Portals',    n:'notion',            d:'Notion API — pull Today todos as quests, archive completed quests.', c:'realm notion sync | complete' },
     { g:'story', icon:'\u{1F52E}', fn:'Arcane Mirror',           n:'debug',             d:'Debug panel, Arcane Grimoire API catalogue, Scrying Terminal interface.', c:'realm debug' },
     { g:'story', icon:'✎',    fn:'Inscription Codex',       n:'skills',            d:'Browse and edit Skills, CLAUDE.md, hooks, agents.', c:'realm settings + skills panel' },
 
@@ -1003,8 +1374,10 @@ sigil:fantasy    131     all
     { id:'infra', label:'I. Infrastructure — the freshly-bound spells' },
     { id:'disco', label:'II. Discovery — the eyes of the realm' },
     { id:'obs',   label:'III. Observability — the readings' },
-    { id:'story', label:'IV. Story — voices, quests, and lore' },
-    { id:'deco',  label:'V. Decoration — the ambience' },
+    { id:'game',  label:'IV. Game layer — quests, progression, lore' },
+    { id:'mcp',   label:'V. MCP, CLI & terminal — the new mouths and ears' },
+    { id:'story', label:'VI. Story — voices, chat, debug' },
+    { id:'deco',  label:'VII. Decoration — the ambience' },
   ];
 
   // Safe DOM construction — no innerHTML on data ----------------
@@ -1052,8 +1425,9 @@ sigil:fantasy    131     all
   }
   renderGallery();
 
-  // Unfurl-on-scroll ------------------------------------------------
-  if ('IntersectionObserver' in window) {
+  // Unfurl-on-scroll — honor prefers-reduced-motion -----------------
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!reduced && 'IntersectionObserver' in window) {
     const io = new IntersectionObserver((entries) => {
       for (const e of entries) {
         if (e.isIntersecting) {

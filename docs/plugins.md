@@ -5,7 +5,7 @@ title: Plugin catalog
 
 # Plugin catalog
 
-36 plugins. Every domain feature in realmwatch is one. Each lives under
+47 plugins. Every domain feature in realmwatch is one. Each lives under
 `plugins/<name>/` with a `plugin.json` manifest. The loader topologically
 sorts on `depends_on` and calls `setup(ctx)` for every integrated plugin.
 
@@ -97,6 +97,7 @@ A new node gets the right discovery treatment automatically based on its role.
 | `ansible` | War Room | ⚔️ | Ansible playbook execution + AI-assisted infrastructure operations. Owns `update-ubuntu.yml` and `install-netdata.yml`. |
 | `forest-theme` | Enchanted Canopy | 🌿 | Ambient particle system on the map — wisps, butterflies, fireflies, leaves, sparkles, fog. Purely cosmetic. |
 | `game-servers` | Arena Watcher | 🎮 | Minecraft Bedrock UDP ping + Terraria TCP check. Surfaces server status as node sublabels. |
+| `wave` | [Tide Singers](wave.html) | 🌊 | Adaptive Python TUIs for Wave Terminal blocks — live WAN bandwidth, palace-daemon health, and the palace-daemon journal tail. `realm wave install` spawns them as named Wave blocks via `wsh`; the TUIs themselves run anywhere. |
 
 ---
 

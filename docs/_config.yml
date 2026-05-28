@@ -1,8 +1,10 @@
 title: Realmwatch
 description: >-
-  A fantasy-themed homelab network monitor — interactive SVG realm map,
-  36 plugins, unified `realm` CLI, AI oracle, herald daemon, and a
-  Zabbix-class alerting pipeline. All from a single Linux box.
+  A fantasy-themed homelab network monitor with an RPG game layer and an
+  in-tree MCP server. 47 plugins, an interactive SVG realm map, a unified
+  `realm` CLI with 40+ verbs, an AI oracle, a herald daemon, a Zabbix-class
+  alerting pipeline, quests, progression, combat-ward, codex, and the
+  Astral Conduit. All from a single Linux box.
 url: https://realm.watch
 theme: jekyll-theme-minimal
 
