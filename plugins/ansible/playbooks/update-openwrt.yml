@@ -1,0 +1,100 @@
+# Update OpenWrt hosts — opkg refresh + (optional) upgrade via raw/Dropbear.
+#
+# Why raw + Dropbear (not ansible.builtin.apt-style modules):
+#   OpenWrt devices typically run on flash-constrained hardware and ship
+#   without python by default. Installing python3-light just to satisfy
+#   ansible.builtin would consume megabytes of overlay we don't have to
+#   spare on most APs. `ansible.builtin.raw` runs commands directly over
+#   the SSH transport (Dropbear), no interpreter needed on target.
+#
+# Safety contract:
+#   - `opkg update` always runs (cheap, refreshes /var/opkg-lists/).
+#   - `opkg list-upgradable` is informational only.
+#   - `opkg upgrade` is gated behind do_upgrade=true (defaults false) so a
+#     plain `realm update --node ap-…` is dry-run-equivalent: it tells you
+#     what would change without touching the box. Flip `do_upgrade=true`
+#     via --extra-vars to actually apply.
+#   - No auto-reboot. If `reboot needed` appears in any task output we
+#     surface it in the final summary; humans pick the maintenance window.
+#   - No kernel-package upgrade gating yet — opkg on OpenWrt does not
+#     ship kernel pkg upgrades through the normal release feed; a kernel
+#     bump requires a sysupgrade image and is out of scope for this play.
+#
+# Variables (override with --extra-vars):
+#   do_upgrade   false — when true, run `opkg upgrade` against the
+#                        list-upgradable output. Default false (safe).
+---
+- name: Update OpenWrt Hosts
+  hosts: all
+  gather_facts: false
+  vars:
+    do_upgrade: false
+
+  tasks:
+    # ── opkg update: refresh package index ───────────────────────────
+    - name: Refresh opkg package index
+      ansible.builtin.raw: opkg update 2>&1
+      register: opkg_update_result
+      changed_when: "'Downloading' in opkg_update_result.stdout"
+
+    # ── opkg list-upgradable: informational ──────────────────────────
+    - name: List upgradable packages
+      ansible.builtin.raw: opkg list-upgradable 2>&1
+      register: opkg_upgradable
+      changed_when: false
+      failed_when: false
+
+    - name: Count upgradable packages
+      ansible.builtin.set_fact:
+        upgradable_count: >-
+          {{
+            (opkg_upgradable.stdout | default('') | trim).split('\n')
+            | reject('equalto', '')
+            | list | length
+          }}
+
+    # ── opkg upgrade: gated behind do_upgrade ────────────────────────
+    # We run `opkg upgrade $(opkg list-upgradable | cut -f1 -d' ')` on the
+    # target rather than a bare `opkg upgrade`. Modern opkg does honor a
+    # bare upgrade (since ~2022) but expanding the list keeps the command
+    # identical to what an operator would type manually, and keeps the
+    # device-side log readable.
+    - name: Apply package upgrades (gated)
+      ansible.builtin.raw: |
+        set -e
+        pkgs=$(opkg list-upgradable | awk '{print $1}' | tr '\n' ' ')
+        if [ -z "$pkgs" ]; then
+          echo "no upgradable packages"
+          exit 0
+        fi
+        echo "upgrading: $pkgs"
+        opkg upgrade $pkgs 2>&1
+      register: opkg_upgrade_result
+      when:
+        - do_upgrade | bool
+        - (upgradable_count | int) > 0
+      changed_when: "'Upgrading' in (opkg_upgrade_result.stdout | default(''))"
+
+    # ── reboot-needed surface (never reboot) ─────────────────────────
+    # OpenWrt does not maintain /var/run/reboot-required like Ubuntu does;
+    # the signal usually appears inline in opkg output ("Collected errors:
+    # ... reboot needed") or via /var/run/opkg-runtime. We scan both
+    # streams plus the upgrade output for the substring and report.
+    - name: Detect reboot-needed signals
+      ansible.builtin.set_fact:
+        reboot_needed: >-
+          {{
+            ('reboot' in (opkg_update_result.stdout | default('') | lower))
+            or ('reboot' in (opkg_upgrade_result.stdout | default('') | lower))
+            or ('kernel' in (opkg_upgrade_result.stdout | default('') | lower))
+          }}
+
+    # ── final summary ────────────────────────────────────────────────
+    - name: Display update summary
+      ansible.builtin.debug:
+        msg:
+          - "host:            {{ inventory_hostname }}"
+          - "opkg update:     {{ 'changed' if opkg_update_result.changed else 'cached' }}"
+          - "upgradable:      {{ upgradable_count | default(0) }} package(s)"
+          - "upgrade applied: {{ 'YES' if (do_upgrade | bool and (upgradable_count | int) > 0) else 'no (do_upgrade=false or none pending)' }}"
+          - "reboot needed:   {{ reboot_needed | default(false) }}"
