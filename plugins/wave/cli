@@ -22,6 +22,7 @@ declare -A TUIS=(
     [bandwidth]="$_plugin_dir/tuis/bandwidth.py"
     [palace]="$_plugin_dir/tuis/palace_status.py"
     [daemon]="$_plugin_dir/tuis/daemon_log.py"
+    [backfill]="$_plugin_dir/blocks/backfill-launcher.py"
 )
 
 # Display titles used when spawning Wave blocks.
@@ -29,6 +30,7 @@ declare -A TITLES=(
     [bandwidth]="WAN bandwidth (gatekeeper br-lan.38)"
     [palace]="mempalace status"
     [daemon]="daemon journal (familiar)"
+    [backfill]="KG extract backfill (familiar)"
 )
 
 # Short summaries for `realm wave list`.
@@ -36,6 +38,7 @@ declare -A SUMMARIES=(
     [bandwidth]="Live WAN bandwidth — adaptive sparklines, 30s long-window pair"
     [palace]="palace-daemon health + drawer/wing counts via MCP"
     [daemon]="tail palace-daemon journal on familiar (auto-reconnect)"
+    [backfill]="KG-extract queue progress + ETA via wave-block render_backfill"
 )
 
 usage() {
@@ -137,7 +140,7 @@ case "$verb" in
         cmd_list ;;
     install)
         shift; cmd_install "$@" ;;
-    bandwidth|palace|daemon)
+    bandwidth|palace|daemon|backfill)
         cmd_run "$verb" "${@:2}" ;;
     *)
         echo "realm wave: unknown verb '$verb'" >&2

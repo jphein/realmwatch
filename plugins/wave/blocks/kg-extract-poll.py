@@ -25,17 +25,24 @@ import sys
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-WRAPPER = os.path.join(HERE, "familiar-kgops.sh")
+# kgops-collect.py lives on familiar (it uses `docker exec mempalace-db psql`,
+# which only works where the postgres container runs). SSH there each poll.
+COLLECTOR_REMOTE_PATH = "/home/jp/Projects/familiar.realm.watch/ops/scripts/kgops-collect.py"
+SSH_HOST = os.environ.get("KGOPS_SSH_HOST", "familiar")
 
 
 def main() -> int:
     try:
-        out = subprocess.check_output(["bash", WRAPPER], text=True, timeout=20)
+        out = subprocess.check_output(
+            ["ssh", "-o", "ConnectTimeout=8", SSH_HOST, f"python3 {COLLECTOR_REMOTE_PATH}"],
+            text=True,
+            timeout=20,
+        )
     except subprocess.CalledProcessError as e:
-        print(f"# kg-extract-poll: wrapper failed exit={e.returncode}", file=sys.stderr)
+        print(f"# kg-extract-poll: ssh collector failed exit={e.returncode}", file=sys.stderr)
         return 1
     except subprocess.TimeoutExpired:
-        print("# kg-extract-poll: wrapper timeout", file=sys.stderr)
+        print("# kg-extract-poll: ssh collector timeout", file=sys.stderr)
         return 1
 
     try:
