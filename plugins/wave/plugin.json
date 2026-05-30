@@ -1,6 +1,6 @@
 {
   "name": "wave",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "integrated",
   "description": "Wave Terminal block helpers — adaptive TUIs for realm bandwidth/palace/daemon, plus a one-shot installer that spawns them as named Wave blocks.",
   "fantasy_name": "Tide Singers",
@@ -15,6 +15,7 @@
       {"name": "bandwidth", "summary": "Live WAN bandwidth TUI (gatekeeper br-lan.38)"},
       {"name": "palace", "summary": "palace-daemon health TUI (MCP probes + drawer counts)"},
       {"name": "daemon", "summary": "tail palace-daemon journal on familiar (auto-reconnect)"},
+      {"name": "benchmark", "summary": "SME benchmark slate + live progress (status sigils + metric chips)"},
       {"name": "list", "summary": "list available Wave-block TUIs"},
       {"name": "install", "summary": "spawn TUI(s) as Wave blocks via wsh"}
     ]

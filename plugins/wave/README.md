@@ -14,6 +14,7 @@ Adaptive TUI monitors for use as [Wave Terminal](https://www.waveterm.dev/) bloc
 | `backfill` | `python3 blocks/kg-extract-poll.py` → wave-block `render_backfill` | progress bar + ETA + multi-worker sparklines |
 | `sysmon` | `bash blocks/familiar-sysmon.sh` (ssh → `sysmon-collect.py` on familiar) | wave-block custom mode |
 | `kgops` | `bash blocks/familiar-kgops.sh` (ssh → `kgops-collect.py` on familiar) | wave-block custom mode |
+| `benchmark` | `python3 blocks/benchmark-poll.py` → wave-block `slate` mode | SME memory-system benchmark slate + live progress |
 
 ### Manifest-discovered
 
@@ -74,8 +75,61 @@ Pure-stdlib Python 3.10+, ~900 lines, zero deps. Tiered layout (tiny / narrow / 
 
 - **`custom` mode** — runs an arbitrary JSON-emitting command at the given interval; auto-detects numeric vs string fields and renders them as paired metric rows.
 - **`backfill` mode** — bespoke layout: large progress bar, ETA, rate sparkline, entity-delta bar chart at wide widths.
+- **`host` mode** — per-host system snapshot: gold percent bars (RAM/swap/disk), GPU rows, load + temp sparklines, network, identity footer.
+- **`slate` mode** — structured benchmark slate: a header completeness bar, one row per benchmark with a status sigil + inline metric chips + a dim blurb, and a compact structural-category strip. Consumes a structured payload (not auto-detected fields) — see "Benchmark slate" below.
 
 The hardcoded launchers in `blocks/*-launcher.py` are tiny `os.execv` shims that hand off to `wave-block.py` with the right flags. The manifest-driven path skips the launcher and execs `wave-block.py` directly from the dispatcher.
+
+## Benchmark slate (`realm wave benchmark`)
+
+A read-only Wave block over the SME memory-system benchmark slate. It shows
+the slate (LongMemEval, LoCoMo, BEAM, competitor head-to-head, …) plus the
+SME structural categories, each with a status sigil and live metrics.
+
+The data source is a small JSON status file that the SME eval runs write.
+`blocks/benchmark-poll.py` resolves it (first hit wins):
+
+1. `$REALM_BENCHMARK_SLATE`
+2. `~/.realmwatch/benchmark-slate.json`  ← SME runs write here
+3. `blocks/benchmark-slate.example.json` ← shipped read-only fallback
+
+`render_slate` (in `renderer.py`) draws it. Status sigils: `◆ done`,
+`◈ partial`, `◐ in_progress`, `○ pending`, `✕ blocked`. The header bar is a
+weighted completeness fraction (done=1.0, partial=0.5, in_progress=0.33).
+
+### Schema — `realmwatch-benchmark-slate/v1`
+
+```json
+{
+  "title": "SME Benchmark Slate",
+  "updated": "2026-05-29T23:00:00Z",
+  "benchmarks": [
+    {
+      "id": "longmemeval",
+      "label": "LongMemEval",
+      "status": "done",
+      "blurb": "long-horizon conversational recall",
+      "metrics": [
+        {"name": "R@5", "value": 0.927, "kind": "fraction"},
+        {"name": "oracle-QA ceiling", "value": 0.868, "kind": "fraction"}
+      ]
+    }
+  ],
+  "structural": [
+    {"id": "cat4", "label": "Cat 4 · B-cubed", "status": "done"}
+  ]
+}
+```
+
+- **`status`** — `done` | `partial` | `in_progress` | `pending` | `blocked`.
+- **`metric.kind`** — `fraction` (rendered `×100 %`), `number`, or `pending`
+  (value `null` → dim em-dash).
+- **`updated`** — ISO-8601; shown in the footer as a freshness stamp. SME
+  runs should rewrite it on every status write.
+
+The shipped `benchmark-slate.example.json` doubles as the schema reference
+and the "nothing wired yet" default, so a fresh checkout still renders a
+sensible slate.
 
 ## Installer
 

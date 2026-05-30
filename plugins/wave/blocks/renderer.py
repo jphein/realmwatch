@@ -731,6 +731,212 @@ def render_host(title: str, metrics: dict, history: dict[str, list[float]], tick
     _emit(lines, h, tick)
 
 
+# ── Benchmark slate render ──────────────────────────────────────────────────
+#
+# `render_slate` is a bespoke layout for the SME memory-system benchmark
+# slate: a header progress bar (how much of the slate is DONE), one row per
+# benchmark with a status sigil + inline metrics, and a compact structural-
+# category strip beneath. It consumes the realmwatch-benchmark-slate/v1
+# schema emitted by benchmark-poll.py and leans on the same gold-bar / teal
+# / wave-banner primitives the other dashboards use, so it sits visually
+# alongside them in a Wave grid.
+
+# status → (sigil, palette key). Order here is also the "completeness"
+# ranking used for the slate progress bar (done counts as full).
+_SLATE_STATUS = {
+    "done":        ("◆", "good"),
+    "partial":     ("◈", "accent"),
+    "in_progress": ("◐", "warn"),
+    "pending":     ("○", "muted"),
+    "blocked":     ("✕", "err"),
+}
+# Fraction of "complete" each status contributes to the slate progress bar.
+_SLATE_WEIGHT = {
+    "done": 1.0, "partial": 0.5, "in_progress": 0.33,
+    "pending": 0.0, "blocked": 0.0,
+}
+
+
+def _slate_sigil(status: str) -> tuple[str, str]:
+    return _SLATE_STATUS.get(str(status).lower(), ("·", "muted"))
+
+
+def _strip_ansi(s: str) -> str:
+    return re.sub(r'\033\[[^m]*m', '', s)
+
+
+def _clip_visible(s: str, max_visible: int) -> str:
+    """Truncate s to max_visible printable chars, keeping ANSI codes intact.
+
+    box_row only pads — it never clips — so a row whose visible content is
+    wider than the box spills past the right border. Slate metric chips can
+    be long at narrow widths, so we pre-clip them here, walking the string
+    and counting only non-escape characters toward the budget. Always ends
+    with a reset so a clipped color can't bleed into the border.
+    """
+    if max_visible <= 0:
+        return C["reset"]
+    out: list[str] = []
+    shown = 0
+    i = 0
+    truncated = False
+    while i < len(s):
+        if s[i] == "\033":
+            m = re.match(r'\033\[[^m]*m', s[i:])
+            if m:
+                out.append(m.group(0))
+                i += m.end()
+                continue
+        if shown >= max_visible - 1:
+            truncated = True
+            break
+        out.append(s[i])
+        shown += 1
+        i += 1
+    if truncated:
+        out.append(C["muted"] + "…")
+    out.append(C["reset"])
+    return "".join(out)
+
+
+def _fmt_metric(metric: dict) -> str:
+    """One ` name value ` chip, colored by kind. Pending → dim em-dash."""
+    name = str(metric.get("name", "")).strip()
+    kind = str(metric.get("kind", "number")).lower()
+    val = metric.get("value")
+    if kind == "pending" or val is None:
+        return f"{C['muted']}{name} —{C['reset']}"
+    try:
+        num = float(val)
+    except (TypeError, ValueError):
+        return f"{C['fg']}{name} {C['accent']}{val}{C['reset']}"
+    if kind == "fraction":
+        shown = f"{num * 100:.1f}%"
+    elif num == int(num):
+        shown = str(int(num))
+    else:
+        shown = f"{num:.3g}"
+    return f"{C['fg']}{name} {C['accent']}{shown}{C['reset']}"
+
+
+def render_slate(title: str, slate: dict, tick: int):
+    """Render the SME benchmark slate — status sigils, metric chips, progress.
+
+    Schema consumed (realmwatch-benchmark-slate/v1):
+      title       str
+      updated     str (ISO-8601 — shown in footer)
+      benchmarks  [{label, status, blurb, metrics:[{name,value,kind}]}]
+      structural  [{label, status}]
+      _source     str (path the poller read — footer)
+      _error      str (surfaced as an error row if present)
+    """
+    w = term_width()
+    h = term_height()
+    tier = _size_tier(w)
+
+    benchmarks = slate.get("benchmarks") or []
+    structural = slate.get("structural") or []
+    disp_title = str(slate.get("title") or title)
+
+    # Slate progress: weighted completeness across the headline benchmarks.
+    if benchmarks:
+        done_w = sum(_SLATE_WEIGHT.get(str(b.get("status", "")).lower(), 0.0)
+                     for b in benchmarks)
+        frac = done_w / len(benchmarks)
+    else:
+        frac = 0.0
+    n_done = sum(1 for b in benchmarks if str(b.get("status", "")).lower() == "done")
+
+    lines: list[str] = []
+
+    if h >= 18 and tier in ("medium", "wide"):
+        lines.append(wave_banner(tick, w))
+
+    lines.append(box_top(w, disp_title.upper()))
+
+    # ── Slate progress bar ───────────────────────────────────────────────────
+    bar_w = max(w - 22, 10)
+    pct_str = f"{frac * 100:4.0f}%"
+    count_str = f"{n_done}/{len(benchmarks)}" if benchmarks else "0/0"
+    lines.append(box_row(
+        f" {progress_bar(frac, bar_w)} {C['accent']}{pct_str}{C['reset']} "
+        f"{C['muted']}{count_str}{C['reset']}", w))
+
+    if benchmarks:
+        lines.append(box_mid(w))
+
+    # ── Benchmark rows ───────────────────────────────────────────────────────
+    # Each headline benchmark: sigil + label, then its metric chips, then a
+    # dim blurb line (wide/medium only, if vertical space allows).
+    label_w = 16 if tier in ("medium", "wide") else 12
+    for b in benchmarks:
+        if len(lines) >= h - 4:
+            break
+        status = str(b.get("status", "")).lower()
+        sigil, col = _slate_sigil(status)
+        label = str(b.get("label", b.get("id", "?")))[:label_w]
+        metrics = b.get("metrics") or []
+        chips = "   ".join(_fmt_metric(m) for m in metrics if isinstance(m, dict))
+        if not chips:
+            chips = f"{C['muted']}{status or '—'}{C['reset']}"
+        head = (f" {C[col]}{sigil}{C['reset']} "
+                f"{C['bold']}{C['fg']}{label:<{label_w}s}{C['reset']} {chips}")
+        lines.append(box_row(_clip_visible(head, w - 2), w))
+
+        blurb = str(b.get("blurb", "")).strip()
+        if blurb and tier in ("medium", "wide") and h >= 14 and len(lines) < h - 4:
+            lines.append(box_row(
+                _clip_visible(f"   {C['muted']}{C['dim']}{blurb}{C['reset']}", w - 2), w))
+
+    # ── Structural categories strip ──────────────────────────────────────────
+    if structural and len(lines) < h - 4:
+        lines.append(box_mid(w))
+        # Pack the cat sigils onto as few rows as fit the width. Each cell is
+        # "<sigil> <label>" separated by two spaces.
+        cells = []
+        for s in structural:
+            sigil, col = _slate_sigil(str(s.get("status", "")).lower())
+            label = str(s.get("label", s.get("id", "?")))
+            cells.append((f"{C[col]}{sigil}{C['reset']} {C['fg']}{label}{C['reset']}",
+                          len(_strip_ansi(f"{sigil} {label}"))))
+        per_row = 2 if tier == "wide" else 1
+        half = (w - 3) // 2
+        for i in range(0, len(cells), per_row):
+            if len(lines) >= h - 3:
+                break
+            row_cells = cells[i:i + per_row]
+            if len(row_cells) == 2:
+                lines.append(box_row_pair(
+                    _clip_visible(" " + row_cells[0][0], half),
+                    _clip_visible(" " + row_cells[1][0], w - 3 - half), w))
+            else:
+                lines.append(box_row(_clip_visible(" " + row_cells[0][0], w - 2), w))
+
+    if "_error" in slate:
+        lines.append(box_row(
+            f" {C['err']}slate: {str(slate['_error'])[:w - 12]}{C['reset']}", w))
+
+    lines.append(box_bot(w))
+
+    if h >= 18 and tier in ("medium", "wide"):
+        lines.append(wave_banner(tick + 4, w))
+
+    if h >= 16:
+        updated = str(slate.get("updated", "")).strip()
+        src = str(slate.get("_source", ""))
+        src_tag = src.rsplit("/", 1)[-1] if src else ""
+        legend = (f"{C['good']}◆done{C['reset']}  {C['accent']}◈partial{C['reset']}  "
+                  f"{C['warn']}◐active{C['reset']}  {C['muted']}○pending{C['reset']}")
+        foot_bits = [legend]
+        if updated:
+            foot_bits.append(f"{C['muted']}updated {updated}{C['reset']}")
+        if src_tag and tier == "wide":
+            foot_bits.append(f"{C['muted']}{src_tag}{C['reset']}")
+        lines.append("  " + "   ·   ".join(foot_bits))
+
+    _emit(lines, h, tick)
+
+
 # ── JSON flatten helper ─────────────────────────────────────────────────────
 
 def _flatten_json(obj: Any, prefix: str = "") -> dict[str, Any]:
