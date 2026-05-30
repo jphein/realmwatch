@@ -1,0 +1,48 @@
+{
+  "_schema": "realmwatch-benchmark-slate/v1",
+  "_comment": "SME memory-system benchmark slate + live progress. The wave 'benchmark' block reads this file. Path resolution: $REALM_BENCHMARK_SLATE env, else ~/.realmwatch/benchmark-slate.json, else this shipped example. SME runs write the live copy; this seed is the read-only fallback. Edit `updated` on each write so the block can show freshness.",
+  "title": "SME Benchmark Slate",
+  "updated": "2026-05-29T23:00:00Z",
+  "benchmarks": [
+    {
+      "id": "longmemeval",
+      "label": "LongMemEval",
+      "status": "done",
+      "blurb": "long-horizon conversational recall",
+      "metrics": [
+        {"name": "R@5", "value": 0.927, "kind": "fraction"},
+        {"name": "oracle-QA ceiling", "value": 0.868, "kind": "fraction"}
+      ]
+    },
+    {
+      "id": "locomo",
+      "label": "LoCoMo",
+      "status": "partial",
+      "blurb": "flat adapter done · daemon E2E pending",
+      "metrics": [
+        {"name": "flat R@5", "value": 0.44, "kind": "fraction"},
+        {"name": "daemon E2E", "value": null, "kind": "pending"}
+      ]
+    },
+    {
+      "id": "beam",
+      "label": "BEAM",
+      "status": "in_progress",
+      "blurb": "corpus loader + retrieval smoke",
+      "metrics": []
+    },
+    {
+      "id": "head_to_head",
+      "label": "Competitor H2H",
+      "status": "in_progress",
+      "blurb": "OMEGA + Tier-3 adapters under build",
+      "metrics": []
+    }
+  ],
+  "structural": [
+    {"id": "cat4", "label": "Cat 4 · B-cubed", "status": "done"},
+    {"id": "cat5", "label": "Cat 5 · Gap", "status": "done"},
+    {"id": "cat8", "label": "Cat 8 · Ontology", "status": "done"},
+    {"id": "cat9", "label": "Cat 9 · Multi-hop", "status": "in_progress"}
+  ]
+}

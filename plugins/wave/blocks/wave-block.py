@@ -49,6 +49,7 @@ from renderer import (  # noqa: E402
     parse_backfill_status,
     render_backfill,
     render_host,
+    render_slate,
     show_cursor,
     term_height,
     _flatten_json,
@@ -224,6 +225,54 @@ def run_host_dashboard(title: str, cmd: str, interval: float):
         sys.stdout.write("\n")
 
 
+def run_slate_dashboard(title: str, cmd: str, interval: float):
+    """Run a benchmark-slate command and render the SME progress dashboard.
+
+    The cmd emits a realmwatch-benchmark-slate/v1 JSON object (see
+    benchmark-poll.py). Unlike custom/host mode the payload is structured
+    (benchmarks + structural lists), so we pass the parsed dict straight to
+    render_slate rather than flattening it into metric rows.
+    """
+    signal.signal(signal.SIGWINCH, _on_resize)
+
+    tick = 0
+    last_slate: dict = {"title": title}
+
+    hide_cursor()
+    clear_screen()
+
+    try:
+        while True:
+            try:
+                result = subprocess.run(
+                    cmd, shell=True, capture_output=True, text=True, timeout=10,
+                )
+                data = json.loads(result.stdout)
+                if isinstance(data, dict):
+                    last_slate = data
+            except Exception as e:
+                last_slate = {"title": title, "_error": str(e)}
+
+            clear_screen()
+            render_slate(title, last_slate, tick)
+            tick += 1
+
+            poll_start = time.monotonic()
+            while time.monotonic() - poll_start < interval:
+                time.sleep(0.15)
+                tick += 1
+                if renderer._resize_flag:
+                    renderer._resize_flag = False
+                    clear_screen()
+                render_slate(title, last_slate, tick)
+
+    except KeyboardInterrupt:
+        pass
+    finally:
+        show_cursor()
+        sys.stdout.write("\n")
+
+
 # ── Terminal detection & launch ──────────────────────────────────────────────
 
 def _detect_terminal() -> str:
@@ -355,6 +404,14 @@ def main():
     ho.add_argument("--detach", action="store_true",
                     help="Launch in a new terminal block (WaveTerm/Ghostty) instead of inline")
 
+    sl = sub.add_parser("slate", help="SME benchmark slate + live progress")
+    sl.add_argument("--title", default="SME Benchmark Slate")
+    sl.add_argument("--cmd", required=True,
+                    help="Shell command emitting realmwatch-benchmark-slate/v1 JSON")
+    sl.add_argument("--interval", type=float, default=15.0)
+    sl.add_argument("--detach", action="store_true",
+                    help="Launch in a new terminal block (WaveTerm/Ghostty) instead of inline")
+
     args = parser.parse_args()
 
     if args.mode == "backfill":
@@ -426,6 +483,27 @@ def main():
             print("No detach target found — running inline")
 
         run_host_dashboard(args.title, args.cmd, args.interval)
+
+    elif args.mode == "slate":
+        if args.detach:
+            script = os.path.abspath(__file__)
+            argv = ["python3", script, "slate",
+                    "--title", args.title,
+                    "--cmd", args.cmd,
+                    "--interval", str(args.interval)]
+
+            terminal = _detect_terminal()
+            if terminal == "waveterm":
+                if _launch_in_waveterm(argv):
+                    print(f"Launched '{args.title}' dashboard in WaveTerm block")
+                    return
+            elif terminal == "ghostty":
+                if _launch_in_ghostty(argv):
+                    print(f"Launched '{args.title}' dashboard in Ghostty window")
+                    return
+            print("No detach target found — running inline")
+
+        run_slate_dashboard(args.title, args.cmd, args.interval)
 
 
 if __name__ == "__main__":
