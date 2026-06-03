@@ -1,0 +1,28 @@
+{
+  "name": "wol",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "Wake-on-LAN + remote S3 sleep with power-state awareness for fleet hosts.",
+  "fantasy_name": "Slumber Ward",
+  "icon": "🌙",
+  "python": { "module": "plugin", "entry": "setup" },
+  "depends_on": ["latency"],
+  "panel": {
+    "id": "wol-panel",
+    "name": "Slumber Ward",
+    "html": "panel.html",
+    "js": "panel.js",
+    "css": "panel.css",
+    "anchor": "se",
+    "priority": 18
+  },
+  "cli": {
+    "summary": "Wake / slumber fleet hosts and inspect power state",
+    "verbs": [
+      { "name": "show",   "summary": "List WoL-managed hosts + power state", "method": "GET",  "path": "/plugins/wol/status" },
+      { "name": "doctor", "summary": "Check a host's WoL readiness (?target=)", "method": "GET", "path": "/plugins/wol/doctor" },
+      { "name": "wake",   "summary": "Send a magic packet (body: target)",   "method": "POST", "path": "/wol" },
+      { "name": "sleep",  "summary": "Suspend a sleepable, WoL-armed host to S3 (body: target)", "method": "POST", "path": "/plugins/wol/sleep" }
+    ]
+  }
+}
