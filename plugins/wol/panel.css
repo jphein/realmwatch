@@ -1,0 +1,68 @@
+/* Slumber Ward — themed to the realm's dark parchment palette, with a moon
+   accent for slumbering hosts. Scoped to #wol-panel-body. */
+#wol-panel-body {
+  --wol-gold: #d4b06a;
+  --wol-ink: #e6dcc3;
+  --wol-dim: #8a7f63;
+  --wol-line: rgba(212, 176, 106, 0.25);
+  font: 12px/1.5 "Cinzel", Georgia, serif;
+  color: var(--wol-ink);
+  padding: 8px 10px;
+  min-width: 230px;
+}
+#wol-panel-body .wol-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+#wol-panel-body .wol-title {
+  color: var(--wol-gold);
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+#wol-panel-body .wol-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+#wol-panel-body .wol-table th {
+  text-align: left;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--wol-dim);
+  border-bottom: 1px solid var(--wol-line);
+  padding: 2px 4px;
+}
+#wol-panel-body .wol-table td {
+  padding: 3px 4px;
+  border-bottom: 1px solid rgba(212, 176, 106, 0.08);
+  vertical-align: middle;
+}
+#wol-panel-body .wol-state { white-space: nowrap; }
+#wol-panel-body .wol-awake { color: #7fc77f; }
+#wol-panel-body .wol-slumbering { color: #8fb6e6; }
+#wol-panel-body .wol-waking { color: #d9b35a; }
+#wol-panel-body .wol-dark { color: var(--wol-dim); }
+#wol-panel-body .wol-btn {
+  background: linear-gradient(180deg, rgba(212,176,106,0.18), rgba(212,176,106,0.06));
+  color: var(--wol-ink);
+  border: 1px solid var(--wol-line);
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin-left: 4px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+}
+#wol-panel-body .wol-btn:hover {
+  background: rgba(212, 176, 106, 0.28);
+  border-color: var(--wol-gold);
+}
+#wol-panel-body .wol-refresh { padding: 2px 6px; }
+#wol-panel-body .wol-status {
+  margin-top: 6px;
+  min-height: 1.4em;
+  font-size: 11px;
+  color: var(--wol-dim);
+}
