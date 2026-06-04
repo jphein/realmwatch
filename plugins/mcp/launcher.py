@@ -38,12 +38,43 @@ from fastmcp import FastMCP  # noqa: E402
 import tools  # noqa: E402
 
 
+def _register_plugin_tools(mcp) -> list[str]:
+    """Discover each plugin's mcp_tools.py and register its MCP_TOOLS.
+
+    Lightweight stand-in for the pending Wave 1.5 auto-aggregation: scans
+    plugins/<name>/mcp_tools.py for an MCP_TOOLS list of (name, fn, desc)
+    tuples. Defensive — a plugin whose module fails to import (e.g. ones using
+    package-relative imports) is skipped without taking down the conduit.
+    """
+    import importlib.util
+    plugins_dir = _THIS_DIR.parent
+    names: list[str] = []
+    for mt in sorted(plugins_dir.glob("*/mcp_tools.py")):
+        if mt.parent.name == "mcp":
+            continue
+        try:
+            spec = importlib.util.spec_from_file_location(f"_pluginmcp_{mt.parent.name}", mt)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            entries = getattr(mod, "MCP_TOOLS", None) or getattr(mod, "TOOLS", None) or []
+            for entry in entries:
+                if isinstance(entry, tuple) and len(entry) >= 2:
+                    name, fn = entry[0], entry[1]
+                    desc = entry[2] if len(entry) > 2 else (fn.__doc__ or "")
+                    mcp.tool(name=name, description=desc)(fn)
+                    names.append(name)
+        except Exception as e:  # noqa: BLE001 — never let one plugin break the conduit
+            print(f"[mcp] skipped {mt.parent.name}/mcp_tools.py: {e}", file=sys.stderr)
+    return names
+
+
 def main() -> None:
     mcp = FastMCP("realm")
     registered = tools.register_all(mcp)
+    plugin_tool_names = _register_plugin_tools(mcp)
+    all_names = [t["name"] for t in registered] + plugin_tool_names
     print(
-        f"[mcp] registered {len(registered)} tools — "
-        + ", ".join(t["name"] for t in registered),
+        f"[mcp] registered {len(all_names)} tools — " + ", ".join(all_names),
         file=sys.stderr,
     )
     # FastMCP defaults to stdio when run() is called without a transport arg.

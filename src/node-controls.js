@@ -168,6 +168,15 @@ export function renderControlPane(nodeKey) {
       </div>`;
     }
 
+    // Slumber (remote S3 suspend). Shown for suspendable roles; the backend
+    // enforces the sleepable allow-list + WoL-armed check (so it won't strand a host).
+    if (['server', 'nas', 'desktop', 'laptop', 'vm'].includes(nodeRole)) {
+      html += `<div class="pe-control-row">
+        <span class="pe-control-label">Slumber</span>
+        <button class="pe-control-btn" data-action="sleep" data-name="${nodeKey}">Suspend (S3)</button>
+      </div>`;
+    }
+
     // SSH for infrastructure
     if (nodeRole === 'router' || nodeRole === 'ap' || nodeRole === 'server' || nodeRole === 'nas') {
       html += `<div class="pe-control-row">
@@ -546,6 +555,16 @@ async function handleControlAction(e) {
       case 'wol': {
         endpoint = `/wol`;
         body = { mac: el.dataset.mac, ip: el.dataset.ip };
+        break;
+      }
+      case 'sleep': {
+        if (!confirm(`Slumber ${nodeKey}? It will suspend to S3 (wake it later with the magic packet).`)) {
+          statusEl.textContent = 'Cancelled';
+          statusEl.style.color = '#a89870';
+          return;
+        }
+        endpoint = `/plugins/wol/sleep`;
+        body = { target: el.dataset.name };
         break;
       }
       case 'reboot': {
