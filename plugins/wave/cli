@@ -28,6 +28,7 @@ declare -A TUIS=(
     [backfill]="$_plugin_dir/blocks/backfill-launcher.py"
     [sysmon]="$_plugin_dir/blocks/sysmon-launcher.py"
     [kgops]="$_plugin_dir/blocks/kgops-launcher.py"
+    [benchmark]="$_plugin_dir/blocks/benchmark-launcher.py"
 )
 
 declare -A TITLES=(
@@ -37,6 +38,7 @@ declare -A TITLES=(
     [backfill]="KG extract backfill (familiar)"
     [sysmon]="sysmon (familiar)"
     [kgops]="KG ops (familiar)"
+    [benchmark]="SME benchmark slate"
 )
 
 declare -A SUMMARIES=(
@@ -46,6 +48,7 @@ declare -A SUMMARIES=(
     [backfill]="KG-extract queue progress + ETA via wave-block render_backfill"
     [sysmon]="familiar host metrics — load, RAM, disk, GPU temps, pg conns"
     [kgops]="familiar sysmon + KG queue counts + per-worker activity"
+    [benchmark]="SME memory-system benchmark slate + live progress (status sigils + metric chips)"
 )
 
 # Manifest-discovered verbs: verb → "mode\tinterval\tcmd" so cmd_run_manifest
@@ -80,6 +83,7 @@ VERBS
     backfill                   KG-extract queue progress + ETA
     sysmon                     familiar host metrics (load, RAM, GPU, pg)
     kgops                      sysmon + KG queue + per-worker activity
+    benchmark                  SME benchmark slate + live progress
 
   Manifest-discovered (any plugin can add one — see "MANIFESTS" below):
     Run \`realm wave list\` for the live verb roster.
@@ -120,6 +124,10 @@ ENVIRONMENT (hardcoded verbs)
   SYSMON_INTERVAL              Sysmon poll cadence in seconds (default 3)
   KGOPS_INTERVAL               KG-ops poll cadence in seconds (default 5)
   KGOPS_SSH_HOST               SSH target for kg-extract-poll (default familiar)
+  REALM_BENCHMARK_SLATE        Path to the benchmark slate JSON (default
+                               ~/.realmwatch/benchmark-slate.json, then the
+                               shipped benchmark-slate.example.json fallback)
+  BENCHMARK_INTERVAL           Benchmark slate poll cadence in seconds (default 15)
 
 EXAMPLES
   realm wave list                            # see every verb
@@ -150,11 +158,17 @@ cmd_run_manifest() {
     IFS=$'\x1f' read -r _ mode interval cmd <<< "$packed"
     local title="${TITLES[$name]}"
     local wave_block="$_plugin_dir/blocks/wave-block.py"
-    if [[ "$mode" == "backfill" ]]; then
-        exec "$PY" "$wave_block" backfill --cmd "$cmd" --interval "$interval"
-    fi
-    # Default mode: custom.
-    exec "$PY" "$wave_block" custom --title "$title" --cmd "$cmd" --interval "$interval"
+    case "$mode" in
+        backfill)
+            exec "$PY" "$wave_block" backfill --cmd "$cmd" --interval "$interval" ;;
+        host)
+            exec "$PY" "$wave_block" host --title "$title" --cmd "$cmd" --interval "$interval" ;;
+        slate)
+            exec "$PY" "$wave_block" slate --title "$title" --cmd "$cmd" --interval "$interval" ;;
+        *)
+            # Default mode: custom.
+            exec "$PY" "$wave_block" custom --title "$title" --cmd "$cmd" --interval "$interval" ;;
+    esac
 }
 
 cmd_run() {
@@ -240,7 +254,7 @@ cmd_install() {
         # Default spawn order: hardcoded launchers first (they're the
         # historical defaults), then manifest-discovered ones in
         # whatever order discover.py emits.
-        names=(daemon palace bandwidth backfill sysmon kgops)
+        names=(daemon palace bandwidth backfill sysmon kgops benchmark)
         for n in "${!MANIFESTS[@]}"; do
             names+=("$n")
         done
