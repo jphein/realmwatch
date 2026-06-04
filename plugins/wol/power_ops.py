@@ -7,6 +7,7 @@ SSH model: the realm host reaches targets with key-based SSH (BatchMode) and,
 for privileged ops, passwordless ``sudo -n`` — the same path proven manually on
 2026-06-02 (``ssh familiar 'sudo systemd-run --no-block systemctl suspend'``).
 """
+import re
 import socket
 import subprocess
 import time
@@ -14,6 +15,16 @@ import time
 # StrictHostKeyChecking=accept-new mirrors core map_server.py's /ssh handler.
 SSH_OPTS = ["-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=accept-new",
             "-o", "BatchMode=yes"]
+
+# A safe ssh target / interface token. Must START alphanumeric — so it can never
+# begin with '-' and be smuggled to ssh as an option flag (e.g. -oProxyCommand=) —
+# and may contain only hostname/IP/alias chars, no shell metacharacters (the
+# remote command string is executed by the target host's shell).
+_SAFE_TOKEN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+
+
+def _safe_token(s):
+    return bool(s) and bool(_SAFE_TOKEN.match(s))
 
 
 def normalize_mac(s):
@@ -70,12 +81,15 @@ def send_magic_packet(mac_hex, directed_ip=None):
 
 
 def _ssh_target(name):
-    """Prefer the fleet current_name (an ssh-config alias) else ops_ip else the raw name."""
+    """Resolve to the fleet current_name (ssh-config alias), else ops_ip, else the
+    raw name — then validate. Rejects anything ssh could mistake for an option flag
+    (leading '-') or that carries shell metacharacters. Raises ValueError."""
     import realm_fleet
     entry = realm_fleet.host(name)
-    if entry is None:
-        return name
-    return entry.current_name or getattr(entry, "ops_ip", None) or name
+    target = (entry.current_name or getattr(entry, "ops_ip", None) or name) if entry else name
+    if not _safe_token(target):
+        raise ValueError(f"refusing unsafe ssh target {target!r}")
+    return target
 
 
 def ssh(name, command, priv=False, timeout=15):
@@ -83,10 +97,15 @@ def ssh(name, command, priv=False, timeout=15):
 
     Returns {ok, stdout, stderr, code, target}.
     """
-    target = _ssh_target(name)
+    try:
+        target = _ssh_target(name)
+    except ValueError as e:
+        return {"ok": False, "stdout": "", "stderr": str(e), "code": 2, "target": name}
     remote = f"sudo -n {command}" if priv else command
     try:
-        proc = subprocess.run(["ssh", *SSH_OPTS, target, remote],
+        # '--' terminates ssh option parsing so a hostile target can never be
+        # read as a flag (defence-in-depth alongside _safe_token validation).
+        proc = subprocess.run(["ssh", *SSH_OPTS, "--", target, remote],
                               capture_output=True, text=True, timeout=max(1, min(timeout, 60)))
         return {"ok": proc.returncode == 0, "stdout": proc.stdout, "stderr": proc.stderr,
                 "code": proc.returncode, "target": target}
@@ -114,9 +133,9 @@ def detect_iface(name, iface_overrides=None):
 def check_wol(name, iface_overrides=None):
     """Doctor: is the host SSH-reachable and is WoL armed (``Wake-on: g``)?"""
     iface = detect_iface(name, iface_overrides)
-    if iface is None:
+    if iface is None or not _safe_token(iface):
         return {"ok": False, "ssh": False, "armed": False,
-                "reason": "ssh unreachable or could not detect primary interface"}
+                "reason": "ssh unreachable or could not detect a safe primary interface"}
     r = ssh(name, f"ethtool {iface}", priv=True)
     if not r["ok"]:
         return {"ok": False, "ssh": True, "iface": iface, "armed": False,
@@ -132,8 +151,8 @@ def arm_wol(name, iface_overrides=None):
     """Best-effort runtime arm (``ethtool -s <iface> wol g``). NM persistence is
     set separately (see the familiar memory ``reference-familiar-wol-s3``)."""
     iface = detect_iface(name, iface_overrides)
-    if iface is None:
-        return {"ok": False, "reason": "ssh unreachable or could not detect primary interface"}
+    if iface is None or not _safe_token(iface):
+        return {"ok": False, "reason": "ssh unreachable or could not detect a safe primary interface"}
     r = ssh(name, f"ethtool -s {iface} wol g", priv=True)
     return {"ok": r["ok"], "iface": iface, "detail": r,
             "note": "runtime arm only; set NM 802-3-ethernet.wake-on-lan=magic for persistence"}
