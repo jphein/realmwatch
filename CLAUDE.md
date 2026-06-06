@@ -110,15 +110,17 @@ make deploy               # copies wifi-guide.html, report-card.html → realm-p
 All services are off by default. To enable a service for unattended operation:
 
 ```bash
-cp systemd/*.service ~/.config/systemd/user/
+cp systemd/*.service systemd/*.timer ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable --now realm-map-server   # opt in per-unit
 ```
 
-Five unit files ship in `systemd/`: `realm-map-server`, `oracle-daemon`,
-`realm-herald`, `realm-launcher`, `realm-theme-watcher`. Only
-`realm-theme-watcher` is normally left enabled on the dev host (it's
-desktop-theming, independent of the map server).
+Six services + one timer ship in `systemd/`: `realm-map-server`,
+`realm-launcher`, `oracle-daemon`, `realm-herald`, `realm-theme-watcher`,
+and `realm-update-all` (+ its `realm-update-all.timer`). `realm-theme-watcher`
+is desktop-theming (independent of the map server); `realm-map-server` and
+`realm-launcher` are typically enabled for unattended operation. The rest are
+opt-in per-unit.
 
 ## Architecture (summary)
 
