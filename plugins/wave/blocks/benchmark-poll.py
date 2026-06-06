@@ -36,20 +36,13 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 EXAMPLE = os.path.join(HERE, "benchmark-slate.example.json")
 
+# realm_text is a top-level module at the repo root; ensure it's importable
+# whether this poller runs in-tree or standalone over ssh/stdin.
+_REPO_ROOT = os.path.abspath(os.path.join(HERE, "../../.."))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
-def _real_home() -> str:
-    """Invoking user's home, sudo-aware (map_server may run under sudo).
-
-    Mirrors realm_text.real_home() but kept dependency-free so the poller
-    runs standalone over ssh/stdin like the other block collectors.
-    """
-    for env_var in ("SUDO_USER", "LOGNAME", "USER"):
-        user = os.environ.get(env_var)
-        if user and user != "root":
-            cand = os.path.join("/home", user)
-            if os.path.isdir(cand):
-                return cand
-    return os.path.expanduser("~")
+import realm_text
 
 
 def _candidate_paths() -> list[str]:
@@ -57,7 +50,7 @@ def _candidate_paths() -> list[str]:
     override = os.environ.get("REALM_BENCHMARK_SLATE", "").strip()
     if override:
         paths.append(override)
-    paths.append(os.path.join(_real_home(), ".realmwatch", "benchmark-slate.json"))
+    paths.append(os.path.join(realm_text.real_home(), ".realmwatch", "benchmark-slate.json"))
     paths.append(EXAMPLE)
     return paths
 
