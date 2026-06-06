@@ -28,6 +28,7 @@ OPTIONS:
 
 WHAT IT CHECKS:
   - realm server reachable (HTTP, /status, /fleet/list, core_hosts populated)
+  - daemons running (oracle, herald, ap_scanner, collectd_listener — WARN if off)
   - .venv healthy (.venv/bin/python3 + all required deps importable)
   - fleet.yaml loadable + validates + lexicon library importable
   - plugins loaded (any failed imports?)
@@ -35,6 +36,7 @@ WHAT IT CHECKS:
   - env vars set (HA_TOKEN, AZURE_AI_API_KEY, NOTION_TOKEN)
   - core hosts reachable (gatekeeper, ha, katana, oracle — quick ping)
   - disk pressure on local host + gatekeeper (warn ≥75%, fail ≥90%)
+  - sibling realm.watch services via /api/version (status, coin, oracle, portal, deploy)
   - open events count
 
 EXAMPLES:
@@ -84,7 +86,12 @@ emit() {
 }
 
 section() {
-  [[ "$REALM_OUTPUT" != "json" ]] && realm::print_section "$1"
+  # Use a real `if` (not `[[ ]] && ...`): in json-mode the short-circuit
+  # returns non-zero, which under `set -e` aborted the whole script before any
+  # JSON was emitted — that's why `realm doctor --json` printed nothing.
+  if [[ "$REALM_OUTPUT" != "json" ]]; then
+    realm::print_section "$1"
+  fi
 }
 
 # 1. realm server
@@ -115,6 +122,25 @@ if realm::api_reachable; then
 else
   emit fail "realm server unreachable at ${REALM_HOST:-http://localhost}" "start it: cd $REALM_HOME && make dev"
 fi
+
+# 1b. daemon process liveness (folded in from the deprecated `realm health`).
+# The map_server is already covered above by the stronger HTTP reachability
+# check, so it's not re-pgrep'd here. The rest are off-by-default daemons —
+# a stopped one is informational (WARN), never a FAIL, so doctor's exit code
+# stays driven by genuine breakage.
+section "Daemons"
+_check_daemon() {
+  local pat="$1" label="$2" hint="$3"
+  if pgrep -f "$pat" >/dev/null 2>&1; then
+    emit pass "$label running"
+  else
+    emit warn "$label not running" "$hint"
+  fi
+}
+_check_daemon "oracle_daemon"     "oracle_daemon (AI oracle)"        "off by default — start with: make oracle"
+_check_daemon "realm_herald"      "realm_herald (voice daemon)"      "off by default — start with: make herald"
+_check_daemon "ap_scanner"        "ap_scanner (WiFi scanner)"        "off by default — runs as a plugin background thread or standalone"
+_check_daemon "collectd_listener" "collectd_listener (metrics)"      "off by default — runs as a plugin background thread or standalone"
 
 # 2. .venv health
 section "Python environment"
@@ -287,6 +313,43 @@ print(e.ops_ip if e and e.ops_ip else '')
       fi
     fi
   fi
+fi
+
+# 8b. sibling realm.watch services (folded in from the deprecated `realm health`).
+# Each sibling is queried at /api/version; defaults are the canonical public
+# hostnames, overridable per-host in ~/.config/realm/siblings.conf (NAME=URL).
+# A network probe, so it's gated under --quick like the sections above. Every
+# outcome is PASS or WARN (a sibling being down doesn't make THIS realm
+# unhealthy), so doctor's exit code is never flipped by a sibling.
+if [[ "$QUICK" -eq 0 ]]; then
+  section "Sibling services"
+  declare -A SIBLINGS=(
+    [status]="https://status.realm.watch"
+    [coin]="https://coin.realm.watch"
+    [oracle]="https://oracle.realm.watch"
+    [portal]="https://portal.realm.watch"
+    [deploy]="https://deploy.realm.watch"
+  )
+  sib_conf="${XDG_CONFIG_HOME:-$HOME/.config}/realm/siblings.conf"
+  if [[ -f "$sib_conf" ]]; then
+    while IFS='=' read -r k v; do
+      [[ -z "$k" || "$k" = \#* ]] && continue
+      SIBLINGS["$k"]="$v"
+    done < "$sib_conf"
+  fi
+  for name in $(echo "${!SIBLINGS[@]}" | tr ' ' '\n' | sort); do
+    url="${SIBLINGS[$name]}"
+    resp=$(curl -sf --max-time 2 "$url/api/version" 2>/dev/null || true)
+    if [[ -z "$resp" ]]; then
+      emit warn "$name unreachable" "$url/api/version did not respond"
+    elif ! echo "$resp" | jq -e . >/dev/null 2>&1; then
+      emit warn "$name responds, no JSON /api/version" "$url is up but doesn't speak the version contract"
+    else
+      v=$(echo "$resp" | jq -r '.name // .version // "?"' 2>/dev/null || echo "?")
+      h=$(echo "$resp" | jq -r '.hash // .commit // "?"' 2>/dev/null || echo "?")
+      emit pass "$name OK ($v @ $h)"
+    fi
+  done
 fi
 
 # 9. recent events (the /events endpoint returns a flat array; no status filter)
