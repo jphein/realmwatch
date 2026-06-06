@@ -19,12 +19,18 @@ USAGE:
   realm wol doctor <host>          check a host's WoL readiness (SSH + ethtool 'Wake-on: g')
   realm wol show                   list WoL-managed hosts and their power state
 
+OPTIONS:
+  --json                           Emit the raw API response as JSON
+  --dry-run                        Preview the call without sending (mutating verbs)
+
 EXAMPLES:
   realm wol katana                 # wake (back-compat)
   realm wol wake katana
   realm wol sleep familiar
   realm wol doctor familiar
   realm wol show
+  realm wol show --json | jq '.hosts[]'
+  realm wol wake katana --json --dry-run
 EOF
 }
 
@@ -36,30 +42,61 @@ set -- "${REALM_POSARGS[@]+"${REALM_POSARGS[@]}"}"
 
 realm::api_reachable || realm::die_unreachable
 
+# Format a POST/mutation response. In --json mode the raw API JSON passes
+# through; under --dry-run (no body returned) we synthesize a JSON object so an
+# agent still gets valid JSON describing the intended action. Human mode pretty-
+# prints via fmt_kv (the DRY-RUN preview already went to stderr from realm::_run).
+_emit_action() {
+  local action="$1" target="$2" resp="$3"
+  if [[ "$REALM_OUTPUT" = "json" ]]; then
+    if [[ -z "$resp" ]]; then
+      jq -n --arg target "$target" --arg action "$action" \
+        '{target:$target, action:$action, dry_run:true, status:"not-sent"}'
+    else
+      printf '%s' "$resp" | realm::fmt_kv
+    fi
+  else
+    [[ -n "$resp" ]] && printf '%s' "$resp" | realm::fmt_kv
+  fi
+}
+
 # Wake a target by posting to the raw /wol endpoint.
 _wol_wake() {
-  local body; body=$(jq -n --arg target "$1" '{target:$target}')
-  realm::api_post /wol "$body"
+  local resp
+  resp=$(realm::api_post /wol "$(jq -n --arg target "$1" '{target:$target}')")
+  _emit_action wake "$1" "$resp"
 }
 
 case "$1" in
   show)
-    realm::api_get /plugins/wol/status
+    realm::api_get /plugins/wol/status | realm::fmt_table '
+      ["HOST","STATE","REACHABLE","SLEEPABLE","WAKE_CAPABLE","IP"],
+      (.hosts[]? | [
+        .host,
+        (.state // "?"),
+        (.reachable | tostring),
+        (.sleepable | tostring),
+        (.wake_capable | tostring),
+        (.ip // "-")
+      ]) | @tsv'
     ;;
   doctor)
     shift
     [[ $# -ge 1 ]] || realm::die "usage: realm wol doctor <host>" 2
-    realm::api_get "/plugins/wol/doctor?target=$(printf '%s' "$1" | jq -Rr @uri)"
+    realm::api_get "/plugins/wol/doctor?target=$(printf '%s' "$1" | jq -Rr @uri)" \
+      | realm::fmt_kv
     ;;
   sleep)
     shift
     [[ $# -ge 1 ]] || realm::die "usage: realm wol sleep <host>" 2
-    realm::api_post /plugins/wol/sleep "$(jq -n --arg target "$1" '{target:$target}')"
+    resp=$(realm::api_post /plugins/wol/sleep "$(jq -n --arg target "$1" '{target:$target}')")
+    _emit_action sleep "$1" "$resp"
     ;;
   arm)
     shift
     [[ $# -ge 1 ]] || realm::die "usage: realm wol arm <host>" 2
-    realm::api_post /plugins/wol/arm "$(jq -n --arg target "$1" '{target:$target}')"
+    resp=$(realm::api_post /plugins/wol/arm "$(jq -n --arg target "$1" '{target:$target}')")
+    _emit_action arm "$1" "$resp"
     ;;
   wake)
     shift
