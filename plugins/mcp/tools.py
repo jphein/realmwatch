@@ -375,15 +375,23 @@ TOOLS: list[dict] = [
 ]
 
 
-def register_all(mcp) -> list[dict]:
+def register_all(mcp, wrap=None) -> list[dict]:
     """Register every tool in TOOLS on the FastMCP instance.
+
+    Args:
+        mcp: the FastMCP instance to register tools on.
+        wrap: optional ``(name, fn) -> fn`` hook applied before registration
+            (used by the launcher to install the opt-in ACL gate). Returns the
+            callable to register; defaults to identity. Wrapping must preserve
+            the signature so FastMCP's schema introspection still works.
 
     Returns a list of {name, category, summary} dicts for diagnostic use.
     """
     registered = []
     for spec in TOOLS:
         fn = spec["fn"]
-        mcp.tool()(fn)
+        reg_fn = wrap(fn.__name__, fn) if wrap is not None else fn
+        mcp.tool(name=fn.__name__)(reg_fn)
         registered.append({
             "name": fn.__name__,
             "category": spec["category"],
