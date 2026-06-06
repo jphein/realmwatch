@@ -5,7 +5,14 @@ Heavy scan — 10 minute interval, low priority (runs last).
 """
 
 import logging
-import nmap
+
+try:
+    import nmap
+except ImportError:
+    # python-nmap is an optional extra (pyproject.toml: [project.optional-dependencies] nmap).
+    # When absent, this plugin self-disables in setup() rather than tracebacking on import.
+    nmap = None
+
 from discovery_engine import SubEntity
 
 log = logging.getLogger(__name__)
@@ -78,6 +85,11 @@ def discover_nmap(node_id, node_data, host_access, engine):
 
 
 def setup(ctx):
+    if nmap is None:
+        ctx.log("The Far Sight rests — python-nmap not installed; nmap scanning "
+                "disabled (enable with: uv sync --extra nmap)")
+        return
+
     # Import ROLE_PROVIDERS to scan all role types
     from discovery_engine import ROLE_PROVIDERS
     all_roles = list(ROLE_PROVIDERS.keys())
