@@ -1,0 +1,60 @@
+{
+  "name": "claude-config",
+  "version": "1.0.0",
+  "type": "integrated",
+  "description": "CLI parity for the server's view of Claude Code config — skills, CLAUDE.md, agents, and hooks.",
+  "fantasy_name": "Codex of Bindings",
+  "icon": "📖",
+
+  "cli": {
+    "summary": "Inspect (and edit) the server's view of Claude Code config — skills, CLAUDE.md, agents, hooks",
+    "verbs": [
+      {
+        "name": "skills",
+        "summary": "List Claude Code skills the server can see",
+        "method": "GET",
+        "path": "/skills",
+        "table": ".[] | [.name, (.description // \"\")]",
+        "header": ["NAME", "DESCRIPTION"]
+      },
+      {
+        "name": "claude-md",
+        "summary": "Show the project CLAUDE.md the server is serving (use --json | jq -r .content for raw text)",
+        "method": "GET",
+        "path": "/claude-md"
+      },
+      {
+        "name": "agents",
+        "summary": "List Claude Code agent definitions the server can see",
+        "method": "GET",
+        "path": "/agents",
+        "table": ".[] | [.name, (.description // \"\")]",
+        "header": ["NAME", "DESCRIPTION"]
+      },
+      {
+        "name": "hooks",
+        "summary": "List configured Claude Code hooks from .claude/settings.json",
+        "method": "GET",
+        "path": "/hooks",
+        "table": ".hooks[] | [.event, (.matcher // \"\"), (.command // \"\")]",
+        "header": ["EVENT", "MATCHER", "COMMAND"]
+      },
+      {
+        "name": "set-claude-md",
+        "summary": "Overwrite the project CLAUDE.md with new content",
+        "method": "POST",
+        "path": "/claude-md",
+        "args": ["content"],
+        "body": "{\"content\":\"$1\"}"
+      },
+      {
+        "name": "set-skill",
+        "summary": "Create or overwrite a skill (args: name description body)",
+        "method": "POST",
+        "path": "/skills",
+        "args": ["name", "description", "body"],
+        "body": "{\"name\":\"$1\",\"description\":\"$2\",\"body\":\"$3\"}"
+      }
+    ]
+  }
+}
