@@ -1,6 +1,6 @@
 {
   "name": "combat-ward",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "integrated",
   "description": "Threat classification + ward management layer. Sits ON TOP of alerting — alerting still does notification routing; combat-ward turns threat-class events into bestiary encounters, ward actions, and a defense report. Migrated from os.realm.watch/servers/combat_ward.",
   "fantasy_name": "The Combat Ward",
@@ -10,5 +10,51 @@
   "python": {
     "module": "plugin",
     "entry": "setup"
+  },
+
+  "cli": {
+    "summary": "Inspect the realm's defenses — threats, bestiary, encounters, wards, and the defense report",
+    "verbs": [
+      {
+        "name": "threats",
+        "summary": "Recent threat-class events (severity >= 3)",
+        "method": "GET",
+        "path": "/combat-ward/threats",
+        "table": "(if type==\"array\" then . else [] end)[] | [.event_type // \"-\", (.severity // 0 | tostring), ((try (.raw_payload_json | fromjson.node) catch \"-\") // \"-\"), (.timestamp_observed // 0 | if . == 0 then \"-\" else (. / 1000 | strftime(\"%Y-%m-%d %H:%M\")) end)]",
+        "header": ["THREAT", "SEV", "NODE", "OBSERVED"]
+      },
+      {
+        "name": "bestiary",
+        "summary": "Bestiary catalogue — fantasy creatures + encounter counts",
+        "method": "GET",
+        "path": "/combat-ward/bestiary",
+        "table": "(if type==\"array\" then . else [] end)[] | [.fantasy_name // \"-\", .threat_type // \"-\", (.times_encountered // 0 | tostring), .recommended_ward_id // \"-\"]",
+        "header": ["CREATURE", "THREAT_TYPE", "ENCOUNTERS", "WARD"]
+      },
+      {
+        "name": "encounters",
+        "summary": "Active threat quests + linked ward actions",
+        "method": "GET",
+        "path": "/combat-ward/encounters",
+        "table": "(if type==\"array\" then . else [] end)[] | [.title // \"-\", (.severity // 0 | tostring), .status // \"-\", .node // \"-\", .quest_id // \"-\"]",
+        "header": ["TITLE", "SEV", "STATUS", "NODE", "QUEST_ID"]
+      },
+      {
+        "name": "defense-report",
+        "summary": "Realm defense summary — pending/executed actions, recent threats",
+        "method": "GET",
+        "path": "/combat-ward/defense-report",
+        "table": "to_entries[] | [.key, (.value | tostring)]",
+        "header": ["METRIC", "VALUE"]
+      },
+      {
+        "name": "wards",
+        "summary": "Ward templates (banish, slow, isolate, sentry, ...)",
+        "method": "GET",
+        "path": "/combat-ward/wards",
+        "table": "(if type==\"array\" then . else [] end)[] | [.fantasy_name // \"-\", .ward_name // \"-\", .action_type // \"-\", (.severity_min // 0 | tostring), .description // \"-\"]",
+        "header": ["WARD", "NAME", "ACTION", "SEV_MIN", "DESCRIPTION"]
+      }
+    ]
   }
 }
