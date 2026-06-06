@@ -21,6 +21,9 @@ Endpoints:
   GET  /combat-ward/encounters       active threat quests + linked actions
   GET  /combat-ward/defense-report   realm defense summary
   GET  /combat-ward/wards            ward templates (banish, slow, isolate, …)
+  POST /combat-ward/propose          propose a defensive action (policy-checked)
+  POST /combat-ward/approve          approve a pending action (body: action_id)
+  POST /combat-ward/execute          execute an approved action (body: action_id)
 
 Realm-event hook:
   Every realm-event with severity >= 3 and an event_type in the bestiary map
@@ -157,6 +160,59 @@ def _h_wards(req, params):
         return req.respond({"error": f"{type(e).__name__}: {e}"}, status=500)
 
 
+# ── Action handlers (POST — mutating; humans-in-the-loop) ─────────────────
+#
+# These drive the propose → approve → execute lifecycle from the shell/API.
+# The action functions live module-level in server.py (also exposed via
+# expose_api); we call them through `server.*` here, mirroring the GET
+# handlers above. Handler shape follows plugins/wol/h_arm: return the dict on
+# success (loader auto-responds), or req.respond({...}, status) + return None
+# for explicit 400/500.
+
+# propose_action accepts only these kwargs — filter the JSON body to them so
+# stray keys can't crash the call with an unexpected-keyword TypeError.
+_PROPOSE_KEYS = (
+    "quest_id", "entity_id", "action_type", "action_class",
+    "target_ip", "replay",
+)
+
+
+def _h_propose(req, params):
+    try:
+        data = req.json() or {}
+        kwargs = {k: data[k] for k in _PROPOSE_KEYS if k in data}
+        return server.propose_action(GAME_DB_PATH, **kwargs)
+    except Exception as e:
+        req.respond({"error": f"{type(e).__name__}: {e}"}, status=500)
+        return None
+
+
+def _h_approve(req, params):
+    try:
+        data = req.json() or {}
+        action_id = (data.get("action_id") or "").strip()
+        if not action_id:
+            req.respond({"error": "missing 'action_id'"}, status=400)
+            return None
+        return server.approve_action(GAME_DB_PATH, action_id=action_id)
+    except Exception as e:
+        req.respond({"error": f"{type(e).__name__}: {e}"}, status=500)
+        return None
+
+
+def _h_execute(req, params):
+    try:
+        data = req.json() or {}
+        action_id = (data.get("action_id") or "").strip()
+        if not action_id:
+            req.respond({"error": "missing 'action_id'"}, status=400)
+            return None
+        return server.execute_action(GAME_DB_PATH, action_id=action_id)
+    except Exception as e:
+        req.respond({"error": f"{type(e).__name__}: {e}"}, status=500)
+        return None
+
+
 # ── Plugin entry point ───────────────────────────────────────────────────
 
 def setup(ctx):
@@ -212,6 +268,11 @@ def setup(ctx):
     ctx.register_endpoint("GET", "/combat-ward/defense-report", _h_defense_report, raw_path=True)
     ctx.register_endpoint("GET", "/combat-ward/wards", _h_wards, raw_path=True)
 
+    # Action lifecycle (POST — mutating). propose → approve → execute.
+    ctx.register_endpoint("POST", "/combat-ward/propose", _h_propose, raw_path=True)
+    ctx.register_endpoint("POST", "/combat-ward/approve", _h_approve, raw_path=True)
+    ctx.register_endpoint("POST", "/combat-ward/execute", _h_execute, raw_path=True)
+
     # Status provider — surfaces a one-line summary on /status / GET /plugins.
     def _status_provider():
         try:
@@ -239,6 +300,7 @@ def setup(ctx):
     })
 
     _log(
-        f"plugin loaded — 5 endpoints + {len(threat_types)} threat-type hooks "
+        f"plugin loaded — 8 endpoints (5 GET + 3 POST) + "
+        f"{len(threat_types)} threat-type hooks "
         f"+ {len(mcp_tools.MCP_TOOLS)} MCP tools"
     )

@@ -54,6 +54,36 @@
         "path": "/combat-ward/wards",
         "table": "(if type==\"array\" then . else [] end)[] | [.fantasy_name // \"-\", .ward_name // \"-\", .action_type // \"-\", (.severity_min // 0 | tostring), .description // \"-\"]",
         "header": ["WARD", "NAME", "ACTION", "SEV_MIN", "DESCRIPTION"]
+      },
+      {
+        "name": "propose",
+        "summary": "Propose a defensive action (policy-checked): propose <action_type>. For entity_id/target_ip/quest_id, POST /combat-ward/propose directly.",
+        "method": "POST",
+        "path": "/combat-ward/propose",
+        "args": ["action_type"],
+        "body": "{\"action_type\":\"$1\"}",
+        "table": "[.action_id // \"-\", .action_type // \"-\", .result_status // \"-\", .policy_reason // \"-\"]",
+        "header": ["ACTION_ID", "TYPE", "STATUS", "REASON"]
+      },
+      {
+        "name": "approve",
+        "summary": "Approve a pending action: approve <action_id>",
+        "method": "POST",
+        "path": "/combat-ward/approve",
+        "args": ["action_id"],
+        "body": "{\"action_id\":\"$1\"}",
+        "table": "[.action_id // \"-\", .result_status // \"-\", (.approved_ts // 0 | tostring)]",
+        "header": ["ACTION_ID", "STATUS", "APPROVED_TS"]
+      },
+      {
+        "name": "execute",
+        "summary": "Execute an approved action: execute <action_id>",
+        "method": "POST",
+        "path": "/combat-ward/execute",
+        "args": ["action_id"],
+        "body": "{\"action_id\":\"$1\"}",
+        "table": "[.action_id // \"-\", .result_status // \"-\", (.executed_ts // 0 | tostring)]",
+        "header": ["ACTION_ID", "STATUS", "EXECUTED_TS"]
       }
     ]
   }
