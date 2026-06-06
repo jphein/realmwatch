@@ -11,7 +11,7 @@ name, a persona, and a voice. As of May 2026 it also carries an RPG layer —
 quests, progression, combat-ward, codex — and ships an in-tree MCP server,
 the Astral Conduit, that Claude Code can attach to.
 
-> 12 VLANs · 130+ nodes · 47 plugins · one unified CLI with 40+ verbs · an
+> 12 VLANs · 130+ nodes · 50 plugins · one unified CLI with 60+ verbs · an
 > AI oracle · a herald daemon · a Zabbix-class alerting pipeline · an RPG
 > game layer · an MCP server · adaptive Wave Terminal dashboards — all from
 > a single Linux box.
@@ -37,11 +37,11 @@ Underneath the theming sits a serious operational toolkit:
 - **Live SVG topology** — pan/zoom canvas, animated traffic, terrain
   contours, biome regions, drag-to-arrange layout. Web workers offload
   the heavy work.
-- **Plugin system** — 47 plugins under `plugins/<name>/`, each with a
+- **Plugin system** — 50 plugins under `plugins/<name>/`, each with a
   `plugin.json` manifest. Drop-in. Topological-sorted dependencies. Hooks
   for endpoints, SSE sources, node enrichers, discovery providers, and CLI
   verbs.
-- **Unified `realm` CLI** — git-style dispatcher with 40+ verbs. Type
+- **Unified `realm` CLI** — git-style dispatcher with 60+ verbs. Type
   `realm watch` and tail SSE events; `realm topology` for a table view;
   `realm alerting why oracle` to explain why an alert was suppressed;
   `realm wave install` to spawn live Wave Terminal dashboards.
@@ -79,9 +79,9 @@ Underneath the theming sits a serious operational toolkit:
   and chronicles. Every event in the realm becomes XP for the operator.
 - **MCP server — the Astral Conduit** — in-tree FastMCP server at
   `plugins/mcp/launcher.py`. Claude Code attaches with one command and
-  gains 30+ tools across realm status, fleet ops, quests, combat-ward,
-  codex, and progression. Stdio transport today; SSE on `/mcp/sse`
-  planned.
+  gains ~48 tools across realm status, fleet ops, quests, combat-ward,
+  codex, and progression. Stdio by default; SSE on `/mcp/sse`
+  now live.
 - **Wave Terminal dashboards (Tide Singers)** — `realm wave install`
   spawns adaptive ANSI TUIs as Wave blocks: WAN bandwidth (gatekeeper
   br-lan.38), palace-daemon health, live journal tail. Each TUI resizes

@@ -10,7 +10,7 @@ FastMCP server that exposes realmwatch's runtime to Claude Code. Single
 machine, local dev.
 
 The plugin system is the structural truth: the bundled core is mostly a
-rendering engine, and **47 plugins** under `plugins/<name>/` carry the
+rendering engine, and **50 plugins** under `plugins/<name>/` carry the
 feature surface. For the full architecture, plugin catalog, and source
 tree see `README.md`. This file is the working brief for Claude — rules,
 environment, and gotchas.

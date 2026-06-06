@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Realmwatch — A high-fantasy SVG map of every device on your home network. 130+ nodes, 12 VLANs, 47 plugins, an RPG game layer, an in-tree MCP server, adaptive Wave Terminal dashboards, and a unified realm CLI with 40+ verbs.">
+<meta name="description" content="Realmwatch — A high-fantasy SVG map of every device on your home network. 130+ nodes, 12 VLANs, 50 plugins, an RPG game layer, an in-tree MCP server, adaptive Wave Terminal dashboards, and a unified realm CLI with 60+ verbs.">
 <meta name="theme-color" content="#0c1612" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f3ead3" media="(prefers-color-scheme: light)">
 <meta name="realm-version" content='{"name": "realmwatch", "description": "Realmwatch — the fantasy network monitor", "version": "Valiant Relic · 3603ece", "hash": "3603ece", "branch": "master", "dirty": true, "built": "2026-05-17T03:04:20Z", "realm": "fantasy", "repo": "https://github.com/jphein/realmwatch", "commit_url": "https://github.com/jphein/realmwatch/commit/3603ece"}'>
@@ -938,7 +938,7 @@
       role-based auto-discovery, trigger-dependency alert suppression, event
       acknowledgement, declarative onboarding actions, an AI oracle that speaks,
       an in-tree MCP server, an RPG game layer where every event grants XP,
-      and a unified <code style="font-family:'JetBrains Mono', monospace; color: var(--gold-bright); background: none;">realm</code> CLI with 40+ verbs that exposes every capability through one
+      and a unified <code style="font-family:'JetBrains Mono', monospace; color: var(--gold-bright); background: none;">realm</code> CLI with 60+ verbs that exposes every capability through one
       ergonomic, git-style command.
     </p>
 
@@ -1076,12 +1076,12 @@
       <div class="pillar-card azure">
         <div class="icon" aria-hidden="true">⚯</div>
         <h3>The Astral Conduit</h3>
-        <div class="sub">in-tree MCP server · FastMCP · stdio</div>
+        <div class="sub">in-tree MCP server · FastMCP · stdio + SSE</div>
         <p>
           A FastMCP server lives in-tree at <code style="font-family:'JetBrains Mono', monospace; font-size:12px; color: var(--azure); background:none;">plugins/mcp/launcher.py</code>.
-          Claude Code attaches with one command and gains 30+ tools across realm
+          Claude Code attaches with one command and gains ~48 tools across realm
           status, fleet ops, quests, combat-ward, codex, and progression.
-          Stdio today; SSE on <code style="font-family:'JetBrains Mono', monospace; font-size:12px; color: var(--azure); background:none;">/mcp/sse</code> planned.
+          Stdio by default; SSE on <code style="font-family:'JetBrains Mono', monospace; font-size:12px; color: var(--azure); background:none;">/mcp/sse</code>, now live.
         </p>
         <div class="pillar-cli">
           <code>claude mcp add realmwatch \<br>
@@ -1303,7 +1303,7 @@ sublabel        : <span class="dim">"{ip} · {os} · {fw}"</span>
 
 <script>
   // ────────────────────────────────────────────────────────────
-  // Plugin catalog — inlined from the 47 plugin.json manifests.
+  // Plugin catalog — inlined from the 50 plugin.json manifests.
   //
   // Built with safe DOM construction (no innerHTML for data).
   // ────────────────────────────────────────────────────────────
@@ -1352,7 +1352,7 @@ sublabel        : <span class="dim">"{ip} · {os} · {fw}"</span>
     { g:'game', icon:'\u{1F4D6}', fn:'Codex of the Realm',      n:'codex',             d:'Node lore, chronicles, journal entries. Listens to xp.grant, level.up, achievement.unlocked.', c:'realm codex show | journal | chronicle' },
 
     // ── MCP & terminal: the new mouths and ears ──
-    { g:'mcp', icon:'\u{2BEF}', fn:'The Astral Conduit',     n:'mcp',               d:'In-tree FastMCP server. Claude Code attaches via stdio; 30+ tools aggregated from every plugin.', c:'plugins/mcp/launcher.py · claude mcp add' },
+    { g:'mcp', icon:'\u{2BEF}', fn:'The Astral Conduit',     n:'mcp',               d:'In-tree FastMCP server. Claude Code attaches via stdio or SSE; ~48 tools auto-aggregated from every plugin.', c:'plugins/mcp/launcher.py · claude mcp add' },
     { g:'mcp', icon:'\u{1F30A}', fn:'Tide Singers',           n:'wave',              d:'Adaptive ANSI TUIs as Wave Terminal blocks. WAN bandwidth, palace-daemon health, journal tail.', c:'realm wave install | list' },
     { g:'mcp', icon:'\u{1F3DB}️', fn:'Memory Palace Wing', n:'palace',            d:'MemPalace bridge — surfaces drawers, rooms, knowledge graph as realm-side queries.', c:'realm palace search | status' },
     { g:'mcp', icon:'\u{1F4D6}', fn:'The Lexicon',             n:'lexicon',           d:'Project catalog & cross-realm lexicon — names, aliases, taxonomy.', c:'realm lexicon show | sync' },

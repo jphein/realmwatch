@@ -5,7 +5,7 @@ title: Plugin catalog
 
 # Plugin catalog
 
-47 plugins. Every domain feature in realmwatch is one. Each lives under
+50 plugins. Every domain feature in realmwatch is one. Each lives under
 `plugins/<name>/` with a `plugin.json` manifest. The loader topologically
 sorts on `depends_on` and calls `setup(ctx)` for every integrated plugin.
 

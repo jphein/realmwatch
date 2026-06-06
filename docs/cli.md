@@ -279,15 +279,27 @@ Dump realm server debug info (tables, endpoints, plugin state).
 `GET /debug`. Tables row counts, registered endpoints, loaded plugins,
 SSE sources, recent events. The "what does the server know" dump.
 
-### `realm health`
+### `realm doctor [--quick] [--json]`
 
 ```text
-Check realm services, ports, DB, env.
+Diagnose realm health — server, fleet, lexicon, plugins, env, reachability.
 ```
 
-Color-coded check: processes, `:80` reachability, `realm.db` accessibility,
-env tokens, sibling-service `/api/version` endpoints. Configurable sibling
-list via `~/.config/realm/health.conf`.
+Color-coded checks (or a JSON array of `{section, status, detail}` with
+`--json`): processes + daemons, `:80` reachability, `realm.db`, env tokens,
+and sibling-service `/api/version` probes (sibling list via
+`~/.config/realm/siblings.conf`). `--quick` skips the network probes; exit
+code is non-zero only on genuine failures (off-by-default daemons WARN).
+
+### `realm health` — deprecated alias for `realm doctor`
+
+```text
+DEPRECATED alias for 'realm doctor' — runs the full diagnostic.
+```
+
+`realm health` prints a one-line deprecation notice to stderr and execs
+`realm doctor` with all args forwarded (incl. `--json`/`--quick`). Every check
+it used to run was folded into `doctor`; use `realm doctor` going forward.
 
 ### `realm api <method> <path> [body]`
 
@@ -465,6 +477,43 @@ bucket pair appears below the live sparklines when the pane is tall enough.
 | `PALACE_DAEMON_UNIT` | `palace-daemon` | `daemon` |
 
 Full writeup: [Tide Singers — the Wave plugin](wave.html).
+
+### `realm codex entries|node-lore|chronicles|journal`
+
+```text
+Lore, chronicles, journal, and node-lore from the codex plugin.
+```
+
+Read verbs (`entries`, `node-lore`, `chronicles`, `journal`) plus writes
+(`add-entry`, `set-lore`, `add-chronicle`, `add-journal`) over `/codex/*`.
+
+### `realm combat-ward threats|bestiary|encounters|defense-report|wards|propose|approve|execute`
+
+```text
+Combat-ward defense — threats, bestiary, encounters, reports, and actions.
+```
+
+Read the ward's view (`threats`, `bestiary`, `encounters`, `defense-report`,
+`wards`) and drive defense actions (`propose`, `approve`, `execute`) over
+`/combat-ward/*`.
+
+### `realm progression player|skills|grant-xp|unlock-skill|grant-achievement`
+
+```text
+XP, skill trees, and achievements from the progression plugin.
+```
+
+`player`/`skills` read state over `/progression/*`; `grant-xp`,
+`unlock-skill`, `grant-achievement` mutate it.
+
+### `realm claude-config skills|claude-md|agents|hooks`
+
+```text
+The server's view of Claude Code config (skills, CLAUDE.md, agents, hooks).
+```
+
+Reads the `/skills`, `/claude-md`, `/agents`, `/hooks` endpoints —
+convenience parity with the filesystem. `--json` for machine output.
 
 ---
 

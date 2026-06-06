@@ -67,7 +67,7 @@ Everything below explains how those two rules play out.
 
 ## The plugin system
 
-The structural truth of realmwatch. 47 plugins today. Every domain feature
+The structural truth of realmwatch. 50 plugins today. Every domain feature
 is one.
 
 ### Lifecycle

@@ -5,7 +5,7 @@
 **A fantasy-themed homelab network monitor, game engine, and MCP platform — all in one plugin-driven service.**
 
 *Every host is a node on the SVG canvas with a fantasy name, a persona, and a voice.
-12 VLANs, 130+ nodes, 47 plugins, one unified CLI, an AI oracle, a herald daemon,
+12 VLANs, 130+ nodes, 50 plugins, one unified CLI, an AI oracle, a herald daemon,
 a Zabbix-class alerting pipeline, an XP/quest/codex/ward RPG layer, and an MCP
 server that lets Claude Code drive the whole thing — all running from a single
 Linux box.*
@@ -38,7 +38,7 @@ desktop integration). Realmwatch is the single home for everything that touches
 network events, fantasy translation, or game state.
 
 It is opinionated and personal — built around one user's homelab — but the
-architecture is deliberately decoupled. The **47 plugins** under `plugins/` each
+architecture is deliberately decoupled. The **50 plugins** under `plugins/` each
 live in their own directory with a `plugin.json` manifest, register themselves
 with the server through a `setup(ctx)` hook, and can ship HTTP endpoints, SSE
 sources, frontend panels, discovery providers, CLI verbs, **and MCP tools**.
@@ -82,7 +82,7 @@ for prereqs).
   VLANs, animated traffic ley lines, terrain contours, biome regions, and
   drag-to-arrange layout. Web workers handle force-directed layout and
   heightmap stamping; pre-computed sublabels stream over SSE.
-- **47 plugins.** Every domain feature — census, latency, firewall, WiFi
+- **50 plugins.** Every domain feature — census, latency, firewall, WiFi
   scan, system updates, herald, chat, debug, discovery, alerting,
   maintenance windows, agent registration, discovery actions, **quests,
   progression, codex, combat-ward, realm-engine, mcp** — lives as a
@@ -275,7 +275,7 @@ once enabled in repo settings).
 
 ## Plugin catalog
 
-47 plugins across UI, data bridges, discovery, infrastructure, game layer,
+50 plugins across UI, data bridges, discovery, infrastructure, game layer,
 MCP, and effects.
 
 ### UI panels
@@ -408,7 +408,8 @@ queries the live filesystem.
 | `realm resolve <url>` | Resolve a URL through the realm |
 | `realm player` | Show player state or award rewards |
 | `realm debug` | Dump tables, endpoints, plugin state |
-| `realm health` | Local + sibling-service `/api/version` health |
+| `realm doctor` | Diagnose realm health — server, fleet, plugins, env, reachability (`realm health` is a deprecated alias) |
+| `realm investigate <device>` | Multi-layer smart-home device diagnostic (`--json`) |
 | `realm api <method> <path> [body]` | Generic HTTP escape hatch |
 | `realm fleet audit\|migrate-ssid\|add-vlan\|firewall-check` | OpenWrt fleet ops |
 | `realm version [--all]` | CLI version + (with `--all`) sibling services |
@@ -443,6 +444,10 @@ The dispatcher reads `cli.verbs` directly from `plugin.json` and pipes through
 | `maintenance` | `list`, `active`, `check`, `cancel` |
 | `agent-register` | `list`, `show`, `install-script`, `forget` |
 | `discovery-actions` | `list`, `test`, `apply`, `delete` |
+| `codex` | `entries`, `node-lore`, `chronicles`, `journal` (+ write verbs) |
+| `combat-ward` | `threats`, `bestiary`, `encounters`, `defense-report`, `wards`, `propose`, `approve`, `execute` |
+| `progression` | `player`, `skills`, `grant-xp`, `unlock-skill`, `grant-achievement` |
+| `claude-config` | `skills`, `claude-md`, `agents`, `hooks` |
 
 ### CLI conventions (clig.dev)
 
@@ -534,7 +539,7 @@ tools to Claude Code, the Claude API SDK, or any FastMCP-compatible client.
 Wired into Claude Code by adding it to `~/.claude/mcp.json` or via
 `claude mcp add realmwatch ~/Projects/realmwatch/plugins/mcp/launcher.py`.
 
-### Tools today (12+ core, more from each plugin)
+### Tools today (~48 — core + auto-aggregated from every plugin)
 
 **Read-only** — `realm_status`, `recent_events`, `list_nodes`, `get_node`,
 `fleet_list`, `fleet_resolve`, `ping_host`, `recent_alerts`, `topology`.
@@ -554,9 +559,18 @@ them at launch. The game-layer plugins (`progression`, `quests`,
 
 ### Transport
 
-**stdio** in v1 — Claude Code spawns the launcher per session. SSE on
-`/mcp/sse` is on the roadmap so MCP clients can attach without subprocess
-overhead.
+**stdio** (default) — Claude Code spawns the launcher per session. Or run an
+**SSE/HTTP** transport: set `REALM_MCP_TRANSPORT=sse` (or `http`) and the conduit
+serves at `REALM_MCP_HOST:REALM_MCP_PORT` (default `127.0.0.1:8765`) on
+`/mcp/sse`. Attach without a subprocess via
+`claude mcp add --transport sse realm http://127.0.0.1:8765/mcp/sse`.
+
+### Access control
+
+Mutating tools (`ssh_run`, `fleet_rename`, `wol_*`, `grant_*`, `cast_ward`, …)
+can be gated. Enforcement is **off by default** (existing usage unaffected); set
+`REALM_MCP_GATE_MUTATING=1` and allowlist via `REALM_MCP_ALLOW` (comma list /
+`*`) or `~/.realmwatch/mcp-acl.json` `{"allow":[...]}`. Read-only tools always run.
 
 ### Diagnostic
 
