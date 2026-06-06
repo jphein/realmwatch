@@ -195,8 +195,10 @@ case "$TARGET" in
     section "Validate + reload fleet.yaml"
     # Validate offline first
     if validate_out=$("$REALM_HOME/.venv/bin/python3" -c "
-import sys, pathlib
-sys.path.insert(0, str(pathlib.Path.home() / 'Projects' / 'lexicon.realm.watch' / 'python'))
+import sys
+sys.path.insert(0, '$REALM_HOME')
+from realm_text import real_home
+sys.path.insert(0, str(real_home() / 'Projects' / 'lexicon.realm.watch' / 'python'))
 from lexicon import load_fleet_catalog
 cat = load_fleet_catalog('$REALM_HOME/fleet.yaml')
 print(f'validates: {len(cat.entries)} entries')
