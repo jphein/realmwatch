@@ -10,5 +10,50 @@
   "python": {
     "module": "plugin",
     "entry": "setup"
+  },
+  "cli": {
+    "summary": "Track XP, levels, skill trees, and achievements",
+    "verbs": [
+      {
+        "name": "player",
+        "summary": "Show current level, XP, class, and unlocked skills",
+        "method": "GET",
+        "path": "/progression/player",
+        "table": "[.player_name, .player_class, (.level | tostring), (.total_xp | tostring), (.xp_to_next | tostring), ((.skills // []) | length | tostring)]",
+        "header": ["NAME", "CLASS", "LEVEL", "TOTAL_XP", "XP_TO_NEXT", "SKILLS"]
+      },
+      {
+        "name": "skills",
+        "summary": "List the skill tree and which skills are unlocked",
+        "method": "GET",
+        "path": "/progression/skills",
+        "table": "(.skills // [])[] | [.skill_id, .name, (.unlock_level | tostring), (if .unlocked then \"yes\" else \"-\" end)]",
+        "header": ["SKILL", "NAME", "LVL", "UNLOCKED"]
+      },
+      {
+        "name": "grant-xp",
+        "summary": "Grant XP to the player (args: amount, source)",
+        "method": "POST",
+        "path": "/progression/xp",
+        "args": ["amount", "source"],
+        "body": "{\"amount\": $1, \"source_type\": \"$2\"}"
+      },
+      {
+        "name": "unlock-skill",
+        "summary": "Unlock a skill by id (args: skill)",
+        "method": "POST",
+        "path": "/progression/unlock_skill",
+        "args": ["skill"],
+        "body": "{\"skill_id\": \"$1\"}"
+      },
+      {
+        "name": "grant-achievement",
+        "summary": "Grant an achievement by id (args: achievement)",
+        "method": "POST",
+        "path": "/progression/grant_achievement",
+        "args": ["achievement"],
+        "body": "{\"achievement_id\": \"$1\"}"
+      }
+    ]
   }
 }
