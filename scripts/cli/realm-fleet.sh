@@ -10,14 +10,16 @@ realm fleet — manage the OpenWrt fleet
 USAGE:
   realm fleet <SUBCOMMAND> [args]
 
-SUBCOMMANDS:
+READ SUBCOMMANDS (safe; support --json):
   list                                List all known APs/routers/switches
-  add <ip|hostname> [--name N]        Probe a host (SSH + OpenWrt detect)
-       [--category C] [--realm R]     and append it to fleet.yaml
-       [--notes T] [--yes] [--json]
   audit [ap_name|--all]               Audit SSIDs/VLANs/interfaces
   firewall-check                      Audit gatekeeper fw4 zones/rules
   ap-firewall-audit [ap|--json]       Audit per-AP fw4 vs realm standard
+
+MUTATING SUBCOMMANDS (change config; keep their own safety flags):
+  add <ip|hostname> [--name N]        Probe a host (SSH + OpenWrt detect)
+       [--category C] [--realm R]     and append it to fleet.yaml
+       [--notes T] [--yes] [--json]
   ap-firewall-standardize <ap|--all> [--commit]
                                       Standardize per-AP fw4 (dry-run default)
   add-vlan --ap N --vlan V --name I   Add a VLAN interface to one AP
@@ -25,13 +27,20 @@ SUBCOMMANDS:
   deploy-theme [ap_name]              Deploy LuCI theme to one AP or fleet
   collectd <ap_name|--all>            Install/refresh collectd on OpenWrt APs
 
+OPTIONS:
+  --json                              Machine-readable JSON (read subcommands)
+
 NOTES:
-  This is a thin wrapper. Each subcommand passes through to the existing
-  scripts/ap-*.sh scripts unchanged. Use --dry-run on destructive commands
-  (add-vlan, migrate-ssid) to preview.
+  This is a thin wrapper. Most subcommands pass through to the existing
+  scripts/ap-*.sh scripts unchanged. Read subcommands emit raw JSON under
+  --json; `list` is rendered here, `audit`/`firewall-check`/`ap-firewall-audit`
+  inherit their underlying script's output (ap-firewall-audit already speaks
+  --json). Use --dry-run / --commit on mutating commands (add-vlan,
+  migrate-ssid, ap-firewall-standardize) to preview before changing config.
 
 EXAMPLES:
   realm fleet list
+  realm fleet list --json | jq '.aps'
   realm fleet audit
   realm fleet add-vlan --ap your-ap --vlan 11 --name family --dry-run
   realm fleet migrate-ssid --ssid realm-family --network family --dry-run
@@ -55,27 +64,61 @@ set -- "${REALM_POSARGS[@]+"${REALM_POSARGS[@]}"}"
 
 _scripts_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# _emit_fleet_json — serialize the four fleet arrays (sourced from the
+# gitignored fleet.sh) into a single JSON object: {aps, routers,
+# switches_openwrt, switches_vendor}, each a name->IP map. Arrays may be
+# entirely unset when fleet.sh is absent (worktrees, fresh clones, CI) —
+# `${!ARR[@]}` on an unset name expands to nothing under `set -u`, so each
+# section degrades to an empty object rather than erroring.
+_emit_fleet_json() {
+  {
+    printf 'aps\n'
+    for name in "${!APS[@]}";              do printf '%s\t%s\n' "$name" "${APS[$name]}"; done
+    printf '\037\n'  # group separator between sections
+    printf 'routers\n'
+    for name in "${!ROUTERS[@]}";          do printf '%s\t%s\n' "$name" "${ROUTERS[$name]}"; done
+    printf '\037\n'
+    printf 'switches_openwrt\n'
+    for name in "${!SWITCHES_OPENWRT[@]}"; do printf '%s\t%s\n' "$name" "${SWITCHES_OPENWRT[$name]}"; done
+    printf '\037\n'
+    printf 'switches_vendor\n'
+    for name in "${!SWITCHES_VENDOR[@]}";  do printf '%s\t%s\n' "$name" "${SWITCHES_VENDOR[$name]}"; done
+  } | jq -Rn '
+    reduce inputs as $line (
+      {sections: {}, key: null};
+      if $line == "" then .key = null
+      elif .key == null then .key = $line | .sections[$line] = {}
+      else
+        ($line | split("\t")) as $kv
+        | .sections[.key][$kv[0]] = $kv[1]
+      end
+    )
+    | .sections
+  '
+}
+
 sub="${1:-list}"
 shift || true
 
 case "$sub" in
   list)
-    realm::print_section "Access Points"
-    for name in $(echo "${!APS[@]}" | tr ' ' '\n' | sort); do
-      realm::print_kv "$name" "${APS[$name]}"
-    done
-    realm::print_section "Routers"
-    for name in $(echo "${!ROUTERS[@]}" | tr ' ' '\n' | sort); do
-      realm::print_kv "$name" "${ROUTERS[$name]}"
-    done
-    realm::print_section "OpenWrt Switches"
-    for name in $(echo "${!SWITCHES_OPENWRT[@]}" | tr ' ' '\n' | sort); do
-      realm::print_kv "$name" "${SWITCHES_OPENWRT[$name]}"
-    done
-    realm::print_section "Vendor Switches"
-    for name in $(echo "${!SWITCHES_VENDOR[@]}" | tr ' ' '\n' | sort); do
-      realm::print_kv "$name" "${SWITCHES_VENDOR[$name]}"
-    done
+    raw=$(_emit_fleet_json)
+    if [[ "$REALM_OUTPUT" = "json" ]]; then
+      printf '%s\n' "$raw"
+    else
+      realm::print_section "Access Points"
+      printf '%s' "$raw" | jq -r '.aps | to_entries | sort_by(.key)[] | "\(.key)\t\(.value)"' \
+        | while IFS=$'\t' read -r name ip; do realm::print_kv "$name" "$ip"; done
+      realm::print_section "Routers"
+      printf '%s' "$raw" | jq -r '.routers | to_entries | sort_by(.key)[] | "\(.key)\t\(.value)"' \
+        | while IFS=$'\t' read -r name ip; do realm::print_kv "$name" "$ip"; done
+      realm::print_section "OpenWrt Switches"
+      printf '%s' "$raw" | jq -r '.switches_openwrt | to_entries | sort_by(.key)[] | "\(.key)\t\(.value)"' \
+        | while IFS=$'\t' read -r name ip; do realm::print_kv "$name" "$ip"; done
+      realm::print_section "Vendor Switches"
+      printf '%s' "$raw" | jq -r '.switches_vendor | to_entries | sort_by(.key)[] | "\(.key)\t\(.value)"' \
+        | while IFS=$'\t' read -r name ip; do realm::print_kv "$name" "$ip"; done
+    fi
     ;;
   add)
     exec "$_scripts_dir/cli/realm-fleet-add.sh" "$@"
