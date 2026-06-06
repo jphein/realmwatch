@@ -248,10 +248,16 @@ class RealmEngine:
     def _get_nodes_parallel(self):
         """Ping all realm nodes concurrently."""
         def _read():
+            nodes = self.REALM_NODES
+            if not nodes:
+                # No nodes (e.g. empty/absent fleet) — ThreadPoolExecutor(max_workers=0)
+                # raises ValueError, so short-circuit. Also avoids re-loading the
+                # REALM_NODES property multiple times per read.
+                return {}
             results = {}
-            with ThreadPoolExecutor(max_workers=len(self.REALM_NODES)) as pool:
+            with ThreadPoolExecutor(max_workers=len(nodes)) as pool:
                 futures = {pool.submit(self.check_node, ip): name
-                           for name, ip in self.REALM_NODES.items()}
+                           for name, ip in nodes.items()}
                 for f in as_completed(futures):
                     results[futures[f]] = f.result()
             return results
