@@ -6,6 +6,7 @@ remote sleep, a power-state model (slumbering vs dark), and loose RPG hooks.
 Handlers are defined inside setup() so they close over ``ctx`` (PluginRequest
 does not expose ctx). Game-layer coupling is runtime-only and guarded.
 """
+import threading
 import time
 
 from . import power_ops
@@ -58,7 +59,7 @@ def setup(ctx):
                 if e.status != "curated":
                     continue
                 mac = None
-                if e.fleet_id.startswith("mac:"):
+                if e and e.fleet_id and e.fleet_id.startswith("mac:"):
                     mac = e.fleet_id.split(":", 1)[1]
                 elif e.current_name in overrides:
                     mac = overrides[e.current_name]
@@ -120,11 +121,16 @@ def setup(ctx):
         return power_ops.check_wol(name, db.get_setting("iface_overrides", {}))
 
     def h_arm(req, params):
-        name = (req.json().get("target") or "").strip()
-        if not name:
-            req.respond({"error": "missing 'target'"}, 400)
+        try:
+            data = req.json() or {}
+            name = (data.get("target") or "").strip()
+            if not name:
+                req.respond({"error": "missing 'target'"}, 400)
+                return None
+            return power_ops.arm_wol(name, db.get_setting("iface_overrides", {}))
+        except Exception as e:
+            req.respond({"error": str(e)}, 500)
             return None
-        return power_ops.arm_wol(name, db.get_setting("iface_overrides", {}))
 
     def h_sleep(req, params):
         try:
@@ -164,12 +170,17 @@ def setup(ctx):
     ctx.register_endpoint("POST", "arm", h_arm)
 
     # --- map integration: status provider + slumber node badge ---
+    # _last_state is written by the background `watch` thread and read by the
+    # HTTP `enrich` handler — guard every access with _state_lock.
     _last_state = {}
+    _state_lock = threading.Lock()
 
     ctx.register_status_provider(lambda: {"wol": {r["host"]: r["state"] for r in status_rows()}})
 
     def enrich(node_id, node_data):
-        if _last_state.get(node_id) == "slumbering":
+        with _state_lock:
+            cur = _last_state.get(node_id)
+        if cur == "slumbering":
             return {"badge": "🌙", "sublabel": "slumbering", "status_class": "wol-slumber"}
         return None
     ctx.register_node_enricher(enrich, priority=40)
@@ -185,17 +196,19 @@ def setup(ctx):
         prog = ctx.get_plugin_api("progression")
         codex = ctx.get_plugin_api("codex")
         for r in status_rows():
-            host, cur, prev = r["host"], r["state"], _last_state.get(r["host"])
+            host, cur = r["host"], r["state"]
+            with _state_lock:
+                prev = _last_state.get(host)
             if prev is not None and prev != cur and cur in _THEMES:
                 kind, tmpl = _THEMES[cur]
                 ctx.push_event("realm-event", {"kind": kind, "node": host,
                                                "subtype": f"wol.{cur}", "text": tmpl.format(host=host)})
-                if cur == "slumbering" and prog:
+                if cur == "slumbering" and prog and "grant_xp" in prog:
                     try:
                         prog["grant_xp"](player_id="default", amount=5, source_type="wol.slumber")
                     except Exception as e:
                         ctx.log(f"wol xp hook failed: {e}")
-                if cur in ("slumbering", "awake") and codex:
+                if cur in ("slumbering", "awake") and codex and "add_journal_entry" in codex:
                     try:
                         codex["add_journal_entry"](entry_type="chronicle",
                                                    title=tmpl.format(host=host),
@@ -203,7 +216,8 @@ def setup(ctx):
                                                    entity_id=host)
                     except Exception as e:
                         ctx.log(f"wol codex hook failed: {e}")
-            _last_state[host] = cur
+            with _state_lock:
+                _last_state[host] = cur
     ctx.start_background_thread(watch, interval=20, name="wol-watch")
 
     # --- public API for other plugins ---
