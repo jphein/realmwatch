@@ -54,6 +54,8 @@ def _register_plugin_tools(mcp) -> list[str]:
             continue
         try:
             spec = importlib.util.spec_from_file_location(f"_pluginmcp_{mt.parent.name}", mt)
+            if spec is None or spec.loader is None:
+                continue
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
             entries = getattr(mod, "MCP_TOOLS", None) or getattr(mod, "TOOLS", None) or []
