@@ -776,6 +776,10 @@ def _clip_visible(s: str, max_visible: int) -> str:
     """
     if max_visible <= 0:
         return C["reset"]
+    # Already fits — return unchanged rather than spending the last column on
+    # an ellipsis for content that was never going to overflow.
+    if len(_strip_ansi(s)) <= max_visible:
+        return s
     out: list[str] = []
     shown = 0
     i = 0
@@ -806,6 +810,10 @@ def _fmt_metric(metric: dict) -> str:
     val = metric.get("value")
     if kind == "pending" or val is None:
         return f"{C['muted']}{name} —{C['reset']}"
+    # bool is an int subclass, so float(True) == 1.0 and the numeric branch
+    # below would render it as "1" / "100.0%". Catch it before float().
+    if isinstance(val, bool):
+        return f"{C['fg']}{name} {C['accent']}{'True' if val else 'False'}{C['reset']}"
     try:
         num = float(val)
     except (TypeError, ValueError):
