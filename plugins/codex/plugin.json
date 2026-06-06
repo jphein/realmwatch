@@ -32,5 +32,75 @@
       "handler": "handle_codex_index",
       "raw_path": true
     }
-  ]
+  ],
+
+  "cli": {
+    "summary": "Browse and inscribe realm lore — codex entries, node backstories, chronicles, and the player journal",
+    "verbs": [
+      {
+        "name": "entries",
+        "summary": "List world-lore codex entries (category, fantasy + technical name, summary)",
+        "method": "GET",
+        "path": "/codex/entries",
+        "table": "(.entries // [])[] | [.codex_id // \"-\", .category // \"-\", .fantasy_name // \"-\", .technical_name // \"-\", (.summary // \"-\")]",
+        "header": ["ID", "CATEGORY", "FANTASY_NAME", "TECHNICAL_NAME", "SUMMARY"]
+      },
+      {
+        "name": "node-lore",
+        "summary": "List per-entity backstories (entity_id, personality, backstory)",
+        "method": "GET",
+        "path": "/codex/node-lore",
+        "table": "(.lore // [])[] | [.entity_id // \"-\", (.personality // \"-\"), (.backstory // \"-\")]",
+        "header": ["ENTITY_ID", "PERSONALITY", "BACKSTORY"]
+      },
+      {
+        "name": "chronicles",
+        "summary": "List recent chronicles, newest first (title + narrative)",
+        "method": "GET",
+        "path": "/codex/chronicles",
+        "table": "(.chronicles // [])[] | [(.chronicle_date // 0 | if . == 0 then \"-\" else (./1000 | floor | strftime(\"%Y-%m-%d %H:%M\")) end), .title // \"-\", (.narrative // \"-\")]",
+        "header": ["DATE", "TITLE", "NARRATIVE"]
+      },
+      {
+        "name": "journal",
+        "summary": "List player journal entries, newest first (type, title, content)",
+        "method": "GET",
+        "path": "/codex/journal",
+        "table": "(.entries // [])[] | [(.created_ts // 0 | if . == 0 then \"-\" else (./1000 | floor | strftime(\"%Y-%m-%d %H:%M\")) end), .entry_type // \"-\", .title // \"-\", (.content // \"-\")]",
+        "header": ["DATE", "TYPE", "TITLE", "CONTENT"]
+      },
+      {
+        "name": "add-entry",
+        "summary": "Upsert a world-lore codex entry: add-entry <codex_id> <summary> (use --json for the persisted row)",
+        "method": "POST",
+        "path": "/codex/entries",
+        "args": ["codex_id", "summary"],
+        "body": "{\"codex_id\":\"$1\",\"summary\":\"$2\"}"
+      },
+      {
+        "name": "set-lore",
+        "summary": "Set a node's backstory: set-lore <entity_id> <backstory>",
+        "method": "POST",
+        "path": "/codex/node-lore",
+        "args": ["entity_id", "backstory"],
+        "body": "{\"entity_id\":\"$1\",\"backstory\":\"$2\"}"
+      },
+      {
+        "name": "add-chronicle",
+        "summary": "Inscribe a chronicle: add-chronicle <title> <narrative>",
+        "method": "POST",
+        "path": "/codex/chronicles",
+        "args": ["title", "narrative"],
+        "body": "{\"title\":\"$1\",\"narrative\":\"$2\"}"
+      },
+      {
+        "name": "add-journal",
+        "summary": "Add a player journal entry: add-journal <title> <content>",
+        "method": "POST",
+        "path": "/codex/journal",
+        "args": ["title", "content"],
+        "body": "{\"title\":\"$1\",\"content\":\"$2\"}"
+      }
+    ]
+  }
 }
