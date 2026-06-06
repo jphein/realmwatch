@@ -168,22 +168,30 @@ the same tables (Wave 4 may unify ownership). Don't try to merge into
 
 ## MCP server (plugins/mcp/)
 
-In-tree MCP server, fantasy name "The Astral Conduit". Stdio transport in v1.
+In-tree MCP server, fantasy name "The Astral Conduit". Stdio (default) plus an opt-in SSE/HTTP transport.
 
 - **Launcher:** `plugins/mcp/launcher.py` — run via
   `.venv/bin/python3 plugins/mcp/launcher.py` from any cwd. FastMCP banner
   on stderr; tool list logged to stderr; protocol on stdin/stdout.
+- **Transport:** `REALM_MCP_TRANSPORT` selects `stdio` (default), `sse`, or
+  `http`; HTTP modes serve at `REALM_MCP_HOST:REALM_MCP_PORT` (default
+  `127.0.0.1:8765`) on `/mcp/sse`. Connect over SSE with
+  `claude mcp add --transport sse realm http://127.0.0.1:8765/mcp/sse`.
 - **In-process plugin:** `plugins/mcp/plugin.py` only registers `/mcp/info`
   diagnostic + logs the launcher path. Does NOT start a server in-process
   (would compete for stdin with map_server).
-- **Tool registry:** `plugins/mcp/tools.py` holds 12 core tools. Each
-  game-layer plugin adds more via `mcp_tools.py` (a `MCP_TOOLS` list);
-  Wave 1.5 follow-up will auto-aggregate them.
+- **Tool registry:** `plugins/mcp/tools.py` holds the core tools; each plugin
+  ships a `mcp_tools.py` (`MCP_TOOLS` list) which the launcher **auto-aggregates**
+  at startup (guarded imports — a broken plugin can't crash the conduit). ~48
+  tools register today across core + codex/combat-ward/progression/wol/palace/quests.
 - **Connecting Claude Code:**
   `claude mcp add realmwatch /home/jp/Projects/realmwatch/plugins/mcp/launcher.py`
   (or hand-edit `~/.claude/mcp.json`).
-- **Roadmap:** SSE transport on `/mcp/sse` so clients can attach without a
-  subprocess; per-tool ACLs for mutating tools (`ssh_run`, `fleet_rename`).
+- **Per-tool ACLs:** mutating tools (17 — `ssh_run`, `fleet_rename`, `wol_*`,
+  `grant_*`, `cast_ward`, …) can be gated. Enforcement is OFF by default
+  (existing usage unaffected); set `REALM_MCP_GATE_MUTATING=1` and allowlist via
+  `REALM_MCP_ALLOW` (comma list / `*`) or `~/.realmwatch/mcp-acl.json`
+  `{"allow":[...]}`. Read tools are always allowed.
 
 ## Source Files (current line counts)
 
