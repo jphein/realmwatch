@@ -18,8 +18,16 @@ Usage (Claude Code .mcp.json):
       }
     }
 
-TODO (Wave 2+): add an SSE transport mode behind /mcp/sse on the realmwatch
-HTTP server so clients can attach without spawning a subprocess.
+Transport (issue #86): selected by ``REALM_MCP_TRANSPORT``:
+    * ``stdio`` (DEFAULT) — speak MCP over stdin/stdout as a subprocess.
+    * ``sse`` / ``http`` — serve over HTTP so clients attach over the network
+      without spawning a subprocess. Bound to ``REALM_MCP_HOST`` (default
+      127.0.0.1) : ``REALM_MCP_PORT`` (default 8765) at path ``/mcp/sse``.
+      Connect Claude Code with: ``claude mcp add --transport sse realm \\
+      http://127.0.0.1:8765/mcp/sse``.
+
+ACL gating (issue #85): mutating tools are gated by an *opt-in* allowlist —
+see ``acl.py``. Enforcement is OFF unless ``REALM_MCP_GATE_MUTATING=1``.
 """
 
 from __future__ import annotations
@@ -35,6 +43,7 @@ if str(_THIS_DIR) not in sys.path:
 
 from fastmcp import FastMCP  # noqa: E402
 
+import acl  # noqa: E402
 import tools  # noqa: E402
 
 
@@ -116,24 +125,53 @@ def _register_plugin_tools(mcp) -> list[str]:
                 if isinstance(entry, tuple) and len(entry) >= 2:
                     name, fn = entry[0], entry[1]
                     desc = entry[2] if len(entry) > 2 else (fn.__doc__ or "")
-                    mcp.tool(name=name, description=desc)(fn)
+                    # Opt-in ACL: wrap mutating tools so a gated call returns a
+                    # structured error instead of executing (no-op for reads).
+                    reg_fn = acl.guard(name, fn)
+                    mcp.tool(name=name, description=desc)(reg_fn)
                     names.append(name)
         except Exception as e:  # noqa: BLE001 — never let one plugin break the conduit
             print(f"[mcp] skipped {plugin_name}/mcp_tools.py: {e}", file=sys.stderr)
     return names
 
 
+def _run_transport(mcp) -> None:
+    """Dispatch to the transport selected by REALM_MCP_TRANSPORT.
+
+    Defaults to stdio for backward compatibility. ``sse``/``http`` serve over
+    HTTP at REALM_MCP_HOST:REALM_MCP_PORT (default 127.0.0.1:8765) on the
+    ``/mcp/sse`` path. FastMCP 3.x accepts "stdio", "sse", "http", and
+    "streamable-http"; we keep the SSE-style string per the issue.
+    """
+    transport = os.environ.get("REALM_MCP_TRANSPORT", "stdio").strip().lower()
+    if transport in ("sse", "http", "streamable-http"):
+        host = os.environ.get("REALM_MCP_HOST", "127.0.0.1")
+        port = int(os.environ.get("REALM_MCP_PORT", "8765"))
+        print(
+            f"[mcp] transport={transport} — serving on "
+            f"http://{host}:{port}/mcp/sse",
+            file=sys.stderr,
+        )
+        mcp.run(transport=transport, host=host, port=port, path="/mcp/sse")
+    else:
+        # stdio (default): FastMCP speaks MCP over stdin/stdout.
+        print("[mcp] transport=stdio", file=sys.stderr)
+        mcp.run()
+
+
 def main() -> None:
     mcp = FastMCP("realm")
-    registered = tools.register_all(mcp)
+    # Install the opt-in ACL gate on mutating tools (no-op for read tools, and
+    # fully transparent unless REALM_MCP_GATE_MUTATING=1).
+    registered = tools.register_all(mcp, wrap=acl.guard)
     plugin_tool_names = _register_plugin_tools(mcp)
     all_names = [t["name"] for t in registered] + plugin_tool_names
     print(
         f"[mcp] registered {len(all_names)} tools — " + ", ".join(all_names),
         file=sys.stderr,
     )
-    # FastMCP defaults to stdio when run() is called without a transport arg.
-    mcp.run()
+    print(f"[mcp] {acl.gate_summary()}", file=sys.stderr)
+    _run_transport(mcp)
 
 
 if __name__ == "__main__":
