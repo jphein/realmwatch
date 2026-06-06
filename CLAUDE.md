@@ -25,7 +25,7 @@ integration) — do not put new event producers or game logic there.
 - `engine.py` is the single source of truth for sensor/translation logic — never
   duplicate it
 - `topology.json` is the single source of truth for nodes/connections (in
-  `.claudeignore` — query via HTTP API, don't read directly)
+  `.claudeignore` — query via `realm topology` / the HTTP API, don't read directly)
 - `personas.json` is managed via `POST /personas` (in `.claudeignore`)
 - `realm.db` is live data — never drop tables or delete rows
 - `realm-map.js` is BUILT output — edit `src/*.js` then `npm run build`
@@ -56,6 +56,18 @@ integration) — do not put new event producers or game logic there.
 - The diagnose/fix/retrieve verb trinity is `brief` / `doctor` / `logs` /
   `show` / `fix`. Plugins exposing CLI verbs should reach for these names
   before inventing new ones — operators have muscle memory across the realm.
+- **`realm <verb>` is the front-door for realm operations** — prefer it over
+  raw `curl`. It wraps the HTTP API (`map_server.py :80`) with hostname
+  sanitization, `--json` machine-readable output, `--dry-run`, and a
+  consistent exit-code contract (0 ok · 3 network · 4 auth · 5 server ·
+  22 client). Drop to raw `curl` only for endpoints the CLI doesn't cover yet.
+  - **Capability discovery:** bare `realm` (or `realm --list-commands`) is the
+    agent entrypoint — it lists every available subcommand. `realm <cmd> --json`
+    yields structured, machine-readable output.
+  - **Preview before you mutate.** Before any mutating realm op, preview it via
+    that command's documented safety flag — usually `--dry-run`, but some
+    commands (`zones`, `update-all`) are dry-run-by-default and require
+    `--commit` to execute. Check `--help` rather than assuming one idiom.
 
 ## Tech Stack
 
