@@ -53,7 +53,7 @@ def resolve_target(raw, mac_overrides=None):
     entry = realm_fleet.host(raw)
     name = entry.current_name if entry else raw
     directed_ip = getattr(entry, "ops_ip", None) if entry else None
-    if entry and entry.fleet_id.startswith("mac:"):
+    if entry and entry.fleet_id and entry.fleet_id.startswith("mac:"):
         mac = normalize_mac(entry.fleet_id.split(":", 1)[1])
     if mac is None and mac_overrides:
         mac = normalize_mac(mac_overrides.get(name) or mac_overrides.get(raw) or "")
@@ -66,17 +66,26 @@ def resolve_target(raw, mac_overrides=None):
 
 
 def send_magic_packet(mac_hex, directed_ip=None):
-    """Send the WoL magic packet to the limited broadcast + directed subnet broadcast."""
+    """Send the WoL magic packet to the limited broadcast + directed subnet broadcast.
+
+    Socket failures (no route, permission, transient OS error) are caught and
+    returned as a clean error dict rather than raised — the caller gets a
+    structured result either way.
+    """
     magic = b"\xff" * 6 + bytes.fromhex(mac_hex) * 16
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        # 255.255.255.255 = IPv4 limited broadcast (RFC 1122 §3.2.1.3): a protocol
-        # constant, not a host. The x.y.z.255 directed broadcast reaches the /24.
-        sock.sendto(magic, ("255.255.255.255", 9))
-        if directed_ip:
-            parts = directed_ip.rsplit(".", 1)
-            if len(parts) == 2:
-                sock.sendto(magic, (parts[0] + ".255", 9))
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            # 255.255.255.255 = IPv4 limited broadcast (RFC 1122 §3.2.1.3): a protocol
+            # constant, not a host. The x.y.z.255 directed broadcast reaches the /24.
+            sock.sendto(magic, ("255.255.255.255", 9))
+            if directed_ip:
+                parts = directed_ip.rsplit(".", 1)
+                if len(parts) == 2:
+                    sock.sendto(magic, (parts[0] + ".255", 9))
+    except OSError as e:
+        return {"ok": False, "mac": mac_hex, "sent": False, "directed_ip": directed_ip,
+                "error": f"socket error sending magic packet: {e}"}
     return {"ok": True, "mac": mac_hex, "sent": True, "directed_ip": directed_ip}
 
 
@@ -126,7 +135,9 @@ def detect_iface(name, iface_overrides=None):
         for line in r["stdout"].splitlines():
             toks = line.split()
             if "dev" in toks:
-                return toks[toks.index("dev") + 1]
+                idx = toks.index("dev")
+                if idx + 1 < len(toks):
+                    return toks[idx + 1]
     return None
 
 
@@ -141,9 +152,13 @@ def check_wol(name, iface_overrides=None):
         return {"ok": False, "ssh": True, "iface": iface, "armed": False,
                 "reason": (r["stderr"] or "ethtool failed").strip()}
     armed = False
+    # ethtool prints both "Supports Wake-on: <modes>" and the active "Wake-on: <state>".
+    # Match the active field exactly (key == "Wake-on" after the colon split) so the
+    # supported-modes line can never be mistaken for the armed state.
     for line in r["stdout"].splitlines():
-        if "Wake-on:" in line:
-            armed = line.split("Wake-on:", 1)[1].strip() == "g"
+        key, sep, val = line.partition(":")
+        if sep and key.strip() == "Wake-on":
+            armed = val.strip() == "g"
     return {"ok": armed, "ssh": True, "iface": iface, "armed": armed}
 
 
