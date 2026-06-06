@@ -9,7 +9,7 @@ realm::help() {
 realm tail — live colored SSE event stream
 
 USAGE:
-  realm tail [PLUGIN] [--type TYPES] [--since DURATION] [--no-color]
+  realm tail [PLUGIN] [--type TYPES] [--since DURATION] [--json] [--no-color]
 
 Each event prints on one line:  HH:MM:SS  [type]  node  message
 Color is per event-type (alert=red, speech=cyan, quest=yellow,
@@ -19,10 +19,17 @@ NO_COLOR / REALM_NO_COLOR=1 is set, or --no-color is passed.
 PLUGIN (positional) filters to events whose .source_system / .plugin /
 .source matches the given name.
 
+In --json mode, each event is emitted as one line of newline-delimited
+JSON (NDJSON) — the raw event object, with an "event" key naming the SSE
+channel if the payload doesn't already carry one. Filters (PLUGIN, --type,
+--since backfill) still apply. The status banner goes to stderr, so stdout
+stays pure NDJSON and is safe to pipe to jq.
+
 OPTIONS:
   -h, --help          show this help
   --type TYPES        comma-separated event types to keep (alert,quest,…)
   --since DURATION    backfill recent events first (5m, 30s, 1h, 2d)
+  --json              emit NDJSON (one raw event object per line)
   --no-color          disable ANSI color
 
 EXAMPLES:
@@ -31,6 +38,7 @@ EXAMPLES:
   realm tail combat-ward
   realm tail --since 5m
   realm tail combat-ward --type alert
+  realm tail --json | jq -c 'select(.event == "alert")'
 
 SEE ALSO:
   realm watch    raw SSE tailer, --sources lists registered feeds
@@ -100,8 +108,13 @@ helper_args=()
 [[ -n "$PLUGIN"         ]] && helper_args+=( --plugin "$PLUGIN" )
 [[ "${REALM_NO_COLOR:-}" = "1" ]] && helper_args+=( --no-color )
 [[ -n "$BACKFILL_FILE"  ]] && helper_args+=( --backfill "$BACKFILL_FILE" )
+# --json (REALM_OUTPUT=json, set by realm::parse_common) → NDJSON mode. The
+# helper emits one raw event object per line; the banner stays on stderr
+# (realm::say) so stdout is pure NDJSON.
+[[ "${REALM_OUTPUT:-human}" = "json" ]] && helper_args+=( --json )
 
 banner="Tailing /sse"
+[[ "${REALM_OUTPUT:-human}" = "json" ]] && banner="$banner  (NDJSON)"
 [[ -n "$PLUGIN" ]] && banner="$banner  plugin=$PLUGIN"
 [[ -n "$TYPES"  ]] && banner="$banner  type=$TYPES"
 [[ -n "$SINCE"  ]] && banner="$banner  since=$SINCE"

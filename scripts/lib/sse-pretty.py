@@ -2,7 +2,9 @@
 """Colored SSE pretty-printer for `realm tail`. Reads event:/data: lines
 on stdin, prints  HH:MM:SS  [type]  node  message  with per-type color.
 Filters: --type alert,quest  --plugin combat-ward
-Backfill: --backfill FILE (JSON array from GET /events?since=...)"""
+Backfill: --backfill FILE (JSON array from GET /events?since=...)
+JSON mode: --json emits newline-delimited JSON (one raw event object per
+line) instead of the colored rendering, after applying the same filters."""
 from __future__ import annotations
 
 import argparse
@@ -94,6 +96,16 @@ def _emit(event_name, payload, args):
         if not p or p != args.plugin.lower():
             return
 
+    if args.json:
+        # NDJSON: one raw event object per line. Annotate with the SSE
+        # wrapper name under "event" only if the payload doesn't already
+        # carry it, so consumers can recover the stream channel without us
+        # clobbering an event's own field.
+        if "event" not in payload:
+            payload = {"event": event_name, **payload}
+        print(json.dumps(payload, separators=(",", ":"), default=str), flush=True)
+        return
+
     col = COLORS.get(eff, DEFAULT_COLOR) if args.use_color else ""
     rst = RESET if args.use_color else ""
     ts = _ts_str(payload)
@@ -161,10 +173,12 @@ def main():
     ap.add_argument("--plugin", default="")
     ap.add_argument("--no-color", action="store_true")
     ap.add_argument("--backfill", default="")
+    ap.add_argument("--json", action="store_true",
+                    help="emit NDJSON (one raw event object per line)")
     args = ap.parse_args()
 
     no_color_env = bool(os.environ.get("NO_COLOR")) or os.environ.get("REALM_NO_COLOR") == "1"
-    args.use_color = (not args.no_color) and (not no_color_env) and sys.stdout.isatty()
+    args.use_color = (not args.no_color) and (not no_color_env) and sys.stdout.isatty() and not args.json
 
     try:
         sys.stdout.reconfigure(line_buffering=True)
