@@ -38,26 +38,79 @@ from fastmcp import FastMCP  # noqa: E402
 import tools  # noqa: E402
 
 
+def _ensure_plugins_namespace(plugins_dir: Path) -> None:
+    """Register `plugins` as a synthetic namespace package rooted at plugins/.
+
+    Mirrors plugin_loader._ensure_plugins_namespace() so that a plugin's
+    `mcp_tools.py` can be imported as `plugins.<name>.mcp_tools` and its
+    package-relative imports (`from . import server`, `from .server import …`)
+    resolve correctly. Without this every relative-import plugin would raise
+    "attempted relative import with no known parent package" and be skipped.
+    """
+    import importlib.machinery
+    import importlib.util
+    if "plugins" in sys.modules:
+        return
+    spec = importlib.machinery.ModuleSpec("plugins", loader=None, is_package=True)
+    spec.submodule_search_locations = [str(plugins_dir)]
+    pkg = importlib.util.module_from_spec(spec)
+    pkg.__path__ = [str(plugins_dir)]
+    sys.modules["plugins"] = pkg
+
+
+def _import_plugin_mcp_tools(name: str, mt: Path, plugins_dir: Path):
+    """Import plugins/<name>/mcp_tools.py as `plugins.<name>.mcp_tools`.
+
+    Sets up the `plugins.<name>` package and `__package__` so the module's
+    relative imports attach to the right namespace (the same idiom
+    plugin_loader uses), then returns the loaded module.
+    """
+    import importlib.machinery
+    import importlib.util
+
+    _ensure_plugins_namespace(plugins_dir)
+    pkg_name = f"plugins.{name}"
+    if pkg_name not in sys.modules:
+        pkg_spec = importlib.machinery.ModuleSpec(pkg_name, loader=None, is_package=True)
+        pkg_spec.submodule_search_locations = [str(mt.parent)]
+        pkg_mod = importlib.util.module_from_spec(pkg_spec)
+        pkg_mod.__path__ = [str(mt.parent)]
+        sys.modules[pkg_name] = pkg_mod
+
+    mod_name = f"{pkg_name}.mcp_tools"
+    spec = importlib.util.spec_from_file_location(
+        mod_name, mt, submodule_search_locations=[str(mt.parent)]
+    )
+    if spec is None or spec.loader is None:
+        return None
+    mod = importlib.util.module_from_spec(spec)
+    mod.__package__ = pkg_name  # so `from . import server` resolves
+    sys.modules[mod_name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def _register_plugin_tools(mcp) -> list[str]:
     """Discover each plugin's mcp_tools.py and register its MCP_TOOLS.
 
-    Lightweight stand-in for the pending Wave 1.5 auto-aggregation: scans
-    plugins/<name>/mcp_tools.py for an MCP_TOOLS list of (name, fn, desc)
-    tuples. Defensive — a plugin whose module fails to import (e.g. ones using
-    package-relative imports) is skipped without taking down the conduit.
+    Wave 1.5 auto-aggregation (issue #84): scans plugins/<name>/mcp_tools.py
+    for an MCP_TOOLS list of (name, fn, desc) tuples and registers each on the
+    conduit alongside the core tools — no manual wiring. Each plugin import is
+    isolated in try/except, so one broken or optional plugin (e.g. a backend
+    whose dependency is missing) is logged to stderr and skipped without
+    taking down the conduit.
     """
-    import importlib.util
     plugins_dir = _THIS_DIR.parent
     names: list[str] = []
     for mt in sorted(plugins_dir.glob("*/mcp_tools.py")):
-        if mt.parent.name == "mcp":
+        plugin_name = mt.parent.name
+        if plugin_name == "mcp":
             continue
         try:
-            spec = importlib.util.spec_from_file_location(f"_pluginmcp_{mt.parent.name}", mt)
-            if spec is None or spec.loader is None:
+            mod = _import_plugin_mcp_tools(plugin_name, mt, plugins_dir)
+            if mod is None:
+                print(f"[mcp] skipped {plugin_name}/mcp_tools.py: no module spec", file=sys.stderr)
                 continue
-            mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)
             entries = getattr(mod, "MCP_TOOLS", None) or getattr(mod, "TOOLS", None) or []
             for entry in entries:
                 if isinstance(entry, tuple) and len(entry) >= 2:
@@ -66,7 +119,7 @@ def _register_plugin_tools(mcp) -> list[str]:
                     mcp.tool(name=name, description=desc)(fn)
                     names.append(name)
         except Exception as e:  # noqa: BLE001 — never let one plugin break the conduit
-            print(f"[mcp] skipped {mt.parent.name}/mcp_tools.py: {e}", file=sys.stderr)
+            print(f"[mcp] skipped {plugin_name}/mcp_tools.py: {e}", file=sys.stderr)
     return names
 
 
