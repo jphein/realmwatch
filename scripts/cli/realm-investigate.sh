@@ -22,7 +22,11 @@ realm::help() {
 realm investigate — multi-layer diagnostic for a device
 
 USAGE:
-  realm investigate <device-or-name>
+  realm investigate <device-or-name> [--json]
+
+OPTIONS:
+  -h, --help    Show this help
+  --json        Emit a structured per-layer JSON object (for piping to jq)
 
 WHAT IT GATHERS:
   Identity      friendly name, manufacturer, model, MAC, HA entity_id
@@ -40,6 +44,7 @@ EXAMPLES:
   realm investigate HS200
   realm investigate "office bulb"
   realm investigate e8:48:b8:aa:39:33
+  realm investigate laundry_light --json | jq '.layers.network'
 EOF
 }
 
@@ -69,8 +74,10 @@ GATEKEEPER_HOST="${GATEKEEPER_HOST:-$(
     || echo gatekeeper
 )}"
 
-# Hand to Python for the heavy lifting.
+# Hand to Python for the heavy lifting. REALM_OUTPUT (set by realm::parse_common
+# from --json) selects human narrative vs. a structured per-layer JSON object.
 HA_TOKEN="${HA_TOKEN:-}" GATEKEEPER_HOST="$GATEKEEPER_HOST" \
+REALM_OUTPUT="$REALM_OUTPUT" \
 "$REALM_PYTHON" - "$target" <<'PY' || exit $?
 import json
 import os
@@ -87,6 +94,7 @@ import realm_fleet
 
 target = sys.argv[1].strip()
 HA_TOKEN = os.environ.get("HA_TOKEN", "")
+JSON_MODE = os.environ.get("REALM_OUTPUT") == "json"
 # Hosts: prefer fleet catalog resolution (styleguide invariant) and fall
 # back to the env override + literal name (for first-run / SSH-config-only
 # setups where the catalog isn't populated yet).
@@ -106,10 +114,35 @@ class _C:
     GREEN = "\033[32m"; RED = "\033[31m"; YELLOW = "\033[33m"; CYAN = "\033[36m"
     BLUE = "\033[34m"
 
+# Structured accumulator for --json. header() opens a layer; line() appends a
+# field to whichever layer is current. The human narrative is produced by the
+# very same calls (so the two outputs can never drift), and is suppressed when
+# JSON_MODE is on. Field labels are normalized to snake_case keys.
+_result: dict = {"target": target, "layers": {}}
+_current_layer: str | None = None
+
+def _key(label: str) -> str:
+    k = label.strip().lower()
+    for ch in (" ", "-", ":", "/", "(", ")", "."):
+        k = k.replace(ch, "_")
+    while "__" in k:
+        k = k.replace("__", "_")
+    return k.strip("_")
+
 def header(s: str) -> None:
-    print(f"\n{_C.BOLD}{_C.CYAN}── {s} ──{_C.RESET}")
+    global _current_layer
+    _current_layer = _key(s)
+    _result["layers"].setdefault(_current_layer, {"name": s, "fields": []})
+    if not JSON_MODE:
+        print(f"\n{_C.BOLD}{_C.CYAN}── {s} ──{_C.RESET}")
 
 def line(label: str, value: str, ok: bool | None = None) -> None:
+    if _current_layer is not None:
+        _result["layers"][_current_layer]["fields"].append(
+            {"key": _key(label), "label": label, "value": value, "ok": ok}
+        )
+    if JSON_MODE:
+        return
     icon = "  "
     if ok is True:
         icon = f"{_C.GREEN}✓{_C.RESET} "
@@ -162,7 +195,8 @@ def _gk(cmd: str) -> str:
     except Exception:
         return ""
 
-print(f"\n{_C.BOLD}realm investigate {target!r}{_C.RESET}")
+if not JSON_MODE:
+    print(f"\n{_C.BOLD}realm investigate {target!r}{_C.RESET}")
 
 # Try MAC parse first.
 mac_normalized: str | None = None
@@ -415,5 +449,17 @@ if ha_entity:
     else:
         line("identifiers", ident_str[:80])
 
-print()
+if JSON_MODE:
+    # Top-level resolution summary so consumers don't have to dig through the
+    # per-layer field lists for the common identifiers.
+    _result["resolved"] = {
+        "mac": mac_normalized,
+        "ip": ip_addr,
+        "ha_entity_id": ha_entity["entity_id"] if ha_entity else None,
+        "found": bool(ha_entity or mac_normalized or ip_addr),
+    }
+    json.dump(_result, sys.stdout, indent=2)
+    sys.stdout.write("\n")
+else:
+    print()
 PY
