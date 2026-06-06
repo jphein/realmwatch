@@ -283,6 +283,23 @@ cmd_install() {
 
 verb="${1:-}"
 case "$verb" in
+    --one-line-help)
+        # Dispatcher index hook (scripts/realm realm::_summary_for). Echo the
+        # manifest's cli.summary (single line, exit 0). plugin.json is the
+        # source of truth; fall back to REALM_HELP_SUMMARY if jq/manifest is
+        # unavailable so the index never goes blank again (#82).
+        summary="$(jq -r '.cli.summary // empty' "$_plugin_dir/plugin.json" 2>/dev/null || true)"
+        printf '%s\n' "${summary:-$REALM_HELP_SUMMARY}"
+        exit 0 ;;
+    --list-subcommands)
+        # Completion hook: emit one verb name per line. Hardcoded launchers,
+        # manifest-discovered verbs, plus the built-ins.
+        {
+            for name in "${!TUIS[@]}"; do printf '%s\n' "$name"; done
+            for name in "${!MANIFESTS[@]}"; do printf '%s\n' "$name"; done
+            printf 'list\ninstall\n'
+        } | sort -u
+        exit 0 ;;
     ""|-h|--help|help)
         usage; exit 0 ;;
     list)
