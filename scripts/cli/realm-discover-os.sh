@@ -118,11 +118,13 @@ REALM_DRY_RUN=""
 # Fetch topology ONCE and reuse it for every selection mode (the old code
 # re-fetched /topology per --hosts entry).
 tmp_targets=$(mktemp); trap 'rm -f "$tmp_targets"' EXIT
-topo_json=$(realm::api_get /topology) || realm::die "failed to fetch /topology" 5
+# realm::api_reachable() above already proved the server is up, so a /topology
+# failure here is "realm not serving us" with zero probes run yet — exit 3
+# (realm unreachable), NOT 5 (which means "we probed and all failed").
+topo_json=$(realm::api_get /topology) || realm::die "failed to fetch /topology (realm API error)" 3
 
 # Total reachable IP-bearing nodes — the denominator for coverage reporting.
-total_ip_nodes=$(printf '%s' "$topo_json" \
-  | jq '[.nodes[] | select((.ip // "") != "")] | length' 2>/dev/null || echo 0)
+total_ip_nodes=$(jq '[.nodes[] | select((.ip // "") != "")] | length' <<< "$topo_json" 2>/dev/null || echo 0)
 
 SELECTION=""
 
@@ -130,8 +132,7 @@ if [[ -n "$HOSTS_FILTER" ]]; then
   # User-supplied host IDs: each must have an IP in the topology.
   IFS=',' read -ra requested <<< "$HOSTS_FILTER"
   for id in "${requested[@]}"; do
-    ip=$(printf '%s' "$topo_json" \
-      | jq -r --arg id "$id" '.nodes[] | select(.id == $id) | .ip // ""' | head -1)
+    ip=$(jq -r --arg id "$id" '.nodes[] | select(.id == $id) | .ip // ""' <<< "$topo_json" | head -1)
     if [[ -n "$ip" ]]; then
       printf '%s\t%s\n' "$id" "$ip" >> "$tmp_targets"
     else
@@ -142,30 +143,29 @@ if [[ -n "$HOSTS_FILTER" ]]; then
 elif [[ -n "$TYPES_EXPLICIT" ]]; then
   # Scope by --types. Match the persisted .type (null until #98 lands) OR the
   # computed ._role, so the filter is useful today AND forward-compatible.
-  printf '%s' "$topo_json" \
-    | jq -r --arg types "$TYPES_FILTER" '
-        ($types | ascii_downcase | split(",")) as $tt
-        | .nodes[]
-        | ((.type  // "") | ascii_downcase) as $t
-        | ((._role // "") | ascii_downcase) as $r
-        | select(($t | IN($tt[])) or ($r | IN($tt[])))
-        | select((.ip // "") != "")
-        | "\(.id)\t\(.ip)"
-      ' > "$tmp_targets"
+  # Drop empty tokens so a trailing/empty comma ("server," or "") can't match
+  # the null→"" type/role of every node and silently select the whole fleet.
+  jq -r --arg types "$TYPES_FILTER" '
+      ($types | ascii_downcase | split(",") | map(select(length > 0))) as $tt
+      | .nodes[]
+      | ((.type  // "") | ascii_downcase) as $t
+      | ((._role // "") | ascii_downcase) as $r
+      | select(($t | IN($tt[])) or ($r | IN($tt[])))
+      | select((.ip // "") != "")
+      | "\(.id)\t\(.ip)"
+    ' <<< "$topo_json" > "$tmp_targets"
   if [[ ! -s "$tmp_targets" ]]; then
     # Graceful fallback: don't dead-end on a filter that matches nothing
     # (e.g. .type is null and no ._role matched). Probe everything reachable.
     realm::warn "--types '$TYPES_FILTER' matched 0 nodes; falling back to all reachable IP-bearing nodes"
-    printf '%s' "$topo_json" \
-      | jq -r '.nodes[] | select((.ip // "") != "") | "\(.id)\t\(.ip)"' > "$tmp_targets"
+    jq -r '.nodes[] | select((.ip // "") != "") | "\(.id)\t\(.ip)"' <<< "$topo_json" > "$tmp_targets"
     SELECTION="all IP-bearing (--types '$TYPES_FILTER' matched 0)"
   else
     SELECTION="types: $TYPES_FILTER"
   fi
 else
   # Default: every reachable node with a non-empty IP.
-  printf '%s' "$topo_json" \
-    | jq -r '.nodes[] | select((.ip // "") != "") | "\(.id)\t\(.ip)"' > "$tmp_targets"
+  jq -r '.nodes[] | select((.ip // "") != "") | "\(.id)\t\(.ip)"' <<< "$topo_json" > "$tmp_targets"
   SELECTION="all IP-bearing nodes"
 fi
 
@@ -320,6 +320,9 @@ if [[ "$REALM_OUTPUT" = "json" ]]; then
     '{selection: $sel, probed: $probed, reachable: $reachable, unreachable: $unreachable,
       ip_bearing_total: $total, os_breakdown: $os, results: .}' \
     "$jq_results"
+  # Honor the exit-code contract regardless of output format: zero successful
+  # probes is exit 5, same as the human path below.
+  if [[ "$ok_count" -eq 0 ]]; then exit 5; fi
   exit 0
 fi
 
