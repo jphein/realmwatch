@@ -49,6 +49,11 @@ source "$(dirname "${BASH_SOURCE[0]}")/../lib/realm-cli.sh"
 
 plugin="$1"; shift
 
+# One realm-plugin.sh script fronts every CLI plugin, so $0 can't name the
+# command. Brand error/warn output as the user-facing "realm <plugin>" (read
+# by realm::_cmd_name in output.sh) instead of the generic "realm plugin".
+REALM_CMD_NAME="realm $plugin"
+
 # Locate the plugin manifest
 _self="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || realpath "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
 _repo_dir="$(cd "$(dirname "$_self")/../.." && pwd)"
