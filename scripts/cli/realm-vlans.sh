@@ -121,7 +121,7 @@ e = realm_vlans.resolve(sys.argv[1])
 sys.stdout.write(str(e.vlan_id) if e else "")
 PY
 )
-      [[ $? -eq 0 ]] || realm::die "lookup failed" 3
+      [[ $? -eq 0 ]] || realm::die "lookup failed" 1  # local python helper failure, not network (3)
       [[ -n "$target" ]] || realm::die "no VLAN matches that label" 1
     fi
     raw=$(_emit_registry_json)

@@ -111,17 +111,17 @@ RESPONSE=$(realm::api_get "/palace/search${QS}" 2>"$_recall_stderr") || {
     4)   # auth (401/403) on the realm API
       realm::die "auth failed (401/403)${_body_msg:+: $_body_msg}" 4
       ;;
-    5)   # 5xx — realm proxy returned upstream error; usually daemon down
+    5)   # 5xx — realm proxy returned upstream error; usually daemon down → server (5)
       if [[ -n "$_body_msg" ]]; then
-        realm::die "palace-daemon error: $_body_msg" 4
+        realm::die "palace-daemon error: $_body_msg" 5
       fi
-      realm::die "palace-daemon unreachable (realmwatch is up; the upstream is not)" 4
+      realm::die "palace-daemon unreachable (realmwatch is up; the upstream is not)" 5
       ;;
-    22)  # other 4xx — often 404 (plugin not loaded) or 503 (not configured)
+    22)  # other 4xx — often 404 (plugin not loaded) or 503 (not configured) → client (22)
       if [[ -n "$_body_msg" ]]; then
-        realm::die "palace: $_body_msg" 4
+        realm::die "palace: $_body_msg" 22
       fi
-      realm::die "palace endpoint unavailable (plugin not loaded?)" 4
+      realm::die "palace endpoint unavailable (plugin not loaded?)" 22
       ;;
     *)
       realm::die "search failed (exit $ec)${_body_msg:+: $_body_msg}${_recall_err:+ — $_recall_err}" "$ec"
@@ -131,9 +131,11 @@ RESPONSE=$(realm::api_get "/palace/search${QS}" 2>"$_recall_stderr") || {
 rm -f "$_recall_stderr"
 
 # Surface palace-daemon errors that came back as 200 JSON-with-error.
+# realm API succeeded (HTTP 200) but the upstream daemon reported an error →
+# server-side (5), not auth (4).
 if echo "$RESPONSE" | jq -e '.error' >/dev/null 2>&1; then
   ERR=$(echo "$RESPONSE" | jq -r '.error')
-  realm::die "palace-daemon: $ERR" 4
+  realm::die "palace-daemon: $ERR" 5
 fi
 
 # --- JSON passthrough ---

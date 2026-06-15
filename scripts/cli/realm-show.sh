@@ -126,7 +126,7 @@ fi
 realm::print_section "Identity"
 if [[ -z "$FLEET_ID" && "$(echo "$TOPO_NODE" | jq -r 'if . == null then "" else .id end')" = "" ]]; then
   realm::warn "no fleet entry and no topology node match for '$NAME'"
-  exit 4
+  exit 22  # not-found is a client error (22), not auth (4) — per exit-code contract
 fi
 realm::print_kv "Query" "$NAME"
 [[ -n "$CURRENT_NAME" ]] && realm::print_kv "Canonical name" "$CURRENT_NAME"

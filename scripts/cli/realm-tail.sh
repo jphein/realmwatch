@@ -74,7 +74,7 @@ realm::api_reachable || realm::die_unreachable
 
 _self_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HELPER="$_self_dir/../lib/sse-pretty.py"
-[[ -f "$HELPER" ]] || realm::die "missing helper: $HELPER" 4
+[[ -f "$HELPER" ]] || realm::die "missing helper: $HELPER" 1  # internal error, not auth
 
 # --since DURATION → backfill via /events?since=<unix-ts>. 5m/30s/1h/2d.
 BACKFILL_FILE=""
