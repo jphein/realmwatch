@@ -83,7 +83,7 @@ REALM_OS_JQ='
   def is_tailnet($ip):
     ($ip | test("^100\\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\\."));
 
-  [ .nodes[]
+  [ .nodes[]?
     | select((.os // "") != "")
     | { id,
         ip:         (.ip // ""),
