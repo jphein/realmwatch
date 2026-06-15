@@ -41,6 +41,12 @@ case "$sub" in
     realm::api_get /topology
     ;;
   show)
+    # --json on the default subcommand emits the raw /topology payload
+    # (same as `topology raw`) — its own help advertises `--json | jq`.
+    if [[ "$REALM_OUTPUT" = "json" ]]; then
+      realm::api_get /topology
+      exit 0
+    fi
     tmp=$(mktemp); trap 'rm -f "$tmp"' EXIT
     realm::api_get /topology > "$tmp"
     realm::print_section "Nodes ($(jq -r '.nodes | length' "$tmp"))"
