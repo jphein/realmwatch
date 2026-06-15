@@ -74,10 +74,18 @@ _set_tags() {
 
 case "$sub" in
   list)
-    realm::api_get /topology \
-      | jq -r '.nodes[] | (.tags // []) | .[]' \
-      | sort | uniq -c | sort -rn \
-      | awk '{printf "  %-5s %s\n", $1, $2}'
+    if [[ "$REALM_OUTPUT" = "json" ]]; then
+      realm::api_get /topology \
+        | jq '[.nodes[] | (.tags // [])[]]
+              | group_by(.)
+              | map({tag: .[0], count: length})
+              | sort_by([-.count, .tag])'
+    else
+      realm::api_get /topology \
+        | jq -r '.nodes[] | (.tags // []) | .[]' \
+        | sort | uniq -c | sort -rn \
+        | awk '{printf "  %-5s %s\n", $1, $2}'
+    fi
     ;;
   get)
     [[ $# -ge 1 ]] || realm::die "usage: realm tags get <node>" 2
@@ -131,14 +139,23 @@ case "$sub" in
     ;;
   nodes)
     [[ $# -ge 1 ]] || realm::die "usage: realm tags nodes <tag>" 2
-    realm::api_get /topology \
-      | jq -r --arg tag "$1" '
-          .nodes[]
-          | select(((.tags // []) | index($tag)) != null)
-          | [.id, (.ip // "-"), (.label // "-")]
-          | @tsv
-        ' \
-      | (echo -e "ID\tIP\tLABEL"; cat) | column -t -s$'\t'
+    if [[ "$REALM_OUTPUT" = "json" ]]; then
+      realm::api_get /topology \
+        | jq --arg tag "$1" '
+            [ .nodes[]
+              | select(((.tags // []) | index($tag)) != null)
+              | {id, ip: (.ip // null), label: (.label // null), tags: (.tags // [])}
+            ]'
+    else
+      realm::api_get /topology \
+        | jq -r --arg tag "$1" '
+            .nodes[]
+            | select(((.tags // []) | index($tag)) != null)
+            | [.id, (.ip // "-"), (.label // "-")]
+            | @tsv
+          ' \
+        | (echo -e "ID\tIP\tLABEL"; cat) | column -t -s$'\t'
+    fi
     ;;
   *)
     realm::die "unknown subcommand: $sub" 2

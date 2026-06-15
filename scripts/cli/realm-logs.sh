@@ -29,6 +29,7 @@ OPTIONS:
   --since WHEN        e.g. "1 hour ago", "yesterday" (systemd-style)
   --source            Print which log source was detected, then exit
   --errors            Filter for ERROR/Failed/Traceback lines
+  --json              Emit NDJSON: one {source, line} object per log line
   --no-color          Disable color (env: REALM_NO_COLOR=1)
 
 EXAMPLES:
@@ -36,6 +37,7 @@ EXAMPLES:
   realm logs -f                    # follow live
   realm logs -n 200 --plugin ha    # last 200 lines mentioning the ha plugin
   realm logs --errors -n 100       # last 100 lines, ERROR/Traceback only
+  realm logs --json | jq -r .line  # machine-readable, then re-extract text
   realm logs --since "10 minutes ago"
 EOF
 }
@@ -98,9 +100,23 @@ start the server with: cd $REALM_HOME && make dev > /tmp/rw.log 2>&1 &" 3
 fi
 
 if [[ "$SHOW_SOURCE" -eq 1 ]]; then
-  echo "$SOURCE"
+  if [[ "$REALM_OUTPUT" = "json" ]]; then
+    jq -nc --arg source "$SOURCE" '{source: $source}'
+  else
+    echo "$SOURCE"
+  fi
   exit 0
 fi
+
+# --json honors the flag by emitting NDJSON: one JSON object per log line,
+# tagged with the detected source. Human mode passes lines through unchanged.
+_emit() {
+  if [[ "$REALM_OUTPUT" = "json" ]]; then
+    jq -Rc --unbuffered --arg source "$SOURCE" '{source: $source, line: .}'
+  else
+    cat
+  fi
+}
 
 # Build filter pipeline
 filter_cmd=(cat)
@@ -116,7 +132,8 @@ if [[ "$ERRORS_ONLY" -eq 1 ]]; then
   fi
 fi
 
-# Run the source
+# Run the source, routing all output through _emit (NDJSON under --json).
+{
 case "$SOURCE" in
   systemd-*)
     cmd=( "${JOURNALCTL_ARGS[@]}" -n "$LINES" )
@@ -158,3 +175,4 @@ case "$SOURCE" in
     fi
     ;;
 esac
+} | _emit
