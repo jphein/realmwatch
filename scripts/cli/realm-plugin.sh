@@ -80,8 +80,9 @@ realm::help() {
   icon=$(jq -r '.icon // ""' "$manifest")
   fantasy=$(jq -r '.fantasy_name // .name' "$manifest")
   printf '%srealm %s%s — %s\n\n' "$W" "$plugin" "$N" "$cli_summary"
-  [[ -n "$fantasy" && "$fantasy" != "$plugin" ]] && \
+  if [[ -n "$fantasy" && "$fantasy" != "$plugin" ]]; then
     printf '  %s%s%s "%s"\n\n' "$D" "$icon" "$N" "$fantasy"
+  fi
   printf '%sUSAGE%s\n' "$W" "$N"
   printf '  realm %s <verb> [args...]\n\n' "$plugin"
   printf '%sVERBS%s\n' "$W" "$N"
