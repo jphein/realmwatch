@@ -33,6 +33,9 @@ deploy_kitty() {
 
 deploy_ghostty() {
   mkdir -p ~/.config/ghostty/shaders
+  # titlebar.css carries the tmux title-ownership styling (bold project name);
+  # theme-independent, so deploy it for both light and dark.
+  cp "$DIR/ghostty/titlebar.css" ~/.config/ghostty/titlebar.css
   local scheme
   scheme=$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null || echo "'default'")
   if [[ "$scheme" != "'prefer-dark'" ]]; then

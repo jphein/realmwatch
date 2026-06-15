@@ -1,0 +1,4 @@
+/* Realm titlebar — bold project name (title text is set by tmux set-titles) */
+headerbar .title {
+  font-weight: 800;
+}

@@ -19,9 +19,18 @@ confirm-close-surface = false
 gtk-titlebar = true
 window-decoration = server
 window-theme = ghostty
-window-subtitle = working-directory
+window-subtitle = false
 window-titlebar-background = #0a0510
 window-titlebar-foreground = #d4a050
+
+# ── tmux integration — Ghostty launches tmux by default (see ~/Projects/tmux) ──
+# These MUST live in this template: realm-theme-watcher regenerates
+# ~/.config/ghostty/config on every login / theme switch, so anything hand-edited
+# into the deployed file is silently overwritten. window-subtitle=false (above)
+# hands the titlebar text to tmux (set-titles-string).
+command = ~/Projects/tmux/ghostty-tmux
+gtk-single-instance = false
+gtk-custom-css = titlebar.css
 
 # ── Colors: The Gem Treasury ──
 foreground = #d4a574
