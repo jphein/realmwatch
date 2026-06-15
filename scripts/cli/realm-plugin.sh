@@ -41,9 +41,10 @@ set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/realm-cli.sh"
 
-# We bypass parse_common's auto-help because we need to dispatch help from the
-# manifest, not from a hard-coded function. We still want the common flags
-# applied (color, host, json), so handle them inline.
+# Common global flags (--json/--dry-run/--no-color/--host/...) are parsed by
+# realm::parse_common AFTER the verb is stripped — see the flag-parsing block
+# below. Help is rendered from the manifest via a realm::help function that
+# parse_common dispatches for --help/-h, rather than its hard-coded fallback.
 
 [[ $# -ge 1 ]] || { echo "realm-plugin: missing plugin name" >&2; exit 2; }
 
@@ -71,7 +72,30 @@ if [[ -z "$cli_verbs" ]]; then
   realm::die "plugin '$plugin' has no .cli.verbs in plugin.json" 1  # manifest defect, not auth
 fi
 
-# Handle dispatcher hooks
+# Render plugin help from the manifest. Defined as realm::help so the shared
+# arg parser (realm::parse_common) routes --help/-h here instead of its
+# hard-coded fallback. Also used for the bareword `help` verb.
+realm::help() {
+  local icon fantasy
+  icon=$(jq -r '.icon // ""' "$manifest")
+  fantasy=$(jq -r '.fantasy_name // .name' "$manifest")
+  printf '%srealm %s%s — %s\n\n' "$W" "$plugin" "$N" "$cli_summary"
+  [[ -n "$fantasy" && "$fantasy" != "$plugin" ]] && \
+    printf '  %s%s%s "%s"\n\n' "$D" "$icon" "$N" "$fantasy"
+  printf '%sUSAGE%s\n' "$W" "$N"
+  printf '  realm %s <verb> [args...]\n\n' "$plugin"
+  printf '%sVERBS%s\n' "$W" "$N"
+  jq -r '.cli.verbs // [] | .[] |
+    "  \(.name)\t\(.method // "GET")\t\(.path // "-")\t\(.summary // "")"
+  ' "$manifest" | column -t -s $'\t' | sed 's/^/  /'
+  printf '\n%sFLAGS%s\n' "$W" "$N"
+  printf '  --json        Print raw JSON response\n'
+  printf '  --dry-run     Preview HTTP call without sending\n'
+  printf '  --host URL    Override realm host\n'
+}
+
+# Dispatcher-internal hooks (always passed as the sole first arg). Handle these
+# before flag parsing so they stay pure metadata queries.
 case "${1:-}" in
   --one-line-help)
     printf '%s\n' "$cli_summary"
@@ -81,38 +105,36 @@ case "${1:-}" in
     printf '%s\n' "$cli_verbs"
     exit 0
     ;;
-  ""|--help|-h|help)
-    # Render help from the manifest
-    icon=$(jq -r '.icon // ""' "$manifest")
-    fantasy=$(jq -r '.fantasy_name // .name' "$manifest")
-    printf '%srealm %s%s — %s\n\n' "$W" "$plugin" "$N" "$cli_summary"
-    [[ -n "$fantasy" && "$fantasy" != "$plugin" ]] && \
-      printf '  %s%s%s "%s"\n\n' "$D" "$icon" "$N" "$fantasy"
-    printf '%sUSAGE%s\n' "$W" "$N"
-    printf '  realm %s <verb> [args...]\n\n' "$plugin"
-    printf '%sVERBS%s\n' "$W" "$N"
-    jq -r '.cli.verbs // [] | .[] |
-      "  \(.name)\t\(.method // "GET")\t\(.path // "-")\t\(.summary // "")"
-    ' "$manifest" | column -t -s $'\t' | sed 's/^/  /'
-    printf '\n%sFLAGS%s\n' "$W" "$N"
-    printf '  --json        Print raw JSON response\n'
-    printf '  --dry-run     Preview HTTP call without sending\n'
-    printf '  --host URL    Override realm host\n'
+  help)
+    realm::help
     exit 0
     ;;
 esac
 
-verb="$1"; shift
+# Strip leading global flags (--json / --dry-run / --no-color / --host / -h /
+# --help / --version) BEFORE resolving the verb. Previously the verb was taken
+# from $1 first, so `realm <plugin> --json` mistook the flag for a verb and
+# died. parse_common consumes the common flags (dispatching --help via
+# realm::help and exiting), leaving every remaining positional in REALM_POSARGS.
+realm::parse_common "$@"
+set -- "${REALM_POSARGS[@]+"${REALM_POSARGS[@]}"}"
+
+# Resolve the verb: the first remaining positional, else a default. With no
+# verb given, fall back to the manifest verb marked `"default": true`, else the
+# first declared verb — so single-verb plugins and bare `realm <plugin>` run the
+# obvious action instead of printing help.
+if [[ $# -ge 1 ]]; then
+  verb="$1"; shift
+else
+  verb=$(jq -r 'first(.cli.verbs[]? | select(.default == true) | .name) // .cli.verbs[0].name // empty' "$manifest")
+  [[ -n "$verb" ]] || realm::die "plugin '$plugin' has no runnable verb" 4
+fi
 
 # Look up the verb spec
 verb_spec=$(jq -c --arg v "$verb" '.cli.verbs[] | select(.name == $v)' "$manifest")
 if [[ -z "$verb_spec" || "$verb_spec" = "null" ]]; then
   realm::die "plugin '$plugin' has no verb '$verb' (try: realm $plugin --help)" 2
 fi
-
-# Parse common flags from the remaining args; rest become positionals
-realm::parse_common "$@"
-set -- "${REALM_POSARGS[@]+"${REALM_POSARGS[@]}"}"
 
 # Extract verb fields
 method=$(printf '%s' "$verb_spec" | jq -r '.method // "GET"')
