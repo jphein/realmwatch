@@ -1,12 +1,45 @@
 {
   "name": "netdata",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "integrated",
-  "description": "Netdata agent discovery — REST API info, charts, alarms, collectors.",
+  "description": "Netdata agent discovery — REST API info, charts, alarms, collectors — plus per-host CPU/GPU power draw (watts) surfaced on the map.",
   "fantasy_name": "Oracle Sight",
-  "icon": "\ud83d\udd6e",
+  "icon": "🕮",
   "python": {"module": "plugin", "entry": "setup"},
   "depends_on": ["discovery"],
+
+  "panel": {
+    "id": "host-power-panel",
+    "name": "Wattage of the Realm",
+    "html": "panel.html",
+    "js": "panel.js",
+    "css": "panel.css",
+    "anchor": "e",
+    "priority": 16
+  },
+
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/host-power",
+      "handler": "handle_host_power",
+      "raw_path": true
+    }
+  ],
+
+  "cli": {
+    "summary": "Per-host CPU/GPU power draw in watts (Oracle Sight)",
+    "verbs": [
+      {
+        "name": "show",
+        "summary": "Live per-host CPU/GPU watts for every host running netdata",
+        "method": "GET",
+        "path": "/host-power",
+        "table": "to_entries | .[] | [(.value.name // .key), ((.value.package_watts // \"-\") | tostring), ((.value.gpu_watts // \"-\") | tostring), (.value.ip // \"-\")]",
+        "header": ["HOST", "CPU_W", "GPU_W", "IP"]
+      }
+    ]
+  },
 
   "discovery_prototypes": [
     {

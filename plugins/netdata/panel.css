@@ -1,0 +1,123 @@
+/* -- Oracle Sight: Wattage of the Realm -- */
+/* Arcane-lightning palette — distinct from the gold Census panel and the
+   solar-gold HA Sanctum. This panel is per-host CPU/GPU silicon draw. */
+
+#host-power-panel {
+  --panel-accent: rgba(120,200,240,0.5);
+  --hp-bolt: #7fd8ff;
+}
+
+.hp-header {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  gap: 6px;
+}
+
+.hp-sub {
+  font-size: 8px;
+  color: rgba(150,200,230,0.55);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.hp-total {
+  font-size: 10px;
+  color: var(--hp-bolt);
+  margin-left: auto;
+  white-space: nowrap;
+  font-family: 'Cinzel', serif;
+  text-shadow: 0 0 6px rgba(127,216,255,0.4);
+}
+
+.hp-body {
+  padding: 6px 10px 8px;
+  flex: 1 1 0;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.hp-empty {
+  padding: 8px 12px 12px;
+  font-size: 8.5px;
+  line-height: 1.5;
+  color: rgba(150,170,190,0.45);
+  font-style: italic;
+}
+
+/* Host rows */
+.hp-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.hp-item:hover {
+  background: rgba(120,200,240,0.08);
+}
+
+.hp-info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.hp-name {
+  font-size: 10px;
+  color: #b0d4ec;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'Cinzel', serif;
+}
+
+/* Power-draw intensity bar */
+.hp-bar {
+  margin-top: 3px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(120,200,240,0.12);
+  overflow: hidden;
+}
+
+.hp-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgba(127,216,255,0.5), var(--hp-bolt));
+  box-shadow: 0 0 5px rgba(127,216,255,0.5);
+  transition: width 0.6s ease;
+}
+
+.hp-stats {
+  font-size: 9px;
+  color: #cfe6f4;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 4px rgba(127,216,255,0.25);
+}
+
+/* Highlight animation for clicked nodes (mirrors census) */
+.node-highlight {
+  animation: hp-highlight-pulse 2s ease-out;
+}
+
+@keyframes hp-highlight-pulse {
+  0% { filter: brightness(1.8) drop-shadow(0 0 8px rgba(127,216,255,0.8)); }
+  100% { filter: brightness(1) drop-shadow(0 0 0 transparent); }
+}
+
+/* Scrollbar */
+.hp-body::-webkit-scrollbar { width: 4px; }
+.hp-body::-webkit-scrollbar-track { background: transparent; }
+.hp-body::-webkit-scrollbar-thumb {
+  background: rgba(120,200,240,0.2);
+  border-radius: 2px;
+}
+.hp-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(120,200,240,0.4);
+}
