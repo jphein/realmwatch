@@ -21,6 +21,7 @@ EXAMPLES:
   realm topology nodes
   realm topology --json | jq '.nodes | length'
 EOF
+  realm::help_flags
 }
 
 REALM_SUBCOMMANDS="show

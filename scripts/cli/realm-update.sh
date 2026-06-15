@@ -75,6 +75,7 @@ DETAILS:
   - Logs land in $XDG_STATE_HOME/realm-update/ (default ~/.local/state/...).
     The 10 most recent runs are kept.
 EOF
+  realm::help_flags
 }
 
 REALM_SUBCOMMANDS="list

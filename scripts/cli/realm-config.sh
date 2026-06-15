@@ -19,6 +19,7 @@ EXAMPLES:
   realm config get theme
   realm config set theme forest
 EOF
+  realm::help_flags
 }
 
 REALM_SUBCOMMANDS="get

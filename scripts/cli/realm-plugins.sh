@@ -20,6 +20,7 @@ EXAMPLES:
   realm plugins toggle alerting
   realm plugins show discovery
 EOF
+  realm::help_flags
 }
 
 REALM_SUBCOMMANDS="list

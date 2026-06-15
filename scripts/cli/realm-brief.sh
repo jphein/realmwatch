@@ -27,6 +27,7 @@ EXAMPLES:
   realm brief
   realm brief --json | jq '.events[] | select(.type == "alert")'
 EOF
+  realm::help_flags
 }
 
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/realm-cli.sh"

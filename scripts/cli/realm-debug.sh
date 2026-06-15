@@ -21,6 +21,7 @@ EXAMPLES:
   realm debug endpoints
   realm debug --json | jq '.endpoints | length'
 EOF
+  realm::help_flags
 }
 
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/realm-cli.sh"

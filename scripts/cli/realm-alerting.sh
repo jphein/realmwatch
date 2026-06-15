@@ -29,6 +29,7 @@ EXAMPLES:
   realm alerting why familiar         # walks upstream, shows the chain
   realm alerting dependencies         # last hour's suppressions
 EOF
+  realm::help_flags
 }
 
 REALM_SUBCOMMANDS="status

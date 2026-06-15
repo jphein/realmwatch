@@ -14,6 +14,7 @@ EXAMPLES:
   realm resolve realm.watch
   realm resolve https://example.com
 EOF
+  realm::help_flags
 }
 
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/realm-cli.sh"
