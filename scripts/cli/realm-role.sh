@@ -78,7 +78,8 @@ case "$sub" in
     else
       response=$(realm::api_get "/roles/$1")
       if printf '%s' "$response" | jq -e '.error' >/dev/null 2>&1; then
-        realm::die "$(printf '%s' "$response" | jq -r '.error')" 4
+        # arbitrary upstream .error message — generic failure (1), not auth (4)
+        realm::die "$(printf '%s' "$response" | jq -r '.error')" 1
       fi
       printf '%s' "$response" | jq -r '
         "Role:     \(.name // "-")",
@@ -129,7 +130,7 @@ case "$sub" in
     # Get the node data for the explanation block
     node_data=$(realm::api_get /topology | jq --arg id "$node" '.nodes[] | select(.id == $id)')
     if [[ -z "$node_data" || "$node_data" = "null" ]]; then
-      realm::die "no such node: $node" 4
+      realm::die "no such node: $node" 22  # not-found → client error, not auth
     fi
     # Ask /roles which role owns this node — single jq call, no shell loop
     role=$(realm::api_get /roles \

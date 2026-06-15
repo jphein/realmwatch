@@ -68,7 +68,7 @@ cli_summary=$(jq -r '.cli.summary // .description // ""' "$manifest")
 cli_verbs=$(jq -r '.cli.verbs // [] | map(.name) | .[]' "$manifest" 2>/dev/null)
 
 if [[ -z "$cli_verbs" ]]; then
-  realm::die "plugin '$plugin' has no .cli.verbs in plugin.json" 4
+  realm::die "plugin '$plugin' has no .cli.verbs in plugin.json" 1  # manifest defect, not auth
 fi
 
 # Handle dispatcher hooks
@@ -212,7 +212,7 @@ case "$method" in
     resp="$(realm::api_delete "$path")"
     ;;
   *)
-    realm::die "unsupported method in manifest: $method" 4
+    realm::die "unsupported method in manifest: $method" 1  # manifest defect, not auth
     ;;
 esac
 

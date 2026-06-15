@@ -137,7 +137,8 @@ case "$sub" in
       '{value:$v, scope:$s, node:$n, role:$r}')
     response=$(realm::api_post "/macros/$name" "$body")
     if printf '%s' "$response" | jq -e '.error' >/dev/null 2>&1; then
-      realm::die "$(printf '%s' "$response" | jq -r '.error')" 4
+      # arbitrary upstream .error message — generic failure (1), not auth (4)
+      realm::die "$(printf '%s' "$response" | jq -r '.error')" 1
     fi
     realm::say "set $name = $value (scope=$scope${node:+ node=$node}${role:+ role=$role})"
     ;;

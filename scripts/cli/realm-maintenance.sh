@@ -142,7 +142,7 @@ case "$sub" in
     if [[ -x "$handler" ]]; then
       exec "$handler" maintenance "$sub" "$@"
     fi
-    realm::die "realm-plugin handler missing; can't forward $sub" 4
+    realm::die "realm-plugin handler missing; can't forward $sub" 1  # internal error, not auth
     ;;
   *)
     realm::die "unknown subcommand: $sub" 2
