@@ -125,8 +125,11 @@ def _parse_monitor_lines(text):
         if len(parts) < 2 or "@" not in parts[1]:
             continue
         ups, _, host = parts[1].partition("@")
+        # MONITOR <ups>@<host> <powervalue> <user> <pass> <type> — the type is
+        # field 6 (parts[5]). Index by position, not parts[-1]: a trailing
+        # inline comment or extra field would otherwise be read as the type.
         edges.append({"ups": ups, "host": host or "localhost",
-                      "type": parts[-1] if len(parts) >= 6 else ""})
+                      "type": parts[5] if len(parts) >= 6 else ""})
     return edges
 
 
@@ -215,7 +218,9 @@ def _ups_alias():
     override = realm_db.get_setting(_NS, "ups_alias", None)
     alias = dict(_DEFAULT_ALIAS)
     if isinstance(override, dict):
-        alias.update({str(k).lower(): v for k, v in override.items()})
+        # Coerce keys+values to str and drop empty/None — the values become
+        # topology node ids fed to set_discovery_link, so type safety matters.
+        alias.update({str(k).lower(): str(v) for k, v in override.items() if v})
     return alias
 
 
@@ -284,6 +289,26 @@ def _record_ups(ups, vars_, node_id, node_ip, now, alias, *, unreachable=False, 
 
 # ── Per-host discovery branches ──
 
+def _update_host_graph(node_id, monitor_edges, ups_names):
+    """Atomically record this host's serve/monitor graph for the doctor + the
+    monitored_by lookup, clearing stale associations from prior cycles. Without
+    the discard step a host that stops monitoring a UPS would linger in that
+    UPS's monitored_by set forever (the global maps accumulate across cycles).
+    Must run before _record_ups so monitored_by is current when records build."""
+    with _lock:
+        for old_e in _host_monitors.get(node_id, []):
+            ups_l = old_e["ups"].lower()
+            stale = _monitor_map.get(ups_l)
+            if stale is not None:
+                stale.discard(node_id)
+                if not stale:
+                    del _monitor_map[ups_l]
+        _host_monitors[node_id] = monitor_edges
+        _host_serves[node_id] = list(ups_names)
+        for e in monitor_edges:
+            _monitor_map.setdefault(e["ups"].lower(), set()).add(node_id)
+
+
 def _discover_openwrt(node_id, node_data, host_access, now, alias):
     """OpenWrt: UCI for the served UPSes + listen address, NUT TCP for the vars."""
     uci_out, _, uci_rc = host_access.ssh("uci show nut_server 2>/dev/null", timeout=10)
@@ -297,15 +322,11 @@ def _discover_openwrt(node_id, node_data, host_access, now, alias):
 
     # Best-effort monitor graph (north-closet has none; format varies).
     mon_out, _, mon_rc = host_access.ssh("uci show nut_monitor 2>/dev/null", timeout=10)
+    mon_edges = []
     if mon_rc == 0 and isinstance(mon_out, str):
         mon_ups = re.findall(r"nut_monitor\.\S+\.ups='?([A-Za-z0-9._-]+)'?", mon_out)
-        edges = [{"ups": u, "host": addr or node_id, "type": ""} for u in mon_ups]
-        with _lock:
-            _host_monitors[node_id] = edges
-            for u in mon_ups:
-                _monitor_map.setdefault(u.lower(), set()).add(node_id)
-    with _lock:
-        _host_serves[node_id] = list(ups_names)
+        mon_edges = [{"ups": u, "host": addr or node_id, "type": ""} for u in mon_ups]
+    _update_host_graph(node_id, mon_edges, ups_names)
 
     entities = []
     for ups in ups_names:
@@ -330,11 +351,7 @@ def _discover_linux(node_id, node_data, host_access, now, alias):
     mon_out, _, mon_rc = host_access.ssh(
         "sudo -n cat /etc/nut/upsmon.conf 2>/dev/null", timeout=10)
     monitor_edges = _parse_monitor_lines(mon_out) if mon_rc == 0 else []
-    with _lock:
-        _host_monitors[node_id] = monitor_edges
-        _host_serves[node_id] = list(ups_names)
-        for e in monitor_edges:
-            _monitor_map.setdefault(e["ups"].lower(), set()).add(node_id)
+    _update_host_graph(node_id, monitor_edges, ups_names)
 
     entities = []
     for ups in ups_names:
@@ -416,7 +433,7 @@ def _doctor():
     for node_id, mons in host_mon.items():
         served = {s.lower() for s in host_srv.get(node_id, [])}
         for e in mons:
-            if e["host"] in ("localhost", node_id) and e["ups"].lower() not in served:
+            if e["host"] in ("localhost", "127.0.0.1", node_id) and e["ups"].lower() not in served:
                 issues.append({"severity": "error", "host": node_id, "ups": e["ups"],
                                "issue": (f"upsmon MONITORs {e['ups']}@{e['host']} but this host "
                                          f"serves {sorted(served) or 'no UPS'} — name mismatch")})

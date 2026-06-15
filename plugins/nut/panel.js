@@ -123,16 +123,22 @@
       card.appendChild(powers);
     }
 
-    // Click to pan to the UPS node on the map
+    // Click to pan to the UPS node on the map. ups_node comes from an operator
+    // alias, so it may contain selector-breaking characters (quotes, etc.) —
+    // guard the query so a bad alias can't throw out of the click handler.
     if (rec.ups_node) {
       card.addEventListener('click', function () {
-        var nodeEl = document.querySelector('[data-tip="' + rec.ups_node + '"]');
-        if (!nodeEl) return;
-        var x = parseInt(nodeEl.style.left) || 0;
-        var y = parseInt(nodeEl.style.top) || 0;
-        if (window._realmPanToNode) window._realmPanToNode(x, y);
-        nodeEl.classList.add('node-highlight');
-        setTimeout(function () { nodeEl.classList.remove('node-highlight'); }, 2000);
+        try {
+          var nodeEl = document.querySelector('[data-tip="' + rec.ups_node + '"]');
+          if (!nodeEl) return;
+          var x = parseInt(nodeEl.style.left) || 0;
+          var y = parseInt(nodeEl.style.top) || 0;
+          if (window._realmPanToNode) window._realmPanToNode(x, y);
+          nodeEl.classList.add('node-highlight');
+          setTimeout(function () { nodeEl.classList.remove('node-highlight'); }, 2000);
+        } catch (e) {
+          console.error('nut plugin: failed to query node for', rec.ups_node, e);
+        }
       });
     }
 
