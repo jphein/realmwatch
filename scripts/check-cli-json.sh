@@ -17,8 +17,9 @@ REALM="${REALM:-$_dir/realm}"
 fail=0
 
 # Whole-document JSON (object or array) — jq -e . must succeed.
+# $c is intentionally unquoted so "tags list" splits into two args.
 for c in "topology" "tags list" "tags nodes ubuntu"; do
-  if $REALM $c --json | jq -e . >/dev/null 2>&1; then
+  if "$REALM" $c --json | jq -e . >/dev/null 2>&1; then
     printf '  ok    realm %s --json\n' "$c"
   else
     printf '  FAIL  realm %s --json (not valid JSON)\n' "$c"
@@ -26,10 +27,12 @@ for c in "topology" "tags list" "tags nodes ubuntu"; do
   fi
 done
 
-# logs emits NDJSON — every non-empty line must be a JSON object.
-if $REALM logs --json -n 5 2>/dev/null \
+# logs emits NDJSON — EVERY non-empty line must be a JSON object. Slurp (-s)
+# so all lines are validated (a bare `jq -e` only inspects the last value);
+# require length>0 so empty output fails instead of passing vacuously.
+if "$REALM" logs --json -n 5 2>/dev/null \
      | grep . \
-     | jq -e 'type=="object"' >/dev/null 2>&1; then
+     | jq -es 'length > 0 and (map(type == "object") | all)' >/dev/null 2>&1; then
   printf '  ok    realm logs --json (NDJSON)\n'
 else
   printf '  FAIL  realm logs --json (not valid NDJSON)\n'
