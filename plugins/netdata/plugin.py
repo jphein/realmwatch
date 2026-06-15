@@ -63,6 +63,8 @@ def _latest_chart_value(host_access, chart):
         data = json.loads(resp["body"])
     except (json.JSONDecodeError, ValueError, TypeError, KeyError):
         return None
+    if not isinstance(data, dict):  # agent returned a list/string/etc.
+        return None
     rows = data.get("data")
     if not rows or not isinstance(rows, list):
         return None
@@ -83,10 +85,13 @@ def _fetch_power(host_access, charts_data):
     package = _latest_chart_value(host_access, RAPL_PACKAGE_CHART)
 
     gpu = None
-    charts = (charts_data or {}).get("charts", {})
+    charts = (charts_data or {}).get("charts", {}) if isinstance(charts_data, dict) else {}
+    if not isinstance(charts, dict):  # "charts" wasn't a chart-id map
+        charts = {}
     gpu_charts = [
         cid for cid in charts
-        if cid.startswith("nvidia_smi.") and cid.endswith("_power_draw")
+        if isinstance(cid, str)
+        and cid.startswith("nvidia_smi.") and cid.endswith("_power_draw")
     ]
     if gpu_charts:
         gpu_total = 0.0
@@ -138,6 +143,8 @@ def discover_netdata(node_id, node_data, host_access, engine):
         info = json.loads(resp["body"])
     except (json.JSONDecodeError, KeyError):
         return []
+    if not isinstance(info, dict):  # non-dict payload — nothing to discover
+        return []
 
     # Extract collector info
     collectors = info.get("collectors", [])
@@ -176,10 +183,12 @@ def discover_netdata(node_id, node_data, host_access, engine):
     charts_resp = host_access.http_get(NETDATA_PORT, "/api/v1/charts")
     if charts_resp and charts_resp.get("status") == 200:
         try:
-            charts_data = json.loads(charts_resp["body"])
-            metadata["charts_count"] = len(charts_data.get("charts", {}))
+            parsed = json.loads(charts_resp["body"])
         except (json.JSONDecodeError, KeyError):
-            charts_data = None
+            parsed = None
+        if isinstance(parsed, dict):  # ignore non-dict payloads
+            charts_data = parsed
+            metadata["charts_count"] = len(charts_data.get("charts", {}))
 
     # ── Per-host power draw (Issue #107) ──
     # Fetch live CPU-package (+ GPU) watts. Stash on SubEntity metadata and in
