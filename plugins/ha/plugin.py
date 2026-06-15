@@ -8,6 +8,7 @@ from HA REST API with a 30s TTL cache (same logic as map_server._get_energy_data
 """
 
 import json
+import logging
 import os
 import ssl
 import threading
@@ -16,6 +17,8 @@ import urllib.request
 
 import ha_bridge
 from discovery_engine import SubEntity
+
+log = logging.getLogger(__name__)
 
 
 def _ha_url():
@@ -256,11 +259,13 @@ def discover_ha(node_id, node_data, host_access, engine):
     # Persist auto-resolved links to discovery_links (refreshes the 'ha-device'
     # set each scan so de-curated devices don't leave stale rows; operator
     # 'manual' overrides are untouched). Best-effort — the canonical link lives
-    # on the sub_entity row regardless.
+    # on the sub_entity row regardless — but log failures so DB/schema errors
+    # are diagnosable rather than silently swallowed.
     try:
         realm_db.sync_auto_discovery_links(resolved_links, "ha-device", "ha:")
     except Exception:
-        pass
+        log.warning("HA discovery: failed to sync %d auto links to discovery_links",
+                    len(resolved_links), exc_info=True)
     return entities
 
 

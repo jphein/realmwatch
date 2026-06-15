@@ -1235,21 +1235,36 @@ def sync_auto_discovery_links(pairs, link_type, id_prefix):
 
     Lets a provider persist its auto-resolved device→node links each scan
     without leaving stale rows behind when a device stops resolving (#116).
-    Only rows of the SAME link_type are cleared — operator 'manual' overrides
-    (and other providers' links) are never touched. Callers must exclude any
-    sub_entity_id that has a manual override (see get_manual_discovery_link_ids)
-    so the INSERT OR REPLACE below can't overwrite one.
+
+    Safety (per CLAUDE.md "realm.db is live data — never delete rows"): only
+    DERIVED auto links are touched. The DELETE is scoped to the caller's own
+    `link_type`, so operator 'manual' overrides (and other providers' links)
+    are never removed — and `link_type='manual'` is rejected outright. As a
+    second guard, sub_entity_ids that currently hold a manual override are
+    excluded from the reinsert so an INSERT OR REPLACE can't overwrite one on a
+    primary-key collision (covers the case where a caller's manual filter
+    failed). The whole delete+reinsert runs in a SINGLE transaction (`with c:`
+    commits on success / rolls back on error) so a failure can never leave
+    links half-removed. These auto links are recomputed every discovery scan
+    cycle, so the next sync is itself the rollback path — they self-restore.
     """
+    if link_type == "manual":
+        raise ValueError("sync_auto_discovery_links refuses link_type='manual' "
+                         "(reserved for operator overrides)")
     c = _conn()
     now = time.time()
-    c.execute("DELETE FROM discovery_links WHERE link_type=? AND sub_entity_id LIKE ?",
-              (link_type, id_prefix + "%"))
-    for sid, nid in pairs:
-        if not sid or not nid:
-            continue
-        c.execute("INSERT OR REPLACE INTO discovery_links (sub_entity_id, linked_node_id, created, link_type) VALUES (?, ?, ?, ?)",
-                  (sid, nid, now, link_type))
-    c.commit()
+    with c:  # atomic: commit on success, rollback on any error
+        c.execute("DELETE FROM discovery_links WHERE link_type=? AND sub_entity_id LIKE ?",
+                  (link_type, id_prefix + "%"))
+        protected = {r["sub_entity_id"] for r in c.execute(
+            "SELECT sub_entity_id FROM discovery_links WHERE COALESCE(link_type,'manual')='manual'"
+        ).fetchall()}
+        rows = [(sid, nid, now, link_type) for sid, nid in pairs
+                if sid and nid and sid not in protected]
+        if rows:
+            c.executemany(
+                "INSERT OR REPLACE INTO discovery_links (sub_entity_id, linked_node_id, created, link_type) VALUES (?, ?, ?, ?)",
+                rows)
 
 
 # ── Discovery capabilities ──
