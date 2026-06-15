@@ -527,9 +527,20 @@ Probe reachable nodes via SSH and write OS info back to topology.
 
 Concurrent SSH probe — 20 forks, 3s timeout, ~15s for 50 hosts. Reads
 `/etc/os-release`, parses `ID` + `VERSION_ID` + `PRETTY_NAME`, POSTs back
-to `/node` to persist. Filters by `--types` (default
-`core,infra,device,server,workstation,tower`); tries `--user` values
-(default `root,jp,ubuntu,pi`).
+to `/node` to persist.
+
+A bare `realm discover-os` probes **every reachable node with a non-empty
+IP** — stored topology never persists `.type` (it is computed at render
+time, issue #98), so the default target list does not gate on type. `--types`
+narrows the set when given, matching either the persisted `.type` (forward
+-compatible) or the computed `._role` (e.g. `--types server,router`); a filter
+that matches zero nodes falls back to "all reachable" with a warning. `--hosts`
+always takes precedence. Tries `--user` values in order (default
+`jp,root,ubuntu,pi` — `jp` first, the working account on this fleet).
+
+The summary reports coverage — `probed` / `reachable` / `unreachable` and an
+OS breakdown — not just successes (`--json` emits the same as a structured
+object; `--verbose` lists unreachable host IDs).
 
 Side effect: also writes `node.tags` — derived family tags (`debian-family`,
 `alpine-family`, `openwrt-family`) and package-manager tags (`apt`, `apk`,

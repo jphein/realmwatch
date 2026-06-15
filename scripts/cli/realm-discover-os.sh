@@ -4,21 +4,32 @@
 # ansible-update`) can target by OS without a config file.
 #
 # Mechanism:
-#   ssh -o ConnectTimeout=3 root@<ip> 'cat /etc/os-release'
-# (Then jp@<ip> on failure — see SSH_USERS below.)
+#   ssh -o ConnectTimeout=3 jp@<ip> 'cat /etc/os-release'
+# (Then the remaining SSH_USERS on failure — see SSH_USERS below.)
 #
 # Parses ID= and VERSION_ID= from os-release and POSTs back to /node, which
 # updates the topology row's data JSON in-place.
 #
+# Target selection:
+#   Bare `realm discover-os` probes EVERY reachable node with a non-empty IP.
+#   The stored topology never persists `.type` (it is computed at render-time
+#   in node_roles.py — issue #98), so we no longer gate the default target list
+#   on `.type`. `--types` is honored when given and falls back gracefully to
+#   "all IP-bearing" if it matches zero nodes (forward-compatible once #98
+#   persists `.type`; it also matches the computed `._role` so it is useful
+#   today). `--hosts` always wins when supplied.
+#
 # Flags:
 #   --hosts a,b,c        Only probe these host IDs (default: every reachable node)
-#   --types t1,t2        Only probe nodes of these types (default: core,infra,device,server,workstation,tower)
-#   --user u1,u2         SSH usernames to try, comma-separated (default: root,jp,ubuntu,pi)
+#   --types t1,t2        Only probe nodes whose .type or ._role is in this list
+#                        (default: unset → probe all reachable IP-bearing nodes)
+#   --user u1,u2         SSH usernames to try, comma-separated (default: jp,root,ubuntu,pi)
 #   --forks N            Concurrent probes (default: 20)
 #   --dry-run            Show what would be probed; don't ssh or write back
-#   --json               Print per-host results as JSON
+#   --json               Print results + coverage as JSON
 #
-# Exit codes: 0 ok (≥1 host probed), 2 usage, 3 realm unreachable, 4 no targets, 5 zero probes succeeded
+# Exit codes: 0 ok (≥1 host probed), 2 usage, 3 realm unreachable,
+#             4 no IP-bearing nodes in topology, 5 zero probes succeeded
 
 set -euo pipefail
 
@@ -33,13 +44,16 @@ USAGE:
 
 OPTIONS:
   --hosts a,b,c        Only probe these host IDs
-  --types t1,t2        Only probe nodes of these types
-                       (default: core,infra,device,server,workstation,tower)
+  --types t1,t2        Only probe nodes whose .type or ._role is in this list.
+                       Omit to probe every reachable IP-bearing node (the
+                       default). Falls back to "all reachable" if a given
+                       filter matches zero nodes.
   --user u1,u2         SSH usernames to try in order
-                       (default: root,jp,ubuntu,pi)
+                       (default: jp,root,ubuntu,pi — jp is the working
+                       account on this fleet, so it is tried first)
   --forks N            Concurrent SSH probes (default: 20)
   --dry-run            Show what would be probed; don't ssh or write
-  --json               Per-host results as JSON
+  --json               Results + coverage summary as JSON
   --quiet              Suppress per-host output (show summary only)
 
 WHAT IT WRITES:
@@ -53,8 +67,8 @@ AFTER RUNNING:
 EXAMPLES:
   realm discover-os                              # probe everything reachable
   realm discover-os --hosts familiar,nodered     # just those
-  realm discover-os --types core,infra           # narrower probe
-  realm discover-os --dry-run                    # preview targets
+  realm discover-os --types server,router        # narrower probe (by role/type)
+  realm discover-os --dry-run                    # preview targets + coverage
   realm discover-os --json | jq                  # machine output
 EOF
 }
@@ -64,16 +78,26 @@ realm::parse_common "$@"
 set -- "${REALM_POSARGS[@]+"${REALM_POSARGS[@]}"}"
 
 HOSTS_FILTER=""
-TYPES_FILTER="core,infra,device,server,workstation,tower"
-SSH_USERS_RAW="root,jp,ubuntu,pi"
+TYPES_FILTER=""
+TYPES_EXPLICIT=""
+# jp first: it's the working account across this fleet, so trying it first
+# avoids a wasted ConnectTimeout on the majority of hosts. root stays in the
+# list for OpenWrt APs/routers/switches that only have a root login.
+#
+# TODO (issue #96, future): Tailscale fallback. Some hosts are only reachable
+# on the tailnet, not their stored LAN IP. When a LAN probe fails we could
+# retry via `ssh <user>@<magicdns-name>` or the node's tailscale IP (the
+# `tailscale` role nodes in topology hint at which hosts are tailnet-joined).
+# Left as a follow-up so this fix stays scoped to target selection + coverage.
+SSH_USERS_RAW="jp,root,ubuntu,pi"
 FORKS=20
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --hosts)    HOSTS_FILTER="$2"; shift 2 ;;
     --hosts=*)  HOSTS_FILTER="${1#*=}"; shift ;;
-    --types)    TYPES_FILTER="$2"; shift 2 ;;
-    --types=*)  TYPES_FILTER="${1#*=}"; shift ;;
+    --types)    TYPES_FILTER="$2"; TYPES_EXPLICIT=1; shift 2 ;;
+    --types=*)  TYPES_FILTER="${1#*=}"; TYPES_EXPLICIT=1; shift ;;
     --user)     SSH_USERS_RAW="$2"; shift 2 ;;
     --user=*)   SSH_USERS_RAW="${1#*=}"; shift ;;
     --forks)    FORKS="$2"; shift 2 ;;
@@ -91,37 +115,87 @@ LOCAL_DRY_RUN="${REALM_DRY_RUN:-}"
 REALM_DRY_RUN=""
 
 # ─── build target list ───────────────────────────────────────────
+# Fetch topology ONCE and reuse it for every selection mode (the old code
+# re-fetched /topology per --hosts entry).
 tmp_targets=$(mktemp); trap 'rm -f "$tmp_targets"' EXIT
+topo_json=$(realm::api_get /topology) || realm::die "failed to fetch /topology" 5
+
+# Total reachable IP-bearing nodes — the denominator for coverage reporting.
+total_ip_nodes=$(printf '%s' "$topo_json" \
+  | jq '[.nodes[] | select((.ip // "") != "")] | length' 2>/dev/null || echo 0)
+
+SELECTION=""
 
 if [[ -n "$HOSTS_FILTER" ]]; then
-  # User-supplied: each must have an IP from the topology
+  # User-supplied host IDs: each must have an IP in the topology.
   IFS=',' read -ra requested <<< "$HOSTS_FILTER"
   for id in "${requested[@]}"; do
-    ip=$(realm::api_get /topology | jq -r --arg id "$id" '.nodes[] | select(.id == $id) | .ip // ""')
-    [[ -n "$ip" ]] && printf '%s\t%s\n' "$id" "$ip" >> "$tmp_targets" \
-      || realm::warn "no IP for host: $id (skipping)"
+    ip=$(printf '%s' "$topo_json" \
+      | jq -r --arg id "$id" '.nodes[] | select(.id == $id) | .ip // ""' | head -1)
+    if [[ -n "$ip" ]]; then
+      printf '%s\t%s\n' "$id" "$ip" >> "$tmp_targets"
+    else
+      realm::warn "no IP for host: $id (skipping)"
+    fi
   done
-else
-  # Filter topology by --types
-  realm::api_get /topology \
+  SELECTION="hosts: $HOSTS_FILTER"
+elif [[ -n "$TYPES_EXPLICIT" ]]; then
+  # Scope by --types. Match the persisted .type (null until #98 lands) OR the
+  # computed ._role, so the filter is useful today AND forward-compatible.
+  printf '%s' "$topo_json" \
     | jq -r --arg types "$TYPES_FILTER" '
-        ($types | split(",")) as $tt
+        ($types | ascii_downcase | split(",")) as $tt
         | .nodes[]
-        | select((.type // "" | IN($tt[])) and (.ip // "") != "")
+        | ((.type  // "") | ascii_downcase) as $t
+        | ((._role // "") | ascii_downcase) as $r
+        | select(($t | IN($tt[])) or ($r | IN($tt[])))
+        | select((.ip // "") != "")
         | "\(.id)\t\(.ip)"
       ' > "$tmp_targets"
+  if [[ ! -s "$tmp_targets" ]]; then
+    # Graceful fallback: don't dead-end on a filter that matches nothing
+    # (e.g. .type is null and no ._role matched). Probe everything reachable.
+    realm::warn "--types '$TYPES_FILTER' matched 0 nodes; falling back to all reachable IP-bearing nodes"
+    printf '%s' "$topo_json" \
+      | jq -r '.nodes[] | select((.ip // "") != "") | "\(.id)\t\(.ip)"' > "$tmp_targets"
+    SELECTION="all IP-bearing (--types '$TYPES_FILTER' matched 0)"
+  else
+    SELECTION="types: $TYPES_FILTER"
+  fi
+else
+  # Default: every reachable node with a non-empty IP.
+  printf '%s' "$topo_json" \
+    | jq -r '.nodes[] | select((.ip // "") != "") | "\(.id)\t\(.ip)"' > "$tmp_targets"
+  SELECTION="all IP-bearing nodes"
 fi
 
 target_count=$(wc -l < "$tmp_targets")
 if [[ "$target_count" -eq 0 ]]; then
-  realm::die "no targets to probe (types: $TYPES_FILTER)" 4
+  # With the all-IP fallback this only fires when topology truly has no
+  # IP-bearing nodes (or an explicit --hosts list resolved to none).
+  realm::die "no targets to probe ($SELECTION; $total_ip_nodes IP-bearing nodes in topology)" 4
 fi
 
-realm::say "Probing $target_count host(s) with $FORKS concurrent SSH connections"
+realm::say "Probing $target_count of $total_ip_nodes IP-bearing host(s) with $FORKS concurrent SSH connections [$SELECTION]"
 
 if [[ -n "$LOCAL_DRY_RUN" ]]; then
-  realm::print_section "Dry-run — targets that would be probed:"
-  while IFS=$'\t' read -r id ip; do realm::print_kv "$id" "$ip"; done < "$tmp_targets"
+  if [[ "$REALM_OUTPUT" = "json" ]]; then
+    jq -n \
+      --arg sel "$SELECTION" \
+      --argjson probed "$target_count" \
+      --argjson total "$total_ip_nodes" \
+      --rawfile t "$tmp_targets" \
+      '{dry_run: true, selection: $sel, probed: $probed, ip_bearing_total: $total,
+        targets: ($t | rtrimstr("\n") | split("\n")
+                  | map(select(length > 0) | split("\t") | {id: .[0], ip: .[1]}))}'
+  else
+    realm::print_section "Dry-run — targets that would be probed:"
+    while IFS=$'\t' read -r id ip; do realm::print_kv "$id" "$ip"; done < "$tmp_targets"
+    realm::print_section "Coverage"
+    realm::print_kv "selection"         "$SELECTION"
+    realm::print_kv "would probe"       "$target_count"
+    realm::print_kv "ip-bearing total"  "$total_ip_nodes"
+  fi
   exit 0
 fi
 
@@ -175,9 +249,8 @@ awk -F'\t' '{print $1 " " $2}' "$tmp_targets" \
 # ─── apply results: POST /node for each OK, summarize ───────
 ok_count=0
 fail_count=0
-declare -a ubuntu_hosts=()
-declare -a other_hosts=()
 declare -a failed_hosts=()
+declare -A os_counts=()   # os_id → count, for the OS breakdown
 
 if [[ "$REALM_OUTPUT" = "json" ]]; then
   jq_results=$(mktemp)
@@ -187,7 +260,8 @@ fi
 while IFS=$'\t' read -r status id ip os_id os_ver os_pretty; do
   if [[ "$status" = "OK" ]]; then
     ok_count=$((ok_count+1))
-    [[ "$os_id" = "ubuntu" ]] && ubuntu_hosts+=("$id") || other_hosts+=("$id ($os_id)")
+    os_key="${os_id:-unknown}"
+    os_counts["$os_key"]=$(( ${os_counts["$os_key"]:-0} + 1 ))
     # Build heuristic-friendly tag set alongside the typed os field.
     # Tags are additive, lowercase, kebab-case — meant for `realm` filters and
     # plugin heuristics. Fantasy `label` stays untouched for display.
@@ -227,20 +301,50 @@ while IFS=$'\t' read -r status id ip os_id os_ver os_pretty; do
 done < "$results"
 
 # ─── summary ──────────────────────────────────────────────────
+# Build the OS breakdown JSON object (dynamic keys → assemble via jq).
+os_breakdown_json='{}'
+if [[ ${#os_counts[@]} -gt 0 ]]; then
+  os_breakdown_json=$(
+    for k in "${!os_counts[@]}"; do printf '%s\t%s\n' "$k" "${os_counts[$k]}"; done \
+      | jq -Rn '[inputs | split("\t") | {key: .[0], value: (.[1] | tonumber)}] | from_entries')
+fi
+
 if [[ "$REALM_OUTPUT" = "json" ]]; then
-  jq -s . "$jq_results"
+  jq -s \
+    --arg sel "$SELECTION" \
+    --argjson probed "$target_count" \
+    --argjson reachable "$ok_count" \
+    --argjson unreachable "$fail_count" \
+    --argjson total "$total_ip_nodes" \
+    --argjson os "$os_breakdown_json" \
+    '{selection: $sel, probed: $probed, reachable: $reachable, unreachable: $unreachable,
+      ip_bearing_total: $total, os_breakdown: $os, results: .}' \
+    "$jq_results"
   exit 0
 fi
 
 realm::print_section "Summary"
-realm::print_kv "probed"      "$target_count"
-realm::print_kv "successful"  "$ok_count"
-realm::print_kv "failed"      "$fail_count"
-realm::print_kv "ubuntu"      "${#ubuntu_hosts[@]} (${ubuntu_hosts[*]+${ubuntu_hosts[*]}})"
-[[ ${#other_hosts[@]} -gt 0 ]] && realm::print_kv "other_os" "${other_hosts[*]}"
+realm::print_kv "selection"    "$SELECTION"
+realm::print_kv "probed"       "$target_count of $total_ip_nodes IP-bearing"
+realm::print_kv "reachable"    "$ok_count"
+realm::print_kv "unreachable"  "$fail_count"
+
+if [[ ${#os_counts[@]} -gt 0 ]]; then
+  realm::print_section "OS breakdown"
+  while IFS=$'\t' read -r osname osn; do
+    realm::print_kv "$osname" "$osn"
+  done < <(for k in "${!os_counts[@]}"; do printf '%s\t%s\n' "$k" "${os_counts[$k]}"; done | sort)
+fi
+
+# Unreachable host IDs are listed only under --verbose — 40+ SSH-unreachable
+# nodes is normal on this fleet, so the default summary stays the count.
+if [[ "$fail_count" -gt 0 && -n "${REALM_VERBOSE:-}" ]]; then
+  realm::print_section "Unreachable hosts ($fail_count)"
+  for h in "${failed_hosts[@]}"; do realm::print_kv "·" "$h"; done
+fi
 
 if [[ "$ok_count" -eq 0 ]]; then
-  realm::warn "Zero hosts responded — check SSH key setup and --user list"
+  realm::warn "Zero hosts responded — check SSH key setup and --user list (tried: $SSH_USERS_RAW)"
   exit 5
 fi
 
