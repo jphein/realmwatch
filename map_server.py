@@ -210,6 +210,39 @@ def _join_fleet_into_nodes(nodes, fleet_api):
     return out
 
 
+def _enrich_node_types(nodes):
+    """Fill each node's `type` from node_roles enrichment when it lacks one.
+
+    Most stored nodes have `type: null` because node_roles computes the role at
+    render time and never persists it (#98) — which breaks type-based CLI
+    filters and ansible inventory grouping. This makes the enriched
+    classification queryable on GET /topology (and the SSE topology event)
+    without reimplementing enrichment (reuses node_roles.get_role) and without
+    clobbering any explicit structural type already set on a node (e.g. "core",
+    "infra", "bridge"). Non-destructive: only empty/missing `type` is filled,
+    and only changed nodes are shallow-copied so the cached topology dict is
+    never mutated.
+    """
+    out = []
+    for node in nodes:
+        nid = node.get("id")
+        if node.get("type") or not nid:
+            out.append(node)
+            continue
+        try:
+            role = node_roles.get_role(nid, node)
+        except Exception:
+            out.append(node)
+            continue
+        if not role:
+            out.append(node)
+            continue
+        merged = dict(node)
+        merged["type"] = role
+        out.append(merged)
+    return out
+
+
 def _resolve_node_id(node_id_or_name, plugin_registry):
     """Resolve any string (current_name, prior_name, fleet_id) to current node_id.
     Returns the input unchanged if no fleet entry matches (backward-compat)."""
@@ -616,6 +649,11 @@ def _h_get_topology(req, params):
         # Don't mutate the cached topology dict — shallow copy and replace nodes.
         topo = dict(topo)
         topo["nodes"] = _join_fleet_into_nodes(topo.get("nodes", []), fleet_api)
+    # Ensure every node carries a non-null `type` reflecting node_roles
+    # enrichment so type-based CLI filters / ansible grouping work (#98).
+    # Shallow-copy guards the cached dict when no fleet join ran above.
+    topo = dict(topo)
+    topo["nodes"] = _enrich_node_types(topo.get("nodes", []))
     return topo
 
 def _h_get_ping_ip(req, params):
@@ -2015,6 +2053,39 @@ if __name__ == "__main__":
     realm_db.migrate_topology(TOPOLOGY_FILE)
     node_roles.migrate_to_db()
 
+    # ── Backfill enriched node `type` into the DB (#98) ──
+    # node_roles classifies nodes at render time but never persisted it, so
+    # stored nodes had `type: null` — breaking type-based CLI filters and
+    # ansible grouping. Persist the enriched role onto each node that lacks a
+    # type. This is additive: `type` is a JSON key inside nodes.data (no schema
+    # change). "unknown" is skipped so unidentified nodes stay open to future
+    # enrichment instead of freezing; GET /topology still fills them live.
+    try:
+        _type_backfill = []
+        for _node in realm_db.get_nodes():
+            if _node.get("type"):
+                continue
+            _nid = _node.get("id")
+            if not _nid:
+                continue
+            _role = node_roles.get_role(_nid, _node)
+            if not _role or _role == "unknown":
+                continue
+            _node = dict(_node)
+            _node["type"] = _role
+            _type_backfill.append((_nid, _node))
+        if _type_backfill:
+            realm_db.set_nodes_batch(_type_backfill)
+            # Keep topology.json in sync with the DB — it's the write-through
+            # mirror (same pattern as the POST /node|/connections|/topology
+            # handlers and ap_scanner) and is read directly by the latency
+            # prober / engine ping list. Only rewritten when the backfill
+            # actually changed rows, so converged startups cause no churn.
+            realm_db.save_topology_json(TOPOLOGY_FILE)
+            print(f"Backfilled enriched type onto {len(_type_backfill)} node(s) (#98)")
+    except Exception as _e:
+        print(f"[#98] node type backfill skipped: {_e}")
+
     # ── Housekeeping ──
     realm_db.cleanup_old_events()
 
@@ -2051,11 +2122,15 @@ if __name__ == "__main__":
     # Wire the topology transformer so SSE topology events get the same
     # label/realm/role/kind merge that GET /topology applies.
     def _sse_topology_transformer(topo):
+        out = topo
         fleet_api = _get_fleet_api()
-        if not fleet_api or not fleet_api.get("loaded"):
-            return topo
-        out = dict(topo)
-        out["nodes"] = _join_fleet_into_nodes(topo.get("nodes", []), fleet_api)
+        if fleet_api and fleet_api.get("loaded"):
+            out = dict(topo)
+            out["nodes"] = _join_fleet_into_nodes(topo.get("nodes", []), fleet_api)
+        # Mirror GET /topology: emit non-null enriched `type` over SSE too so
+        # HTTP and stream stay consistent (#98).
+        out = dict(out)
+        out["nodes"] = _enrich_node_types(out.get("nodes", []))
         return out
     _sse_broker.topology_transformer = _sse_topology_transformer
 
