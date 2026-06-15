@@ -14,16 +14,40 @@
 # Requires jq for JSON manipulation. The realmwatch project already depends on
 # jq across other tools.
 
+# realm::_cmd_name — the user-facing command name used as the error/warn
+# prefix. Users type `realm topology`, never the internal `realm-topology.sh`
+# script filename, so derive the friendly form rather than leaking $0.
+#
+#   - Honors $REALM_CMD_NAME if a caller set it (the plugin handler sets
+#     "realm <plugin>", since one realm-plugin.sh script fronts many plugins).
+#   - Otherwise strips the "realm-" prefix and ".sh" suffix from $0 and
+#     prefixes "realm ": realm-topology.sh → "realm topology".
+#   - The dispatcher itself ($0 = "realm") prints just "realm", matching its
+#     own hand-rolled `✘ realm:` branding.
+realm::_cmd_name() {
+  if [[ -n "${REALM_CMD_NAME:-}" ]]; then
+    printf '%s' "$REALM_CMD_NAME"
+    return
+  fi
+  local base="${0##*/}"
+  base="${base%.sh}"
+  case "$base" in
+    realm)   printf 'realm' ;;
+    realm-*) printf 'realm %s' "${base#realm-}" ;;
+    *)       printf 'realm %s' "$base" ;;
+  esac
+}
+
 realm::die() {
   local msg="$1"
   local code="${2:-1}"
-  printf '%s✘ %s:%s %s\n' "$R" "${0##*/}" "$N" "$msg" >&2
+  printf '%s✘ %s:%s %s\n' "$R" "$(realm::_cmd_name)" "$N" "$msg" >&2
   exit "$code"
 }
 
 realm::warn() {
   local msg="$1"
-  printf '%s! %s:%s %s\n' "$Y" "${0##*/}" "$N" "$msg" >&2
+  printf '%s! %s:%s %s\n' "$Y" "$(realm::_cmd_name)" "$N" "$msg" >&2
 }
 
 realm::say() {
