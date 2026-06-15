@@ -21,6 +21,7 @@ EXAMPLES:
   realm settings get alerting
   realm settings set discovery scan_interval 30
 EOF
+  realm::help_flags
 }
 
 REALM_SUBCOMMANDS="list

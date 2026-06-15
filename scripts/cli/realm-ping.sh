@@ -19,6 +19,7 @@ EXAMPLES:
   realm ping 10.0.6.108
   realm ping katana --json
 EOF
+  realm::help_flags
 }
 
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/realm-cli.sh"

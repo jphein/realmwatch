@@ -48,6 +48,7 @@ CONVENTIONS:
   Use lowercase, kebab-case. discover-os auto-populates ubuntu, linux,
   ubuntu-24.04, debian-family, apt, etc. Manual tags layer on top.
 EOF
+  realm::help_flags
 }
 
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/realm-cli.sh"

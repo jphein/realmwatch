@@ -24,6 +24,7 @@ EXAMPLES:
   realm quest complete q-42
   realm quest list --json | jq '.[] | select(.status == "active")'
 EOF
+  realm::help_flags
 }
 
 REALM_SUBCOMMANDS="list

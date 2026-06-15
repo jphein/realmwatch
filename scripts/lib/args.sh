@@ -162,3 +162,38 @@ realm::flag_value() {
   done
   return 1
 }
+
+# realm::help_flags — print the standardized GLOBAL FLAGS + EXIT CODES footer
+# that every subcommand's `realm::help` should end with. Keeping the canonical
+# flag list and exit-code contract in ONE place means per-command help can't
+# drift from `realm --help` (the dispatcher index uses the same wording).
+#
+# Call it at the end of a command's realm::help, after the usage heredoc:
+#   realm::help() {
+#     cat <<'EOF'
+#   ...usage text...
+#   EOF
+#     realm::help_flags
+#   }
+#
+# Color vars ($W/$C/$N) resolve at call time — colors.sh is sourced after this
+# file, but realm::help only runs once the full lib chain is loaded, so the
+# palette (or its no-color blanks) is always populated by then.
+realm::help_flags() {
+  # Color vars come from colors.sh, which realm-cli.sh sources AFTER this file.
+  # In the normal subcommand flow they're populated by the time help runs, but
+  # guard with ${VAR:-} so a standalone source of args.sh (or any future
+  # reorder) can't trip `set -u` with an unbound-variable crash.
+  printf '\n%sGLOBAL FLAGS%s\n' "${W:-}" "${N:-}"
+  printf '  %s-h, --help%s     Show this help and exit\n' "${C:-}" "${N:-}"
+  printf '  %s    --version%s  Print version and exit\n' "${C:-}" "${N:-}"
+  printf '  %s    --json%s     Machine-readable JSON output\n' "${C:-}" "${N:-}"
+  printf '  %s    --no-color%s Disable ANSI color (env: NO_COLOR=1)\n' "${C:-}" "${N:-}"
+  printf '  %s-v, --verbose%s  Verbose output (show curl invocations)\n' "${C:-}" "${N:-}"
+  printf '  %s-q, --quiet%s    Suppress informational output\n' "${C:-}" "${N:-}"
+  printf '  %s    --dry-run%s  Preview API calls without sending them\n' "${C:-}" "${N:-}"
+  printf '  %s    --host URL%s Override the realm host (default: %s)\n' "${C:-}" "${N:-}" "${REALM_HOST:-http://localhost}"
+  printf '\n%sEXIT CODES%s\n' "${W:-}" "${N:-}"
+  printf '  %s0%s ok · %s2%s usage · %s3%s network · %s4%s auth · %s5%s server · %s22%s client\n' \
+    "${C:-}" "${N:-}" "${C:-}" "${N:-}" "${C:-}" "${N:-}" "${C:-}" "${N:-}" "${C:-}" "${N:-}" "${C:-}" "${N:-}"
+}

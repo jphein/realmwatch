@@ -46,6 +46,7 @@ EXAMPLES:
   realm role template server
   realm role of familiar           # show role + reasoning
 EOF
+  realm::help_flags
 }
 
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/realm-cli.sh"

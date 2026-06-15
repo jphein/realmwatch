@@ -16,6 +16,7 @@ EXAMPLES:
   realm player reward xp 50 --reason "Audited the realm"
   realm player reward gold 10
 EOF
+  realm::help_flags
 }
 
 REALM_SUBCOMMANDS="status

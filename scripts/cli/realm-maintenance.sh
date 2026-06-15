@@ -50,6 +50,7 @@ EXAMPLES:
   # Weekly maintenance: every Tuesday 02:00 for 1 hour
   realm maintenance schedule '*' --for 1h --recur weekly --name "weekly maintenance"
 EOF
+  realm::help_flags
 }
 
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/realm-cli.sh"

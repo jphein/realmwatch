@@ -21,6 +21,7 @@ EXAMPLES:
   realm api POST /event '{"type":"info","text":"hello"}'
   realm api DELETE /alerting/history
 EOF
+  realm::help_flags
 }
 
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/realm-cli.sh"

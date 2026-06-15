@@ -20,6 +20,7 @@ EXAMPLES:
   realm persona get gatekeeper
   realm persona set katana voice "Storyteller"
 EOF
+  realm::help_flags
 }
 
 REALM_SUBCOMMANDS="list

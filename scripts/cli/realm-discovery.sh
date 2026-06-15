@@ -37,6 +37,7 @@ EXAMPLES:
   realm discovery prototypes
   realm discovery entities --type netdata_host
 EOF
+  realm::help_flags
 }
 
 REALM_SUBCOMMANDS="list

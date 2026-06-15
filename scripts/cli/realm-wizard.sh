@@ -52,6 +52,7 @@ EXAMPLES:
   realm wizard --yes                            # unattended, auto-yes everything
   realm wizard --dry-run                        # preview only
 EOF
+  realm::help_flags
 }
 
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/realm-cli.sh"

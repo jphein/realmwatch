@@ -18,6 +18,7 @@ EXAMPLES:
   realm ssh katana uptime
   realm ssh gatekeeper "uci show wireless"
 EOF
+  realm::help_flags
 }
 
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/realm-cli.sh"
