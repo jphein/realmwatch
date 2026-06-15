@@ -1,0 +1,65 @@
+{
+  "name": "nut",
+  "version": "1.1.0",
+  "type": "integrated",
+  "description": "NUT/UPS integration — reads live UPS load/watts from Linux hosts (ssh upsc) and OpenWrt hosts (UCI + NUT TCP protocol), and links each UPS to the host(s) it powers. The electrical-side mirror of the netdata per-host RAPL feed (#108).",
+  "fantasy_name": "Ward of the Battery",
+  "icon": "🔋",
+  "python": {"module": "plugin", "entry": "setup"},
+  "depends_on": ["discovery"],
+
+  "panel": {
+    "id": "ups-power-panel",
+    "name": "Ward of the Battery",
+    "html": "panel.html",
+    "js": "panel.js",
+    "css": "panel.css",
+    "anchor": "e",
+    "priority": 17
+  },
+
+  "endpoints": [
+    {"method": "GET",  "path": "/ups-power",    "handler": "handle_ups_power",    "raw_path": true},
+    {"method": "GET",  "path": "/ups-topology", "handler": "handle_ups_topology", "raw_path": true},
+    {"method": "POST", "path": "/ups-topology", "handler": "handle_ups_topology", "raw_path": true},
+    {"method": "GET",  "path": "doctor",        "handler": "handle_doctor"}
+  ],
+
+  "cli": {
+    "summary": "Live UPS load/watts + host linkage (Ward of the Battery)",
+    "verbs": [
+      {
+        "name": "show",
+        "summary": "Live per-UPS status / load / watts / powered hosts",
+        "method": "GET",
+        "path": "/ups-power",
+        "table": "to_entries | .[] | [(.value.name // .key), (.value.status // \"-\"), ((.value.load_pct // \"-\") | tostring), ((.value.watts // \"-\") | tostring), (.value.model // \"-\"), ((.value.powers // []) | join(\",\"))]",
+        "header": ["UPS", "STATUS", "LOAD%", "WATTS", "MODEL", "POWERS"]
+      },
+      {
+        "name": "doctor",
+        "summary": "Flag disconnected NUT drivers + upsmon MONITOR mismatches",
+        "method": "GET",
+        "path": "/plugins/nut/doctor",
+        "table": ".issues[] | [(.severity), (.host // \"-\"), (.ups // \"-\"), (.issue)]",
+        "header": ["SEV", "HOST", "UPS", "ISSUE"]
+      }
+    ]
+  },
+
+  "discovery_prototypes": [
+    {
+      "entity_type": "nut_ups",
+      "summary": "A UPS served by a host's NUT upsd, read via the NUT client",
+      "sublabel": "{{#STATUS}} • {{#WATTS}} W",
+      "fantasy_template": "Ward of the Battery at {{#NAME}}",
+      "alert_on": [
+        {
+          "when": "{{#HEALTHY}} == False",
+          "severity": "warning",
+          "text_template": "The Ward {{#NAME}} has gone dark — its NUT driver is disconnected"
+        }
+      ]
+    }
+  ]
+}

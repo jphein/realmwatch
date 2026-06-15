@@ -1,0 +1,175 @@
+/* -- Ward of the Battery (NUT/UPS) -- */
+/* Battery palette — amber/green, distinct from the cyan "Wattage of the Realm"
+   (#108 per-host RAPL) and the gold HA "Solar Sanctum". */
+
+#ups-power-panel {
+  --panel-accent: rgba(120,210,150,0.5);
+  --ward-bolt: #ffcf6b;
+  --ward-bat: #6fe09a;
+}
+
+.ward-header {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  gap: 6px;
+}
+
+.ward-sub {
+  font-size: 8px;
+  color: rgba(180,210,180,0.55);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.ward-total {
+  font-size: 10px;
+  color: var(--ward-bolt);
+  margin-left: auto;
+  white-space: nowrap;
+  font-family: 'Cinzel', serif;
+  text-shadow: 0 0 6px rgba(255,207,107,0.4);
+}
+
+.ward-body {
+  padding: 6px 10px 8px;
+  flex: 1 1 0;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.ward-empty {
+  padding: 8px 12px 12px;
+  font-size: 8.5px;
+  line-height: 1.5;
+  color: rgba(170,190,180,0.45);
+  font-style: italic;
+}
+
+/* UPS cards */
+.ward-item {
+  padding: 6px 7px;
+  margin-bottom: 5px;
+  border-radius: 5px;
+  background: rgba(120,210,150,0.06);
+  border: 1px solid rgba(120,210,150,0.14);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.ward-item:hover {
+  background: rgba(120,210,150,0.12);
+  border-color: rgba(120,210,150,0.3);
+}
+
+.ward-item.ward-offline {
+  background: rgba(200,90,90,0.06);
+  border-color: rgba(200,90,90,0.2);
+  opacity: 0.8;
+}
+
+.ward-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ward-name {
+  font-size: 10px;
+  color: #cfe8d4;
+  font-family: 'Cinzel', serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ward-pill {
+  font-size: 7.5px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.ward-pill.ok {
+  background: rgba(111,224,154,0.18);
+  color: var(--ward-bat);
+  border: 1px solid rgba(111,224,154,0.3);
+}
+
+.ward-pill.bad {
+  background: rgba(220,100,100,0.18);
+  color: #f2a0a0;
+  border: 1px solid rgba(220,100,100,0.35);
+}
+
+.ward-model {
+  font-size: 7.5px;
+  color: rgba(170,190,180,0.5);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* Battery charge bar */
+.ward-bat {
+  margin: 5px 0 4px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(120,210,150,0.12);
+  overflow: hidden;
+}
+
+.ward-bat-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgba(111,224,154,0.5), var(--ward-bat));
+  box-shadow: 0 0 5px rgba(111,224,154,0.4);
+  transition: width 0.6s ease;
+}
+
+.ward-bat-fill.low {
+  background: linear-gradient(90deg, rgba(240,160,90,0.6), #ffcf6b);
+  box-shadow: 0 0 5px rgba(255,180,90,0.5);
+}
+
+.ward-stats {
+  font-size: 9px;
+  color: #d8ecdd;
+  font-variant-numeric: tabular-nums;
+}
+
+.ward-stats b {
+  color: var(--ward-bolt);
+  text-shadow: 0 0 4px rgba(255,207,107,0.3);
+}
+
+.ward-powers {
+  margin-top: 3px;
+  font-size: 8px;
+  color: rgba(180,200,185,0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Highlight animation for clicked nodes (mirrors siblings) */
+.node-highlight {
+  animation: ward-highlight-pulse 2s ease-out;
+}
+
+@keyframes ward-highlight-pulse {
+  0% { filter: brightness(1.8) drop-shadow(0 0 8px rgba(111,224,154,0.8)); }
+  100% { filter: brightness(1) drop-shadow(0 0 0 transparent); }
+}
+
+/* Scrollbar */
+.ward-body::-webkit-scrollbar { width: 4px; }
+.ward-body::-webkit-scrollbar-track { background: transparent; }
+.ward-body::-webkit-scrollbar-thumb {
+  background: rgba(120,210,150,0.2);
+  border-radius: 2px;
+}
+.ward-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(120,210,150,0.4);
+}
