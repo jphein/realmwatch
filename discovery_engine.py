@@ -281,11 +281,19 @@ class DiscoveryEngine:
 
     def _link_entity(self, entity, topo_nodes):
         """Try to auto-link a sub-entity to an existing topology node."""
-        # 1. Manual override
+        # 1. Manual override — operator-set links win over everything.
         manual = realm_db.get_discovery_link(entity.id)
-        if manual:
+        if manual and (manual.get("link_type") or "manual") == "manual":
             entity.linked_node_id = manual["linked_node_id"]
             entity.link_type = "manual"
+            return
+
+        # 1b. Provider-asserted link (#116). The HA plugin groups sensors by
+        # their HA *device* and resolves that device to a node, setting
+        # link_type="ha-device". Trust it and skip the per-entity name matchers
+        # below, which would otherwise mismatch on a sensor label ("Load",
+        # "Battery charge") that is not a hostname.
+        if entity.linked_node_id and entity.link_type == "ha-device":
             return
 
         node_by_id = {n.get("id", ""): n for n in topo_nodes}
@@ -332,6 +340,46 @@ class DiscoveryEngine:
                     entity.linked_node_id = n["id"]
                     entity.link_type = "auto"
                     return
+
+    def resolve_device_node(self, candidates, aliases=None):
+        """Resolve a device identity to a topology node id, or None.
+
+        Providers that group telemetry by *device* (e.g. the HA plugin, #116)
+        pass a list of identity `candidates` (node id, hostname, collectd name,
+        IP, device slug) and an optional `aliases` override map
+        ({candidate: node_id}) for cases where the device name != node id. This
+        reuses the same alias/hostname resolution as the per-host enricher and
+        never guesses — it returns None when nothing maps to a real topology
+        node, so callers leave unmatched devices on their hub gracefully.
+
+        Must be called after a scan cycle has rebuilt the host alias map (the
+        engine does this at the top of every cycle and at start()).
+        """
+        alias_lookup = {str(k).strip().lower(): v
+                        for k, v in (aliases or {}).items() if k and v}
+        with self._alias_map_lock:
+            node_ids = set(self._topo_node_ids)
+            host_alias = dict(self._host_alias_map)
+        for cand in candidates:
+            if not cand:
+                continue
+            key = str(cand).strip().lower()
+            if not key:
+                continue
+            # 1. Explicit operator alias override
+            if key in alias_lookup:
+                return alias_lookup[key]
+            # 2. Direct topology node id
+            if key in node_ids:
+                return key
+            # 3. Known alternate name (collectd hostname, IP, ssh host, label)
+            if key in host_alias:
+                return host_alias[key]
+            # 4. Fuzzy host resolution (short hostname, domain suffixes, case)
+            resolved = self._resolve_host(key)
+            if resolved and resolved.lower() in node_ids:
+                return resolved
+        return None
 
     # ── Scan Orchestration ──
 
@@ -609,7 +657,8 @@ class DiscoveryEngine:
                 if e.status in ("failed", "stopped"):
                     failed_count += 1
             parts = []
-            type_labels = {"container": "containers", "vm": "VMs", "service": "services"}
+            type_labels = {"container": "containers", "vm": "VMs",
+                           "service": "services", "ha_device": "HA"}
             for t, count in sorted(by_type.items()):
                 label = type_labels.get(t, t)
                 parts.append(f"{count} {label}")

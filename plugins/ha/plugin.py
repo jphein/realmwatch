@@ -100,8 +100,88 @@ def handle_energy(req, params):
 
 # ── Discovery provider ──
 
+def _build_ha_node_index():
+    """Invert the curated HA entity_map into lookups for device->node linking.
+
+    Returns (entity_to_node, prefix_to_node, node_fn):
+      entity_to_node : {entity_id: node_id}     explicit entity -> curated node
+      prefix_to_node : [(prefix, node_id), ...]  slug prefix -> curated node
+      node_fn        : {node_id: fn}             label fn (used to skip UPS)
+
+    The HA entity_map (node_roles, DB-backed) is the curated source of truth
+    for which HA entities belong to which topology node — it already drives
+    node sublabels. Reusing it gives a reliable, zero-false-link device->node
+    grouping instead of guessing from sensor labels (#116).
+    """
+    import node_roles
+    ha_map = node_roles.get_ha_map() or {}
+    entity_to_node, prefix_to_node, node_fn = {}, [], {}
+    for nid, cfg in ha_map.items():
+        if not isinstance(cfg, dict):
+            continue
+        node_fn[nid] = cfg.get("fn")
+        ents = cfg.get("entities")
+        if isinstance(ents, list):
+            for e in ents:
+                if isinstance(e, str):
+                    entity_to_node[e] = nid
+        elif isinstance(ents, dict):
+            # e.g. solar: {"kw": "sensor.pv_power", "batt_v": "..."}
+            for e in ents.values():
+                if isinstance(e, str):
+                    entity_to_node[e] = nid
+        single = cfg.get("entity")
+        if isinstance(single, str):
+            entity_to_node[single] = nid
+        prefix = cfg.get("prefix")
+        if isinstance(prefix, str) and prefix:
+            prefix_to_node.append((prefix, nid))
+    return entity_to_node, prefix_to_node, node_fn
+
+
+def _resolve_entity_node(entity_id, entity_to_node, prefix_to_node, node_fn,
+                         alias_map, engine):
+    """Resolve one HA entity to the topology node of its device, or None.
+
+    Precedence: operator alias map -> curated HA entity_map (by entity id, then
+    by slug prefix) -> validated against real topology nodes via the discovery
+    engine. UPS-type devices are deferred to the nut plugin (#114) and return
+    None so they stay on the 'ha' hub; genuine hub-level entities also stay on
+    'ha'. Never guesses — returns None when nothing maps to a real node.
+    """
+    nid = entity_to_node.get(entity_id)
+    if nid is None:
+        obj = entity_id.split(".", 1)[1] if "." in entity_id else entity_id
+        for pref, pnid in prefix_to_node:
+            if obj == pref or obj.startswith(pref + "_"):
+                nid = pnid
+                break
+
+    fn = node_fn.get(nid)
+    # Defer UPS devices to #114 (NUT side owns the richer UPS<->host link).
+    if fn == "ups":
+        return None
+    # Genuine HA-hub entities (HA self-stats) belong on 'ha'.
+    if nid == "ha" or fn == "ha_self":
+        return None
+
+    candidates = [entity_id]
+    if nid:
+        candidates.append(nid)
+    return engine.resolve_device_node(candidates, aliases=alias_map)
+
+
 def discover_ha(node_id, node_data, host_access, engine):
-    """Discover Home Assistant devices from the HA REST API."""
+    """Discover Home Assistant entities and link each to the topology node of
+    the HA *device* it belongs to (#116).
+
+    Previously every entity was orphaned on the 'ha' hub (host_node_id='ha',
+    linked_node_id unset). Now each entity resolves — via the curated HA
+    entity_map plus an operator alias map — to its device's topology node, so
+    inverter / smart-plug / climate / sensor telemetry lands on the right node.
+    UPS devices are deferred to the nut plugin (#114); unmatched entities stay
+    on 'ha' gracefully.
+    """
     ha_url = _ha_url()
     ha_token = os.environ.get("HA_TOKEN", "")
     if not ha_token:
@@ -116,7 +196,18 @@ def discover_ha(node_id, node_data, host_access, engine):
     except Exception:
         return []
 
+    import realm_db
+    entity_to_node, prefix_to_node, node_fn = _build_ha_node_index()
+    alias_map = realm_db.get_setting("ha", "device_node_aliases", {}) or {}
+    if not isinstance(alias_map, dict):
+        alias_map = {}
+    try:
+        manual_ids = realm_db.get_manual_discovery_link_ids()
+    except Exception:
+        manual_ids = set()
+
     entities = []
+    resolved_links = []  # (sub_entity_id, node_id) auto links to persist
     for state in resp.json():
         entity_id = state.get("entity_id", "")
         domain = entity_id.split(".")[0] if "." in entity_id else ""
@@ -136,12 +227,24 @@ def discover_ha(node_id, node_data, host_access, engine):
         else:
             status = "stopped"
 
+        sub_id = f"ha:{entity_id}"
+        host_node, linked_node, link_type = "ha", None, None
+        # Don't auto-link entities an operator has manually pinned.
+        if sub_id not in manual_ids:
+            target = _resolve_entity_node(entity_id, entity_to_node, prefix_to_node,
+                                          node_fn, alias_map, engine)
+            if target and target != "ha":
+                host_node, linked_node, link_type = target, target, "ha-device"
+                resolved_links.append((sub_id, target))
+
         entities.append(SubEntity(
-            id=f"ha:{entity_id}",
+            id=sub_id,
             type="ha_device",
             name=friendly_name,
-            host_node_id="ha",
+            host_node_id=host_node,
             status=status,
+            linked_node_id=linked_node,
+            link_type=link_type,
             metadata={
                 "entity_id": entity_id,
                 "domain": domain,
@@ -149,6 +252,15 @@ def discover_ha(node_id, node_data, host_access, engine):
                 "device_class": state.get("attributes", {}).get("device_class", ""),
             },
         ))
+
+    # Persist auto-resolved links to discovery_links (refreshes the 'ha-device'
+    # set each scan so de-curated devices don't leave stale rows; operator
+    # 'manual' overrides are untouched). Best-effort — the canonical link lives
+    # on the sub_entity row regardless.
+    try:
+        realm_db.sync_auto_discovery_links(resolved_links, "ha-device", "ha:")
+    except Exception:
+        pass
     return entities
 
 

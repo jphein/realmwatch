@@ -186,6 +186,15 @@ def init():
         except Exception:
             pass  # Column already exists
 
+    # Migration: link_type on discovery_links (#116) — distinguish operator
+    # 'manual' overrides from auto-resolved provider links (e.g. 'ha-device').
+    # Existing rows default to 'manual', preserving prior override semantics.
+    try:
+        c.execute("ALTER TABLE discovery_links ADD COLUMN link_type TEXT DEFAULT 'manual'")
+        c.commit()
+    except Exception:
+        pass  # Column already exists
+
     # Prune old events and stale reward dedup entries on startup
     prune_events()
 
@@ -1181,14 +1190,20 @@ def get_discovery_link(sub_entity_id):
     return dict(row) if row else None
 
 
-def set_discovery_link(sub_entity_id, linked_node_id):
-    """Set a manual link between sub-entity and topology node."""
+def set_discovery_link(sub_entity_id, linked_node_id, link_type="manual"):
+    """Set a link between a sub-entity and a topology node.
+
+    Defaults to a 'manual' operator override — authoritative, wins over auto
+    resolution in the discovery engine's linker. Providers that auto-resolve
+    links (e.g. the HA plugin's device→node linking, #116) pass their own
+    link_type so the linker and cleanup logic can tell the two apart.
+    """
     c = _conn()
     now = time.time()
-    c.execute("INSERT OR REPLACE INTO discovery_links (sub_entity_id, linked_node_id, created) VALUES (?, ?, ?)",
-              (sub_entity_id, linked_node_id, now))
-    c.execute("UPDATE sub_entities SET linked_node_id = ?, link_type = 'manual' WHERE id = ?",
-              (linked_node_id, sub_entity_id))
+    c.execute("INSERT OR REPLACE INTO discovery_links (sub_entity_id, linked_node_id, created, link_type) VALUES (?, ?, ?, ?)",
+              (sub_entity_id, linked_node_id, now, link_type))
+    c.execute("UPDATE sub_entities SET linked_node_id = ?, link_type = ? WHERE id = ?",
+              (linked_node_id, link_type, sub_entity_id))
     c.commit()
 
 
@@ -1198,6 +1213,42 @@ def delete_discovery_link(sub_entity_id):
     c.execute("DELETE FROM discovery_links WHERE sub_entity_id = ?", (sub_entity_id,))
     c.execute("UPDATE sub_entities SET linked_node_id = NULL, link_type = NULL WHERE id = ? AND link_type = 'manual'",
               (sub_entity_id,))
+    c.commit()
+
+
+def get_manual_discovery_link_ids():
+    """Return the set of sub_entity_ids that carry an operator 'manual' link.
+
+    Auto-resolving providers consult this to avoid clobbering manual overrides
+    (#116). Rows predating the link_type migration default to 'manual'.
+    """
+    c = _conn()
+    rows = c.execute(
+        "SELECT sub_entity_id FROM discovery_links WHERE COALESCE(link_type,'manual')='manual'"
+    ).fetchall()
+    return {r["sub_entity_id"] for r in rows}
+
+
+def sync_auto_discovery_links(pairs, link_type, id_prefix):
+    """Replace all auto links of `link_type` whose sub_entity_id starts with
+    `id_prefix` with `pairs` ([(sub_entity_id, linked_node_id), ...]).
+
+    Lets a provider persist its auto-resolved device→node links each scan
+    without leaving stale rows behind when a device stops resolving (#116).
+    Only rows of the SAME link_type are cleared — operator 'manual' overrides
+    (and other providers' links) are never touched. Callers must exclude any
+    sub_entity_id that has a manual override (see get_manual_discovery_link_ids)
+    so the INSERT OR REPLACE below can't overwrite one.
+    """
+    c = _conn()
+    now = time.time()
+    c.execute("DELETE FROM discovery_links WHERE link_type=? AND sub_entity_id LIKE ?",
+              (link_type, id_prefix + "%"))
+    for sid, nid in pairs:
+        if not sid or not nid:
+            continue
+        c.execute("INSERT OR REPLACE INTO discovery_links (sub_entity_id, linked_node_id, created, link_type) VALUES (?, ?, ?, ?)",
+                  (sid, nid, now, link_type))
     c.commit()
 
 
