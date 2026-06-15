@@ -114,14 +114,18 @@ case "$sub" in
     # through argv (not string interpolation) so labels with quotes,
     # backslashes, or shell metacharacters can't break the Python parse.
     if ! [[ "$target" =~ ^[0-9]+$ ]]; then
-      target=$("$REALM_PYTHON" - "$target" <<'PY'
+      # `if !` wraps the assignment so a Python failure is caught here rather
+      # than aborting the whole script via set -e (line 8) before the rc check —
+      # which would make the failure branch dead code and bypass the contract.
+      if ! target=$("$REALM_PYTHON" - "$target" <<'PY'
 import sys
 import realm_vlans
 e = realm_vlans.resolve(sys.argv[1])
 sys.stdout.write(str(e.vlan_id) if e else "")
 PY
-)
-      [[ $? -eq 0 ]] || realm::die "lookup failed" 1  # local python helper failure, not network (3)
+      ); then
+        realm::die "lookup failed" 1  # local python helper failure, not network (3)
+      fi
       [[ -n "$target" ]] || realm::die "no VLAN matches that label" 1
     fi
     raw=$(_emit_registry_json)
