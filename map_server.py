@@ -2076,6 +2076,12 @@ if __name__ == "__main__":
             _type_backfill.append((_nid, _node))
         if _type_backfill:
             realm_db.set_nodes_batch(_type_backfill)
+            # Keep topology.json in sync with the DB — it's the write-through
+            # mirror (same pattern as the POST /node|/connections|/topology
+            # handlers and ap_scanner) and is read directly by the latency
+            # prober / engine ping list. Only rewritten when the backfill
+            # actually changed rows, so converged startups cause no churn.
+            realm_db.save_topology_json(TOPOLOGY_FILE)
             print(f"Backfilled enriched type onto {len(_type_backfill)} node(s) (#98)")
     except Exception as _e:
         print(f"[#98] node type backfill skipped: {_e}")
