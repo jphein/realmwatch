@@ -279,6 +279,10 @@ _register(UpdateSource(
     check_cmd=["brew", "outdated"],
     update_cmd="brew update && brew upgrade",
     update_shell=True,
+    # `brew update` git-fetches homebrew/core + homebrew/cask (large), and
+    # `brew upgrade` may build formulae from source — the default 300s isn't
+    # enough on a stale tap (observed exit 124 mid-`brew update`).
+    timeout=900,
     parse_check_fn="brew",
 ))
 
