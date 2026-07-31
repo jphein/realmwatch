@@ -105,7 +105,11 @@ custom-shader = shaders/realm-glow.glsl
 custom-shader-animation = false
 
 # ── Performance (optimized for Claude Code) ──
-copy-on-select = clipboard
+# `true` = selection goes to PRIMARY only (select, then middle-click to paste),
+# which is the normal Ubuntu/GNOME behaviour. Do NOT set `clipboard` here: that
+# makes every terminal selection overwrite the system CLIPBOARD, silently
+# destroying whatever you had copied from another app.
+copy-on-select = true
 mouse-scroll-multiplier = 3
 window-inherit-font-size = false
 resize-overlay = never
