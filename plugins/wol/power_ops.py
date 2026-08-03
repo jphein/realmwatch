@@ -65,6 +65,27 @@ def resolve_target(raw, mac_overrides=None):
     return mac, name, directed_ip
 
 
+def _directed_broadcast(target):
+    """Return the x.y.z.255 directed broadcast for ``target``, or None.
+
+    ``target`` is a fleet ``ops_ip``, which may be either a dotted-quad or a
+    hostname — the operator file is allowed to carry either, and hostnames are
+    preferred so a DHCP re-lease can't leave a stale literal behind. A name has
+    to be resolved before the broadcast address can be computed: the old code
+    did ``rsplit('.', 1)`` straight on the field, which turns "katana.lan" into
+    the nonsense host "katana.255".
+    """
+    if not target:
+        return None
+    host = target.rsplit(":", 1)[0] if target.count(":") == 1 else target
+    try:
+        ip = socket.gethostbyname(host)
+    except OSError:
+        return None
+    parts = ip.rsplit(".", 1)
+    return parts[0] + ".255" if len(parts) == 2 else None
+
+
 def send_magic_packet(mac_hex, directed_ip=None):
     """Send the WoL magic packet to the limited broadcast + directed subnet broadcast.
 
@@ -73,20 +94,39 @@ def send_magic_packet(mac_hex, directed_ip=None):
     structured result either way.
     """
     magic = b"\xff" * 6 + bytes.fromhex(mac_hex) * 16
+    bcast = _directed_broadcast(directed_ip)
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
             # 255.255.255.255 = IPv4 limited broadcast (RFC 1122 §3.2.1.3): a protocol
             # constant, not a host. The x.y.z.255 directed broadcast reaches the /24.
             sock.sendto(magic, ("255.255.255.255", 9))
-            if directed_ip:
-                parts = directed_ip.rsplit(".", 1)
-                if len(parts) == 2:
-                    sock.sendto(magic, (parts[0] + ".255", 9))
     except OSError as e:
         return {"ok": False, "mac": mac_hex, "sent": False, "directed_ip": directed_ip,
                 "error": f"socket error sending magic packet: {e}"}
-    return {"ok": True, "mac": mac_hex, "sent": True, "directed_ip": directed_ip}
+
+    # The directed broadcast is a best-effort second copy, and it gets its own
+    # try for a reason: it fails routinely for hosts on subnets this box has no
+    # route to (10.37.5.0/24, say). Sharing one try with the limited broadcast
+    # above made that failure report {"ok": false, "sent": false} for a packet
+    # that had already gone out — the instrument lying about its own success,
+    # which is the exact class of bug #122 was about.
+    directed_error = None
+    if bcast:
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+                sock.sendto(magic, (bcast, 9))
+        except OSError as e:
+            directed_error = f"directed broadcast to {bcast} failed: {e}"
+    elif directed_ip:
+        directed_error = f"could not resolve {directed_ip!r} to a directed broadcast address"
+
+    out = {"ok": True, "mac": mac_hex, "sent": True, "directed_ip": directed_ip,
+           "directed_broadcast": bcast}
+    if directed_error:
+        out["directed_warning"] = directed_error
+    return out
 
 
 def _ssh_target(name):
