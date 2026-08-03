@@ -101,11 +101,15 @@ bell-features = no-attention
 bell-features = no-title
 
 # ── Performance (optimized for Claude Code) ──
-# `true` = selection goes to PRIMARY only (select, then middle-click to paste),
-# which is the normal Ubuntu/GNOME behaviour. Do NOT set `clipboard` here: that
-# makes every terminal selection overwrite the system CLIPBOARD, silently
-# destroying whatever you had copied from another app.
-copy-on-select = true
+# JP wants Ghostty doing NO automatic copying of any kind (2026-07-31).
+# `clipboard` (the old value) wrote every selection to PRIMARY *and* the system
+# CLIPBOARD, destroying whatever had been copied from another app. `false` means
+# Ghostty writes to neither. Middle-click paste still works — Ghostty enables it
+# regardless of this setting.
+# NOTE: Ghostty is not the only thing that can auto-copy here. These windows run
+# tmux (see `command` above), and tmux's own `set-clipboard on` + `mouse on`
+# copies selections to the system clipboard over OSC 52. Check ~/.tmux.conf too.
+copy-on-select = false
 mouse-scroll-multiplier = 3
 window-inherit-font-size = false
 resize-overlay = never
@@ -124,3 +128,15 @@ keybind = ctrl+zero=reset_font_size
 
 # ── Shell Integration ──
 shell-integration = detect
+
+# -- No "Copied to clipboard" toast -----------------------------------------
+# Ghostty's default is `app-notifications = clipboard-copy,config-reload`, so
+# every OSC 52 clipboard write from an app inside the terminal raised a popup.
+# Claude Code emits those on its copy actions, which is what JP kept seeing
+# (2026-08-03). tmux now refuses to relay them (`set-clipboard off` in
+# ~/Projects/tmux/tmux.conf) -- this is the second layer, so nothing can toast
+# even if something writes the clipboard directly.
+#
+# JP's workflow is the native desktop one: drag to select (-> PRIMARY),
+# middle-click to paste. Deliberate copies still work via Ctrl+Shift+C.
+app-notifications = no-clipboard-copy
