@@ -1,7 +1,9 @@
 // Slumber Ward — list WoL-managed hosts with live power state + wake/slumber.
 // Rows are built with createElement/textContent (never innerHTML) so host names
 // from the API can never be interpreted as markup.
-const WOL_ICON = { awake: "⚡", slumbering: "🌙", waking: "…", dark: "🕯️" };
+// "unknown" = never successfully probed. Distinct from "dark" (probed, silent)
+// so the panel stops rendering unmeasured hosts as confirmed-down (#122).
+const WOL_ICON = { awake: "⚡", slumbering: "🌙", waking: "…", dark: "🕯️", unknown: "❔" };
 
 function wolBtn(label, act, host) {
   const b = document.createElement("button");

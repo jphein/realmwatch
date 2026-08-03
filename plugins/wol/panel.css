@@ -44,6 +44,9 @@
 #wol-panel-body .wol-slumbering { color: #8fb6e6; }
 #wol-panel-body .wol-waking { color: #d9b35a; }
 #wol-panel-body .wol-dark { color: var(--wol-dim); }
+/* unmeasured, not confirmed-down — muted + italic so it reads as absence of
+   knowledge rather than a reported state (#122) */
+#wol-panel-body .wol-unknown { color: var(--wol-dim); font-style: italic; opacity: 0.75; }
 #wol-panel-body .wol-btn {
   background: linear-gradient(180deg, rgba(212,176,106,0.18), rgba(212,176,106,0.06));
   color: var(--wol-ink);

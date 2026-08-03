@@ -71,7 +71,59 @@ def setup(ctx):
                 out[n] = {"name": n, "fleet_id": None, "ip": None, "mac": overrides.get(n)}
         return list(out.values())
 
-    def reachable(name):
+    # --- liveness (#122) -------------------------------------------------
+    # The old reachable() asked the latency plugin "is this name a key in your
+    # map?" and treated every miss as *down*. That map only covers topology
+    # nodes that carry an `ip` field and answered fping AT THAT STORED IP, so
+    # three very different facts all arrived as False: host is down, host has
+    # no topology entry (serialhub had none), and host was probed at a stale
+    # address belonging to somebody else (nodered's .118 is ha-dash-kitchen).
+    # Measured 2026-08-02: 16 of 70 managed hosts reported "dark" while
+    # answering ping. The watch() thread below turns each of those into an
+    # `alert` event, so the bad reads were also manufacturing false quests.
+    #
+    # We now run our own probe, BY HOSTNAME, and keep the three-valued answer.
+    _LIVENESS_TTL = 25          # seconds; watch() refreshes on a 20s cadence
+    _liveness = {}              # {host: rtt_ms|None} — absent = unprobeable
+    _liveness_ts = 0.0
+    _liveness_lock = threading.Lock()
+
+    def refresh_liveness(hosts=None):
+        """Probe every managed host by name and swap in the fresh map."""
+        nonlocal _liveness, _liveness_ts
+        names = [h["name"] for h in (hosts if hosts is not None else managed_hosts())]
+        probed = power_ops.probe_liveness(names)
+        # Fall back to the stored IP only for hosts whose NAME did not resolve,
+        # so a host that is in the fleet but not in DNS is still measurable.
+        missing = [h for h in (hosts if hosts is not None else managed_hosts())
+                   if h["name"] not in probed and h.get("ip")]
+        if missing:
+            by_ip = power_ops.probe_liveness([h["ip"] for h in missing])
+            for h in missing:
+                if h["ip"] in by_ip:
+                    probed[h["name"]] = by_ip[h["ip"]]
+        with _liveness_lock:
+            _liveness = probed
+            _liveness_ts = time.time()
+        return probed
+
+    def liveness_map():
+        """Cached liveness. Refreshes synchronously only on a cold/stale cache
+        — status_rows() runs on every /status request, so this must be cheap."""
+        with _liveness_lock:
+            fresh = _liveness_ts and (time.time() - _liveness_ts) < _LIVENESS_TTL
+            snapshot = dict(_liveness)
+        return snapshot if fresh else refresh_liveness()
+
+    def reachable(name, live=None):
+        """True only on positive evidence, from either probe lane.
+
+        The latency plugin's map is still consulted as a fast path, but only a
+        *hit* is meaningful there; a miss proves nothing (see above).
+        """
+        live = liveness_map() if live is None else live
+        if live.get(name) is not None:
+            return True
         api = ctx.get_plugin_api("latency")
         if not api:
             return False
@@ -83,14 +135,20 @@ def setup(ctx):
     def status_rows():
         ttl = db.get_setting("sleep_ttl_seconds", 21600)
         sleepable = db.get_setting("sleepable", [])
+        hosts = managed_hosts()
+        live = liveness_map()
         rows = []
-        for h in managed_hosts():
+        for h in hosts:
             n = h["name"]
-            rch = reachable(n)
+            rch = reachable(n, live)
+            # "known" = we actually measured this host this cycle. Without it a
+            # host we never managed to ask would be reported dark.
+            known = rch or (n in live)
             state = power_ops.power_state(
-                n, rch, last_action_ts(n, "sleep"), last_action_ts(n, "wake"), ttl)
+                n, rch, last_action_ts(n, "sleep"), last_action_ts(n, "wake"), ttl, known=known)
             rows.append({"host": n, "fleet_id": h["fleet_id"], "ip": h["ip"], "state": state,
-                         "reachable": rch, "sleepable": n in sleepable, "wake_capable": bool(h["mac"])})
+                         "reachable": rch, "measured": known, "rtt_ms": live.get(n),
+                         "sleepable": n in sleepable, "wake_capable": bool(h["mac"])})
         return rows
 
     # --- HTTP handlers (close over ctx/db) ---
@@ -195,6 +253,8 @@ def setup(ctx):
     def watch():
         prog = ctx.get_plugin_api("progression")
         codex = ctx.get_plugin_api("codex")
+        # Pay the probe cost on this thread, not on a /status request.
+        refresh_liveness()
         for r in status_rows():
             host, cur = r["host"], r["state"]
             with _state_lock:

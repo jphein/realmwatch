@@ -178,8 +178,87 @@ def suspend_host(name):
     return ssh(name, "systemd-run --no-block systemctl suspend", priv=True)
 
 
-def power_state(name, reachable, last_sleep_ts, last_wake_ts, sleep_ttl):
-    """Derive power state from reachability + recent wake/sleep intent."""
+LIVENESS_TIMEOUT_MS = 500
+
+
+def probe_liveness(targets, timeout_ms=LIVENESS_TIMEOUT_MS):
+    """Batch ICMP-probe ``targets``; return ``{target: rtt_ms | None}``.
+
+    Probe **by hostname**, not by a stored IP. DNS then resolves at probe time,
+    so a host that re-leases a new address stays visible. A stored IP literal
+    silently starts probing whoever inherited the lease — the wrong-referent
+    failure behind #122, where topology's ``familiar.ip`` still held serialhub's
+    address and the map reported live hosts as dark.
+
+    The return value is deliberately three-valued, because "did not answer" and
+    "was never asked" are different facts and only one of them means *down*:
+
+    * ``target -> float``  — answered; value is RTT in ms  (**awake**)
+    * ``target -> None``   — resolved, probed, stayed silent (**dark**)
+    * *target absent*      — could not be resolved/probed at all (**unknown**)
+
+    Callers must not collapse the third case into "down". Unresolvable targets
+    are omitted rather than reported False so that a DNS outage degrades to
+    "unknown" instead of alarming every host in the fleet at once.
+    """
+    targets = [t for t in dict.fromkeys(targets or []) if _safe_token(t)]
+    if not targets:
+        return {}
+    try:
+        result = subprocess.run(
+            ["fping", "-c1", "-t", str(int(timeout_ms)), "-q"] + targets,
+            capture_output=True, text=True, timeout=max(20, len(targets) // 4))
+    except FileNotFoundError:
+        return _probe_liveness_fallback(targets, timeout_ms)
+    except (subprocess.TimeoutExpired, OSError):
+        return {}
+    # fping echoes the target as given (name in, name out) on stderr:
+    #   host : xmt/rcv/%loss = 1/1/0%, min/avg/max = 0.36/0.36/0.36   -> alive
+    #   host : xmt/rcv/%loss = 1/0/100%                               -> silent
+    # Unresolvable targets produce no line at all, so they stay absent.
+    out = {}
+    for line in result.stderr.splitlines():
+        m = re.match(r'^(\S+)\s*:\s*xmt/rcv/%loss', line)
+        if not m:
+            continue
+        rtt = re.search(r'min/avg/max\s*=\s*[\d.]+/([\d.]+)/[\d.]+', line)
+        out[m.group(1)] = round(float(rtt.group(1)), 2) if rtt else None
+    return out
+
+
+def _probe_liveness_fallback(targets, timeout_ms):
+    """Sequential ``ping`` fallback when fping is not installed.
+
+    Keeps probe_liveness's three-valued contract: a target whose ping cannot
+    resolve the name is omitted, not reported dead.
+    """
+    wait = max(1, int(round(timeout_ms / 1000.0)))
+    out = {}
+    for t in targets:
+        try:
+            r = subprocess.run(["ping", "-c", "1", "-W", str(wait), t],
+                               capture_output=True, text=True, timeout=wait + 3)
+        except (subprocess.TimeoutExpired, OSError):
+            continue
+        # ping exits 2 (and says so on stderr) when the NAME cannot resolve —
+        # that is "unknown", not "down", so leave the target out of the map.
+        if r.returncode == 2 and ("unknown host" in r.stderr.lower()
+                                  or "name or service not known" in r.stderr.lower()):
+            continue
+        m = re.search(r'time[=<]([\d.]+)', r.stdout)
+        out[t] = round(float(m.group(1)), 2) if m else None
+    return out
+
+
+def power_state(name, reachable, last_sleep_ts, last_wake_ts, sleep_ttl, known=True):
+    """Derive power state from reachability + recent wake/sleep intent.
+
+    ``known`` carries whether reachability was actually *measured*. When it is
+    False the host was never successfully probed, and the honest answer is
+    "unknown" — reporting "dark" there is what made /status lie (#122).
+    Recorded sleep/wake intent still wins over an unmeasured probe, since that
+    intent is first-hand knowledge rather than an inference from silence.
+    """
     now = time.time()
     if reachable:
         return "awake"
@@ -187,4 +266,6 @@ def power_state(name, reachable, last_sleep_ts, last_wake_ts, sleep_ttl):
         return "slumbering"
     if last_wake_ts and (now - last_wake_ts) < 120:
         return "waking"
+    if not known:
+        return "unknown"
     return "dark"
