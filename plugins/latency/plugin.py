@@ -21,9 +21,15 @@ _PROBE_INTERVAL = 30  # seconds
 
 # Module-level state (thread-safe via reference replacement)
 _latency_map = {}      # {node_id: rtt_ms}
-_ip_to_node = {}       # {ip: node_id}
-_node_to_ip = {}       # {node_id: ip}
-_wired_ips = []        # list of IPs to probe (excludes WiFi)
+_ip_to_node = {}       # {probe_target: node_id}   target may be a hostname
+_node_to_ip = {}       # {node_id: probe_target}
+_wired_ips = []        # probe targets (hostname preferred over IP; excludes WiFi)
+# {probe_target: topology's stored ip}. discovery_engine.HostAccess keys its
+# reachability cache by the node's stored `ip`, so results must be reported
+# under that key even when we probed by name — otherwise every name-probed node
+# misses the cache and HostAccess falls through to "assume reachable", sending
+# SSH/SNMP at hosts already known to be down.
+_target_to_stored_ip = {}
 _running = False
 _wifi_nodes = set()    # updated externally via set_wifi_nodes()
 _last_probe_ts = 0.0   # epoch of last successful probe
@@ -48,7 +54,7 @@ def _load_topology():
     10.0.6.118 = ha-dash-kitchen) came to be probed as the wrong machines and
     reported dark (#122). Probing by name lets DNS answer at probe time.
     """
-    global _ip_to_node, _node_to_ip, _wired_ips
+    global _ip_to_node, _node_to_ip, _wired_ips, _target_to_stored_ip
     try:
         from realm_text import probe_target
     except ImportError:            # pragma: no cover - core helper is always present
@@ -58,22 +64,26 @@ def _load_topology():
             topo = json.load(f)
         ip_map = {}
         node_map = {}
+        stored_map = {}
         for n in topo.get("nodes", []):
             nid = n["id"]
             # Skip WiFi clients
             if nid in _wifi_nodes:
                 continue
+            stored_ip = n.get("ip")
             if probe_target is not None:
-                target = probe_target(nid, n.get("ip"))
+                target = probe_target(nid, stored_ip)
             else:
-                ip = n.get("ip")
-                target = ip if ip and not ip.endswith(".x") else None
+                target = stored_ip if stored_ip and not stored_ip.endswith(".x") else None
             if not target:
                 continue
             ip_map[target] = nid
             node_map[nid] = target
+            if stored_ip and not stored_ip.endswith(".x"):
+                stored_map[target] = stored_ip
         _ip_to_node = ip_map
         _node_to_ip = node_map
+        _target_to_stored_ip = stored_map
         _wired_ips = list(ip_map.keys())
     except Exception as e:
         print(f"latency plugin: topology load error: {e}", flush=True)
@@ -125,15 +135,23 @@ def _probe_once():
     global _latency_map, _last_probe_ts
     _load_topology()
     ip_latencies = _probe_fping()
-    # Feed reachability data to discovery engine HostAccess cache
+    # Feed reachability data to discovery engine HostAccess cache.
+    # HostAccess keys that cache by the node's *stored* topology ip, so report
+    # under both keys: the target we actually probed, and the stored ip it maps
+    # to. Reporting only the target would make every name-probed node miss the
+    # cache, and HostAccess fails open ("assume reachable") — it would then fire
+    # SSH/SNMP at hosts already measured as down.
     try:
         from discovery_engine import HostAccess
-        for ip in _wired_ips:
-            rtt = ip_latencies.get(ip)
-            HostAccess.update_reachability(ip, rtt is not None, rtt)
+        for target in _wired_ips:
+            rtt = ip_latencies.get(target)
+            HostAccess.update_reachability(target, rtt is not None, rtt)
+            stored = _target_to_stored_ip.get(target)
+            if stored and stored != target:
+                HostAccess.update_reachability(stored, rtt is not None, rtt)
     except ImportError:
         pass
-    # Convert {ip: rtt} -> {node_id: rtt}
+    # Convert {probe_target: rtt} -> {node_id: rtt}
     new_map = {}
     for ip, rtt in ip_latencies.items():
         nid = _ip_to_node.get(ip)
