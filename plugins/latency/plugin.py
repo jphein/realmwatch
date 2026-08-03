@@ -38,23 +38,40 @@ def set_wifi_nodes(wifi_dict):
 
 
 def _load_topology():
-    """Load node IPs from topology.json, filtering out WiFi clients."""
+    """Load probe targets from topology.json, filtering out WiFi clients.
+
+    Targets are resolved through realm_text.probe_target, which prefers a
+    resolvable hostname over topology's stored `ip`. The stored literal is a
+    snapshot of a DHCP lease; when the lease moves the literal silently starts
+    naming whoever inherited it, and the node gets probed as someone else.
+    That is how familiar (stored 10.0.6.104 = serialhub) and nodered (stored
+    10.0.6.118 = ha-dash-kitchen) came to be probed as the wrong machines and
+    reported dark (#122). Probing by name lets DNS answer at probe time.
+    """
     global _ip_to_node, _node_to_ip, _wired_ips
+    try:
+        from realm_text import probe_target
+    except ImportError:            # pragma: no cover - core helper is always present
+        probe_target = None
     try:
         with open(_TOPOLOGY_FILE) as f:
             topo = json.load(f)
         ip_map = {}
         node_map = {}
         for n in topo.get("nodes", []):
-            ip = n.get("ip")
             nid = n["id"]
-            if not ip or ip.endswith(".x"):
-                continue
             # Skip WiFi clients
             if nid in _wifi_nodes:
                 continue
-            ip_map[ip] = nid
-            node_map[nid] = ip
+            if probe_target is not None:
+                target = probe_target(nid, n.get("ip"))
+            else:
+                ip = n.get("ip")
+                target = ip if ip and not ip.endswith(".x") else None
+            if not target:
+                continue
+            ip_map[target] = nid
+            node_map[nid] = target
         _ip_to_node = ip_map
         _node_to_ip = node_map
         _wired_ips = list(ip_map.keys())

@@ -135,3 +135,75 @@ def ulid() -> str:
         rand_part += _ENCODING[b & 0x1F]
         rand_part += _ENCODING[(b >> 5) & 0x1F]
     return ts_part + rand_part[:16]
+
+
+# ---------------------------------------------------------------------------
+# Probe targets — prefer a resolvable NAME over a stored IP literal
+# ---------------------------------------------------------------------------
+#
+# A stored IP is a snapshot of a DHCP lease, and leases move. When they do the
+# literal does not go blank — it silently starts naming whoever inherited the
+# address, which is far worse than a missing value because it stays plausible.
+# Both live probe lists (engine.py's ping list and plugins/latency) were built
+# from topology's `ip` field and hit exactly this: topology had familiar at
+# 10.0.6.104 (serialhub's address) and nodered at 10.0.6.118 (ha-dash-kitchen),
+# so both hosts were probed as somebody else and reported dark (#122).
+#
+# Resolving the name at probe time makes the class of bug structurally
+# impossible: DNS is authoritative for "where is this host right now", and the
+# stored IP degrades to a fallback for nodes DNS has never heard of.
+
+_RESOLVE_TTL = 300.0          # seconds; DHCP leases here are hours, 5 min is ample
+_resolve_cache: dict[str, tuple[float, bool]] = {}
+
+# A DNS label we are willing to hand to a resolver / probe argv. Must START
+# alphanumeric so it can never be read as an option flag (e.g. `-oProxyCommand`).
+_RESOLVABLE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+_IPV4_LITERAL = re.compile(r"^\d{1,3}(\.\d{1,3}){3}$")
+
+
+def resolves(name: str | None) -> bool:
+    """True if ``name`` resolves in DNS right now. Cached for ~5 minutes.
+
+    Negative answers are cached too — a node id that is not a real hostname
+    (``tuya-sprites``, ``esp-swarm``) must not cost a DNS round-trip on every
+    probe cycle.
+    """
+    if not name or not _RESOLVABLE_NAME.match(name) or _IPV4_LITERAL.match(name):
+        return False
+    now = time.time()
+    hit = _resolve_cache.get(name)
+    if hit and (now - hit[0]) < _RESOLVE_TTL:
+        return hit[1]
+    import socket
+    try:
+        socket.getaddrinfo(name, None, family=socket.AF_INET)
+        ok = True
+    except (socket.gaierror, UnicodeError, OSError):
+        ok = False
+    _resolve_cache[name] = (now, ok)
+    return ok
+
+
+def probe_target(node_id: str, stored_ip: str | None = None) -> str | None:
+    """Best address to probe for a node: its resolvable id, else the stored IP.
+
+    Preference order is the node id (realmwatch node ids are hostnames for real
+    machines) and then the stored IP literal. Returns None when there is nothing
+    probeable, so callers can tell "no target" from "target that did not answer".
+
+    Placeholder IPs (``10.0.10.x``) are treated as absent; they mark aggregate
+    swarm nodes that stand for a whole subnet rather than one machine.
+
+    Topology's ``_hostname`` is deliberately NOT consulted. It records the name a
+    device announced over DHCP, which is neither unique nor trustworthy: on this
+    fleet both ``family-vm`` and ``neocharge`` carry ``_hostname: ha``, and
+    ``s24-ultra`` carries ``Pixel-4``. Preferring it would have probed those nodes
+    as a different, live machine and reported them falsely *awake* — the same
+    wrong-referent bug as #122 with the sign flipped.
+    """
+    if resolves(node_id):
+        return node_id
+    if stored_ip and not stored_ip.endswith(".x"):
+        return stored_ip
+    return None

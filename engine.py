@@ -8,6 +8,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from dotenv import load_dotenv
 
+import realm_text
+
 load_dotenv()
 
 # Prime psutil's CPU percent counter so that subsequent interval=0 calls
@@ -232,9 +234,12 @@ class RealmEngine:
                 topo = json.load(f)
             nodes = {}
             for n in topo.get("nodes", []):
-                ip = n.get("ip")
-                if ip and not ip.endswith(".x"):  # skip placeholder IPs
-                    nodes[n["id"]] = ip
+                # Prefer a resolvable hostname over topology's stored `ip` — the
+                # literal is a DHCP-lease snapshot and silently renames itself to
+                # whoever inherits the address when the lease moves (#122).
+                target = realm_text.probe_target(n["id"], n.get("ip"))
+                if target:
+                    nodes[n["id"]] = target
             cls._realm_nodes = nodes
             cls._topo_mtime = mt
         except (OSError, json.JSONDecodeError):
