@@ -1,0 +1,18 @@
+# Meshtastic launcher on the surveyor tablet.
+#   deploy: ~/.local/share/applications/meshtastic-client.desktop
+#
+# Firefox, NOT Brave/Chromium — two reasons discovered 2026-08-05:
+#   * GNOME's on-screen keyboard never pops for Chromium-family browsers unless
+#     launched with --enable-wayland-ime; Firefox speaks Wayland text-input
+#     natively, so the OSK just works on this keyboardless tablet.
+#   * Web Bluetooth is compiled out of every Linux browser anyway, so the
+#     Chromium-only argument for it was moot — the client connects over HTTP
+#     (or Web Serial, which Firefox lacks but the CLI covers).
+[Desktop Entry]
+Type=Application
+Name=Meshtastic
+Comment=Meshtastic web client (Firefox — OSK works natively on Wayland)
+Exec=firefox --new-window http://127.0.0.1:8080/
+Icon=network-wireless
+Terminal=false
+Categories=Network;
