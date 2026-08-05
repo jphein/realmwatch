@@ -1,0 +1,47 @@
+# Self-hosted Meshtastic web client on the surveyor tablet.
+#
+#   ~/.config/systemd/user/meshtastic-web.service
+#   systemctl --user enable --now meshtastic-web
+#
+# WHY SELF-HOSTED AT ALL. Meshtastic 2.7 no longer ships an on-device web UI.
+# The radio's HTTP server runs and its API answers, but the filesystem holds no
+# assets — hitting the radio's IP returns "Web server is running. The content you
+# are looking for can't be found." The release's `littlefs-*.bin` does NOT fix
+# that: it is a BLANK filesystem (252 non-zero bytes in 1.5 MB), and flashing it
+# only erases the node's config, which lives in that same partition. Verified the
+# hard way on 2026-08-05 and rolled back from a raw dump.
+#
+# WHY PLAIN HTTP, NOT client.meshtastic.org. That site is HTTPS, and the radio
+# speaks plain HTTP on :80 with no TLS listener. A secure page may not call an
+# insecure endpoint, so the hosted client is blocked by mixed-content policy.
+# Serving the same client over http:// puts page and device on one scheme.
+# (Web Bluetooth would sidestep it, but `navigator.bluetooth` is undefined in
+# both Chromium and Brave on Linux — tested in a real GUI, not headless.)
+#
+# WHY systemd AND NOT A BACKGROUND python3. Per CLAUDE.md: a detached process
+# started from an agent session dies with the session, leaving artefacts that
+# still pass a casual check, and then gets restarted by every session that
+# notices — several writers, one port. systemd is the single owner; `start` on a
+# running unit is a no-op and Restart=always covers crashes. Needs linger:
+#   loginctl enable-linger jp
+#
+# No secrets here: `systemctl cat` is world-readable.
+[Unit]
+Description=Meshtastic web client (self-hosted, static)
+Documentation=https://github.com/meshtastic/web
+After=network-online.target
+
+[Service]
+Type=exec
+WorkingDirectory=%h/meshtastic-web
+ExecStart=/usr/bin/python3 -m http.server 8080 --bind 0.0.0.0
+Restart=always
+RestartSec=5
+# Static assets only, no writes, no privilege needed.
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target

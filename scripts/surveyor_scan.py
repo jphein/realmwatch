@@ -40,6 +40,14 @@ HOME = pathlib.Path.home()
 FLEET = HOME / ".cache/realm-fleet-bssids.json"
 SURVEYS = HOME / "surveys"
 
+# GPS comes from a Meshtastic Heltec Wireless Tracker over BLE, not a USB dongle.
+# That is deliberate: BLE means the radio travels WITH the tablet and works at a
+# prospective subscriber's site, which by definition has no WiFi and may have no
+# cell. The same radio gives LoRa reach back to the mesh from those sites.
+# `yin` = 48:CA:43:3C:0F:6D, bonded+trusted to this tablet 2026-08-05.
+MESH_BIN = HOME / ".venvs/meshtastic/bin/meshtastic"
+MESH_BLE = "48:CA:43:3C:0F:6D"
+
 # Usable-link rules of thumb for planning, in dBm. These are receive-side
 # thresholds for a fixed outdoor link, deliberately conservative: a link that is
 # merely "connectable" at install will fail in rain and in summer foliage.
@@ -108,6 +116,57 @@ def sweep(iface: str) -> list[dict]:
     return out
 
 
+def gps_fix() -> dict:
+    """Ask the Meshtastic radio where we are. Returns a dict that ALWAYS says
+    whether it got a fix, and why not when it didn't.
+
+    Deliberately never returns None-and-nothing-else. A survey record missing a
+    `gps` key is indistinguishable from one where GPS was never attempted, and
+    that ambiguity is exactly how a coverage map ends up with silent holes.
+    """
+    if not MESH_BIN.exists():
+        return {"fix": False, "reason": f"meshtastic CLI not installed at {MESH_BIN}"}
+    try:
+        r = subprocess.run([str(MESH_BIN), "--ble", MESH_BLE, "--info"],
+                           capture_output=True, text=True, timeout=120)
+    except subprocess.TimeoutExpired:
+        return {"fix": False, "reason": "radio did not answer within 120s (asleep or out of range)"}
+    out = r.stdout
+    if "Connected to radio" not in out:
+        # The CLI scans first, and a peripheral that something ELSE is already
+        # connected to stops advertising — so "not found" often means "in use",
+        # not "absent". Say so, because the two have opposite fixes.
+        hint = ("radio not found — note it stops advertising while another client "
+                "(bluetoothctl, the web client, a phone) holds the link")
+        return {"fix": False, "reason": hint}
+
+    # Find OUR node's entry, not a neighbour's. Every node in the mesh reports a
+    # position; picking the first one would happily geotag the survey with some
+    # stranger's coordinates from three miles away.
+    m = re.search(r'"myNodeNum":\s*(\d+)', out)
+    if not m:
+        return {"fix": False, "reason": "could not determine own node number"}
+    mynum = m.group(1)
+    blocks = re.findall(r'"!([0-9a-f]+)":\s*\{(.*?)\n  \}', out, re.S)
+    for _nid, body in blocks:
+        if f'"num": {mynum}' not in body:
+            continue
+        pos = re.search(r'"position":\s*\{(.*?)\}', body, re.S)
+        if not pos or not pos.group(1).strip():
+            return {"fix": False, "reason": "GPS enabled but no fix yet (needs sky view; cold start can take minutes)"}
+        p = pos.group(1)
+        def num(k):
+            mm = re.search(rf'"{k}":\s*(-?[\d.]+)', p)
+            return float(mm.group(1)) if mm else None
+        lat, lon = num("latitude"), num("longitude")
+        if lat is None or lon is None:
+            return {"fix": False, "reason": "position present but no lat/lon (partial fix)"}
+        return {"fix": True, "lat": lat, "lon": lon,
+                "alt_m": num("altitude"), "sats": num("satsInView"),
+                "source": f"meshtastic {MESH_BLE}"}
+    return {"fix": False, "reason": "own node not present in the node list"}
+
+
 def load_fleet() -> dict:
     if not FLEET.exists():
         print(f"  NOTE no fleet map at {FLEET} — everything will read as FOREIGN.")
@@ -131,6 +190,8 @@ def main() -> int:
     p.add_argument("--dwell", type=int, default=25, help="seconds to sweep (default 25)")
     p.add_argument("--iface", default=None, help="wireless interface (auto-detected)")
     p.add_argument("--iperf", metavar="HOST", help="also run an iperf3 throughput test")
+    p.add_argument("--gps", action="store_true",
+                   help="geotag from the Meshtastic radio over BLE (adds ~30-60s)")
     p.add_argument("--compare", action="store_true", help="list past surveys and exit")
     args = p.parse_args()
 
@@ -143,6 +204,9 @@ def main() -> int:
         for f in rows:
             d = json.loads(f.read_text())
             best = d.get("best_ours") or {}
+            g = d.get("gps") or {}
+            loc = f"{g['lat']:.5f},{g['lon']:.5f}" if g.get("fix") else "no-gps"
+            print(f"  {loc:>19s}  ", end="")
             print(f"  {d['site']:24s} {d['when'][:16]}  best-ours "
                   f"{best.get('ap','-'):16s} {best.get('median','-')} dBm  "
                   f"foreign={d['summary']['foreign_bssids']}")
@@ -162,6 +226,17 @@ def main() -> int:
 
     fleet = load_fleet()
     fmap = fleet.get("bssids", {})
+
+    gps = {"fix": False, "reason": "not requested (--gps)"}
+    if args.gps:
+        print("  asking the Meshtastic radio for a position ...")
+        gps = gps_fix()
+        if gps["fix"]:
+            print(f"    {gps['lat']:.6f}, {gps['lon']:.6f}"
+                  + (f"  alt {gps['alt_m']:.0f}m" if gps.get("alt_m") else ""))
+        else:
+            print(f"    NO FIX — {gps['reason']}")
+            print("    (survey continues; the record will say so explicitly)")
 
     print(f"  site '{args.site}' · iface {iface} · dwelling {args.dwell}s")
     samples: dict[str, list[float]] = defaultdict(list)
@@ -275,6 +350,7 @@ def main() -> int:
         "best_ours": ({"ap": best["ap"], "ssid": best["ssid"],
                        "median": best["median"], "grade": best["grade"]} if best else None),
         "iperf": iperf,
+        "gps": gps,
         "observations": rows,
     }
     stamp = time.strftime("%Y%m%d-%H%M%S")
