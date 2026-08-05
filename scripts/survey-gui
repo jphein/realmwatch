@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Touch-first front end for surveyor_scan.py: one dialog for the site label
+# (the only required input), sensible defaults for the rest, output in a
+# terminal that stays open. GTK dialogs speak Wayland text-input natively, so
+# the on-screen keyboard pops for the entry field — the reason this is zenity
+# and not a terminal read prompt.
+SITE=$(zenity --entry --title 'RF Site Survey'   --text 'Site label (e.g. thomas-roof, willows-eave):' 2>/dev/null) || exit 0
+[ -z "$SITE" ] && exit 0
+GPS=''
+zenity --question --title 'RF Site Survey'   --text 'Geotag from the mesh radio (yin) over BLE?\nAdds ~30-60s.' 2>/dev/null && GPS='--gps'
+exec gnome-terminal --title "survey: $SITE" -- bash -c   "~/.local/bin/survey --site '$SITE' $GPS --dwell 30; echo; read -p '── done — Enter to close ──'"

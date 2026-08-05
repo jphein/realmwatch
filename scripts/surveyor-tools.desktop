@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Site Survey
+Comment=RF site survey — dwell scan, ours-vs-foreign, optional GPS geotag
+Exec=/home/jp/.local/bin/survey-gui
+Icon=network-wireless-signal-good
+Terminal=false
+Categories=Network;Utility;
