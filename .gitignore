@@ -78,3 +78,6 @@ personas.json.pre-fleet-*
 realm-local.json.pre-fleet-*
 venv.legacy/
 *.egg-info/
+
+# Local working directories — never tracked
+scratch/
