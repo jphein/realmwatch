@@ -54,6 +54,20 @@ CREATE INDEX IF NOT EXISTS idx_quests_status ON quests(status);
 CREATE INDEX IF NOT EXISTS idx_quests_corr ON quests(correlation_id);
 CREATE INDEX IF NOT EXISTS idx_quests_parent ON quests(parent_quest_id);
 
+-- Schema-ownership note (#123). `plugins/realm-engine/db.py` is the
+-- authoritative bootstrap for these tables AND for `events`; it declares
+-- FOREIGN KEY (source_event_id)/(event_id) REFERENCES events(event_id), which
+-- the live game.db therefore carries. This file is the fresh-install
+-- belt-and-suspenders fallback and deliberately does NOT restate those FKs: it
+-- does not create `events`, so an FK declared here would be unenforceable —
+-- worse, it would make inserts fail with "no such table: events" whenever the
+-- quests plugin loads before realm-engine.
+--
+-- The consequence is that the two bootstraps disagree, so the same write can
+-- succeed on a fresh realm and fail on an established one. Rather than paper
+-- over that with a duplicated FK, the write path in server.py resolves the
+-- reference before writing it and tolerates `events` being absent entirely —
+-- correct under either schema. Unifying ownership is the v0.6 job.
 CREATE TABLE IF NOT EXISTS quest_event_links (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     quest_id TEXT NOT NULL,
