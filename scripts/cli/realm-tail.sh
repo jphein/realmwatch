@@ -96,8 +96,11 @@ if [[ -n "$SINCE" ]]; then
   secs=$(( 10#$num * mult ))
   since_ts=$(( $(date +%s) - secs ))
   BACKFILL_FILE="$(mktemp -t realm-tail-backfill.XXXXXX.json)"
+  # limit=0 explicitly opts out of /events' default page size (#126). This
+  # request is already bounded — by --since — so the cap meant for unqualified
+  # callers would silently trim the far end of a long window (e.g. --since 2d).
   if ! curl --silent --max-time 5 --fail \
-        "${REALM_API}/events?since=${since_ts}" -o "$BACKFILL_FILE" 2>/dev/null; then
+        "${REALM_API}/events?since=${since_ts}&limit=0" -o "$BACKFILL_FILE" 2>/dev/null; then
     realm::warn "backfill failed (continuing with live stream only)"
     rm -f "$BACKFILL_FILE"; BACKFILL_FILE=""
   fi

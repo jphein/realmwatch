@@ -43,6 +43,12 @@ import sqlite3 as _sql
 from realm_text import real_home as _real_home
 _GAME_DB = str(_real_home() / ".realmwatch" / "game.db")
 
+# Default page size for GET /events when the caller passes no ?limit=. The
+# events table is append-only and unbounded, so an uncapped read grows without
+# limit (#126). Response stays a bare JSON array at every limit — scripts/cli
+# realm-find.sh asserts `type=="array"` and would break on an envelope.
+DEFAULT_EVENTS_LIMIT = 100
+
 def _generate_ulid():
     """Generate a ULID (26 chars, Crockford base32). Matches os.realm.watch format."""
     _ENC = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
@@ -503,7 +509,21 @@ def _h_get_quests_legacy(req, params):
 def _h_get_events(req, params):
     qp = req.query_params
     since = float(qp.get("since", 0) or 0)
-    limit = int(qp.get("limit", 0) or 0)
+    # Bare `/events` used to serialize the whole table — 5,006,019 bytes across
+    # 13k rows on this realm (#126). Naive clients swallowed it whole. Absent an
+    # explicit ?limit=, return the newest DEFAULT_EVENTS_LIMIT instead. The tail
+    # (not the head) is kept, so the "most recent activity" reading every caller
+    # already assumed still holds. `?limit=0` stays an explicit opt-out for the
+    # rare caller that genuinely wants full history. Callers reaching
+    # realm_db.get_events_since() directly (sse_broker, plugins/mcp) are
+    # unaffected — this cap is the HTTP surface's, not the store's.
+    raw_limit = (qp.get("limit") or "").strip()
+    try:
+        limit = int(raw_limit) if raw_limit else DEFAULT_EVENTS_LIMIT
+    except ValueError:
+        # Garbage like ?limit=soon used to 500 on the int() cast. Fall back to
+        # the default rather than failing the whole read.
+        limit = DEFAULT_EVENTS_LIMIT
     unacked_only = qp.get("ack", "").lower() in ("false", "0", "no")
     # `type` filter: comma-separated list, e.g. ?type=speech,alert. The CLI
     # exposes this via `realm event list --type speech` (and --kind alias).
