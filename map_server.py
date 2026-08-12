@@ -71,6 +71,31 @@ def _game_db_rw():
     conn.execute("PRAGMA busy_timeout=5000")
     return conn
 
+def _realm_db_economy():
+    """Gold/gems from realm.db `settings[player]`.
+
+    game.db models XP and levels but has no currency columns, so the coin purse
+    stays in realm.db and is composed onto the game-layer reads (#125). Kept as
+    one helper so /player and /player/reward can't drift on where money lives.
+    """
+    try:
+        data = realm_db.get_settings("player") or {}
+    except Exception:
+        return {"gold": 0, "gems": 0}
+    return {"gold": data.get("gold", 0) or 0, "gems": data.get("gems", 0) or 0}
+
+def _game_db_ro():
+    """Open game.db read-only. Returns None if the sidecar doesn't exist yet.
+
+    Read paths must not create the file — a bare sqlite3.connect() would
+    materialize an empty db and mask a genuinely missing game layer.
+    """
+    if not os.path.exists(_GAME_DB):
+        return None
+    conn = _sql.connect(f"file:{_GAME_DB}?mode=ro", uri=True, timeout=5)
+    conn.row_factory = _sql.Row
+    return conn
+
 def _game_level_info(total_xp, level):
     """Derive level stats matching the frontend's updateDockHUD expectations.
     Uses game.db formula: level N requires sum(100*i for i in range(1, N)) total XP."""
@@ -82,7 +107,13 @@ def _game_level_info(total_xp, level):
         "level": level, "xp": total_xp,
         "xp_next": xp_next, "xp_in_level": xp_in_level,
         "xp_level_start": xp_level_start,
-        "gold": 0, "gems": 0,
+        # Real gold/gems, not zeros. These used to be hardcoded 0, so every
+        # reward response animated the dock HUD's coin count from its true
+        # value down to nothing (_animateCount in updateDockHUD) until the next
+        # page load (#125). The purse lives in realm.db; game.db has no column
+        # for it. Granted *deltas* are still 0 — game.db awards no currency —
+        # but the reported totals are now true.
+        **_realm_db_economy(),
     }
 
 
@@ -727,7 +758,50 @@ def _h_get_observation(req, params):
     }
 
 def _h_get_player(req, params):
-    return realm_db.get_player_stats()
+    """Return player stats from game.db — the authoritative RPG store.
+
+    This read used to come from realm.db's `settings[player]` namespace while
+    its own write sibling, POST /player/reward, had already been migrated to
+    game.db (see _h_post_player_reward). Half a migration: the writer moved,
+    the reader stayed. So the dock HUD loaded a fossil (level 11 / 93,705 XP,
+    frozen — realm.db has no `player_rewards` dedupe rows, so grant_reward()
+    has never run against it) and then jumped to the live game.db level on the
+    first reward of the session (#125).
+
+    game.db is authoritative: 74 xp_events, active automated writers
+    (wol.slumber, achievement), and the only store carrying player_name /
+    player_class / skills. /api/hud, /progression/player, the CLI and the MCP
+    tools all read it already — this endpoint was the last holdout.
+
+    Gold and gems are the one thing realm.db holds that game.db has no column
+    for, and the dock HUD renders both (.hud-gold-num / .hud-gems-num in
+    updateDockHUD). So this is a composite read, not a wholesale switch: level
+    and XP come from game.db, the coin purse still comes from realm.db. Nothing
+    is migrated or deleted (CLAUDE.md: realm.db is live data — never drop tables
+    or delete rows), and the HUD keeps showing a real gold count instead of 0.
+    """
+    conn = _game_db_ro()
+    row = None
+    if conn is not None:
+        try:
+            row = conn.execute(
+                "SELECT player_name, player_class, total_xp, level FROM players "
+                "WHERE player_id = 'default'").fetchone()
+        finally:
+            conn.close()
+    if row is None:
+        # No game layer yet — report a level-1 shell but keep the real purse.
+        return {"level": 1, "xp": 0, "xp_next": 100, "xp_in_level": 0,
+                "xp_level_start": 0, **_realm_db_economy(),
+                "player_name": None, "player_class": None}
+    # Additive keys only — updateDockHUD reads level/xp/xp_next/xp_in_level/
+    # gold/gems, all of which _game_level_info supplies, so the existing
+    # contract is preserved intact.
+    return {
+        **_game_level_info(row["total_xp"], row["level"]),
+        "player_name": row["player_name"],
+        "player_class": row["player_class"],
+    }
 
 def _h_get_hud(req, params):
     """Return game HUD data for the GNOME Shell extension."""
