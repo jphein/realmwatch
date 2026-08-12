@@ -19,11 +19,73 @@ differences from the original:
 from __future__ import annotations
 
 import json
+import os
+import sqlite3
 import time
 
 from .db import DEFAULT_DB_PATH, get_connection
 from .models import QUEST_STATES
 from .throttle import record_event_seen, should_throttle
+
+# ── Auto-generation volume policy (#123) ─────────────────────────────────
+#
+# Auto-generation was dead from the start (every novel event hit a FOREIGN KEY
+# error), so the FK acted as an accidental circuit breaker. Repairing the write
+# path without a policy would open a firehose: on measured 7-day traffic, 3,663
+# qualifying events across 7 distinct semantic types, and each generated quest
+# mints a parent plus three sub-quests. That is ~2,700 rows/day.
+#
+# Two bounds, both overridable by env var:
+#
+# MIN_SEVERITY — the two highest-volume streams (cache_bloat and journal_bloat,
+#   1,109 events each over 7 days) are severity 2, i.e. routine housekeeping
+#   noise. A floor of 3 drops 61% of qualifying traffic and keeps the signal.
+#
+# DAILY_CAP — a hard backstop counted from game.db, not memory, because the
+#   cooldowns in throttle.py are in-process and reset on every restart. Without
+#   a durable bound a restart loop would re-burst indefinitely. Counts parent
+#   auto_anomaly quests over a rolling 24h; sub-quests ride along with parents.
+AUTO_QUEST_MIN_SEVERITY = int(os.environ.get("REALM_QUEST_MIN_SEVERITY", "3"))
+AUTO_QUEST_DAILY_CAP = int(os.environ.get("REALM_QUEST_DAILY_CAP", "8"))
+
+# Payload keys carrying the *semantic* event type, in precedence order. The
+# transport `type` field is only ever speech / alert / realm-event / system,
+# none of which is a template key — so keying quest generation on it meant the
+# 17 semantic templates could never match and everything became a generic
+# "Realm Disturbance" (#123). realm-optimizer puts the real type in
+# `optimizer_event_type`; it is present on 100% of measured qualifying traffic.
+# Transport type stays the last resort so nothing regresses to no key at all.
+_SEMANTIC_TYPE_KEYS = (
+    "optimizer_event_type",
+    "subtype",
+    "kind",
+    "event_subtype",
+    "anomaly_type",
+)
+
+
+def quest_discriminator(event: dict) -> str:
+    """Pick the type that decides which template and throttle bucket applies.
+
+    Prefers a semantic type from the payload over the transport envelope. This
+    is the key both `_TEMPLATES` and the cooldown are looked up by, so it also
+    controls how finely distinct problems are allowed to interleave: keying on
+    the transport type let a disk alert mask a DNS failure on the same host.
+    """
+    for key in _SEMANTIC_TYPE_KEYS:
+        value = event.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return event.get("type") or event.get("event_type") or ""
+
+
+def _auto_quests_last_24h(conn) -> int:
+    """Count parent auto_anomaly quests minted in the last 24h (durable cap)."""
+    cutoff_ms = int((time.time() - 86400) * 1000)
+    row = conn.execute(
+        "SELECT COUNT(*) FROM quests WHERE quest_type='auto_anomaly' "
+        "AND parent_quest_id IS NULL AND created_ts > ?", (cutoff_ms,)).fetchone()
+    return row[0] if row else 0
 
 try:
     # realm_text lives at the repo root — it's on sys.path because
@@ -196,6 +258,79 @@ _TEMPLATES: dict[str, dict] = {
         ],
         "actions": [],
     },
+    # The five semantic types realm-optimizer actually emits above severity 2,
+    # added with #123. Until the discriminator fix these were unreachable — and
+    # once reachable, none of them had a template, so every quest still came out
+    # a generic "Realm Disturbance". Field names below are the real payload keys
+    # (verified against 7 days of live events); _SafeDict renders "?" for a miss,
+    # so a wrong name degrades quietly instead of raising, which is exactly how
+    # this class of bug stays invisible. Voice follows realm-optimizer's own
+    # event text so the quest reads like the notification that spawned it.
+    "tmp_bloat": {
+        "title": "The Tmp Catacombs",
+        "technical_label": "{path} at {size_mb}MB on {host}",
+        "description": "Detritus piles in the catacombs beneath {host} — {size_mb}MB abandoned in {path}. Clear the crypt before it swallows the disk.",
+        "hints": ["Check what's largest: du -sh {path}/* | sort -h | tail", "Files older than 10 days are usually safe to remove", "systemd-tmpfiles --clean applies the configured policy"],
+        "xp_reward": 100,
+        "sub_quests": [
+            {"title": "Identify the largest offenders in the path", "sort_order": 1},
+            {"title": "Confirm nothing live still holds them open", "sort_order": 2},
+            {"title": "Clear the crypt and set a retention policy", "sort_order": 3},
+        ],
+        "actions": [{"type": "pan", "node": "{host}", "label": "View Node"}],
+    },
+    "swap_pressure": {
+        "title": "Shadow Memory Rises",
+        "technical_label": "Swap {percent_used}% used on {host} ({used_mb}/{total_mb}MB)",
+        "description": "Shadow memory presses on {host} — {percent_used}% of the swap is spoken for. The node still breathes, but it is reaching into the dark to do it.",
+        "hints": ["Find the real memory hog first: ps -eo rss,comm --sort=-rss | head", "Swap in use is not itself an emergency — sustained swap *thrashing* is (check si/so in vmstat 1)", "Adding swap treats the symptom; the resident set is the cause"],
+        "xp_reward": 150,
+        "sub_quests": [
+            {"title": "Identify the top resident-memory consumer", "sort_order": 1},
+            {"title": "Distinguish steady swap use from active thrashing", "sort_order": 2},
+            {"title": "Decide: restart the service, cap it, or add memory", "sort_order": 3},
+        ],
+        "actions": [{"type": "pan", "node": "{host}", "label": "View Node"}],
+    },
+    "high_load": {
+        "title": "The Great Burden",
+        "technical_label": "Load {load_5min} over {cpu_count} cores on {host}",
+        "description": "The burden on {host} is great — a 5-minute load of {load_5min} across {cpu_count} cores, past the {threshold} the realm tolerates. Find what pulls the cart.",
+        "hints": ["Load counts runnable AND uninterruptible tasks — high load with idle CPU means I/O wait, not compute", "Compare against core count: {load_5min} over {cpu_count} cores", "top -o %CPU, then iostat if the CPUs look idle"],
+        "xp_reward": 150,
+        "sub_quests": [
+            {"title": "Determine whether this is CPU-bound or I/O-bound", "sort_order": 1},
+            {"title": "Identify the process driving it", "sort_order": 2},
+            {"title": "Decide: expected workload, or intervene", "sort_order": 3},
+        ],
+        "actions": [{"type": "pan", "node": "{host}", "label": "View Node"}],
+    },
+    "zombie_processes": {
+        "title": "The Restless Wraiths",
+        "technical_label": "{zombie_count} zombie processes on {host}",
+        "description": "{zombie_count} restless wraiths haunt {host} — processes dead but unreaped, waiting on a parent that never called for them.",
+        "hints": ["Zombies cost almost nothing individually; a *growing* count means a parent that never wait()s", "Find the parent, not the zombie: ps -eo stat,ppid,pid,comm | awk '$1 ~ /Z/'", "The fix is restarting (or patching) the parent — you cannot kill a zombie"],
+        "xp_reward": 125,
+        "sub_quests": [
+            {"title": "Identify the parent failing to reap", "sort_order": 1},
+            {"title": "Check whether the count is stable or climbing", "sort_order": 2},
+            {"title": "Restart the parent, or file the bug upstream", "sort_order": 3},
+        ],
+        "actions": [{"type": "pan", "node": "{host}", "label": "View Node"}],
+    },
+    "dns_failure": {
+        "title": "The Clouded Sight",
+        "technical_label": "DNS resolution failed for {hostname} from {host}",
+        "description": "The far-seeing of {host} has clouded — the Naming Stones will not answer for {hostname}. Until sight returns, the realm is half-blind.",
+        "hints": ["Separate resolver from network: dig {hostname} vs dig @1.1.1.1 {hostname}", "Check what resolver is actually in use: resolvectl status", "One name failing is a record problem; every name failing is a resolver problem"],
+        "xp_reward": 200,
+        "sub_quests": [
+            {"title": "Determine whether one name or all names fail", "sort_order": 1},
+            {"title": "Test an external resolver directly", "sort_order": 2},
+            {"title": "Repair the resolver or the record", "sort_order": 3},
+        ],
+        "actions": [{"type": "pan", "node": "{host}", "label": "View Node"}],
+    },
     "shell_extension_crash": {
         "title": "Structural Instability",
         "technical_label": "GNOME Shell extension crash",
@@ -315,7 +450,35 @@ def _insert_quest(
 
     qid = ulid()
     now_ms = int(time.time() * 1000)
+    # dedupe_key keeps the RAW id even when it isn't a resolvable FK. It is a
+    # local uniqueness string, not a reference, and a stable per-event key
+    # ("quest:realm:194308") dedupes far better than the millisecond timestamp
+    # it used to fall back to — that made every retry of the same event look
+    # like a brand-new incident.
     dedupe_key = f"quest:{event_id}" if event_id else f"quest:{event_type}:{host}:{now_ms}"
+
+    # quests.source_event_id and quest_event_links.event_id are both FKs into
+    # game.db's ULID-keyed `events` table. Realmwatch events live in realm.db
+    # under an INTEGER AUTOINCREMENT id, which the caller stringifies to
+    # "realm:<int>" — a value that by construction cannot exist in game.db. With
+    # PRAGMA foreign_keys=ON that made every INSERT for a novel event raise
+    # "FOREIGN KEY constraint failed", so auto-generation never once worked
+    # (#123). Resolve the reference before writing it: keep it when the event
+    # genuinely lives in game.db, store NULL when it doesn't. The column is
+    # nullable, and NULL is the honest answer — the event exists, just in the
+    # other store.
+    # The OperationalError arm is not defensive padding: this module's own
+    # bootstrap (db.py) does not create `events` — realm-engine owns it — so on
+    # a fresh install that loads quests first the table genuinely is absent.
+    # Unverifiable means unresolvable, which means NULL.
+    src_event_id = None
+    if event_id:
+        try:
+            if conn.execute("SELECT 1 FROM events WHERE event_id=?",
+                            (event_id,)).fetchone():
+                src_event_id = event_id
+        except sqlite3.OperationalError:
+            src_event_id = None
 
     existing = conn.execute(
         "SELECT * FROM quests WHERE dedupe_key=?", (dedupe_key,)).fetchone()
@@ -327,15 +490,19 @@ def _insert_quest(
          description, severity, status, hints_json, xp_reward, created_ts, dedupe_key,
          actions_json, node, schema_version)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)""",
-        (qid, "auto_anomaly", event_id, entity_id,
+        (qid, "auto_anomaly", src_event_id, entity_id,
          title, tech_label, description, severity,
          "created", hints, template["xp_reward"], now_ms, dedupe_key,
          actions_json, node))
 
-    if event_id:
+    # Gate the link row on the same resolution. The live table carries
+    # FOREIGN KEY (event_id) REFERENCES events(event_id); an unresolvable id
+    # would fail here for exactly the same reason, and a link to an event in
+    # another database is not a link worth recording.
+    if src_event_id:
         conn.execute(
             "INSERT INTO quest_event_links (quest_id, event_id, role) VALUES (?,?,'trigger')",
-            (qid, event_id))
+            (qid, src_event_id))
 
     conn.execute(
         "INSERT INTO quest_state_log (quest_id, new_state, transition_ts, actor) VALUES (?,?,?,?)",
@@ -393,7 +560,7 @@ def _create_sub_quest_in_conn(
 def generate_quest_from_event_dict(
     event: dict,
     db_path: str = DEFAULT_DB_PATH,
-    severity_threshold: int = 2,
+    severity_threshold: int | None = None,
 ) -> dict | None:
     """Generate a quest from an in-memory event dict.
 
@@ -404,8 +571,15 @@ def generate_quest_from_event_dict(
         {type, node, text, severity, source, ts, id, data?, ...}
     The `data` key (or extra top-level keys) is treated as the template
     payload for substitution.
+
+    `severity_threshold` defaults to AUTO_QUEST_MIN_SEVERITY; pass an explicit
+    value to override (the manual /plugins/quests/generate path does).
     """
-    event_type = event.get("type") or event.get("event_type") or ""
+    if severity_threshold is None:
+        severity_threshold = AUTO_QUEST_MIN_SEVERITY
+
+    # Semantic type, not the transport envelope — see quest_discriminator.
+    event_type = quest_discriminator(event)
     if not event_type:
         return None
 
@@ -432,6 +606,15 @@ def generate_quest_from_event_dict(
 
     conn = get_connection(db_path)
     try:
+        # Durable volume backstop. Checked here rather than in _insert_quest so
+        # the manual generate path and the legacy game.db path stay uncapped —
+        # this bounds the *event bus*, which is the only unattended producer.
+        if AUTO_QUEST_DAILY_CAP > 0:
+            minted = _auto_quests_last_24h(conn)
+            if minted >= AUTO_QUEST_DAILY_CAP:
+                # Arm the cooldown so a capped realm stops re-entering per event.
+                record_event_seen(db_path, event_type, host)
+                return None
         result = _insert_quest(
             conn,
             event_id=eid,
@@ -442,10 +625,16 @@ def generate_quest_from_event_dict(
             payload=payload,
         )
     finally:
+        # Arm the cooldown on every attempt, not only on success. This used to
+        # sit behind `if result is not None`, so a failing insert never armed
+        # the 15-minute window and each qualifying event retried and re-logged
+        # forever — 100 identical FK errors in a 2-hour window (#123). A failure
+        # is exactly when a circuit breaker should trip, so no future failure
+        # mode can spam the same way. Inside `finally` so it also covers an
+        # exception propagating out of _insert_quest.
+        record_event_seen(db_path, event_type, host)
         conn.close()
 
-    if result is not None:
-        record_event_seen(db_path, event_type, host)
     return result
 
 
