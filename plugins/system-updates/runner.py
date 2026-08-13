@@ -27,7 +27,7 @@ import time
 
 from sources import (
     SOURCES, PARSERS,
-    update_state, append_log, clear_log,
+    update_state, append_log, clear_log, is_downgrade,
 )
 
 # ── Lock group management ────────────────────────────────────────
@@ -555,6 +555,13 @@ def _do_update_risky(source_id: str, push_event_fn=None):
         for pkg, info in versions.items():
             from_ver = info.get("from", "") or ""
             to_ver = info.get("to", "") or ""
+
+            if is_downgrade(from_ver, to_ver):
+                append_log(source_id,
+                           f"{pkg}: skipped — target {to_ver} is older than "
+                           f"installed {from_ver} (downgrade guard)")
+                _notify()
+                continue
 
             if _skip_key(pkg, from_ver, to_ver) in st.skip_list:
                 append_log(source_id, f"{pkg}: skipped by skip_list")

@@ -74,6 +74,33 @@ def _register(src: UpdateSource):
     _state[src.id] = SourceState()
 
 
+# ── Version helpers ──────────────────────────────────────────────
+
+def _version_tuple(v: str) -> tuple:
+    """Best-effort numeric tuple: '1.4.2-rc1+build' -> (1, 4, 2)."""
+    core = str(v).split("+")[0].split("-")[0]
+    parts = []
+    for piece in core.split("."):
+        digits = "".join(ch for ch in piece if ch.isdigit())
+        parts.append(int(digits) if digits else 0)
+    return tuple(parts)
+
+
+def is_downgrade(from_ver: str, to_ver: str) -> bool:
+    """True when the proposed target version is OLDER than the installed one.
+
+    ``npm -g outdated`` compares against the registry and is blind to
+    npm-link: a local fork ahead of the registry under the upstream name
+    shows wanted < current, and "updating" it silently downgrades
+    (2026-08-12: @karpeleslab/teamclaude 1.4.2 -> 1.1.12 replaced the
+    linked fork with the registry package). Unknown or unparseable
+    versions fail open (False) so normal updates are never blocked.
+    """
+    if not from_ver or not to_ver:
+        return False
+    return _version_tuple(from_ver) > _version_tuple(to_ver)
+
+
 # ── Check output parsers ────────────────────────────────────────
 
 def parse_apt(stdout: str) -> tuple[int, list[str]]:
@@ -149,15 +176,23 @@ def parse_brew(stdout: str) -> tuple[int, list[str]]:
 
 
 def parse_npm(stdout: str) -> tuple[int, list[str]]:
-    """Parse 'npm -g outdated' output."""
+    """Parse 'npm -g outdated' output.
+
+    Rows whose Wanted version is older than Current are dropped — those
+    are npm-linked forks ahead of the registry, not real updates (see
+    ``is_downgrade``).
+    """
     lines = stdout.strip().splitlines()
     if not lines:
         return 0, []
     packages = []
     for line in lines[1:]:  # skip header
-        parts = line.split()
-        if parts:
-            packages.append(parts[0])
+        parts = line.split()  # Package Current Wanted Latest Location ...
+        if not parts:
+            continue
+        if len(parts) >= 3 and is_downgrade(parts[1], parts[2]):
+            continue
+        packages.append(parts[0])
     return len(packages), packages
 
 
