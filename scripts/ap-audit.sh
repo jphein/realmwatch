@@ -105,8 +105,9 @@ audit_ap() {
   " 2>/dev/null || echo -e "  ${R}Failed to check collectd${N}"
 }
 
-# Single AP mode or all
-if [ "${1:-}" != "" ]; then
+# Single AP mode or all (--all is an explicit alias for the no-arg sweep,
+# so `realm fleet audit --all` doesn't treat the flag as a hostname)
+if [ "${1:-}" != "" ] && [ "${1:-}" != "--all" ]; then
   ip="${APS[$1]:-$1}"
   audit_ap "$1" "$ip"
 else
