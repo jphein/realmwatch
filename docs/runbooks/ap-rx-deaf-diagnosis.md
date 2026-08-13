@@ -219,9 +219,11 @@ ssh root@<ap> "tail -20 /root/uplink-watchdog-evidence.log"
 
 `north-office` was sysupgraded to **25.12.5** on 2026-08-13. WiFi works: the
 ath10k caldata blocker recorded in `openwrt-upgrade-map.md` is dead
-([PR #22951](https://github.com/openwrt/openwrt/pull/22951), merge commit
-`a94c020f3`). **The upgrade is a WiFi and security win. It fixes neither
-hazard below.** Keep the watchdog.
+([PR #22951](https://github.com/openwrt/openwrt/pull/22951), merged to main
+as `a94c020f3`, on the `openwrt-25.12` branch as backport `b36e1168` — cite
+the latter when checking release contents; the main merge commit is not an
+ancestor of 25.12). **The upgrade is a WiFi and security win. It fixes
+neither hazard below.** Keep the watchdog.
 
 ### H1 — multi-CPU-port qca8k, unguarded
 
@@ -322,7 +324,7 @@ custom build.
 - [openwrt#18979 — Archer C2600 loses WAN; network restart recovers](https://github.com/openwrt/openwrt/issues/18979)
 - [openwrt#21317 — qca8k host FDB on multi-CPU](https://github.com/openwrt/openwrt/issues/21317)
 - [openwrt#23943 — qca8k multi-CPU regression, names TGR1900/OnHub](https://github.com/openwrt/openwrt/issues/23943)
-- [openwrt PR#22951 — chromium OnHub caldata fix (merged, `a94c020f3`)](https://github.com/openwrt/openwrt/pull/22951)
+- [openwrt PR#22951 — chromium OnHub caldata fix (main `a94c020f3`, 25.12 backport `b36e1168`)](https://github.com/openwrt/openwrt/pull/22951)
 - [`711-02-net-dsa-qca8k-enable-flooding-to-both-CPU-port.patch`](https://github.com/openwrt/openwrt/blob/main/target/linux/generic/pending-6.12/711-02-net-dsa-qca8k-enable-flooding-to-both-CPU-port.patch)
 - [`qcom-ipq8064-eax500.dtsi` — the fixed `reset-gpios` pattern](https://github.com/openwrt/openwrt/blob/main/target/linux/ipq806x/dts/qcom-ipq8064-eax500.dtsi)
 - [`qca8k-common.c` — `ar8327_mib` counter names](https://github.com/torvalds/linux/blob/master/drivers/net/dsa/qca/qca8k-common.c)
