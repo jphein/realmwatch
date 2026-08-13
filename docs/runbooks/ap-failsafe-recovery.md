@@ -26,6 +26,10 @@ Use this when an OpenWrt AP:
 If the AP is fully off the network (no ARP), the problem isn't a config
 lockout — check power and uplink first.
 
+If the AP answers ARP and transmits fine but **receives nothing** (clients
+associate but never get DHCP), that's a dead RX path, not a lockout — see
+[AP RX-deaf diagnosis](ap-rx-deaf-diagnosis.md).
+
 ## Pre-recovery sanity
 
 From a known-good host (e.g. `gatekeeper`):
