@@ -1,0 +1,94 @@
+#!/usr/bin/expect -f
+# HP V1910-24G: bounce one switch port (shutdown -> undo shutdown) to force
+# PHY renegotiation, then read back link state.
+# Usage: switch-port-bounce.exp <port>
+#   <port> is the port number (e.g. 16) or full name (GigabitEthernet1/0/16).
+#
+# Transient op — nothing is saved to the switch config.
+# SAFETY: check what is on the port first (switch-mac-locate.exp) so you
+# don't cut your own uplink or gatekeeper's (GE1/0/23 as of 2026-08).
+# Born from the 2026-08-13 power-outage DHCP incident.
+#
+# Credentials: admin password fetched from Bitwarden at runtime
+# (vault item "HP Switch 10.0.6.103"). Vault must be unlocked.
+# The cmdline-mode unlock 512900 is the public HP V1910 service code.
+
+set timeout 30
+log_user 1
+
+if {[llength $argv] != 1} {
+    puts stderr "Usage: switch-port-bounce.exp <port-number|GigabitEthernet1/0/N>"
+    exit 2
+}
+set arg [lindex $argv 0]
+if {[regexp {^\d+$} $arg]} {
+    set PORT "GigabitEthernet1/0/$arg"
+} else {
+    set PORT $arg
+}
+
+set HOST   "10.0.6.103"
+set USER   "admin"
+if {[catch {exec bw get password "HP Switch 10.0.6.103"} PASS]} {
+    puts stderr "ERROR: failed to fetch credentials from Bitwarden: $PASS"
+    puts stderr "Hint: run 'bw unlock' or set BW_SESSION first."
+    exit 1
+}
+set UNLOCK "512900"
+
+set ::env(SSHPASS) $PASS
+spawn sshpass -e ssh -tt \
+    -o StrictHostKeyChecking=no \
+    -o UserKnownHostsFile=/dev/null \
+    -o ConnectTimeout=10 \
+    -o KexAlgorithms=+diffie-hellman-group-exchange-sha1 \
+    -o Ciphers=+aes128-cbc \
+    -o HostKeyAlgorithms=+ssh-rsa \
+    -o PubkeyAuthentication=no \
+    $USER@$HOST
+
+expect {
+    -re {<[^>]+>} { }
+    timeout { puts "TIMEOUT waiting for prompt"; exit 1 }
+}
+
+send "_cmdline-mode on\r"
+expect {
+    "Continue?" { send "Y\r" }
+    "All commands can be displayed" { }
+    timeout { puts "TIMEOUT after _cmdline-mode on"; exit 1 }
+}
+expect {
+    "password:" { send "$UNLOCK\r" }
+    timeout { puts "TIMEOUT waiting for unlock password"; exit 1 }
+}
+expect -re {<[^>]+>}
+
+send "system-view\r"
+expect -re {\[[^\]]+\]}
+
+send "interface $PORT\r"
+expect {
+    -re {\[[^\]]+-Gigabit[^\]]+\]} { }
+    -re {% .*} { puts "ERROR: interface $PORT not accepted"; exit 1 }
+    timeout { puts "TIMEOUT entering interface view"; exit 1 }
+}
+
+send "shutdown\r"
+expect -re {\[[^\]]+\]}
+sleep 4
+send "undo shutdown\r"
+expect -re {\[[^\]]+\]}
+
+send "quit\r"
+expect -re {\[[^\]]+\]}
+send "quit\r"
+expect -re {<[^>]+>}
+
+# Give autoneg a moment, then verify
+sleep 6
+send "display interface brief | include [string map {GigabitEthernet ""} $PORT]\r"
+expect -re {<[^>]+>}
+
+send "quit\r"
+expect eof

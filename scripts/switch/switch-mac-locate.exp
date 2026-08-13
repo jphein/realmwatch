@@ -1,0 +1,94 @@
+#!/usr/bin/expect -f
+# HP V1910-24G: locate MAC address(es) in the switch FDB, plus LLDP/STP context.
+# Usage: switch-mac-locate.exp <mac> [<mac> ...]
+#   MACs accepted in any format (aa:bb:cc:dd:ee:ff, aabb.ccdd.eeff, aabb-ccdd-eeff).
+#   A partial MAC (>= 6 hex digits) works too — matched as a Comware include-prefix.
+# Read-only. Born from the 2026-08-13 power-outage DHCP incident (north-office RX-deaf OnHub).
+#
+# Credentials: admin password fetched from Bitwarden at runtime
+# (vault item "HP Switch 10.0.6.103"). Vault must be unlocked.
+# The cmdline-mode unlock 512900 is the public HP V1910 service code.
+
+set timeout 30
+log_user 1
+
+if {[llength $argv] < 1} {
+    puts stderr "Usage: switch-mac-locate.exp <mac> \[<mac> ...\]"
+    exit 2
+}
+
+# Normalize a MAC in any common format to Comware xxxx-xxxx-xxxx (or a prefix of it)
+proc comware_mac {raw} {
+    set hex [string tolower [regsub -all {[^0-9a-fA-F]} $raw ""]]
+    set out ""
+    for {set i 0} {$i < [string length $hex]} {incr i 4} {
+        if {$out ne ""} { append out "-" }
+        append out [string range $hex $i [expr {$i + 3}]]
+    }
+    return $out
+}
+
+set HOST   "10.0.6.103"
+set USER   "admin"
+if {[catch {exec bw get password "HP Switch 10.0.6.103"} PASS]} {
+    puts stderr "ERROR: failed to fetch credentials from Bitwarden: $PASS"
+    puts stderr "Hint: run 'bw unlock' or set BW_SESSION first."
+    exit 1
+}
+set UNLOCK "512900"
+
+set ::env(SSHPASS) $PASS
+spawn sshpass -e ssh -tt \
+    -o StrictHostKeyChecking=no \
+    -o UserKnownHostsFile=/dev/null \
+    -o ConnectTimeout=10 \
+    -o KexAlgorithms=+diffie-hellman-group-exchange-sha1 \
+    -o Ciphers=+aes128-cbc \
+    -o HostKeyAlgorithms=+ssh-rsa \
+    -o PubkeyAuthentication=no \
+    $USER@$HOST
+
+expect {
+    -re {<[^>]+>} { }
+    timeout { puts "TIMEOUT waiting for prompt"; exit 1 }
+}
+
+send "_cmdline-mode on\r"
+expect {
+    "Continue?" { send "Y\r" }
+    "All commands can be displayed" { }
+    timeout { puts "TIMEOUT after _cmdline-mode on"; exit 1 }
+}
+expect {
+    "password:" { send "$UNLOCK\r" }
+    timeout { puts "TIMEOUT waiting for unlock password"; exit 1 }
+}
+expect -re {<[^>]+>}
+
+send "screen-length disable\r"
+expect -re {<[^>]+>}
+
+foreach raw $argv {
+    set m [comware_mac $raw]
+    send -- "display mac-address | include $m\r"
+    expect {
+        -re {<[^>]+>\s*$} { }
+        timeout { puts "\n--- TIMEOUT after mac lookup: $m ---" }
+    }
+}
+
+# Context: physical neighbors, link states, spanning tree
+foreach c {
+    "display lldp neighbor-information brief"
+    "display interface brief"
+    "display stp brief"
+} {
+    send -- "$c\r"
+    expect {
+        -re {<[^>]+>\s*$} { }
+        timeout { puts "\n--- TIMEOUT after: $c ---" }
+    }
+}
+
+send "quit\r"
+expect eof
