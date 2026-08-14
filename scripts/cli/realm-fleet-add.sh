@@ -115,7 +115,8 @@ print(f"probing {target!r}...")
 probe_cmd = (
     "echo '---openwrt_release---'; cat /etc/openwrt_release 2>/dev/null; "
     "echo '---mac---'; cat /sys/class/net/br-lan/address 2>/dev/null "
-    "  || cat /sys/class/net/eth0/address 2>/dev/null; "
+    "  || cat /sys/class/net/eth0/address 2>/dev/null "
+    "  || cat /sys/class/net/\"$(ip -o -4 route show to default | awk '{print $5; exit}')\"/address 2>/dev/null; "
     "echo '---hostname---'; uci -q get system.@system[0].hostname || hostname; "
     "echo '---model---'; cat /tmp/sysinfo/model 2>/dev/null; "
     "echo '---kernel---'; uname -srm"
