@@ -264,6 +264,18 @@ all user ports to one conduit with
 release branches, so this works today) — but see the conduit-pinning note under
 Step 2, and test on a bench OnHub, never remotely.
 
+> ⚠️ **Bridge-MAC gotcha (learned the hard way, 2026-08-13):** removing a port
+> from `br-lan` can change the bridge's MAC address (Linux derives it from the
+> member ports). The AP then DHCPs under the *new* MAC, misses its `dhcp-host`
+> reservation, and leases a **dynamic IP** — it looks dead at its usual address
+> while being perfectly healthy at one nobody is watching. Applied live to
+> north-office: the AP "vanished" from `.101` and was found hours later serving
+> happily at `.117`; two power cycles were spent chasing a working AP. Before
+> any bridge-membership change: note the current `br-lan` MAC
+> (`cat /sys/class/net/br-lan/address`), and either pin it explicitly
+> (`option macaddr` on the bridge device) or grep `/tmp/dhcp.leases` on
+> gatekeeper for the AP's *other* port MACs before declaring it down.
+
 ### H2 — the switch has no driver-controlled reset
 
 Verified 2026-08-13 on the `openwrt-25.12` branch: `qcom-ipq8064-onhub.dtsi`
