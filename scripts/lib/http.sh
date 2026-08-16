@@ -91,6 +91,34 @@ realm::_run() {
   esac
 
   cat "$tmp"
+
+  # Mirror the server's explanation to stderr on failure.
+  #
+  # Callers capture stdout (resp=$(realm::api_post ...)) and run under
+  # `set -e`, so a non-zero return aborts them *before* they can print the
+  # body — the reason for the failure reaches the caller and is then thrown
+  # away. Writing it to stderr survives both the capture and the abort, so
+  # `realm wol sleep gpu0` says "not in the sleepable allow-list" instead of
+  # only "curl: (22) ... error: 403".
+  if [[ "$curl_exit" -ne 0 && -s "$tmp" ]]; then
+    local _msg="" _code=""
+    if command -v jq >/dev/null 2>&1; then
+      _msg=$(jq -r '.error // .message // empty' <"$tmp" 2>/dev/null || true)
+      _code=$(jq -r '.code // empty' <"$tmp" 2>/dev/null || true)
+    fi
+    # Non-JSON or unrecognised shape: fall back to the raw body, flattened and
+    # truncated. HTML error pages are skipped entirely — curl's own status line
+    # already carries the only information they hold, and dumping a whole page
+    # into stderr buries the useful output.
+    if [[ -z "$_msg" ]] && [[ "$(head -c 1 "$tmp")" != "<" ]]; then
+      _msg=$(tr '\n' ' ' <"$tmp" | cut -c1-200)
+    fi
+    if [[ -n "${_msg// /}" ]]; then
+      [[ -n "$_code" ]] && _msg="$_msg [$_code]"
+      printf 'realm: %s\n' "$_msg" >&2
+    fi
+  fi
+
   rm -f "$tmp"
 
   realm::_status_to_exit "$curl_exit" "$http_status"

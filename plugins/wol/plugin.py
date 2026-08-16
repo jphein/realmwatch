@@ -185,7 +185,14 @@ def setup(ctx):
             if not name:
                 req.respond({"error": "missing 'target'"}, 400)
                 return None
-            return power_ops.arm_wol(name, db.get_setting("iface_overrides", {}))
+            res = power_ops.arm_wol(name, db.get_setting("iface_overrides", {}))
+            # A refused arm must not look like success to scripts (h_sleep
+            # already follows this pattern for its refusals).
+            if not res.get("ok") and res.get("link") == "wifi":
+                req.respond({"error": res.get("reason", "wireless NIC"),
+                             "code": "wireless_nic", **res}, 409)
+                return None
+            return res
         except Exception as e:
             req.respond({"error": str(e)}, 500)
             return None
@@ -196,13 +203,25 @@ def setup(ctx):
             if not name:
                 req.respond({"error": "missing 'target'"}, 400)
                 return None
-            if not reachable(name):
-                return {"ok": True, "noop": True,
-                        "message": f"{name} is not reachable (already asleep/off) — no action"}
+            # Gate order matters — each answer must be truthful on its own:
+            #   unknown host  -> 404 (a typo must never report success; before
+            #                    this check, `sleep familair` returned ok/noop
+            #                    "already asleep" because reachable() treats
+            #                    no-evidence as unreachable — 2026-08-16)
+            #   not allowed   -> 403 (even if currently off: policy first)
+            #   already off   -> ok/noop (idempotent "ensure asleep")
+            #   not armed     -> 409 (would strand: no way to wake it back)
+            if name not in {h["name"] for h in managed_hosts()}:
+                req.respond({"error": f"unknown host {name!r} — not a WoL-managed fleet "
+                             "host (see `realm wol show`)", "code": "unknown_host"}, 404)
+                return None
             if name not in db.get_setting("sleepable", []):
                 req.respond({"error": f"{name!r} is not in the sleepable allow-list",
                              "code": "not_sleepable"}, 403)
                 return None
+            if not reachable(name):
+                return {"ok": True, "noop": True,
+                        "message": f"{name} is not reachable (already asleep/off) — no action"}
             doctor = power_ops.check_wol(name, db.get_setting("iface_overrides", {}))
             if not doctor.get("armed"):
                 req.respond({"error": f"refusing to sleep {name!r}: WoL not armed "
