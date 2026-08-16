@@ -213,9 +213,62 @@ def arm_wol(name, iface_overrides=None):
             "note": "runtime arm only; set NM 802-3-ethernet.wake-on-lan=magic for persistence"}
 
 
-def suspend_host(name):
-    """Suspend to S3 via detached systemd-run so the SSH call returns cleanly."""
-    return ssh(name, "systemd-run --no-block systemctl suspend", priv=True)
+# How long to wait for an accepted suspend to actually take effect. familiar's
+# pre-sleep hook stops two llama-server lanes and waits for them to release
+# ~10 GB of GPU buffers, measured at 20-60 s on 2026-08-15; 90 s leaves headroom
+# without holding the request open indefinitely.
+SUSPEND_VERIFY_TIMEOUT_S = 90
+SUSPEND_VERIFY_INTERVAL_S = 3
+
+
+def suspend_host(name, verify_timeout=SUSPEND_VERIFY_TIMEOUT_S, probe=None,
+                 sleep_fn=time.sleep):
+    """Suspend to S3 via detached systemd-run, then verify the host went dark.
+
+    ACCEPTING the command and SLEEPING are different facts, and only one of them
+    is what the caller asked about. This used to return the SSH result directly,
+    so `realm wol sleep` reported success the instant the target took the
+    command — which on 2026-08-15 meant reporting success for suspends that
+    OOM'd in the PM_SUSPEND_PREPARE notifier chain and rolled back 95 s later,
+    with the host serving traffic the entire time.
+
+    ``probe`` and ``sleep_fn`` are injectable so the wait is exercisable offline.
+    """
+    # Prefer the host's own quiesce wrapper when it has one. familiar must free
+    # ~10 GB of GPU-pinned system RAM before it can reach S3 at all, and that
+    # work CANNOT be done from a system-sleep hook (the stop job queues behind
+    # the sleep transaction — 60 s+ versus 1 s outside it). Hosts without the
+    # wrapper get the plain suspend, unchanged.
+    res = ssh(name,
+              "sh -c 'if command -v familiar-sleep-now >/dev/null 2>&1; then "
+              "exec familiar-sleep-now; fi; "
+              "exec systemd-run --no-block systemctl suspend'",
+              priv=True, timeout=60)
+    if not res.get("ok"):
+        # The command never landed. There is nothing to verify, and reporting
+        # "still answering" here would blame the host for the caller's failure.
+        return res
+
+    if probe is None:
+        def probe(target):
+            return probe_liveness([target]).get(target)
+
+    waited = 0
+    while waited < verify_timeout:
+        # Clamp the final tick: a caller who said "90s" gets 90s, not 92.
+        step = min(SUSPEND_VERIFY_INTERVAL_S, verify_timeout - waited)
+        sleep_fn(step)
+        waited += step
+        if probe(name) is None:
+            return {**res, "verified": True, "slept": True,
+                    "verify_seconds": waited}
+
+    return {**res, "ok": False, "verified": False, "slept": False,
+            "verify_seconds": waited,
+            "reason": (f"{name} accepted the suspend but was still answering "
+                       f"{waited}s later — it did not sleep, or woke straight "
+                       f"back up. Check `journalctl -k | grep 'PM: suspend'` and "
+                       f"`journalctl -u systemd-suspend` on the host.")}
 
 
 LIVENESS_TIMEOUT_MS = 500

@@ -168,3 +168,78 @@ def test_no_ops_ip_is_not_a_warning(dns):
     assert out["ok"] is True
     assert out["directed_broadcast"] is None
     assert "directed_warning" not in out
+
+
+# ---------------------------------------------------------------------------
+# suspend_host — a sleep that did not happen must not be reported as one
+# ---------------------------------------------------------------------------
+# The same #122 lying-instrument class as the directed-broadcast bug above,
+# pointed the other way: suspend_host returned the SSH result, so
+# `realm wol sleep familiar` answered {"ok": true, "slept": "familiar"} the
+# instant the target ACCEPTED the command, having checked nothing.
+#
+# Measured on familiar 2026-08-15, three outcomes that were indistinguishable
+# at the CLI:
+#   * the suspend OOM'd in the PM_SUSPEND_PREPARE notifier chain and rolled
+#     back ~95 s later — the host never stopped serving,
+#   * the suspend held for ~2 minutes and something woke the host,
+#   * the suspend held.
+# Reporting all three as success is what let this sit unexamined. These lock
+# the difference in. Everything is injected: no packets, no sleeping, no host.
+
+def _ssh_ok(*_a, **_k):
+    return {"ok": True, "stdout": "", "stderr": "", "code": 0, "target": "familiar"}
+
+
+def test_a_host_that_keeps_answering_is_reported_as_a_failed_suspend():
+    with patch.object(power_ops, "ssh", _ssh_ok):
+        out = power_ops.suspend_host(
+            "familiar",
+            probe=lambda _n: 0.4,          # answers every single time
+            sleep_fn=lambda _s: None,
+        )
+    assert out["ok"] is False
+    assert out["slept"] is False
+    assert "still answering" in out["reason"]
+
+
+def test_suspend_is_confirmed_once_the_host_goes_dark():
+    replies = [0.4, 0.4, None]             # answers twice, then gone
+    with patch.object(power_ops, "ssh", _ssh_ok):
+        out = power_ops.suspend_host(
+            "familiar",
+            probe=lambda _n: replies.pop(0),
+            sleep_fn=lambda _s: None,
+        )
+    assert out["ok"] is True
+    assert out["slept"] is True
+    assert out["verified"] is True
+
+
+def test_an_ssh_failure_short_circuits_before_any_probe():
+    """If the command never landed there is nothing to verify — and claiming
+    'still answering' would blame the host for the caller's failure."""
+    probed = []
+    with patch.object(power_ops, "ssh",
+                      lambda *_a, **_k: {"ok": False, "stderr": "boom", "code": 255}):
+        out = power_ops.suspend_host(
+            "familiar",
+            probe=lambda n: probed.append(n),
+            sleep_fn=lambda _s: None,
+        )
+    assert out["ok"] is False
+    assert probed == []
+    assert "verified" not in out
+
+
+def test_verification_is_bounded_by_the_timeout():
+    """A host that never sleeps must not hold the HTTP request open forever."""
+    slept_for = []
+    with patch.object(power_ops, "ssh", _ssh_ok):
+        power_ops.suspend_host(
+            "familiar",
+            probe=lambda _n: 0.4,
+            sleep_fn=slept_for.append,
+            verify_timeout=10,
+        )
+    assert sum(slept_for) <= 10
