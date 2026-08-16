@@ -14,6 +14,25 @@ by feature epoch using commit author dates.
 Most recent work since v0.4.0. Items here will fold into the next tagged
 release.
 
+- `realm wol wake|sleep|arm|doctor` accept multiple hosts — each target
+  gets its own labelled result, a failure doesn't stop the rest, and the
+  exit code reflects the first failure (previously every argument after
+  the first was silently dropped).
+- `realm wol doctor` reports the primary NIC's link type
+  (`ethernet`/`wifi`) and explains that a wireless NIC cannot be woken
+  by magic packet; `arm` refuses wireless NICs (HTTP 409) instead of
+  arming something that can never wake.
+- `wol sleep` gates answer truthfully in order: unknown host → 404
+  (a typo can no longer report "already asleep" success), not
+  allow-listed → 403 (even while the host is off), already off →
+  idempotent noop, not armed → 409.
+- The `realm` CLI now mirrors the server's JSON error explanation to
+  stderr on HTTP failures (e.g. `realm: 'x' is not in the sleepable
+  allow-list [not_sleepable]`) — previously `set -e` aborted handlers
+  before the captured body could be printed, leaving only
+  `curl: (22) ... 403`. HTML error pages are skipped, not dumped.
+- `engine.py` tolerates `tailscale status` returning `"Peer": null`
+  instead of crashing the sensor pass.
 - Doc-coverage sweep: `README.md`, `docs/index.html`, `docs/plugins.md`,
   `docs/cli.md`, `docs/architecture.md`, `docs/landing-text.md`,
   `docs/getting-started.md`, `docs/_config.yml`, `CONTRIBUTING.md`,
