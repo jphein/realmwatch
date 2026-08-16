@@ -85,7 +85,7 @@ class RealmEngine:
                     text=True, timeout=3
                 )
                 data = json.loads(raw)
-                peers = data.get("Peer", {})
+                peers = data.get("Peer") or {}
                 online = [v["HostName"] for v in peers.values() if v.get("Online")]
                 total = len(peers)
                 details = {}
