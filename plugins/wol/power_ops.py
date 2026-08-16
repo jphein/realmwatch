@@ -182,16 +182,29 @@ def detect_iface(name, iface_overrides=None):
 
 
 def check_wol(name, iface_overrides=None):
-    """Doctor: is the host SSH-reachable and is WoL armed (``Wake-on: g``)?"""
+    """Doctor: is the host SSH-reachable, is its primary NIC *wired*, and is
+    WoL armed (``Wake-on: g``)?
+
+    The link-type check exists because a wireless primary NIC makes the armed
+    state moot: the radio loses power in suspend (always, for USB dongles), so
+    a magic packet has nothing to land on. Discovered via the desk tablets —
+    WiFi-only hosts that would strand in S3 (2026-08-16).
+    """
     iface = detect_iface(name, iface_overrides)
     if iface is None or not _safe_token(iface):
         return {"ok": False, "ssh": False, "armed": False,
                 "reason": "ssh unreachable or could not detect a safe primary interface"}
-    r = ssh(name, f"ethtool {iface}", priv=True)
-    if not r["ok"]:
-        return {"ok": False, "ssh": True, "iface": iface, "armed": False,
-                "reason": (r["stderr"] or "ethtool failed").strip()}
+    # One round-trip: ethtool runs under the sudo -n prefix; the `;` ends the
+    # sudo scope so the sysfs probe runs unprivileged (it needs no root).
+    r = ssh(name, f"ethtool {iface}; test -d /sys/class/net/{iface}/wireless "
+                  f"&& echo LINK:wifi || echo LINK:ethernet", priv=True)
+    if not r["stdout"].strip():
+        return {"ok": False, "ssh": False, "iface": iface, "armed": False,
+                "reason": (r["stderr"] or "ssh failed mid-check").strip()}
+    link = ("wifi" if "LINK:wifi" in r["stdout"]
+            else "ethernet" if "LINK:ethernet" in r["stdout"] else None)
     armed = False
+    saw_wake_field = False
     # ethtool prints both "Supports Wake-on: <modes>" and the active "Wake-on: <state>".
     # Match the active field exactly (key == "Wake-on" after the colon split) so the
     # supported-modes line can never be mistaken for the armed state.
@@ -199,7 +212,17 @@ def check_wol(name, iface_overrides=None):
         key, sep, val = line.partition(":")
         if sep and key.strip() == "Wake-on":
             armed = val.strip() == "g"
-    return {"ok": armed, "ssh": True, "iface": iface, "armed": armed}
+            saw_wake_field = True
+    if link == "wifi":
+        return {"ok": False, "ssh": True, "iface": iface, "link": link, "armed": armed,
+                "reason": f"{iface} is a wireless interface — WoL magic packets need a "
+                          "wired NIC (the radio powers down in suspend)"}
+    if not saw_wake_field:
+        # ethtool failed (compound command masks its exit code, so detect by
+        # the absence of a Wake-on field rather than by r["ok"]).
+        return {"ok": False, "ssh": True, "iface": iface, "link": link, "armed": False,
+                "reason": (r["stderr"] or "ethtool reported no Wake-on state").strip()}
+    return {"ok": armed, "ssh": True, "iface": iface, "link": link, "armed": armed}
 
 
 def arm_wol(name, iface_overrides=None):
@@ -208,8 +231,14 @@ def arm_wol(name, iface_overrides=None):
     iface = detect_iface(name, iface_overrides)
     if iface is None or not _safe_token(iface):
         return {"ok": False, "reason": "ssh unreachable or could not detect a safe primary interface"}
+    # Refuse to arm a wireless NIC: ethtool -s would either fail or, worse,
+    # "succeed" while giving false confidence that the host can be woken.
+    probe = ssh(name, f"test -d /sys/class/net/{iface}/wireless && echo wifi || echo wired")
+    if "wifi" in probe["stdout"]:
+        return {"ok": False, "iface": iface, "link": "wifi",
+                "reason": f"{iface} is a wireless interface — WoL arming needs a wired NIC"}
     r = ssh(name, f"ethtool -s {iface} wol g", priv=True)
-    return {"ok": r["ok"], "iface": iface, "detail": r,
+    return {"ok": r["ok"], "iface": iface, "link": "ethernet", "detail": r,
             "note": "runtime arm only; set NM 802-3-ethernet.wake-on-lan=magic for persistence"}
 
 
